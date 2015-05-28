@@ -6,16 +6,15 @@ import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
 {
-    private static class MockPrepareState extends MockCallbackState
+    private static class MockPrepareService extends MockCallbackService
     {
-        private MockPrepareState(int numLocal, int numRemote)
+        private MockPrepareService(int numLocal, int numRemote)
         {
             super(numLocal, numRemote);
         }
@@ -29,7 +28,7 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
         }
     }
 
-    private List<Instance> makeInstances(int num, Instance.State targetState, EpaxosState state) throws InvalidInstanceStateChange
+    private List<Instance> makeInstances(int num, Instance.State targetState, EpaxosService state) throws InvalidInstanceStateChange
     {
         List<Instance> instances = new ArrayList<>(num);
         for (int i=0; i<num; i++)
@@ -59,14 +58,14 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
     @Test
     public void successCase() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
+        MockPrepareService service = new MockPrepareService(3, 0);
         UUID parentId = UUIDGen.getTimeUUID();
-        List<Instance> instances = makeInstances(2, Instance.State.ACCEPTED, state);
+        List<Instance> instances = makeInstances(2, Instance.State.ACCEPTED, service);
         Set<UUID> ids = getIds(instances);
 
         final AtomicInteger completedCalls = new AtomicInteger(0);
         final AtomicBoolean executionSubmitted = new AtomicBoolean(false);
-        PrepareGroup group = new PrepareGroup(state, parentId, getIds(instances)) {
+        PrepareGroup group = new PrepareGroup(service, parentId, getIds(instances)) {
             @Override
             public synchronized void prepareComplete(UUID completedId)
             {
@@ -84,30 +83,30 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
         // sanity check
         Assert.assertEquals(0, completedCalls.get());
         Assert.assertFalse(executionSubmitted.get());
-        Assert.assertEquals(0, state.prepared.size());
-        Assert.assertEquals(0, state.registeredPrepareGroups().size());
-        Assert.assertEquals(0, state.registeredCommitCallbacks().size());
+        Assert.assertEquals(0, service.prepared.size());
+        Assert.assertEquals(0, service.registeredPrepareGroups().size());
+        Assert.assertEquals(0, service.registeredCommitCallbacks().size());
 
         // check initial schedule
         group.schedule();
         Assert.assertEquals(0, completedCalls.get());
         Assert.assertFalse(executionSubmitted.get());
-        Assert.assertEquals(2, state.prepared.size());
-        Assert.assertEquals(ids, state.prepared);
-        Assert.assertEquals(ids, state.registeredPrepareGroups());
-        Assert.assertEquals(ids, state.registeredCommitCallbacks());
+        Assert.assertEquals(2, service.prepared.size());
+        Assert.assertEquals(ids, service.prepared);
+        Assert.assertEquals(ids, service.registeredPrepareGroups());
+        Assert.assertEquals(ids, service.registeredCommitCallbacks());
 
         // mark one complete
         group.prepareComplete(instances.get(0).getId());
         Assert.assertEquals(1, completedCalls.get());
         Assert.assertFalse(executionSubmitted.get());
-        Assert.assertEquals(Sets.newHashSet(instances.get(1).getId()), state.registeredPrepareGroups());
+        Assert.assertEquals(Sets.newHashSet(instances.get(1).getId()), service.registeredPrepareGroups());
 
         // mark the other complete
         group.prepareComplete(instances.get(1).getId());
         Assert.assertEquals(2, completedCalls.get());
         Assert.assertTrue(executionSubmitted.get());
-        Assert.assertEquals(Sets.<UUID>newHashSet(), state.registeredPrepareGroups());
+        Assert.assertEquals(Sets.<UUID>newHashSet(), service.registeredPrepareGroups());
     }
 
     /**
@@ -117,12 +116,12 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
     @Test
     public void redundantGroup() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
+        MockPrepareService service = new MockPrepareService(3, 0);
         UUID parentId = UUIDGen.getTimeUUID();
-        List<Instance> instances = makeInstances(2, Instance.State.ACCEPTED, state);
+        List<Instance> instances = makeInstances(2, Instance.State.ACCEPTED, service);
         Set<UUID> ids = getIds(instances);
 
-        PrepareGroup group1 = new PrepareGroup(state, parentId, getIds(instances)) {
+        PrepareGroup group1 = new PrepareGroup(service, parentId, getIds(instances)) {
             @Override
             protected void submitExecuteTask()
             {
@@ -132,7 +131,7 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
 
         final AtomicInteger completedCalls = new AtomicInteger(0);
         final AtomicBoolean executionSubmitted = new AtomicBoolean(false);
-        PrepareGroup group2 = new PrepareGroup(state, parentId, getIds(instances)) {
+        PrepareGroup group2 = new PrepareGroup(service, parentId, getIds(instances)) {
             @Override
             public synchronized void prepareComplete(UUID completedId)
             {
@@ -149,16 +148,16 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
 
         // schedule the first group, it should schedule prepares normally
         group1.schedule();
-        Assert.assertEquals(ids, state.registeredPrepareGroups());
+        Assert.assertEquals(ids, service.registeredPrepareGroups());
         Assert.assertEquals(0, group1.getRegisteredGroupNotifies().size());
-        Assert.assertEquals(2, state.prepared.size());
-        state.prepared.clear();
-        Assert.assertEquals(0, state.prepared.size());
+        Assert.assertEquals(2, service.prepared.size());
+        service.prepared.clear();
+        Assert.assertEquals(0, service.prepared.size());
 
         // schedule the second, it should not schedule any tasks, but
         // tell group1 to notify it as instances are committed
         group2.schedule();
-        Assert.assertEquals(0, state.prepared.size());
+        Assert.assertEquals(0, service.prepared.size());
         Assert.assertEquals(ids, group1.getRegisteredGroupNotifies());
 
         // mark instances committed in group1, it should notify group2
@@ -176,14 +175,14 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
     @Test
     public void committedInstance() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
+        MockPrepareService service = new MockPrepareService(3, 0);
         UUID parentId = UUIDGen.getTimeUUID();
-        List<Instance> instances = makeInstances(2, Instance.State.COMMITTED, state);
+        List<Instance> instances = makeInstances(2, Instance.State.COMMITTED, service);
         Set<UUID> ids = getIds(instances);
 
         final AtomicInteger completedCalls = new AtomicInteger(0);
         final AtomicBoolean executionSubmitted = new AtomicBoolean(false);
-        PrepareGroup group = new PrepareGroup(state, parentId, getIds(instances)) {
+        PrepareGroup group = new PrepareGroup(service, parentId, getIds(instances)) {
             @Override
             public synchronized void prepareComplete(UUID completedId)
             {
@@ -201,8 +200,8 @@ public class EpaxosPrepareGroupTest extends AbstractEpaxosTest
         group.schedule();
         Assert.assertEquals(2, completedCalls.get());
         Assert.assertTrue(executionSubmitted.get());
-        Assert.assertEquals(0, state.prepared.size());
-        Assert.assertEquals(0, state.registeredPrepareGroups().size());
-        Assert.assertEquals(0, state.registeredCommitCallbacks().size());
+        Assert.assertEquals(0, service.prepared.size());
+        Assert.assertEquals(0, service.registeredPrepareGroups().size());
+        Assert.assertEquals(0, service.registeredCommitCallbacks().size());
     }
 }

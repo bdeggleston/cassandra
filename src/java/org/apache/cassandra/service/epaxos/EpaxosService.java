@@ -29,12 +29,9 @@ import org.apache.cassandra.service.AbstractWriteResponseHandler;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
-import org.apache.cassandra.streaming.StreamSession;
-import org.apache.cassandra.streaming.StreamTask;
 import org.apache.cassandra.streaming.messages.FileMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
@@ -53,19 +50,19 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class EpaxosState
+public class EpaxosService
 {
     private static class Handle
     {
-        private static final EpaxosState instance = new EpaxosState();
+        private static final EpaxosService instance = new EpaxosService();
     }
 
-    public static EpaxosState getInstance()
+    public static EpaxosService getInstance()
     {
         return Handle.instance;
     }
 
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
     private static final List<InetAddress> NO_ENDPOINTS = ImmutableList.of();
 
@@ -211,12 +208,12 @@ public class EpaxosState
     protected final Map<Scope, TokenStateManager> tokenStateManagers = new EnumMap<>(Scope.class);
     protected final Map<Scope, KeyStateManager> keyStateManagers = new EnumMap<>(Scope.class);
 
-    public EpaxosState()
+    public EpaxosService()
     {
         this(Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE, SystemKeyspace.EPAXOS_KEY_STATE, SystemKeyspace.EPAXOS_TOKEN_STATE);
     }
 
-    public EpaxosState(String keyspace, String instanceTable, String keyStateTable, String tokenStateTable)
+    public EpaxosService(String keyspace, String instanceTable, String keyStateTable, String tokenStateTable)
     {
         this.keyspace = keyspace;
         this.instanceTable = instanceTable;

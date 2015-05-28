@@ -14,9 +14,9 @@ import java.util.*;
 
 public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
 {
-    public PreacceptCallback getCallback(EpaxosState state, Instance instance, Runnable failureCallback, boolean forceAccept)
+    public PreacceptCallback getCallback(EpaxosService service, Instance instance, Runnable failureCallback, boolean forceAccept)
     {
-        return new PreacceptCallback(state, instance, state.getParticipants(instance), failureCallback, forceAccept);
+        return new PreacceptCallback(service, instance, service.getParticipants(instance), failureCallback, forceAccept);
     }
 
     public MessageIn<PreacceptResponse> createResponse(InetAddress from, PreacceptResponse response)
@@ -31,17 +31,17 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void fastQuorum() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(7, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(7, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.setDependencies(Collections.<UUID>emptySet());
 
-        EpaxosState.ParticipantInfo participants = state.getParticipants(instance);
+        EpaxosService.ParticipantInfo participants = service.getParticipants(instance);
         Assert.assertEquals(4, participants.quorumSize);
         Assert.assertEquals(5, participants.fastQuorumSize);
         Assert.assertTrue(participants.quorumExists());
         Assert.assertTrue(participants.fastQuorumExists());
 
-        PreacceptCallback callback = new PreacceptCallback(state, instance, state.getParticipants(instance), null, false);
+        PreacceptCallback callback = new PreacceptCallback(service, instance, service.getParticipants(instance), null, false);
 
         List<InetAddress> quorum = participants.liveEndpoints.subList(1, participants.quorumSize);
         List<InetAddress> fastQuorum = participants.liveEndpoints.subList(participants.quorumSize, participants.fastQuorumSize);
@@ -76,7 +76,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void quorumOnly() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(7, 0) {
+        MockCallbackService service = new MockCallbackService(7, 0) {
             protected Predicate<InetAddress> livePredicate()
             {
                 return new Predicate<InetAddress>()
@@ -88,16 +88,16 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
                 };
             }
         };
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.setDependencies(Collections.<UUID>emptySet());
 
-        EpaxosState.ParticipantInfo participants = state.getParticipants(instance);
+        EpaxosService.ParticipantInfo participants = service.getParticipants(instance);
         Assert.assertEquals(4, participants.quorumSize);
         Assert.assertEquals(5, participants.fastQuorumSize);
         Assert.assertTrue(participants.quorumExists());
         Assert.assertFalse(participants.fastQuorumExists());
 
-        PreacceptCallback callback = new PreacceptCallback(state, instance, state.getParticipants(instance), null, false);
+        PreacceptCallback callback = new PreacceptCallback(service, instance, service.getParticipants(instance), null, false);
 
         List<InetAddress> quorum = participants.liveEndpoints.subList(1, participants.quorumSize);
 
@@ -122,24 +122,24 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void fastPathSuccessCase() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         callback.countLocal();
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
-        Assert.assertEquals(1, state.commits.size());
+        Assert.assertEquals(1, service.commits.size());
         Assert.assertTrue(callback.isCompleted());
 
         AcceptDecision decision = callback.getAcceptDecision();
@@ -154,22 +154,22 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void slowPathSuccessCase() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         Set<UUID> expectedDeps = Sets.newHashSet(dep1, dep2);
         instance.setDependencies(Sets.newHashSet(dep1));
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         callback.countLocal();
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
         // respond with a failure, missing the expected dep, and replying with another
@@ -180,42 +180,42 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         response.missingInstances = Lists.newArrayList((Instance) new QueryInstance(dep2,
                                                                                     getSerializedCQLRequest(0, 1),
                                                                                     InetAddress.getByName("127.0.0.100")));
-        callback.response(createResponse(state.localEndpoints.get(1), response));
-        Assert.assertEquals(1, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(1), response));
+        Assert.assertEquals(1, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertTrue(callback.isCompleted());
 
         AcceptDecision decision = callback.getAcceptDecision();
         Assert.assertTrue(decision.acceptNeeded);
         Assert.assertEquals(expectedDeps, decision.acceptDeps);
         // check that the missing instance was submitted
-        Assert.assertEquals(1, state.missingInstancesAdded.size());
-        Assert.assertEquals(dep2, state.missingInstancesAdded.get(0).iterator().next().getId());
+        Assert.assertEquals(1, service.missingInstancesAdded.size());
+        Assert.assertEquals(dep2, service.missingInstancesAdded.get(0).iterator().next().getId());
     }
 
     @Test
     public void forcedAcceptSuccessCase() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, true);
+        PreacceptCallback callback = getCallback(service, instance, null, true);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         callback.countLocal();
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
         // the instance should be accepted, even if the
         // accept  decision says it't not neccesary
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
-        Assert.assertEquals(1, state.accepts.size());
+        Assert.assertEquals(1, service.accepts.size());
         Assert.assertTrue(callback.isCompleted());
 
         AcceptDecision decision = callback.getAcceptDecision();
@@ -230,54 +230,54 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void noLocalResponse() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
     }
 
     @Test
     public void ballotFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.ballotFailure(instance.getToken(), instance.getCfId(), 0,
                                                                          DEFAULT_SCOPE, 5)));
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
-        Assert.assertEquals(1, state.ballotUpdates.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
+        Assert.assertEquals(1, service.ballotUpdates.size());
         Assert.assertTrue(callback.isCompleted());
     }
 
     @Test
     public void duplicateMessagesIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
@@ -287,13 +287,13 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
         // should be ignored
-        callback.response(createResponse(state.localEndpoints.get(2),
+        callback.response(createResponse(service.localEndpoints.get(2),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
@@ -302,19 +302,19 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void additionalMessagesIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.success(instance.getToken(), 0, instance.copy())));
         Assert.assertEquals(1, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
@@ -327,13 +327,13 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void sendMissingInstance() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.setDependencies(Sets.newHashSet(dep1));
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
@@ -345,7 +345,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // respond with a failure, missing the expected dep, and replying with another
         Instance responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep2));
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertTrue(callback.isCompleted());
 
@@ -353,7 +353,7 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         // node are marked to be included in the accept request
         AcceptDecision decision = callback.getAcceptDecision();
         Map<InetAddress, Set<UUID>> missingInstances = Maps.newHashMap();
-        missingInstances.put(state.localEndpoints.get(1), Sets.newHashSet(dep1));
+        missingInstances.put(service.localEndpoints.get(1), Sets.newHashSet(dep1));
         Assert.assertEquals(missingInstances, decision.missingInstances);
     }
 
@@ -364,14 +364,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void convergingDisagreeingDeps() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(5, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(5, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         UUID dep3 = UUIDGen.getTimeUUID();
         instance.setDependencies(Sets.newHashSet(dep1, dep2, dep3));
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
@@ -384,14 +384,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         Instance responseInstance;
         responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep1, dep2));
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertFalse(callback.isCompleted());
 
         // failure 2
         responseInstance = instance.copy();
         responseInstance.setDependencies(Sets.newHashSet(dep2, dep3));
-        callback.response(createResponse(state.localEndpoints.get(2),
+        callback.response(createResponse(service.localEndpoints.get(2),
                                          PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertTrue(callback.isCompleted());
         // check that an accept is required, even though the responses resolve to match the leader
@@ -407,14 +407,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void convergingDisagreeingRanges() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(5, 0);
+        MockCallbackService service = new MockCallbackService(5, 0);
         TokenInstance instance = new TokenInstance(LOCALHOST, CFID, token(50), range(0, 100), DEFAULT_SCOPE);
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         UUID dep3 = UUIDGen.getTimeUUID();
         instance.setDependencies(Sets.newHashSet(dep1, dep2, dep3));
 
-        PreacceptCallback callback = getCallback(state, instance, null, false);
+        PreacceptCallback callback = getCallback(service, instance, null, false);
 
         // sanity checks
         Assert.assertFalse(callback.isCompleted());
@@ -427,14 +427,14 @@ public class EpaxosPreacceptCallbackTest extends AbstractEpaxosTest
         TokenInstance responseInstance;
         responseInstance = (TokenInstance) instance.copy();
         responseInstance.setSplitRange(range(0, 75));
-        callback.response(createResponse(state.localEndpoints.get(1),
+        callback.response(createResponse(service.localEndpoints.get(1),
                                          PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertFalse(callback.isCompleted());
 
         // failure 2
         responseInstance = (TokenInstance) instance.copy();
         responseInstance.setSplitRange(range(25, 100));
-        callback.response(createResponse(state.localEndpoints.get(2),
+        callback.response(createResponse(service.localEndpoints.get(2),
                                          PreacceptResponse.failure(instance.getToken(), 0, responseInstance)));
         Assert.assertTrue(callback.isCompleted());
         // check that an accept is required, even though the responses resolve to match the leader

@@ -5,14 +5,14 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 public class BallotUpdateTask implements Runnable
 {
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID id;
     private final int ballot;
     private final Runnable callback;
 
-    public BallotUpdateTask(EpaxosState state, UUID id, int ballot, Runnable callback)
+    public BallotUpdateTask(EpaxosService service, UUID id, int ballot, Runnable callback)
     {
-        this.state = state;
+        this.service = service;
         this.id = id;
         this.ballot = ballot;
         this.callback = callback;
@@ -21,14 +21,14 @@ public class BallotUpdateTask implements Runnable
     @Override
     public void run()
     {
-        ReadWriteLock lock = state.getInstanceLock(id);
+        ReadWriteLock lock = service.getInstanceLock(id);
         lock.writeLock().lock();
         try
         {
-            Instance instance = state.loadInstance(id);
+            Instance instance = service.loadInstance(id);
             instance.updateBallot(ballot);
             instance.incrementBallot();
-            state.saveInstance(instance);
+            service.saveInstance(instance);
         }
         finally
         {

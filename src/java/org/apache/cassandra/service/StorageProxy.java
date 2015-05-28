@@ -224,7 +224,7 @@ public class StorageProxy implements StorageProxyMBean
             builder.consistencyLevel(consistencyForPaxos);
 
             SerializedRequest serializedRequest = builder.build();
-            return EpaxosState.getInstance().query(serializedRequest);
+            return EpaxosService.getInstance().query(serializedRequest);
         }
 
         long start = System.nanoTime();
@@ -1156,7 +1156,7 @@ public class StorageProxy implements StorageProxyMBean
                 SerializedRequest request = builder.build();
                 try
                 {
-                    rows = EpaxosState.getInstance().query(request);
+                    rows = EpaxosService.getInstance().query(request);
                 }
                 catch (WriteTimeoutException e)
                 {

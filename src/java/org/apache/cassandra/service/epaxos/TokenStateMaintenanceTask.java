@@ -28,14 +28,14 @@ import java.util.UUID;
  */
 public class TokenStateMaintenanceTask implements Runnable
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final Collection<TokenStateManager> tsms;
 
-    public TokenStateMaintenanceTask(EpaxosState state, Collection<TokenStateManager> tsms)
+    public TokenStateMaintenanceTask(EpaxosService service, Collection<TokenStateManager> tsms)
     {
-        this.state = state;
+        this.service = service;
         this.tsms = tsms;
     }
 
@@ -75,7 +75,7 @@ public class TokenStateMaintenanceTask implements Runnable
                         // a recovery and continue
                         if (ts.getState() == TokenState.State.RECOVERY_REQUIRED)
                         {
-                            state.startLocalFailureRecovery(ts.getToken(), ts.getCfId(), 0, tsm.getScope());
+                            service.startLocalFailureRecovery(ts.getToken(), ts.getCfId(), 0, tsm.getScope());
                             continue;
                         }
                     }
@@ -84,17 +84,17 @@ public class TokenStateMaintenanceTask implements Runnable
                         ts.lock.readLock().unlock();
                     }
 
-                    if (ts.getExecutions() >= state.getEpochIncrementThreshold(cfId, scope))
+                    if (ts.getExecutions() >= service.getEpochIncrementThreshold(cfId, scope))
                     {
-                        if (ts.getExecutions() < state.getEpochIncrementThreshold(cfId, scope))
+                        if (ts.getExecutions() < service.getEpochIncrementThreshold(cfId, scope))
                         {
                             continue;
                         }
 
                         logger.debug("Incrementing epoch for {}", ts);
 
-                        EpochInstance instance = state.createEpochInstance(ts.getToken(), ts.getCfId(), currentEpoch + 1, scope);
-                        state.preaccept(instance);
+                        EpochInstance instance = service.createEpochInstance(ts.getToken(), ts.getCfId(), currentEpoch + 1, scope);
+                        service.preaccept(instance);
                     }
                     else if (ts.getNumUnrecordedExecutions() > 0)
                     {
@@ -123,7 +123,7 @@ public class TokenStateMaintenanceTask implements Runnable
         Set<Token> tokens = Sets.newHashSet();
         for (Map.Entry<Range<Token>, List<InetAddress>> entry: StorageService.instance.getRangeToAddressMap(ksName).entrySet())
         {
-            if (entry.getValue().contains(state.getEndpoint()))
+            if (entry.getValue().contains(service.getEndpoint()))
             {
                 tokens.add(entry.getKey().right);
             }
@@ -156,10 +156,10 @@ public class TokenStateMaintenanceTask implements Runnable
                     if (tsm.getExact(token, cfId) == null)
                     {
                         logger.info("Running instance for missing token state for token {} on {}", token, cfId);
-                        TokenInstance instance = state.createTokenInstance(token, cfId, tsm.getScope());
+                        TokenInstance instance = service.createTokenInstance(token, cfId, tsm.getScope());
                         try
                         {
-                            state.process(instance);
+                            service.process(instance);
                         }
                         catch (WriteTimeoutException e)
                         {

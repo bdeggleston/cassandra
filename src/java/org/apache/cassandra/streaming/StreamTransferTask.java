@@ -25,7 +25,7 @@ import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.SSTableReader;
-import org.apache.cassandra.service.epaxos.EpaxosState;
+import org.apache.cassandra.service.epaxos.EpaxosService;
 import org.apache.cassandra.streaming.messages.OutgoingFileMessage;
 import org.apache.cassandra.utils.Pair;
 
@@ -55,7 +55,7 @@ public class StreamTransferTask extends StreamTask
         OutgoingFileMessage message = new OutgoingFileMessage(sstable, sequenceNumber.getAndIncrement(), estimatedKeys, sections, ranges, repairedAt);
 
         // add epaxos data
-        EpaxosState.getInstance().writeStreamHeader(sstable, ranges, message.header, session.peer);
+        EpaxosService.getInstance().writeStreamHeader(sstable, ranges, message.header, session.peer);
 
         files.put(message.header.sequenceNumber, message);
         totalSize += message.header.size();

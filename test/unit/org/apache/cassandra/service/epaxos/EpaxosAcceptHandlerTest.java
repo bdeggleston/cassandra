@@ -54,18 +54,18 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void existingSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.replies.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.replies.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         Set<UUID> expectedDeps = Sets.newHashSet(instance.getDependencies());
         expectedDeps.add(UUIDGen.getTimeUUID());
@@ -75,16 +75,16 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
 
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
-        MessageOut<AcceptResponse> response = state.replies.get(0);
+        MessageOut<AcceptResponse> response = service.replies.get(0);
         Assert.assertTrue(response.payload.success);
 
-        Instance saved = state.savedInstances.get(instance.getId());
+        Instance saved = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.ACCEPTED, saved.getState());
         Assert.assertEquals(expectedDeps, saved.getDependencies());
     }
@@ -92,96 +92,96 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void newInstanceSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.replies.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.replies.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(1, state.getCurrentDeps.size());
+        Assert.assertEquals(1, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(1, service.getCurrentDeps.size());
 
-        MessageOut<AcceptResponse> response = state.replies.get(0);
+        MessageOut<AcceptResponse> response = service.replies.get(0);
         Assert.assertTrue(response.payload.success);
     }
 
     @Test
     public void ballotFailure() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.replies.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.replies.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
 
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
 
-        MessageOut<AcceptResponse> response = state.replies.get(0);
+        MessageOut<AcceptResponse> response = service.replies.get(0);
         Assert.assertFalse(response.payload.success);
-        Assert.assertEquals(state.instanceMap.get(instance.getId()).getBallot(), response.payload.ballot);
+        Assert.assertEquals(service.instanceMap.get(instance.getId()).getBallot(), response.payload.ballot);
     }
 
     @Test
     public void depsAcknowledged() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
+        Assert.assertFalse(service.acknowledgedRecoreded.contains(instance.getId()));
 
         handler.doVerb(createMessage(instance.copy()), 0);
-        Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
+        Assert.assertTrue(service.acknowledgedRecoreded.contains(instance.getId()));
     }
 
     @Test
     public void passiveRecord()
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
         Assert.assertTrue(handler.canPassiveRecord());
     }
 
     @Test
     public void placeholderInstances() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        AcceptVerbHandler handler = new AcceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        AcceptVerbHandler handler = new AcceptVerbHandler(service);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.makePlacehoder();
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.replies.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.replies.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         expectedDeps.add(UUIDGen.getTimeUUID());
@@ -191,16 +191,16 @@ public class EpaxosAcceptHandlerTest extends AbstractEpaxosTest
 
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(1, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(1, service.getCurrentDeps.size());
 
-        MessageOut<AcceptResponse> response = state.replies.get(0);
+        MessageOut<AcceptResponse> response = service.replies.get(0);
         Assert.assertTrue(response.payload.success);
 
-        Instance saved = state.savedInstances.get(instance.getId());
+        Instance saved = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.ACCEPTED, saved.getState());
         Assert.assertEquals(expectedDeps, saved.getDependencies());
     }

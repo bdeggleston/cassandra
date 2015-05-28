@@ -39,12 +39,12 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     private static final int VERSION = MessagingService.current_version;
     private static final MessagingService.Verb VERB = MessagingService.Verb.READ_REPAIR;
 
-    private static boolean ksManagerContains(EpaxosState state, Scope scope, QueryInstance instance)
+    private static boolean ksManagerContains(EpaxosService service, Scope scope, QueryInstance instance)
     {
-        return state.getKeyStateManager(scope).loadKeyState(instance.getQuery().getCfKey()).contains(instance.getId());
+        return service.getKeyStateManager(scope).loadKeyState(instance.getQuery().getCfKey()).contains(instance.getId());
     }
 
-    private MockMultiDcState state = null;
+    private MockMultiDcService service = null;
     private QueryInstance globalInstance = null;
     private QueryInstance localInstance = null;
     private CfKey cfKey = null;
@@ -58,22 +58,22 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     {
         clearAll();
 
-        state = new MockMultiDcState();
-        state.dcs.put(LOCALHOST, DC1);
-        state.dcs.put(LOCAL_ADDRESS, DC1);
-        state.dcs.put(REMOTE_ADDRESS, DC2);
+        service = new MockMultiDcService();
+        service.dcs.put(LOCALHOST, DC1);
+        service.dcs.put(LOCAL_ADDRESS, DC1);
+        service.dcs.put(REMOTE_ADDRESS, DC2);
 
-        globalInstance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.SERIAL));
-        globalInstance.preaccept(state.getCurrentDependencies(globalInstance).left);
+        globalInstance = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.SERIAL));
+        globalInstance.preaccept(service.getCurrentDependencies(globalInstance).left);
 
-        localInstance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
-        localInstance.preaccept(state.getCurrentDependencies(localInstance).left);
+        localInstance = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        localInstance.preaccept(service.getCurrentDependencies(localInstance).left);
 
         cfKey = globalInstance.getQuery().getCfKey();
         Assert.assertEquals(cfKey, localInstance.getQuery().getCfKey());
 
-        state.recordExecuted(globalInstance, new ReplayPosition(0, 0), 0l);
-        state.recordExecuted(localInstance, new ReplayPosition(0, 0), 0l);
+        service.recordExecuted(globalInstance, new ReplayPosition(0, 0), 0l);
+        service.recordExecuted(localInstance, new ReplayPosition(0, 0), 0l);
         mutation = new Mutation(ksm.name, cfKey.key);
     }
 
@@ -85,21 +85,21 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     public void getEpochExecutionInfo() throws Exception
     {
         // check that the instances are recorded in the correct key state managers
-        Assert.assertTrue(ksManagerContains(state, Scope.GLOBAL, globalInstance));
-        Assert.assertFalse(ksManagerContains(state, Scope.GLOBAL, localInstance));
+        Assert.assertTrue(ksManagerContains(service, Scope.GLOBAL, globalInstance));
+        Assert.assertFalse(ksManagerContains(service, Scope.GLOBAL, localInstance));
 
-        Assert.assertTrue(ksManagerContains(state, Scope.LOCAL, localInstance));
-        Assert.assertFalse(ksManagerContains(state, Scope.LOCAL, globalInstance));
+        Assert.assertTrue(ksManagerContains(service, Scope.LOCAL, localInstance));
+        Assert.assertFalse(ksManagerContains(service, Scope.LOCAL, globalInstance));
 
         Map<Scope, ExecutionInfo> infos;
         // dc local nodes should receive info for both scopes
-        infos = state.getEpochExecutionInfo(cfKey.key, cfKey.cfId, LOCAL_ADDRESS);
+        infos = service.getEpochExecutionInfo(cfKey.key, cfKey.cfId, LOCAL_ADDRESS);
         Assert.assertEquals(2, infos.size());
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.LOCAL));
 
         // check that the local execution info is only added for dc-local nodes
-        infos = state.getEpochExecutionInfo(cfKey.key, cfKey.cfId, REMOTE_ADDRESS);
+        infos = service.getEpochExecutionInfo(cfKey.key, cfKey.cfId, REMOTE_ADDRESS);
         Assert.assertEquals(1, infos.size());
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
     }
@@ -112,7 +112,7 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     private MessageIn<Mutation> makeParamMessageIn(InetAddress from, Map<Scope, ExecutionInfo> infos) throws IOException
     {
         Map<String, byte[]> params = new HashMap<>();
-        params.put(EpaxosState.EXECUTION_INFO_PARAMETER, EpaxosState.serializeMessageExecutionParameters(infos, VERSION));
+        params.put(EpaxosService.EXECUTION_INFO_PARAMETER, EpaxosService.serializeMessageExecutionParameters(infos, VERSION));
         return MessageIn.create(from, mutation, params, VERB, VERSION);
     }
 
@@ -130,23 +130,23 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
         MessageOut<Mutation> msg = makeMessageOut();
 
         // check that message parameters aren't added for keys we don't have info for
-        msg = state.maybeAddExecutionInfo(key(10), cfKey.cfId, msg, VERSION, LOCAL_ADDRESS);
-        Assert.assertFalse(msg.parameters.containsKey(EpaxosState.EXECUTION_INFO_PARAMETER));
+        msg = service.maybeAddExecutionInfo(key(10), cfKey.cfId, msg, VERSION, LOCAL_ADDRESS);
+        Assert.assertFalse(msg.parameters.containsKey(EpaxosService.EXECUTION_INFO_PARAMETER));
 
         // ... but are if we do
-        msg = state.maybeAddExecutionInfo(cfKey.key, cfKey.cfId, msg, MessagingService.current_version, LOCAL_ADDRESS);
-        Assert.assertTrue(msg.parameters.containsKey(EpaxosState.EXECUTION_INFO_PARAMETER));
+        msg = service.maybeAddExecutionInfo(cfKey.key, cfKey.cfId, msg, MessagingService.current_version, LOCAL_ADDRESS);
+        Assert.assertTrue(msg.parameters.containsKey(EpaxosService.EXECUTION_INFO_PARAMETER));
 
         Map<Scope, ExecutionInfo> infos;
         // dc local nodes should receive info for both scopes
-        infos = EpaxosState.getMessageExecutionInfo(msg.parameters, VERSION);
+        infos = EpaxosService.getMessageExecutionInfo(msg.parameters, VERSION);
         Assert.assertEquals(2, infos.size());
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.LOCAL));
 
         // should be ok to apply, since execution info will be identical
         MessageIn<Mutation> msgIn = makeMessageIn(LOCAL_ADDRESS, msg.parameters);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, msgIn));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, msgIn));
     }
 
     /**
@@ -157,12 +157,12 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
     {
         MessageOut<Mutation> msg = makeMessageOut();
 
-        msg = state.maybeAddExecutionInfo(cfKey.key, cfKey.cfId, msg, MessagingService.current_version, REMOTE_ADDRESS);
-        Assert.assertTrue(msg.parameters.containsKey(EpaxosState.EXECUTION_INFO_PARAMETER));
+        msg = service.maybeAddExecutionInfo(cfKey.key, cfKey.cfId, msg, MessagingService.current_version, REMOTE_ADDRESS);
+        Assert.assertTrue(msg.parameters.containsKey(EpaxosService.EXECUTION_INFO_PARAMETER));
 
         Map<Scope, ExecutionInfo> infos;
         // dc local nodes should receive info for both scopes
-        infos = EpaxosState.getMessageExecutionInfo(msg.parameters, VERSION);
+        infos = EpaxosService.getMessageExecutionInfo(msg.parameters, VERSION);
         Assert.assertEquals(1, infos.size());
         Assert.assertEquals(new ExecutionInfo(0l, 1l), infos.get(Scope.GLOBAL));
     }
@@ -173,37 +173,37 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
         Map<Scope, ExecutionInfo> infos = new HashMap<>();
 
         // no-op case
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeMessageIn(LOCAL_ADDRESS, null)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeMessageIn(LOCAL_ADDRESS, null)));
 
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeMessageIn(LOCAL_ADDRESS, new HashMap<String, byte[]>())));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeMessageIn(LOCAL_ADDRESS, new HashMap<String, byte[]>())));
 
         // success cases
         infos.clear();
         infos.put(Scope.GLOBAL, PRESENT);
         infos.put(Scope.LOCAL, PRESENT);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
 
         infos.clear();
         infos.put(Scope.LOCAL, PRESENT);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
 
         infos.clear();
         infos.put(Scope.GLOBAL, PRESENT);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
 
         // global failure
         infos.clear();
         infos.put(Scope.GLOBAL, FUTURE);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
         infos.put(Scope.LOCAL, PRESENT);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
 
         // local failure
         infos.clear();
         infos.put(Scope.LOCAL, FUTURE);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
         infos.put(Scope.GLOBAL, PRESENT);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(LOCAL_ADDRESS, infos)));
     }
 
     @Test
@@ -214,17 +214,17 @@ public class EpaxosExecutionInfoTest extends AbstractEpaxosTest
         // success cases
         infos.clear();
         infos.put(Scope.GLOBAL, PRESENT);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
 
         // local info sent from remote dcs should be ignored
         infos.put(Scope.LOCAL, FUTURE);
-        Assert.assertTrue(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
+        Assert.assertTrue(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
 
         // global failure
         infos.clear();
         infos.put(Scope.GLOBAL, FUTURE);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
         infos.put(Scope.LOCAL, PRESENT);
-        Assert.assertFalse(state.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
+        Assert.assertFalse(service.shouldApplyRepair(cfKey.key, cfKey.cfId, makeParamMessageIn(REMOTE_ADDRESS, infos)));
     }
 }

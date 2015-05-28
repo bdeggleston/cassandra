@@ -5,7 +5,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -39,10 +38,10 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     private static final IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
     private static final Set<UUID> EMPTY = Collections.emptySet();
 
-    private static class State extends Node.SingleThreaded
+    private static class Service extends Node.SingleThreaded
     {
 
-        private State(int number, Messenger messenger, String dc, String ksName)
+        private Service(int number, Messenger messenger, String dc, String ksName)
         {
             super(number, messenger, dc, ksName);
         }
@@ -63,53 +62,53 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     @Override
     public Node createNode(int number, Messenger messenger, String dc, String ks)
     {
-        return new State(number, messenger, dc, ks);
+        return new Service(number, messenger, dc, ks);
     }
 
-    private QueryInstance newInstance(EpaxosState state, int key, ConsistencyLevel cl)
+    private QueryInstance newInstance(EpaxosService service, int key, ConsistencyLevel cl)
     {
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(key, key, cl));
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(key, key, cl));
         instance.setDependencies(EMPTY);
         return instance;
     }
 
 
-    private UUID executeInstance(int k, long epoch, EpaxosState state, Scope scope)
+    private UUID executeInstance(int k, long epoch, EpaxosService service, Scope scope)
     {
-        Instance instance = newInstance(state, k, scope.cl);
-        instance.setDependencies(state.getCurrentDependencies(instance).left);
+        Instance instance = newInstance(service, k, scope.cl);
+        instance.setDependencies(service.getCurrentDependencies(instance).left);
         instance.setExecuted(epoch);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         ByteBuffer key = ByteBufferUtil.bytes(k);
 
-        KeyState ks = state.getKeyStateManager(scope).loadKeyState(key, cfm.cfId);
+        KeyState ks = service.getKeyStateManager(scope).loadKeyState(key, cfm.cfId);
         ks.markExecuted(instance.getId(), EMPTY, epoch, null, 0);
         ks.markAcknowledged(instance.getDependencies(), instance.getId());
-        state.getKeyStateManager(scope).saveKeyState(key, cfm.cfId, ks);
+        service.getKeyStateManager(scope).saveKeyState(key, cfm.cfId, ks);
         return instance.getId();
     }
 
-    private UUID activeInstance(int k, EpaxosState state) throws InvalidInstanceStateChange
+    private UUID activeInstance(int k, EpaxosService service) throws InvalidInstanceStateChange
     {
-        Instance instance = newInstance(state, k, ConsistencyLevel.SERIAL);
-        instance.commit(state.getCurrentDependencies(instance).left);
-        state.saveInstance(instance);
+        Instance instance = newInstance(service, k, ConsistencyLevel.SERIAL);
+        instance.commit(service.getCurrentDependencies(instance).left);
+        service.saveInstance(instance);
 
         ByteBuffer key = ByteBufferUtil.bytes(k);
 
-        KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, cfm.cfId);
+        KeyState ks = service.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, cfm.cfId);
         ks.recordInstance(instance.getId());
         ks.markAcknowledged(instance.getDependencies(), instance.getId());
-        state.getKeyStateManager(DEFAULT_SCOPE).saveKeyState(key, cfm.cfId, ks);
+        service.getKeyStateManager(DEFAULT_SCOPE).saveKeyState(key, cfm.cfId, ks);
         return instance.getId();
     }
 
-    private Set<UUID> getAllInstanceIds(EpaxosState state)
+    private Set<UUID> getAllInstanceIds(EpaxosService service)
     {
         UntypedResultSet results = QueryProcessor.executeInternal(String.format("SELECT id FROM %s.%s",
-                                                                                state.getKeyspace(),
-                                                                                state.getInstanceTable()));
+                                                                                service.getKeyspace(),
+                                                                                service.getInstanceTable()));
         Set<UUID> ids = Sets.newHashSet();
         for (UntypedResultSet.Row row: results)
         {
@@ -119,10 +118,10 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
         return ids;
     }
 
-    private static void assertKeyAndTokenStateEpoch(EpaxosState state, ByteBuffer key, UUID cfId, long epoch, Scope scope)
+    private static void assertKeyAndTokenStateEpoch(EpaxosService service, ByteBuffer key, UUID cfId, long epoch, Scope scope)
     {
-        KeyState ks = state.getKeyStateManager(scope).loadKeyState(key, cfId);
-        TokenState ts = state.getTokenStateManager(scope).get(key, cfId);
+        KeyState ks = service.getKeyStateManager(scope).loadKeyState(key, cfId);
+        TokenState ts = service.getTokenStateManager(scope).get(key, cfId);
         Assert.assertEquals(String.format("Key: %s", Hex.bytesToHex(key.array())), epoch, ks.getEpoch());
         Assert.assertEquals(String.format("Key: %s", Hex.bytesToHex(key.array())), epoch, ts.getEpoch());
     }
@@ -328,11 +327,11 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
     public void illegalScopePeerCombo()
     {
         // doing stupid things is not allowed
-        MockMultiDcState state = new MockMultiDcState();
+        MockMultiDcService service = new MockMultiDcService();
 
         try
         {
-            new InstanceStreamReader(state, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
+            new InstanceStreamReader(service, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
             Assert.fail();
         }
         catch (AssertionError e)
@@ -342,7 +341,7 @@ public class EpaxosInstanceStreamingTest extends AbstractEpaxosIntegrationTest
 
         try
         {
-            new InstanceStreamWriter(state, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
+            new InstanceStreamWriter(service, CFID, null, Scope.LOCAL, REMOTE_ADDRESS);
             Assert.fail();
         }
         catch (AssertionError e)

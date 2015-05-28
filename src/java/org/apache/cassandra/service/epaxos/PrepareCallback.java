@@ -26,7 +26,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
     private final UUID id;
     private final int ballot;
-    private final EpaxosState.ParticipantInfo participantInfo;
+    private final EpaxosService.ParticipantInfo participantInfo;
     private final PrepareGroup group;
     private final int attempt;
     private final boolean instanceUnknown;
@@ -34,9 +34,9 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
     private boolean completed = false;
 
-    public PrepareCallback(EpaxosState state, UUID id, int ballot, EpaxosState.ParticipantInfo participantInfo, PrepareGroup group, int attempt)
+    public PrepareCallback(EpaxosService service, UUID id, int ballot, EpaxosService.ParticipantInfo participantInfo, PrepareGroup group, int attempt)
     {
-        super(state);
+        super(service);
         this.id = id;
         this.ballot = ballot;
         this.participantInfo = participantInfo;
@@ -46,7 +46,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
 
         if (instanceUnknown)
         {
-            assert state.loadInstance(id) == null;
+            assert service.loadInstance(id) == null;
         }
     }
 
@@ -77,7 +77,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
             {
                 completed = true;
                 group.prepareComplete(id);
-                state.addMissingInstance(msgInstance);
+                service.addMissingInstance(msgInstance);
                 return;
             }
 
@@ -88,7 +88,7 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                 completed = true;
                 if (attempt < RETRY_LIMIT)
                 {
-                    state.updateBallot(id, msgInstance.getBallot(), new PrepareTask(state, id, group, attempt + 1));
+                    service.updateBallot(id, msgInstance.getBallot(), new PrepareTask(service, id, group, attempt + 1));
                 }
                 else
                 {
@@ -129,18 +129,18 @@ public class PrepareCallback extends AbstractEpochCallback<MessageEnvelope<Insta
                     if (!decision.tryPreacceptAttempts.isEmpty())
                     {
                         List<TryPreacceptAttempt> attempts = decision.tryPreacceptAttempts;
-                        state.tryPreaccept(id, attempts, participantInfo, failureCallback);
+                        service.tryPreaccept(id, attempts, participantInfo, failureCallback);
                     }
                     else
                     {
-                        state.preacceptPrepare(id, decision.commitNoop, failureCallback);
+                        service.preacceptPrepare(id, decision.commitNoop, failureCallback);
                     }
                     break;
                 case ACCEPTED:
-                    state.accept(id, decision.deps, decision.vetoed, decision.splitRange, failureCallback);
+                    service.accept(id, decision.deps, decision.vetoed, decision.splitRange, failureCallback);
                     break;
                 case COMMITTED:
-                    state.commit(id, decision.deps);
+                    service.commit(id, decision.deps);
                     break;
                 default:
                     throw new AssertionError();

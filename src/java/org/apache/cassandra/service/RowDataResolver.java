@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -33,8 +32,7 @@ import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.net.*;
-import org.apache.cassandra.service.epaxos.EpaxosState;
-import org.apache.cassandra.service.epaxos.ExecutionInfo;
+import org.apache.cassandra.service.epaxos.EpaxosService;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -131,7 +129,7 @@ public class RowDataResolver extends AbstractRowResolver
             InetAddress endpoint = endpoints.get(i);
             int msVersion = MessagingService.instance().getVersion(endpoint);
             MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
-            msg = EpaxosState.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion, endpoint);
+            msg = EpaxosService.getInstance().maybeAddExecutionInfo(mutation.key(), cfId, msg, msVersion, endpoint);
             results.add(MessagingService.instance().sendRR(msg, endpoint));
         }
 

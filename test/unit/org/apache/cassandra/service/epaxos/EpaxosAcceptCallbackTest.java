@@ -15,9 +15,9 @@ import java.util.UUID;
 public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
 {
 
-    public AcceptCallback getCallback(EpaxosState state, Instance instance, Runnable failureCallback)
+    public AcceptCallback getCallback(EpaxosService service, Instance instance, Runnable failureCallback)
     {
-        return new AcceptCallback(state, instance, state.getParticipants(instance), failureCallback);
+        return new AcceptCallback(service, instance, service.getParticipants(instance), failureCallback);
     }
 
     public MessageIn<AcceptResponse> createResponse(InetAddress from, AcceptResponse response)
@@ -28,23 +28,23 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void testSuccessCase() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        AcceptCallback callback = getCallback(state, instance, null);
+        AcceptCallback callback = getCallback(service, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(1, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(1, service.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
-        MockCallbackState.CommitCall commitCall = state.commits.get(0);
+        MockCallbackService.CommitCall commitCall = service.commits.get(0);
         Assert.assertEquals(instance.getId(), commitCall.id);
         Assert.assertEquals(instance.getDependencies(), commitCall.dependencies);
     }
@@ -52,19 +52,19 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void noLocalResponse() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        AcceptCallback callback = getCallback(state, instance, null);
+        AcceptCallback callback = getCallback(service, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(2), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
     }
@@ -72,8 +72,8 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void ballotFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
@@ -86,18 +86,18 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
             }
         };
 
-        AcceptCallback callback = getCallback(state, instance, runnable);
+        AcceptCallback callback = getCallback(service, instance, runnable);
 
         Assert.assertEquals(0, callback.getNumResponses());
         Assert.assertFalse(callback.isCompleted());
-        Assert.assertEquals(0, state.ballotUpdates.size());
+        Assert.assertEquals(0, service.ballotUpdates.size());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, false, 20)));
+        callback.response(createResponse(service.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, false, 20)));
         Assert.assertEquals(0, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
-        Assert.assertEquals(1, state.ballotUpdates.size());
+        Assert.assertEquals(1, service.ballotUpdates.size());
 
-        MockCallbackState.UpdateBallotCall ballotCall = state.ballotUpdates.get(0);
+        MockCallbackService.UpdateBallotCall ballotCall = service.ballotUpdates.get(0);
         Assert.assertEquals(instance.getId(), ballotCall.id);
         Assert.assertEquals(20, ballotCall.ballot);
         Assert.assertEquals(runnable, ballotCall.callback);
@@ -110,22 +110,22 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void duplicateMessagesIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        AcceptCallback callback = getCallback(state, instance, null);
+        AcceptCallback callback = getCallback(service, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        callback.response(createResponse(service.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.commits.size());
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        callback.response(createResponse(service.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.commits.size());
     }
 
     /**
@@ -134,24 +134,24 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void additionalMessagesAreIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        AcceptCallback callback = getCallback(state, instance, null);
+        AcceptCallback callback = getCallback(service, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(1, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(1, service.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(1, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(2), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(1, service.commits.size());
         Assert.assertEquals(2, callback.getNumResponses());
         Assert.assertTrue(callback.isCompleted());
     }
@@ -162,19 +162,19 @@ public class EpaxosAcceptCallbackTest extends AbstractEpaxosTest
     @Test
     public void remoteEndpointsArentCounted() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 3);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        MockCallbackService service = new MockCallbackService(3, 3);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
         instance.setDependencies(expectedDeps);
 
-        AcceptCallback callback = getCallback(state, instance, null);
+        AcceptCallback callback = getCallback(service, instance, null);
 
-        callback.response(createResponse(state.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.localEndpoints.get(0), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertEquals(1, callback.getNumResponses());
 
-        callback.response(createResponse(state.remoteEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
-        Assert.assertEquals(0, state.commits.size());
+        callback.response(createResponse(service.remoteEndpoints.get(1), new AcceptResponse(TOKEN0, CFID, 0, DEFAULT_SCOPE, true, 0)));
+        Assert.assertEquals(0, service.commits.size());
         Assert.assertEquals(1, callback.getNumResponses());
     }
 

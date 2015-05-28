@@ -9,7 +9,6 @@ import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -21,9 +20,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
 {
 
-    private static class MockPrepareState extends MockCallbackState
+    private static class MockPrepareService extends MockCallbackService
     {
-        private MockPrepareState(int numLocal, int numRemote)
+        private MockPrepareService(int numLocal, int numRemote)
         {
             super(numLocal, numRemote);
         }
@@ -44,9 +43,9 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
 
     private static class InstrumentedPrepareGroup extends PrepareGroup
     {
-        private InstrumentedPrepareGroup(EpaxosState state, UUID id, Set<UUID> uncommitted)
+        private InstrumentedPrepareGroup(EpaxosService service, UUID id, Set<UUID> uncommitted)
         {
-            super(state, id, uncommitted);
+            super(service, id, uncommitted);
         }
 
         List<UUID> committedCalls = Lists.newArrayList();
@@ -68,23 +67,23 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
     @Test
     public void normalCase() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockPrepareService service = new MockPrepareService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Collections.<UUID>emptySet());
         instance.updateBallot(1);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         UUID parentId = UUIDGen.getTimeUUID();
-        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(state, parentId, Sets.newHashSet(instance.getId()));
+        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(service, parentId, Sets.newHashSet(instance.getId()));
 
-        PrepareTask task = new PrepareTask(state, instance.getId(), group);
+        PrepareTask task = new PrepareTask(service, instance.getId(), group);
 
         task.run();
 
-        Assert.assertEquals(3, state.sentMessages.size());
+        Assert.assertEquals(3, service.sentMessages.size());
         Assert.assertEquals(0, group.committedCalls.size());
 
-        for (MockCallbackState.SentMessage sent: state.sentMessages)
+        for (MockCallbackService.SentMessage sent: service.sentMessages)
         {
             PrepareRequest request = (PrepareRequest) sent.message.payload;
             Assert.assertEquals(instance.getId(), request.iid);
@@ -99,20 +98,20 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
     @Test
     public void commitNotification() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockPrepareService service = new MockPrepareService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.commit(Collections.<UUID>emptySet());
         instance.updateBallot(1);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         UUID parentId = UUIDGen.getTimeUUID();
-        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(state, parentId, Sets.newHashSet(instance.getId()));
+        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(service, parentId, Sets.newHashSet(instance.getId()));
 
-        PrepareTask task = new PrepareTask(state, instance.getId(), group);
+        PrepareTask task = new PrepareTask(service, instance.getId(), group);
 
         task.run();
 
-        Assert.assertEquals(0, state.sentMessages.size());
+        Assert.assertEquals(0, service.sentMessages.size());
         Assert.assertEquals(1, group.committedCalls.size());
     }
 
@@ -123,21 +122,21 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
     @Test
     public void prepareIsDelayed() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
+        MockPrepareService service = new MockPrepareService(3, 0);
         long waitTime = 1000;
-        state.setWaitTime(waitTime);
+        service.setWaitTime(waitTime);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Collections.<UUID>emptySet());
         instance.updateBallot(1);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         UUID parentId = UUIDGen.getTimeUUID();
-        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(state, parentId, Sets.newHashSet(instance.getId()));
+        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(service, parentId, Sets.newHashSet(instance.getId()));
 
         final AtomicInteger scheduledDelays = new AtomicInteger(0);
         final AtomicLong lastDelayWait = new AtomicLong(0);
-        PrepareTask task = new PrepareTask(state, instance.getId(), group) {
+        PrepareTask task = new PrepareTask(service, instance.getId(), group) {
             @Override
             protected void scheduledDelayedPrepare(long wait)
             {
@@ -148,7 +147,7 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
 
         task.run();
 
-        Assert.assertEquals(0, state.sentMessages.size());
+        Assert.assertEquals(0, service.sentMessages.size());
         Assert.assertEquals(0, group.committedCalls.size());
         Assert.assertEquals(1, scheduledDelays.get());
         Assert.assertEquals(waitTime, lastDelayWait.get());
@@ -157,7 +156,7 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
     @Test
     public void deferredPrepareAbortsOnCommit() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0) {
+        MockPrepareService service = new MockPrepareService(3, 0) {
             @Override
             public TracingAwareExecutorService getStage(Stage stage)
             {
@@ -166,10 +165,10 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
         };
         UUID parentId = UUIDGen.getTimeUUID();
         UUID id = UUIDGen.getTimeUUID();
-        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(state, parentId, Sets.newHashSet(id));
+        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(service, parentId, Sets.newHashSet(id));
 
         final AtomicBoolean wasRun = new AtomicBoolean(false);
-        PrepareTask task = new PrepareTask(state, id, group) {
+        PrepareTask task = new PrepareTask(service, id, group) {
             public void run()
             {
                 wasRun.set(true);
@@ -198,23 +197,23 @@ public class EpaxosPrepareTaskTest extends AbstractEpaxosTest
     @Test
     public void unknownInstance() throws Exception
     {
-        MockPrepareState state = new MockPrepareState(3, 0);
-        Instance parentInstance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockPrepareService service = new MockPrepareService(3, 0);
+        Instance parentInstance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         parentInstance.preaccept(Collections.<UUID>emptySet());
         parentInstance.updateBallot(1);
-        state.saveInstance(parentInstance);
+        service.saveInstance(parentInstance);
 
         UUID id = UUIDGen.getTimeUUID();
-        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(state, parentInstance.id, Sets.newHashSet(id));
+        InstrumentedPrepareGroup group = new InstrumentedPrepareGroup(service, parentInstance.id, Sets.newHashSet(id));
 
-        PrepareTask task = new PrepareTask(state, id, group);
+        PrepareTask task = new PrepareTask(service, id, group);
 
         task.run();
 
-        Assert.assertEquals(3, state.sentMessages.size());
+        Assert.assertEquals(3, service.sentMessages.size());
         Assert.assertEquals(0, group.committedCalls.size());
 
-        for (MockCallbackState.SentMessage sent: state.sentMessages)
+        for (MockCallbackService.SentMessage sent: service.sentMessages)
         {
             PrepareRequest request = (PrepareRequest) sent.message.payload;
             Assert.assertEquals(id, request.iid);

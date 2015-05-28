@@ -3,7 +3,6 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.utils.UUIDGen;
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,8 +43,8 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     @Test
     public void existingSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        CommitVerbHandler handler = new CommitVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        CommitVerbHandler handler = new CommitVerbHandler(service);
 
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
@@ -53,28 +52,28 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(dep1));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
         instance.commit(Sets.newHashSet(dep1, dep2));
-        Assert.assertNotSame(state.instanceMap.get(instance.getId()).getDependencies(), instance.getDependencies());
+        Assert.assertNotSame(service.instanceMap.get(instance.getId()).getDependencies(), instance.getDependencies());
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.commitNotified.size());
-        Assert.assertEquals(0, state.executed.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.commitNotified.size());
+        Assert.assertEquals(0, service.executed.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         handler.doVerb(createMessage(instance.copy()), 0);
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(1, state.commitNotified.size());
-        Assert.assertEquals(1, state.executed.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(1, service.commitNotified.size());
+        Assert.assertEquals(1, service.executed.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
-        Instance localInstance = state.savedInstances.get(instance.getId());
+        Instance localInstance = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
         Assert.assertEquals(instance.getDependencies(), localInstance.getDependencies());
     }
@@ -82,51 +81,51 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     @Test
     public void newInstanceSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        CommitVerbHandler handler = new CommitVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        CommitVerbHandler handler = new CommitVerbHandler(service);
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.accept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.commitNotified.size());
-        Assert.assertEquals(0, state.executed.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.commitNotified.size());
+        Assert.assertEquals(0, service.executed.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         handler.doVerb(createMessage(instance.copy()), 0);
 
-        Assert.assertEquals(1, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(1, state.commitNotified.size());
-        Assert.assertEquals(1, state.executed.size());
-        Assert.assertEquals(1, state.getCurrentDeps.size());
+        Assert.assertEquals(1, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(1, service.commitNotified.size());
+        Assert.assertEquals(1, service.executed.size());
+        Assert.assertEquals(1, service.getCurrentDeps.size());
 
-        Instance localInstance = state.savedInstances.get(instance.getId());
+        Instance localInstance = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
     }
 
     @Test
     public void depsAcknowledged() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        CommitVerbHandler handler = new CommitVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        CommitVerbHandler handler = new CommitVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.commit(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        Assert.assertFalse(state.acknowledgedRecoreded.contains(instance.getId()));
+        Assert.assertFalse(service.acknowledgedRecoreded.contains(instance.getId()));
 
         handler.doVerb(createMessage(instance.copy()), 0);
-        Assert.assertTrue(state.acknowledgedRecoreded.contains(instance.getId()));
+        Assert.assertTrue(service.acknowledgedRecoreded.contains(instance.getId()));
     }
 
     @Test
     public void passiveRecord()
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        CommitVerbHandler handler = new CommitVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        CommitVerbHandler handler = new CommitVerbHandler(service);
         Assert.assertTrue(handler.canPassiveRecord());
     }
 
@@ -136,8 +135,8 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
     @Test
     public void placeholderInstances() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        CommitVerbHandler handler = new CommitVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        CommitVerbHandler handler = new CommitVerbHandler(service);
 
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
@@ -146,28 +145,28 @@ public class EpaxosCommitHandlerTest extends AbstractEpaxosTest
         instance.preaccept(Sets.<UUID>newHashSet());
         instance.makePlacehoder();
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
         instance.commit(Sets.newHashSet(dep1, dep2));
-        Assert.assertNotSame(state.instanceMap.get(instance.getId()).getDependencies(), instance.getDependencies());
+        Assert.assertNotSame(service.instanceMap.get(instance.getId()).getDependencies(), instance.getDependencies());
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(0, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(0, state.commitNotified.size());
-        Assert.assertEquals(0, state.executed.size());
-        Assert.assertEquals(0, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(0, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(0, service.commitNotified.size());
+        Assert.assertEquals(0, service.executed.size());
+        Assert.assertEquals(0, service.getCurrentDeps.size());
 
         handler.doVerb(createMessage(instance.copy()), 0);
 
-        Assert.assertEquals(0, state.missingRecoreded.size());
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.acknowledgedRecoreded.size());
-        Assert.assertEquals(1, state.commitNotified.size());
-        Assert.assertEquals(1, state.executed.size());
-        Assert.assertEquals(1, state.getCurrentDeps.size());
+        Assert.assertEquals(0, service.missingRecoreded.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.acknowledgedRecoreded.size());
+        Assert.assertEquals(1, service.commitNotified.size());
+        Assert.assertEquals(1, service.executed.size());
+        Assert.assertEquals(1, service.getCurrentDeps.size());
 
-        Instance localInstance = state.savedInstances.get(instance.getId());
+        Instance localInstance = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
         Assert.assertEquals(instance.getDependencies(), localInstance.getDependencies());
     }

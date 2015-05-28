@@ -37,7 +37,7 @@ public class EpaxosForwardedQueryTest extends AbstractEpaxosTest
     {
         final AtomicInteger forwardCalls = new AtomicInteger();
 
-        MockCallbackState state = new MockCallbackState(4, 0) {
+        MockCallbackService service = new MockCallbackService(4, 0) {
             @Override
             protected ParticipantInfo getParticipants(Instance instance)
             {
@@ -85,18 +85,18 @@ public class EpaxosForwardedQueryTest extends AbstractEpaxosTest
         };
 
         Assert.assertEquals(0, forwardCalls.get());
-        Assert.assertEquals(0, state.sentMessages.size());
+        Assert.assertEquals(0, service.sentMessages.size());
 
         SerializedRequest query = getSerializedCQLRequest(0, 1);
-        int result = state.query(query);
+        int result = service.query(query);
 
         Assert.assertEquals(20, result);
         Assert.assertEquals(1, forwardCalls.get());
-        Assert.assertEquals(1, state.sentMessages.size());
+        Assert.assertEquals(1, service.sentMessages.size());
 
-        MockMessengerState.SentMessage sent = state.sentMessages.get(0);
+        MockMessengerService.SentMessage sent = service.sentMessages.get(0);
         Assert.assertTrue(sent.cb instanceof ForwardedQueryCallback);
-        Assert.assertEquals(state.localReplicas.get(1), sent.to);  // localReplicas[0] was reported dead
+        Assert.assertEquals(service.localReplicas.get(1), sent.to);  // localReplicas[0] was reported dead
         Assert.assertEquals(query, sent.message.payload);
     }
 }

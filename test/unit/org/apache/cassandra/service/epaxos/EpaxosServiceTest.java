@@ -8,13 +8,12 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class EpaxosStateTest extends AbstractEpaxosTest
+public class EpaxosServiceTest extends AbstractEpaxosTest
 {
     @Test
     public void deleteInstance() throws Exception
@@ -24,7 +23,7 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         clearTokenStates();
         final AtomicReference<Cache<UUID, Instance>> cacheRef = new AtomicReference<>();
 
-        EpaxosState state = new EpaxosState() {
+        EpaxosService service = new EpaxosService() {
             @Override
             protected void scheduleTokenStateMaintenanceTask()
             {
@@ -32,22 +31,22 @@ public class EpaxosStateTest extends AbstractEpaxosTest
             }
         };
 
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(0, 1));
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(0, 1));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
-        state.saveInstance(instance);
+        service.saveInstance(instance);
         UUID id = instance.getId();
 
-        Assert.assertTrue(state.cacheContains(instance.getId()));
-        Assert.assertNotNull(state.loadInstance(id));
+        Assert.assertTrue(service.cacheContains(instance.getId()));
+        Assert.assertNotNull(service.loadInstance(id));
 
-        state.clearInstanceCache();
-        Assert.assertFalse(state.cacheContains(instance.getId()));
-        Assert.assertNotNull(state.loadInstance(id));
-        Assert.assertTrue(state.cacheContains(instance.getId()));
+        service.clearInstanceCache();
+        Assert.assertFalse(service.cacheContains(instance.getId()));
+        Assert.assertNotNull(service.loadInstance(id));
+        Assert.assertTrue(service.cacheContains(instance.getId()));
 
-        state.deleteInstance(id);
-        Assert.assertFalse(state.cacheContains(instance.getId()));
-        Assert.assertNull(state.loadInstance(id));
+        service.deleteInstance(id);
+        Assert.assertFalse(service.cacheContains(instance.getId()));
+        Assert.assertNull(service.loadInstance(id));
     }
 
     /**
@@ -60,7 +59,7 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     {
         final AtomicReference<UUID> executed = new AtomicReference<>();
         final Set<UUID> commitNotifications = new HashSet<>();
-        EpaxosState state = new EpaxosState() {
+        EpaxosService service = new EpaxosService() {
             @Override
             protected TokenStateManager createTokenStateManager(Scope scope)
             {
@@ -92,9 +91,9 @@ public class EpaxosStateTest extends AbstractEpaxosTest
         Assert.assertEquals(Instance.State.EXECUTED, extInstance.getState());
         Assert.assertNull(executed.get());
         Assert.assertTrue(commitNotifications.isEmpty());
-        state.addMissingInstance(extInstance);
+        service.addMissingInstance(extInstance);
 
-        Instance localInstance = state.getInstanceCopy(extInstance.getId());
+        Instance localInstance = service.getInstanceCopy(extInstance.getId());
         Assert.assertNotNull(localInstance);
         Assert.assertEquals(Instance.State.COMMITTED, localInstance.getState());
         Assert.assertEquals(localInstance.getId(), executed.get());
@@ -104,10 +103,10 @@ public class EpaxosStateTest extends AbstractEpaxosTest
     @Test
     public void activeScopes() throws UnknownHostException
     {
-        MockMultiDcState state = new MockMultiDcState();
+        MockMultiDcService service = new MockMultiDcService();
 
-        Assert.assertArrayEquals(Scope.BOTH, state.getActiveScopes(LOCAL_ADDRESS));
-        Assert.assertArrayEquals(Scope.GLOBAL_ONLY, state.getActiveScopes(REMOTE_ADDRESS));
+        Assert.assertArrayEquals(Scope.BOTH, service.getActiveScopes(LOCAL_ADDRESS));
+        Assert.assertArrayEquals(Scope.GLOBAL_ONLY, service.getActiveScopes(REMOTE_ADDRESS));
     }
 
 }

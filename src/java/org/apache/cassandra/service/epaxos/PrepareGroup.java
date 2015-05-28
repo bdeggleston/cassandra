@@ -21,17 +21,17 @@ import java.util.concurrent.locks.ReadWriteLock;
  */
 public class PrepareGroup implements ICommitCallback
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID id;
     private final Set<UUID> uncommitted;
     private final Set<UUID> outstanding;
     private final Map<UUID, List<PrepareGroup>> groupNotify = new HashMap<>();
 
-    public PrepareGroup(EpaxosState state, UUID id, Set<UUID> uncommitted)
+    public PrepareGroup(EpaxosService service, UUID id, Set<UUID> uncommitted)
     {
-        this.state = state;
+        this.service = service;
         this.id = id;
         this.uncommitted = uncommitted;
         this.outstanding = new HashSet<>(this.uncommitted);
@@ -42,28 +42,28 @@ public class PrepareGroup implements ICommitCallback
         for (UUID toPrepare : uncommitted)
         {
             logger.debug("Scheduling prepare for {}", toPrepare);
-            ReadWriteLock lock = state.getInstanceLock(toPrepare);
+            ReadWriteLock lock = service.getInstanceLock(toPrepare);
             lock.readLock().lock();
             try
             {
-                Instance instance = state.loadInstance(toPrepare);
+                Instance instance = service.loadInstance(toPrepare);
                 if (instance != null && instance.getState().atLeast(Instance.State.COMMITTED))
                 {
                     instanceCommitted(toPrepare);
                 }
                 else
                 {
-                    state.registerCommitCallback(toPrepare, this);
+                    service.registerCommitCallback(toPrepare, this);
                     // if there's another prepare in progress for this instance, tell it to rerun this one when it
                     // finishes. This prevents a single node from running multiple concurrent prepare phases for the
                     // same instance, which would most likely cause a livelock situation as each prepare job kept
                     // upping it's ballot #.
                     while (true)
                     {
-                        PrepareGroup previous = state.registerPrepareGroup(toPrepare, this);
+                        PrepareGroup previous = service.registerPrepareGroup(toPrepare, this);
                         if (previous == null)
                         {
-                            state.prepare(toPrepare, this);
+                            service.prepare(toPrepare, this);
                             break;
                         }
                         else if (previous.addCompleteGroup(toPrepare, this))
@@ -86,7 +86,7 @@ public class PrepareGroup implements ICommitCallback
     {
         logger.debug("Prepare for {} completed", completedId);
         outstanding.remove(completedId);
-        state.unregisterPrepareGroup(completedId);
+        service.unregisterPrepareGroup(completedId);
 
         List<PrepareGroup> groupList = groupNotify.remove(completedId);
         if (groupList != null)
@@ -110,7 +110,7 @@ public class PrepareGroup implements ICommitCallback
 
     protected void submitExecuteTask()
     {
-        state.getStage(Stage.MUTATION).submit(new ExecuteTask(state, id));
+        service.getStage(Stage.MUTATION).submit(new ExecuteTask(service, id));
     }
 
     public synchronized boolean addCompleteGroup(UUID toPrepare, PrepareGroup group)

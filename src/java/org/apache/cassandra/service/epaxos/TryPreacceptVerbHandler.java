@@ -20,22 +20,22 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 
-    public TryPreacceptVerbHandler(EpaxosState state)
+    public TryPreacceptVerbHandler(EpaxosService service)
     {
-        super(state);
+        super(service);
     }
 
     @Override
     public void doEpochVerb(MessageIn<TryPreacceptRequest> message, int id)
     {
         logger.debug("TryPreaccept message received from {} for {}", message.from, message.payload.iid);
-        ReadWriteLock lock = state.getInstanceLock(message.payload.iid);
+        ReadWriteLock lock = service.getInstanceLock(message.payload.iid);
         lock.writeLock().lock();
         Instance instance = null;
         TryPreacceptResponse response;
         try
         {
-            instance = state.loadInstance(message.payload.iid);
+            instance = service.loadInstance(message.payload.iid);
 
             if (instance == null || instance.isPlaceholder())
             {
@@ -47,7 +47,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             Pair<TryPreacceptDecision, Boolean> decision = handleTryPreaccept(instance, message.payload.dependencies);
             response = new TryPreacceptResponse(instance.getToken(),
                                                 instance.getCfId(),
-                                                state.getCurrentEpoch(instance),
+                                                service.getCurrentEpoch(instance),
                                                 instance.getScope(),
                                                 instance.getId(),
                                                 decision.left,
@@ -58,14 +58,14 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             // save the instance to record the higher ballot
             if (response.decision != TryPreacceptDecision.ACCEPTED)
             {
-                state.saveInstance(instance);
+                service.saveInstance(instance);
             }
         }
         catch (BallotException e)
         {
             response = new TryPreacceptResponse(instance.getToken(),
                                                 instance.getCfId(),
-                                                state.getCurrentEpoch(instance),
+                                                service.getCurrentEpoch(instance),
                                                 instance.getScope(),
                                                 instance.getId(),
                                                 TryPreacceptDecision.REJECTED,
@@ -79,7 +79,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         MessageOut<TryPreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                   response,
                                                                   TryPreacceptResponse.serializer);
-        state.sendReply(reply, id, message.from);
+        service.sendReply(reply, id, message.from);
     }
 
     private boolean maybeVetoEpoch(Instance inst)
@@ -90,7 +90,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         }
 
         EpochInstance instance = (EpochInstance) inst;
-        long currentEpoch = state.getTokenStateManager(inst).getEpoch(instance);
+        long currentEpoch = service.getTokenStateManager(inst).getEpoch(instance);
 
         if (!instance.isVetoed() && instance.getEpoch() > currentEpoch + 1)
         {
@@ -110,7 +110,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         }
 
         // get the ids of instances the the message instance doesn't have in it's dependencies
-        Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+        Pair<Set<UUID>, Range<Token>> attrs = service.getCurrentDependencies(instance);
         Set<UUID> conflictIds = Sets.newHashSet(attrs.left);
         conflictIds.removeAll(dependencies);
         conflictIds.remove(instance.getId());
@@ -121,7 +121,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
             if (id.equals(instance.getId()))
                 continue;
 
-            Instance conflict = state.loadInstance(id);
+            Instance conflict = service.loadInstance(id);
 
             if (!conflict.getState().isCommitted())
             {
@@ -147,7 +147,7 @@ public class TryPreacceptVerbHandler extends AbstractEpochVerbHandler<TryPreacce
         // set dependencies on this instance
         assert instance.getState() == Instance.State.PREACCEPTED;
         instance.setDependencies(dependencies);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         return Pair.create(TryPreacceptDecision.ACCEPTED, vetoed);
     }

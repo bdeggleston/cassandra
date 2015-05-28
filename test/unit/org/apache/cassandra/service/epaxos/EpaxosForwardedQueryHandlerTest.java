@@ -40,7 +40,7 @@ public class EpaxosForwardedQueryHandlerTest extends AbstractEpaxosTest
     {
         final AtomicReference<Pair<MessageOut, InetAddress>> response = new AtomicReference<>();
         final AtomicReference<SettableFuture> futureRef = new AtomicReference<>();
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendOneWay(MessageOut message, InetAddress to)
             {
@@ -68,8 +68,8 @@ public class EpaxosForwardedQueryHandlerTest extends AbstractEpaxosTest
             }
         };
 
-        ForwardedQueryVerbHandler handler = new ForwardedQueryVerbHandler(state);
-        Assert.assertEquals(0, state.preaccepts.size());
+        ForwardedQueryVerbHandler handler = new ForwardedQueryVerbHandler(service);
+        Assert.assertEquals(0, service.preaccepts.size());
         Assert.assertNull(response.get());
 
         SerializedRequest request = getSerializedCQLRequest(0, 1);
@@ -84,12 +84,12 @@ public class EpaxosForwardedQueryHandlerTest extends AbstractEpaxosTest
 
         handler.doVerb(msg, 5);
 
-        Assert.assertEquals(1, state.preaccepts.size());
+        Assert.assertEquals(1, service.preaccepts.size());
         Assert.assertNull(response.get());
 
         futureRef.get().set(6);
 
-        Assert.assertEquals(1, state.preaccepts.size());
+        Assert.assertEquals(1, service.preaccepts.size());
         Assert.assertNotNull(response.get());
 
         Pair<MessageOut, InetAddress> reply = response.get();

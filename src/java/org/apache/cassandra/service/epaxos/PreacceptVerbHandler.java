@@ -1,7 +1,5 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.dht.Range;
@@ -32,9 +30,9 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
 {
     private static final Logger logger = LoggerFactory.getLogger(PreacceptVerbHandler.class);
 
-    protected PreacceptVerbHandler(EpaxosState state)
+    protected PreacceptVerbHandler(EpaxosService service)
     {
-        super(state);
+        super(service);
     }
 
     private void maybeVetoEpoch(Instance inst)
@@ -43,8 +41,8 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             return;
 
         EpochInstance instance = (EpochInstance) inst;
-        TokenStateManager tokenStateManager = state.getTokenStateManager(instance);
-        KeyStateManager keyStateManager = state.getKeyStateManager(instance);
+        TokenStateManager tokenStateManager = service.getTokenStateManager(instance);
+        KeyStateManager keyStateManager = service.getKeyStateManager(instance);
         TokenState tokenState = tokenStateManager.get(instance);
         long currentEpoch = tokenStateManager.getEpoch(instance);
 
@@ -80,11 +78,11 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         PreacceptResponse response;
         Set<UUID> missingInstanceIds = null;
 
-        ReadWriteLock lock = state.getInstanceLock(remoteInstance.getId());
+        ReadWriteLock lock = service.getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         try
         {
-            Instance instance = state.loadInstance(remoteInstance.getId());
+            Instance instance = service.loadInstance(remoteInstance.getId());
             try
             {
                 if (instance == null)
@@ -96,17 +94,17 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                     instance.checkBallot(remoteInstance.getBallot());
                     instance.applyRemote(remoteInstance);
                 }
-                Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+                Pair<Set<UUID>, Range<Token>> attrs = service.getCurrentDependencies(instance);
                 instance.preaccept(attrs.left, remoteInstance.getDependencies());
                 maybeVetoEpoch(instance);
                 maybeMergeTokenRange(instance, attrs.right);
-                state.saveInstance(instance);
+                service.saveInstance(instance);
 
                 if (instance.getLeaderAttrsMatch())
                 {
                     logger.debug("Preaccept dependencies agree for {}", instance.getId());
                     response = PreacceptResponse.success(instance.getToken(),
-                                                         state.getCurrentEpoch(instance),
+                                                         service.getCurrentEpoch(instance),
                                                          instance);
                 }
                 else
@@ -115,7 +113,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                     missingInstanceIds = Sets.difference(instance.getDependencies(), remoteInstance.getDependencies());
                     missingInstanceIds.remove(instance.getId());
                     response = PreacceptResponse.failure(instance.getToken(),
-                                                         state.getCurrentEpoch(instance),
+                                                         service.getCurrentEpoch(instance),
                                                          instance);
                 }
             }
@@ -123,7 +121,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
             {
                 response = PreacceptResponse.ballotFailure(instance.getToken(),
                                                            instance.getCfId(),
-                                                           state.getCurrentEpoch(instance),
+                                                           service.getCurrentEpoch(instance),
                                                            instance.getScope(),
                                                            e.localBallot);
             }
@@ -135,7 +133,7 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
                 assert instance.getDependencies().equals(remoteInstance.getDependencies());
 
                 response = PreacceptResponse.success(instance.getToken(),
-                                                     state.getCurrentEpoch(instance),
+                                                     service.getCurrentEpoch(instance),
                                                      instance);
             }
         }
@@ -143,10 +141,10 @@ public class PreacceptVerbHandler extends AbstractEpochVerbHandler<MessageEnvelo
         {
             lock.writeLock().unlock();
         }
-        response.missingInstances = state.getInstanceCopies(missingInstanceIds);
+        response.missingInstances = service.getInstanceCopies(missingInstanceIds);
         MessageOut<PreacceptResponse> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                response,
                                                                PreacceptResponse.serializer);
-        state.sendReply(reply, id, message.from);
+        service.sendReply(reply, id, message.from);
     }
 }

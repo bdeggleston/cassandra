@@ -9,11 +9,11 @@ public class FailureRecoveryVerbHandler implements IVerbHandler<FailureRecoveryR
 {
     private static final Logger logger = LoggerFactory.getLogger(FailureRecoveryVerbHandler.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
 
-    public FailureRecoveryVerbHandler(EpaxosState state)
+    public FailureRecoveryVerbHandler(EpaxosService service)
     {
-        this.state = state;
+        this.service = service;
     }
 
     @Override
@@ -21,6 +21,6 @@ public class FailureRecoveryVerbHandler implements IVerbHandler<FailureRecoveryR
     {
         logger.info("Received {} from {}", message.payload, message.from);
         FailureRecoveryRequest request = message.payload;
-        state.startLocalFailureRecovery(request.token, request.cfId, request.epoch, request.scope);
+        service.startLocalFailureRecovery(request.token, request.cfId, request.epoch, request.scope);
     }
 }

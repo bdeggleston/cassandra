@@ -28,8 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.annotation.Nullable;
-
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
@@ -64,7 +62,7 @@ public class EpaxosLeaderTest extends AbstractEpaxosTest
         }
     }
 
-    private static class State extends MockMultiDcState
+    private static class Service extends MockMultiDcService
     {
         List<Pair<InetAddress, MessageOut>> replies = new LinkedList<>();
         @Override
@@ -111,20 +109,20 @@ public class EpaxosLeaderTest extends AbstractEpaxosTest
     public void localSerialAccept() throws Exception
     {
         int ballot = 10;
-        State state = new State();
+        Service service = new Service();
 
-        QueryInstance missing = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        QueryInstance missing = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         missing.preaccept(Collections.<UUID>emptySet());
-        state.saveInstance(missing);
+        service.saveInstance(missing);
 
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         instance.preaccept(Sets.newHashSet(missing.getId()));
         instance.updateBallot(ballot);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
-        Assert.assertTrue(state.replies.isEmpty());
-        Assert.assertTrue(state.oneWay.isEmpty());
-        Assert.assertTrue(state.rrs.isEmpty());
+        Assert.assertTrue(service.replies.isEmpty());
+        Assert.assertTrue(service.oneWay.isEmpty());
+        Assert.assertTrue(service.rrs.isEmpty());
 
         Set<InetAddress> expectedEndpoints = Sets.newHashSet(LOCAL);
         Set<UUID> newDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), missing.getId());
@@ -132,13 +130,13 @@ public class EpaxosLeaderTest extends AbstractEpaxosTest
         missingIds.put(LOCAL.get(0), Sets.newHashSet(missing.getId()));
 
         AcceptDecision decision = new AcceptDecision(true, newDeps, false, null, missingIds);
-        state.accept(instance.getId(), decision, null);
+        service.accept(instance.getId(), decision, null);
 
-        Assert.assertTrue(state.replies.isEmpty());
-        Assert.assertTrue(state.oneWay.isEmpty());
-        Assert.assertEquals(LOCAL.size(), state.rrs.size());
+        Assert.assertTrue(service.replies.isEmpty());
+        Assert.assertTrue(service.oneWay.isEmpty());
+        Assert.assertEquals(LOCAL.size(), service.rrs.size());
 
-        for (Pair<InetAddress, MessageOut> message: state.rrs)
+        for (Pair<InetAddress, MessageOut> message: service.rrs)
         {
             Assert.assertTrue(expectedEndpoints.remove(message.left));
             AcceptRequest request = (AcceptRequest) message.right.payload;
@@ -167,26 +165,26 @@ public class EpaxosLeaderTest extends AbstractEpaxosTest
     public void localSerialCommit() throws Exception
     {
         int ballot = 10;
-        State state = new State();
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
+        Service service = new Service();
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0, ConsistencyLevel.LOCAL_SERIAL));
         instance.preaccept(Collections.<UUID>emptySet());
         instance.updateBallot(ballot);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
-        Assert.assertTrue(state.replies.isEmpty());
-        Assert.assertTrue(state.oneWay.isEmpty());
-        Assert.assertTrue(state.rrs.isEmpty());
+        Assert.assertTrue(service.replies.isEmpty());
+        Assert.assertTrue(service.oneWay.isEmpty());
+        Assert.assertTrue(service.rrs.isEmpty());
 
         Set<InetAddress> expectedEndpoints = Sets.newHashSet(LOCAL);
         Set<UUID> newDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
 
-        state.commit(instance.getId(), newDeps);
+        service.commit(instance.getId(), newDeps);
 
-        Assert.assertTrue(state.replies.isEmpty());
-        Assert.assertEquals(LOCAL.size(), state.oneWay.size());
-        Assert.assertTrue(state.rrs.isEmpty());
+        Assert.assertTrue(service.replies.isEmpty());
+        Assert.assertEquals(LOCAL.size(), service.oneWay.size());
+        Assert.assertTrue(service.rrs.isEmpty());
 
-        for (Pair<InetAddress, MessageOut> message: state.oneWay)
+        for (Pair<InetAddress, MessageOut> message: service.oneWay)
         {
             Assert.assertTrue(expectedEndpoints.remove(message.left));
             MessageEnvelope<Instance> envelope = (MessageEnvelope<Instance>) message.right.payload;

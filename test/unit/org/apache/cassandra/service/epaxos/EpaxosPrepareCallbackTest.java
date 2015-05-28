@@ -18,18 +18,18 @@ import java.util.UUID;
  */
 public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
 {
-    public PrepareCallback getCallback(EpaxosState state, Instance instance)
+    public PrepareCallback getCallback(EpaxosService service, Instance instance)
     {
-        return getCallback(state, instance, 1);
+        return getCallback(service, instance, 1);
     }
 
-    public PrepareCallback getCallback(EpaxosState state, Instance instance, int attempt)
+    public PrepareCallback getCallback(EpaxosService service, Instance instance, int attempt)
     {
-        return new PrepareCallback(state,
+        return new PrepareCallback(service,
                                    instance.getId(),
                                    instance.getBallot(),
-                                   state.getParticipants(instance),
-                                   new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())),
+                                   service.getParticipants(instance),
+                                   new PrepareGroup(service, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())),
                                    attempt);
     }
     public MessageIn<MessageEnvelope<Instance>> createResponse(InetAddress from, Instance instance)
@@ -46,12 +46,12 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void ballotFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.updateBallot(1);
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
@@ -60,12 +60,12 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Instance responseCopy = instance.copy();
         responseCopy.updateBallot(expectedBallot);
 
-        callback.response(createResponse(state.localEndpoints.get(1), responseCopy));
+        callback.response(createResponse(service.localEndpoints.get(1), responseCopy));
 
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(1, state.ballotUpdates.size());
-        MockCallbackState.UpdateBallotCall ballotCall = state.ballotUpdates.get(0);
+        Assert.assertEquals(1, service.ballotUpdates.size());
+        MockCallbackService.UpdateBallotCall ballotCall = service.ballotUpdates.get(0);
 
         Assert.assertEquals(instance.getId(), ballotCall.id);
         Assert.assertEquals(expectedBallot, ballotCall.ballot);
@@ -76,39 +76,39 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void preacceptDecision() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.preaccept(Sets.newHashSet(dep1));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response from the leader to prevent trypreaccept
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send another preaccepted response
-        callback.response(createResponse(state.localEndpoints.get(1), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(1), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 
         // check that an prepare preaccept call was made
-        Assert.assertEquals(1, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(1, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         // that the prepare decision calls for an preaccept phase
         PrepareDecision decision = callback.getDecision();
@@ -119,7 +119,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertFalse(decision.commitNoop);
 
         // check that the call to preacceptPrepare was well formed
-        MockCallbackState.PreacceptPrepareCall call = state.preacceptPrepares.get(0);
+        MockCallbackService.PreacceptPrepareCall call = service.preacceptPrepares.get(0);
         Assert.assertEquals(instance.getId(), call.id);
         Assert.assertFalse(call.noop);
         Assert.assertNotNull(call.failureCallback);
@@ -128,41 +128,41 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void acceptDecision() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.preaccept(Sets.newHashSet(dep1));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send an accepted response with different deps
         Set<UUID> expectedDeps = Sets.newHashSet(dep1, dep2);
         instance.accept(expectedDeps);
-        callback.response(createResponse(state.localEndpoints.get(1), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(1), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 
         // check that an accept call was made
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(1, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(1, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         // that the prepare decision calls for an accept phase
         PrepareDecision decision = callback.getDecision();
@@ -173,7 +173,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertFalse(decision.commitNoop);
 
         // and that the accept call is well formed
-        MockCallbackState.AcceptCall acceptCall = state.accepts.get(0);
+        MockCallbackService.AcceptCall acceptCall = service.accepts.get(0);
         Assert.assertEquals(instance.getId(), acceptCall.id);
         Assert.assertEquals(expectedDeps, acceptCall.decision.acceptDeps);
         Assert.assertNotNull(acceptCall.failureCallback);
@@ -182,41 +182,41 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void commitDecision() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
         instance.accept(Sets.newHashSet(dep1));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send an accepted response
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send a committed response with different deps
         Set<UUID> expectedDeps = Sets.newHashSet(dep1, dep2);
         instance.commit(expectedDeps);
-        callback.response(createResponse(state.localEndpoints.get(1), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(1), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 
         // check that an accept call was made
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(1, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(1, service.commits.size());
 
         // that the prepare decision calls for a commit phase
         PrepareDecision decision = callback.getDecision();
@@ -227,7 +227,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertFalse(decision.commitNoop);
 
         // and that the commit call is well formed
-        MockCallbackState.CommitCall commitCall = state.commits.get(0);
+        MockCallbackService.CommitCall commitCall = service.commits.get(0);
         Assert.assertEquals(instance.getId(), commitCall.id);
         Assert.assertEquals(expectedDeps, commitCall.dependencies);
     }
@@ -235,37 +235,37 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void preacceptNoopDecision() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response from the leader to prevent trypreaccept
-        callback.response(createResponse(state.localEndpoints.get(1), null, instance.getToken(), instance.getCfId(), instance.getScope()));
+        callback.response(createResponse(service.localEndpoints.get(1), null, instance.getToken(), instance.getCfId(), instance.getScope()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send a null responses for the second reply
-        callback.response(createResponse(state.localEndpoints.get(2), null, instance.getToken(), instance.getCfId(), instance.getScope()));
+        callback.response(createResponse(service.localEndpoints.get(2), null, instance.getToken(), instance.getCfId(), instance.getScope()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 
         // check that an prepare preaccept call was made
-        Assert.assertEquals(1, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.preaccepts.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(1, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.preaccepts.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
 
         // that the prepare decision calls for an preaccept phase
         PrepareDecision decision = callback.getDecision();
@@ -275,7 +275,7 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Assert.assertTrue(decision.commitNoop);
 
         // check that the call to preacceptPrepare was well formed
-        MockCallbackState.PreacceptPrepareCall call = state.preacceptPrepares.get(0);
+        MockCallbackService.PreacceptPrepareCall call = service.preacceptPrepares.get(0);
         Assert.assertEquals(instance.getId(), call.id);
         Assert.assertTrue(call.noop);
         Assert.assertNotNull(call.failureCallback);
@@ -287,24 +287,24 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void duplicateMessagesIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send a preaccepted response
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send a duplicate response
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
     }
@@ -315,29 +315,29 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void additionalMessagesAreIgnored() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
-        PrepareCallback callback = getCallback(state, instance);
+        PrepareCallback callback = getCallback(service, instance);
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
 
         // send first messages, should change state
-        callback.response(createResponse(state.localEndpoints.get(0), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(0), instance.copy()));
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(1, callback.getNumResponses());
 
         // send second messages, should change state
-        callback.response(createResponse(state.localEndpoints.get(1), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(1), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
 
         // send third messages, should be ignored
-        callback.response(createResponse(state.localEndpoints.get(2), instance.copy()));
+        callback.response(createResponse(service.localEndpoints.get(2), instance.copy()));
         Assert.assertTrue(callback.isCompleted());
         Assert.assertEquals(2, callback.getNumResponses());
     }
@@ -349,41 +349,41 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
     @Test
     public void addPreviouslyUnknownInstance() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
+        MockCallbackService service = new MockCallbackService(3, 0);
 
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.incrementBallot();
 
-        PrepareGroup group = new PrepareGroup(state, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())) {
+        PrepareGroup group = new PrepareGroup(service, UUIDGen.getTimeUUID(), Sets.newHashSet(instance.getId())) {
             @Override
             protected void submitExecuteTask()
             {
                 // no-op
             }
         };
-        PrepareCallback callback = new PrepareCallback(state, instance.getId(), 0, state.getParticipants(instance), group, 1);
+        PrepareCallback callback = new PrepareCallback(service, instance.getId(), 0, service.getParticipants(instance), group, 1);
 
         Assert.assertTrue(callback.isInstanceUnknown());
         Assert.assertFalse(callback.isCompleted());
-        Assert.assertNull(state.loadInstance(instance.getId()));
+        Assert.assertNull(service.loadInstance(instance.getId()));
         Assert.assertTrue(group.prepareIsOutstandingFor(instance.getId()));
 
-        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        callback.response(createResponse(service.localEndpoints.get(2), instance));
         Assert.assertTrue(callback.isCompleted());
-        Assert.assertNotNull(state.loadInstance(instance.getId()));
+        Assert.assertNotNull(service.loadInstance(instance.getId()));
         Assert.assertFalse(group.prepareIsOutstandingFor(instance.getId()));
     }
 
     @Test
     public void retryLimitReached() throws InvalidInstanceStateChange
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
         instance.updateBallot(1);
 
-        PrepareCallback callback = getCallback(state, instance, PrepareCallback.RETRY_LIMIT);
+        PrepareCallback callback = getCallback(service, instance, PrepareCallback.RETRY_LIMIT);
 
         Assert.assertFalse(callback.isCompleted());
         Assert.assertEquals(0, callback.getNumResponses());
@@ -392,12 +392,12 @@ public class EpaxosPrepareCallbackTest extends AbstractEpaxosTest
         Instance responseCopy = instance.copy();
         responseCopy.updateBallot(expectedBallot);
 
-        callback.response(createResponse(state.localEndpoints.get(1), responseCopy));
+        callback.response(createResponse(service.localEndpoints.get(1), responseCopy));
 
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(0, state.ballotUpdates.size());
-        Assert.assertEquals(0, state.accepts.size());
-        Assert.assertEquals(0, state.commits.size());
+        Assert.assertEquals(0, service.ballotUpdates.size());
+        Assert.assertEquals(0, service.accepts.size());
+        Assert.assertEquals(0, service.commits.size());
     }
 }

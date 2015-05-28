@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class EpaxosFuzzer
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
     static
     {

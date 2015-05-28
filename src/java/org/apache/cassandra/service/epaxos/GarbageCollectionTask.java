@@ -17,20 +17,20 @@ public class GarbageCollectionTask implements Runnable
 {
     private static final Logger logger = LoggerFactory.getLogger(GarbageCollectionTask.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final TokenState tokenState;
     private final Scope scope;
     private final TokenStateManager tokenStateManager;
     private final KeyStateManager keyStateManager;
 
-    public GarbageCollectionTask(EpaxosState state, TokenState tokenState, Scope scope)
+    public GarbageCollectionTask(EpaxosService service, TokenState tokenState, Scope scope)
     {
-        this.state = state;
+        this.service = service;
         this.tokenState = tokenState;
         this.scope = scope;
 
-        tokenStateManager = state.getTokenStateManager(scope);
-        keyStateManager = state.getKeyStateManager(scope);
+        tokenStateManager = service.getTokenStateManager(scope);
+        keyStateManager = service.getKeyStateManager(scope);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class GarbageCollectionTask implements Runnable
         }
 
         // this is done outside of the KeyState lock because:
-        //   a) it would mean aquiring instance and key state locks in the incorrect order, leading to deadlocks
+        //   a) it would mean aquiring instance and key service locks in the incorrect order, leading to deadlocks
         //   b) since these are older epochs, they can't be modified
         for (Map.Entry<Long, Set<UUID>> entry: expiredEpochs.entrySet())
         {
@@ -89,7 +89,7 @@ public class GarbageCollectionTask implements Runnable
             for (UUID id: entry.getValue())
             {
                 logger.debug("deleting instance {}", id);
-                state.deleteInstance(id);
+                service.deleteInstance(id);
             }
         }
 

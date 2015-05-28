@@ -36,9 +36,9 @@ import org.apache.cassandra.utils.UUIDGen;
  */
 public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
 {
-    static class TryPreacceptOnlyState extends MockCallbackState
+    static class TryPreacceptOnlyService extends MockCallbackService
     {
-        TryPreacceptOnlyState(int numLocal, int numRemote)
+        TryPreacceptOnlyService(int numLocal, int numRemote)
         {
             super(numLocal, numRemote);
         }
@@ -89,28 +89,28 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     @Test
     public void zeroToConvinceLeaderAgree() throws InvalidInstanceStateChange
     {
-        TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        TryPreacceptOnlyService service = new TryPreacceptOnlyService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(expectedDeps, expectedDeps);
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
-        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
+        EpaxosService.ParticipantInfo info = service.getParticipants(instance);
+        PrepareCallback callback = service.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         int minIdentical = (info.F + 1) / 2;
 
         Assert.assertEquals(1, minIdentical);
 
-        callback.response(createResponse(state.localEndpoints.get(1), instance));
+        callback.response(createResponse(service.localEndpoints.get(1), instance));
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        callback.response(createResponse(service.localEndpoints.get(2), instance));
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(1, state.tryPreacceptCalls.size());
-        MockCallbackState.TryPreacceptCall call = state.tryPreacceptCalls.get(0);
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(1, service.tryPreacceptCalls.size());
+        MockCallbackService.TryPreacceptCall call = service.tryPreacceptCalls.get(0);
 
         Assert.assertEquals(1, call.attempts.size());
         TryPreacceptAttempt attempt = call.attempts.get(0);
@@ -125,23 +125,23 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     @Test
     public void zeroToConvinceLeaderDisagree() throws InvalidInstanceStateChange
     {
-        TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        TryPreacceptOnlyService service = new TryPreacceptOnlyService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(expectedDeps);
         Assert.assertFalse(instance.getLeaderAttrsMatch());
 
-        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
+        EpaxosService.ParticipantInfo info = service.getParticipants(instance);
+        PrepareCallback callback = service.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
-        callback.response(createResponse(state.localEndpoints.get(1), instance));
+        callback.response(createResponse(service.localEndpoints.get(1), instance));
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        callback.response(createResponse(service.localEndpoints.get(2), instance));
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(1, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.tryPreacceptCalls.size());
+        Assert.assertEquals(1, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.tryPreacceptCalls.size());
     }
 
     /**
@@ -150,24 +150,24 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     @Test
     public void uncommittedLeader() throws InvalidInstanceStateChange
     {
-        TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        TryPreacceptOnlyService service = new TryPreacceptOnlyService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(expectedDeps, expectedDeps);
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
-        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
+        EpaxosService.ParticipantInfo info = service.getParticipants(instance);
+        PrepareCallback callback = service.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
-        Assert.assertEquals(state.localEndpoints.get(0), instance.getLeader());
-        callback.response(createResponse(state.localEndpoints.get(0), instance));
+        Assert.assertEquals(service.localEndpoints.get(0), instance.getLeader());
+        callback.response(createResponse(service.localEndpoints.get(0), instance));
         Assert.assertFalse(callback.isCompleted());
 
-        callback.response(createResponse(state.localEndpoints.get(1), instance));
+        callback.response(createResponse(service.localEndpoints.get(1), instance));
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(1, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.tryPreacceptCalls.size());
+        Assert.assertEquals(1, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.tryPreacceptCalls.size());
     }
 
     /**
@@ -176,14 +176,14 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     @Test
     public void attemptOrdering() throws InvalidInstanceStateChange
     {
-        TryPreacceptOnlyState state = new TryPreacceptOnlyState(7, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        TryPreacceptOnlyService service = new TryPreacceptOnlyService(7, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         Set<UUID> leaderDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(leaderDeps, leaderDeps);
         Assert.assertTrue(instance.getLeaderAttrsMatch());
 
-        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
+        EpaxosService.ParticipantInfo info = service.getParticipants(instance);
+        PrepareCallback callback = service.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         int minIdentical = (info.F + 1) / 2;
 
@@ -191,32 +191,32 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertEquals(4, info.quorumSize);
 
         // these agree with the leader
-        callback.response(createResponse(state.localEndpoints.get(1), instance));
+        callback.response(createResponse(service.localEndpoints.get(1), instance));
         Assert.assertFalse(callback.isCompleted());
-        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        callback.response(createResponse(service.localEndpoints.get(2), instance));
         Assert.assertFalse(callback.isCompleted());
 
         // these don't
         Instance alternate = instance.copy();
         Set<UUID> alternateDeps = Sets.newHashSet(UUIDGen.getTimeUUID());
         alternate.preaccept(alternateDeps, leaderDeps);
-        callback.response(createResponse(state.localEndpoints.get(3), alternate));
+        callback.response(createResponse(service.localEndpoints.get(3), alternate));
         Assert.assertFalse(callback.isCompleted());
-        callback.response(createResponse(state.localEndpoints.get(4), alternate));
+        callback.response(createResponse(service.localEndpoints.get(4), alternate));
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(0, state.preacceptPrepares.size());
-        Assert.assertEquals(1, state.tryPreacceptCalls.size());
-        MockCallbackState.TryPreacceptCall call = state.tryPreacceptCalls.get(0);
+        Assert.assertEquals(0, service.preacceptPrepares.size());
+        Assert.assertEquals(1, service.tryPreacceptCalls.size());
+        MockCallbackService.TryPreacceptCall call = service.tryPreacceptCalls.get(0);
 
         Assert.assertEquals(2, call.attempts.size());
         TryPreacceptAttempt leaderAttempt = call.attempts.get(0);
         Assert.assertEquals(leaderDeps, leaderAttempt.dependencies);
-        Assert.assertEquals(Sets.newHashSet(state.localEndpoints.subList(3, 5)), leaderAttempt.toConvince);
+        Assert.assertEquals(Sets.newHashSet(service.localEndpoints.subList(3, 5)), leaderAttempt.toConvince);
 
         TryPreacceptAttempt otherAttempt = call.attempts.get(1);
         Assert.assertEquals(alternateDeps, otherAttempt.dependencies);
-        Assert.assertEquals(Sets.newHashSet(state.localEndpoints.subList(1, 3)), otherAttempt.toConvince);
+        Assert.assertEquals(Sets.newHashSet(service.localEndpoints.subList(1, 3)), otherAttempt.toConvince);
     }
 
     /**
@@ -226,27 +226,27 @@ public class EpaxosPrepareCallbackTryPreacceptTest extends AbstractEpaxosTest
     @Test
     public void differentSplitRanges() throws InvalidInstanceStateChange
     {
-        TryPreacceptOnlyState state = new TryPreacceptOnlyState(3, 0);
-        TokenInstance instance = new TokenInstance(state.getEndpoint(), CFID, token(50), range(0, 100), DEFAULT_SCOPE);
+        TryPreacceptOnlyService service = new TryPreacceptOnlyService(3, 0);
+        TokenInstance instance = new TokenInstance(service.getEndpoint(), CFID, token(50), range(0, 100), DEFAULT_SCOPE);
         Set<UUID> deps = Sets.newHashSet(UUIDGen.getTimeUUID());
         instance.preaccept(deps, deps);
 
-        EpaxosState.ParticipantInfo info = state.getParticipants(instance);
-        PrepareCallback callback = state.getPrepareCallback(instance.getId(), 1, info, null, 1);
+        EpaxosService.ParticipantInfo info = service.getParticipants(instance);
+        PrepareCallback callback = service.getPrepareCallback(instance.getId(), 1, info, null, 1);
 
         TokenInstance i2 = (TokenInstance) instance.copy();
         i2.mergeLocalSplitRange(range(1, 100));
         Assert.assertFalse(i2.getLeaderAttrsMatch());
-        callback.response(createResponse(state.localEndpoints.get(1), i2));
+        callback.response(createResponse(service.localEndpoints.get(1), i2));
         Assert.assertFalse(callback.isCompleted());
 
         TokenInstance i3 = (TokenInstance) instance.copy();
         i3.mergeLocalSplitRange(range(0, 99));
         Assert.assertFalse(i3.getLeaderAttrsMatch());
-        callback.response(createResponse(state.localEndpoints.get(2), instance));
+        callback.response(createResponse(service.localEndpoints.get(2), instance));
         Assert.assertTrue(callback.isCompleted());
 
-        Assert.assertEquals(1, state.preacceptPrepares.size());
-        Assert.assertEquals(0, state.tryPreacceptCalls.size());
+        Assert.assertEquals(1, service.preacceptPrepares.size());
+        Assert.assertEquals(0, service.tryPreacceptCalls.size());
     }
 }

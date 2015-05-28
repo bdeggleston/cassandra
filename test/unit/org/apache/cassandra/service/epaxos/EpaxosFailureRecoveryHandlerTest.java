@@ -30,14 +30,14 @@ public class EpaxosFailureRecoveryHandlerTest
     public void successCase() throws UnknownHostException
     {
         final AtomicReference<FailureRecoveryRequest> params = new AtomicReference<>();
-        MockVerbHandlerState state = new MockVerbHandlerState() {
+        MockVerbHandlerService service= new MockVerbHandlerService() {
             @Override
             public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
             {
                 params.set(new FailureRecoveryRequest(token, cfId, epoch, scope));
             }
         };
-        FailureRecoveryVerbHandler handler = new FailureRecoveryVerbHandler(state);
+        FailureRecoveryVerbHandler handler = new FailureRecoveryVerbHandler(service);
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
         UUID cfId = UUIDGen.getTimeUUID();

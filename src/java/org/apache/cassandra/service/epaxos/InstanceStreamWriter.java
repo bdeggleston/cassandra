@@ -5,9 +5,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.ning.compress.lzf.LZFOutputStream;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
@@ -33,7 +30,7 @@ public class InstanceStreamWriter
     private static final int DEFAULT_CHUNK_SIZE = 64 * 1024;
     private static final int CFKEY_ITER_CHUNK = 10000;
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID cfId;
     private final Range<Token> range;
     private final Scope scope;
@@ -46,23 +43,23 @@ public class InstanceStreamWriter
 
     public InstanceStreamWriter(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this(EpaxosState.getInstance(), cfId, range, scope, peer);
+        this(EpaxosService.getInstance(), cfId, range, scope, peer);
     }
 
-    public InstanceStreamWriter(EpaxosState state, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
+    public InstanceStreamWriter(EpaxosService service, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this.state = state;
+        this.service = service;
         this.cfId = cfId;
         this.range = range;
 
-        if (scope == Scope.LOCAL && !state.isInSameDC(peer))
+        if (scope == Scope.LOCAL && !service.isInSameDC(peer))
         {
             throw new AssertionError("Can't stream local scope instances to another datacenter");
         }
 
         this.scope = scope;
-        tsm = state.getTokenStateManager(scope);
-        ksm = state.getKeyStateManager(scope);
+        tsm = service.getTokenStateManager(scope);
+        ksm = service.getKeyStateManager(scope);
 
         limiter = StreamManager.getRateLimiter(peer);
     }
@@ -110,10 +107,10 @@ public class InstanceStreamWriter
         if (getExact(range.right) == null)
         {
             logger.debug("Creating token state for right token {}", range.right);
-            TokenInstance leftTokenInstance = state.createTokenInstance(range.right, cfId, scope);
+            TokenInstance leftTokenInstance = service.createTokenInstance(range.right, cfId, scope);
             try
             {
-                state.process(leftTokenInstance);
+                service.process(leftTokenInstance);
             }
             catch (WriteTimeoutException e)
             {
@@ -170,10 +167,10 @@ public class InstanceStreamWriter
             {
                 try
                 {
-                    state.process(state.createEpochInstance(tokenState.getToken(),
-                                                            tokenState.getCfId(),
-                                                            tokenState.getEpoch() + 1,
-                                                            scope));
+                    service.process(service.createEpochInstance(tokenState.getToken(),
+                                                                tokenState.getCfId(),
+                                                                tokenState.getEpoch() + 1,
+                                                                scope));
                     logger.debug("Incremented token state for streaming");
                 }
                 catch (WriteTimeoutException e)
@@ -251,7 +248,7 @@ public class InstanceStreamWriter
 
                         for (UUID id: ids)
                         {
-                            Instance instance = state.getInstanceCopy(id);
+                            Instance instance = service.getInstanceCopy(id);
                             logger.debug("Writing instance {} on token {} for {}", instance.getId(), token, cfId);
                             writeInstance(instance, out, outputStream);
                         }
@@ -262,7 +259,7 @@ public class InstanceStreamWriter
                     // send active
                     for (UUID id: active)
                     {
-                        Instance instance = state.getInstanceCopy(id);
+                        Instance instance = service.getInstanceCopy(id);
                         writeInstance(instance, out, outputStream);
                         instancesWritten++;
                     }
@@ -275,7 +272,7 @@ public class InstanceStreamWriter
                 tokenState.unlockGc();
 
                 // in case we prevented any from running
-                state.startTokenStateGc(tokenState, scope);
+                service.startTokenStateGc(tokenState, scope);
             }
             logger.info("Wrote {} instances for token {} on {}", instancesWritten, token, cfId);
         }

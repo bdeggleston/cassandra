@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PrepareTask implements Runnable, ICommitCallback
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
     // the number of times a prepare phase will try to gain control of an instance before giving up
     protected static int PREPARE_BALLOT_FAILURE_RETRIES = 5;
@@ -25,21 +25,21 @@ public class PrepareTask implements Runnable, ICommitCallback
 
     public static int RETRY_LIMIT = 5;
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID id;
     private final PrepareGroup group;
     private final int attempt;
 
     private volatile boolean committed;
 
-    public PrepareTask(EpaxosState state, UUID id, PrepareGroup group)
+    public PrepareTask(EpaxosService service, UUID id, PrepareGroup group)
     {
-        this(state, id, group, 1);
+        this(service, id, group, 1);
     }
 
-    public PrepareTask(EpaxosState state, UUID id, PrepareGroup group, int attempt)
+    public PrepareTask(EpaxosService service, UUID id, PrepareGroup group, int attempt)
     {
-        this.state = state;
+        this.service = service;
         this.id = id;
         this.group = group;
         this.attempt = attempt;
@@ -61,11 +61,11 @@ public class PrepareTask implements Runnable, ICommitCallback
             return;
         }
 
-        Instance instance = state.getInstanceCopy(id);
+        Instance instance = service.getInstanceCopy(id);
 
         PrepareRequest request;
         PrepareCallback callback;
-        EpaxosState.ParticipantInfo participantInfo;
+        EpaxosService.ParticipantInfo participantInfo;
 
         if (instance != null)
         {
@@ -76,7 +76,7 @@ public class PrepareTask implements Runnable, ICommitCallback
             }
 
             // maybe wait for grace period to end
-            long wait = state.getPrepareWaitTime(instance.getLastUpdated());
+            long wait = service.getPrepareWaitTime(instance.getLastUpdated());
             if (wait > 0)
             {
                 logger.debug("Delaying {} prepare task for {} ms", id, wait);
@@ -85,10 +85,10 @@ public class PrepareTask implements Runnable, ICommitCallback
             }
 
             instance.incrementBallot();
-            participantInfo = state.getParticipants(instance);
+            participantInfo = service.getParticipants(instance);
 
-            request = new PrepareRequest(instance.getToken(), instance.getCfId(), state.getCurrentEpoch(instance), instance);
-            callback = state.getPrepareCallback(instance.getId(), instance.getBallot(), participantInfo, group, attempt);
+            request = new PrepareRequest(instance.getToken(), instance.getCfId(), service.getCurrentEpoch(instance), instance);
+            callback = service.getPrepareCallback(instance.getId(), instance.getBallot(), participantInfo, group, attempt);
         }
         else
         {
@@ -99,22 +99,22 @@ public class PrepareTask implements Runnable, ICommitCallback
             // time around, or commit a noop if no one else has heard of it either.
             logger.debug("running prepare for unknown instance {}, with parent", id, group.getParentId());
 
-            Instance pInstance = state.getInstanceCopy(group.getParentId());
-            participantInfo = state.getParticipants(pInstance);
+            Instance pInstance = service.getInstanceCopy(group.getParentId());
+            participantInfo = service.getParticipants(pInstance);
             request = new PrepareRequest(pInstance.getToken(),
                                          pInstance.getCfId(),
-                                         state.getCurrentEpoch(pInstance),
+                                         service.getCurrentEpoch(pInstance),
                                          pInstance.getScope(),
                                          id,
                                          0);
-            callback = state.getPrepareCallback(id, 0, participantInfo, group, attempt);
+            callback = service.getPrepareCallback(id, 0, participantInfo, group, attempt);
         }
 
         MessageOut<PrepareRequest> message = request.getMessage();
         for (InetAddress endpoint: participantInfo.liveEndpoints)
         {
             logger.debug("sending prepare request to {} for instance {}", endpoint, id);
-            state.sendRR(message, endpoint, callback);
+            service.sendRR(message, endpoint, callback);
         }
     }
 
@@ -155,7 +155,7 @@ public class PrepareTask implements Runnable, ICommitCallback
                 return;
             }
             logger.debug("rerunning deferred prepare for {}", task.id);
-            task.state.getStage(Stage.MUTATION).submit(task);
+            task.service.getStage(Stage.MUTATION).submit(task);
         }
     }
 }

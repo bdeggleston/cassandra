@@ -21,7 +21,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     private final UUID id;
     private final Set<UUID> dependencies;
     private final Range<Token> splitRange;
-    private final EpaxosState.ParticipantInfo participantInfo;
+    private final EpaxosService.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
     private final Set<UUID> remoteDependencies = Sets.newHashSet();
     private boolean vetoed = false;  // only used for token instances
@@ -37,9 +37,9 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
     private final Set<UUID> mergedDeps;
     private volatile boolean acceptRequired = false;
 
-    public PreacceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
+    public PreacceptCallback(EpaxosService service, Instance instance, EpaxosService.ParticipantInfo participantInfo, Runnable failureCallback, boolean forceAccept)
     {
-        super(state);
+        super(service);
         this.id = instance.getId();
 
         dependencies = ImmutableSet.copyOf(instance.getDependencies());
@@ -78,7 +78,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
         {
             logger.debug("preaccept ballot failure from {} for instance {}", msg.from, id);
             completed = true;
-            state.updateBallot(id, response.ballotFailure, failureCallback);
+            service.updateBallot(id, response.ballotFailure, failureCallback);
             return;
         }
         responses.put(msg.from, response);
@@ -88,7 +88,7 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
 
         if (!response.missingInstances.isEmpty())
         {
-            state.addMissingInstances(response.missingInstances);
+            service.addMissingInstances(response.missingInstances);
         }
 
         acceptRequired |= !dependencies.equals(response.dependencies);
@@ -119,12 +119,12 @@ public class PreacceptCallback extends AbstractEpochCallback<PreacceptResponse>
         if (decision.acceptNeeded || forceAccept)
         {
             logger.debug("preaccept messaging completed for {}, running accept phase", id);
-            state.accept(id, decision, failureCallback);
+            service.accept(id, decision, failureCallback);
         }
         else
         {
             logger.debug("preaccept messaging completed for {}, committing on fast path", id);
-            state.commit(id, decision.acceptDeps);
+            service.commit(id, decision.acceptDeps);
         }
     }
 

@@ -16,7 +16,7 @@ public class AcceptCallback extends AbstractEpochCallback<AcceptResponse>
     private static final Logger logger = LoggerFactory.getLogger(AcceptCallback.class);
 
     private final UUID id;
-    private final EpaxosState.ParticipantInfo participantInfo;
+    private final EpaxosService.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
     private final int proposedBallot;
     private final Set<UUID> proposedDependencies;
@@ -26,9 +26,9 @@ public class AcceptCallback extends AbstractEpochCallback<AcceptResponse>
     private boolean localResponse = false;
     private int numResponses = 0;
 
-    public AcceptCallback(EpaxosState state, Instance instance, EpaxosState.ParticipantInfo participantInfo, Runnable failureCallback)
+    public AcceptCallback(EpaxosService service, Instance instance, EpaxosService.ParticipantInfo participantInfo, Runnable failureCallback)
     {
-        super(state);
+        super(service);
         this.id = instance.getId();
         this.proposedBallot = instance.getBallot();
         this.proposedDependencies = instance.getDependencies();
@@ -66,11 +66,11 @@ public class AcceptCallback extends AbstractEpochCallback<AcceptResponse>
         {
             logger.debug("proposed ballot rejected for accept response {} <= {}", proposedBallot, response.ballot);
             completed = true;
-            state.updateBallot(id, response.ballot, failureCallback);
+            service.updateBallot(id, response.ballot, failureCallback);
             return;
         }
 
-        if (msg.from.equals(state.getEndpoint()))
+        if (msg.from.equals(service.getEndpoint()))
         {
             localResponse = true;
         }
@@ -79,7 +79,7 @@ public class AcceptCallback extends AbstractEpochCallback<AcceptResponse>
         if (numResponses >= participantInfo.quorumSize && localResponse)
         {
             completed = true;
-            state.commit(id, proposedDependencies);
+            service.commit(id, proposedDependencies);
         }
     }
 

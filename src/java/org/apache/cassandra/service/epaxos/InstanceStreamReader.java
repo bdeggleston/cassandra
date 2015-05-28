@@ -29,7 +29,7 @@ public class InstanceStreamReader
 {
     private static final Logger logger = LoggerFactory.getLogger(InstanceStreamReader.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID cfId;
     private final Range<Token> range;
     private final Scope scope;
@@ -39,23 +39,23 @@ public class InstanceStreamReader
 
     public InstanceStreamReader(UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this(EpaxosState.getInstance(), cfId, range, scope, peer);
+        this(EpaxosService.getInstance(), cfId, range, scope, peer);
     }
 
-    public InstanceStreamReader(EpaxosState state, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
+    public InstanceStreamReader(EpaxosService service, UUID cfId, Range<Token> range, Scope scope, InetAddress peer)
     {
-        this.state = state;
+        this.service = service;
         this.cfId = cfId;
         this.range = range;
         this.scope = scope;
 
-        if (scope == Scope.LOCAL && !state.isInSameDC(peer))
+        if (scope == Scope.LOCAL && !service.isInSameDC(peer))
         {
             throw new AssertionError("Can't stream local scope instances from another datacenter");
         }
 
-        tsm = state.getTokenStateManager(scope);
-        ksm = state.getKeyStateManager(scope);
+        tsm = service.getTokenStateManager(scope);
+        ksm = service.getKeyStateManager(scope);
     }
 
     protected TokenState getTokenState()
@@ -208,7 +208,7 @@ public class InstanceStreamReader
                             if (ignoreEpoch)
                                 continue;
 
-                            Lock instanceLock = state.getInstanceLock(instance.getId()).writeLock();
+                            Lock instanceLock = service.getInstanceLock(instance.getId()).writeLock();
                             Lock ksLock = ksm.getCfKeyLock(cfKey);
                             instanceLock.lock();
                             ksLock.lock();
@@ -242,7 +242,7 @@ public class InstanceStreamReader
                                         ksm.saveKeyState(cfKey, ks);
                                         // the instance is persisted after the keystate is, so if this bootstrap/recovery
                                         // fails, and another failure recovery starts, we know to delete the instance
-                                        state.saveInstance(instance);
+                                        service.saveInstance(instance);
                                     }
                                     else
                                     {
@@ -301,7 +301,7 @@ public class InstanceStreamReader
                                 {
                                     tokenState.lock.writeLock().unlock();
                                 }
-                                state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
+                                service.getStage(Stage.READ).submit(new PostStreamTask.Ranged(service, cfId, tokenState.getRange(), scope));
                             }
                         }
 

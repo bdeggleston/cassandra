@@ -32,11 +32,11 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         final UUID cfId = UUIDGen.getTimeUUID();
         ByteBuffer key = ByteBufferUtil.bytes(1234);
 
-        EpaxosState state = new MockVerbHandlerState();
+        EpaxosService service = new MockVerbHandlerService();
 
         final AtomicBoolean mutationApplied = new AtomicBoolean(false);
         final AtomicBoolean responseSent = new AtomicBoolean(false);
-        ReadRepairVerbHandler verbHandler = new ReadRepairVerbHandler(state) {
+        ReadRepairVerbHandler verbHandler = new ReadRepairVerbHandler(service) {
             @Override
             protected void applyMutation(Mutation mutation)
             {
@@ -50,10 +50,10 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
             }
         };
 
-        KeyState keyState = state.getKeyStateManager(Scope.GLOBAL).loadKeyState(key, cfId);
+        KeyState keyState = service.getKeyStateManager(Scope.GLOBAL).loadKeyState(key, cfId);
         keyState.setEpoch(5);
         keyState.setExecutionCount(3);
-        state.getKeyStateManager(Scope.GLOBAL).saveKeyState(key, cfId, keyState);
+        service.getKeyStateManager(Scope.GLOBAL).saveKeyState(key, cfId, keyState);
 
         Mutation mutation = new Mutation("como estas", key) {
             @Override
@@ -70,9 +70,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         // check epoch validation
         mutationApplied.set(false);
         info = ImmutableMap.<Scope, ExecutionInfo>builder().put(Scope.GLOBAL, new ExecutionInfo(4, 0)).build();
-        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        data = EpaxosService.serializeMessageExecutionParameters(info, 0);
         msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
-        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
+        msg.parameters.put(EpaxosService.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertTrue(mutationApplied.get());
@@ -82,9 +82,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope, ExecutionInfo>builder().put(Scope.GLOBAL, new ExecutionInfo(5, 3)).build();
-        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        data = EpaxosService.serializeMessageExecutionParameters(info, 0);
         msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
-        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
+        msg.parameters.put(EpaxosService.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertTrue(mutationApplied.get());
@@ -101,12 +101,12 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         final UUID cfId = UUIDGen.getTimeUUID();
         ByteBuffer key = ByteBufferUtil.bytes(1234);
 
-        EpaxosState state = new MockVerbHandlerState();
+        EpaxosService service = new MockVerbHandlerService();
 
         final AtomicBoolean mutationApplied = new AtomicBoolean(false);
         final AtomicBoolean responseSent = new AtomicBoolean(false);
 
-        ReadRepairVerbHandler verbHandler = new ReadRepairVerbHandler(state) {
+        ReadRepairVerbHandler verbHandler = new ReadRepairVerbHandler(service) {
             @Override
             protected void applyMutation(Mutation mutation)
             {
@@ -120,10 +120,10 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
             }
         };
 
-        KeyState keyState = state.getKeyStateManager(Scope.GLOBAL).loadKeyState(key, cfId);
+        KeyState keyState = service.getKeyStateManager(Scope.GLOBAL).loadKeyState(key, cfId);
         keyState.setEpoch(5);
         keyState.setExecutionCount(3);
-        state.getKeyStateManager(Scope.GLOBAL).saveKeyState(key, cfId, keyState);
+        service.getKeyStateManager(Scope.GLOBAL).saveKeyState(key, cfId, keyState);
 
         Mutation mutation = new Mutation("muy bien", key) {
             @Override
@@ -142,9 +142,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope, ExecutionInfo>builder().put(Scope.GLOBAL, new ExecutionInfo(6, 0)).build();
-        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        data = EpaxosService.serializeMessageExecutionParameters(info, 0);
         msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
-        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
+        msg.parameters.put(EpaxosService.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertFalse(mutationApplied.get());
@@ -154,9 +154,9 @@ public class EpaxosReadRepairTest extends AbstractEpaxosTest
         mutationApplied.set(false);
         responseSent.set(false);
         info = ImmutableMap.<Scope, ExecutionInfo>builder().put(Scope.GLOBAL, new ExecutionInfo(5, 4)).build();
-        data = EpaxosState.serializeMessageExecutionParameters(info, 0);
+        data = EpaxosService.serializeMessageExecutionParameters(info, 0);
         msg = MessageIn.create(null, mutation, new HashMap<String, byte[]>(), MessagingService.Verb.READ_REPAIR, 0);
-        msg.parameters.put(EpaxosState.EXECUTION_INFO_PARAMETER, data);
+        msg.parameters.put(EpaxosService.EXECUTION_INFO_PARAMETER, data);
 
         verbHandler.doVerb(msg, 0);
         Assert.assertFalse(mutationApplied.get());

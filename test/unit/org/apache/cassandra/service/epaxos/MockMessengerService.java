@@ -30,14 +30,14 @@ import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
-public class MockMessengerState extends MockMultiDcState
+public class MockMessengerService extends MockMultiDcService
 {
     public final InetAddress endpoint;
     public final List<InetAddress> localReplicas;
     public final List<InetAddress> localEndpoints;
     public final List<InetAddress> remoteEndpoints;
 
-    public MockMessengerState(int numLocal, int numRemote)
+    public MockMessengerService(int numLocal, int numRemote)
     {
         numLocal = Math.max(1, numLocal);
         numRemote = Math.max(0, numRemote);

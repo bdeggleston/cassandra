@@ -48,29 +48,29 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
     @Test
     public void successCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.put(instance.getId(), instance.copy());
 
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        MessageOut<MessageEnvelope<Instance>> message = service.replies.get(0);
         Assert.assertEquals(instance.getBallot(), message.payload.contents.getBallot());
     }
 
     @Test
     public void unknownInstance() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
@@ -78,84 +78,84 @@ public class EpaxosPrepareHandlerTest extends AbstractEpaxosTest
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        MessageOut<MessageEnvelope<Instance>> message = service.replies.get(0);
         Assert.assertNull(message.payload.contents);
     }
 
     @Test
     public void ballotFailure() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
-        state.instanceMap.get(instance.getId()).updateBallot(20);
+        service.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.get(instance.getId()).updateBallot(20);
 
         handler.doVerb(createMessage(instance), 0);
 
         // response is the same, except the instance isn't saved
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        MessageOut<MessageEnvelope<Instance>> message = service.replies.get(0);
         Assert.assertEquals(20, message.payload.contents.getBallot());
     }
 
     @Test
     public void placeholderInstancesArentReturnedWithNonZeroBallot() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
-        state.instanceMap.get(instance.getId()).setPlaceholder(true);
+        service.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.get(instance.getId()).setPlaceholder(true);
 
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        MessageOut<MessageEnvelope<Instance>> message = service.replies.get(0);
         Assert.assertNull(message.payload.contents);
     }
 
     @Test
     public void placeholderInstancesAreReturnedWithZeroBallot() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(UUIDGen.getTimeUUID()));
 
-        state.instanceMap.put(instance.getId(), instance.copy());
-        state.instanceMap.get(instance.getId()).setPlaceholder(true);
+        service.instanceMap.put(instance.getId(), instance.copy());
+        service.instanceMap.get(instance.getId()).setPlaceholder(true);
 
         instance.ballot = 0;
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<MessageEnvelope<Instance>> message = state.replies.get(0);
+        MessageOut<MessageEnvelope<Instance>> message = service.replies.get(0);
         Assert.assertNotNull(message.payload.contents);
     }
 
     @Test
     public void passiveRecord()
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PrepareVerbHandler handler = new PrepareVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PrepareVerbHandler handler = new PrepareVerbHandler(service);
         Assert.assertFalse(handler.canPassiveRecord());
     }
 }

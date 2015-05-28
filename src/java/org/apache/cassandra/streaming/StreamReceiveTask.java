@@ -28,7 +28,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
-import org.apache.cassandra.service.epaxos.EpaxosState;
+import org.apache.cassandra.service.epaxos.EpaxosService;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.FBUtilities;
@@ -126,13 +126,13 @@ public class StreamReceiveTask extends StreamTask
                 throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
 
 
-            EpaxosState.PausedKeys pausedKeys = EpaxosState.getInstance().pauseKeys(task.session.getExpaxosCorrections().keySet(),
+            EpaxosService.PausedKeys pausedKeys = EpaxosService.getInstance().pauseKeys(task.session.getExpaxosCorrections().keySet(),
                                                                                     task.cfId);
             try
             {
                 for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> entry: task.session.getExpaxosCorrections().entrySet())
                 {
-                    EpaxosState.getInstance().reportFutureExecutions(entry.getKey(), task.cfId, entry.getValue());
+                    EpaxosService.getInstance().reportFutureExecutions(entry.getKey(), task.cfId, entry.getValue());
                 }
                 // add sstables and build secondary indexes
                 cfs.addSSTables(readers);
@@ -141,7 +141,7 @@ public class StreamReceiveTask extends StreamTask
             finally
             {
                 SSTableReader.releaseReferences(readers);
-                EpaxosState.getInstance().unPauseKeys(pausedKeys);
+                EpaxosService.getInstance().unPauseKeys(pausedKeys);
             }
 
             task.session.taskCompleted(task);

@@ -56,12 +56,12 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
         }
     }
 
-    private static boolean ksManagerContains(EpaxosState state, Scope scope, QueryInstance instance)
+    private static boolean ksManagerContains(EpaxosService service, Scope scope, QueryInstance instance)
     {
-        return state.getKeyStateManager(scope).loadKeyState(instance.getQuery().getCfKey()).contains(instance.getId());
+        return service.getKeyStateManager(scope).loadKeyState(instance.getQuery().getCfKey()).contains(instance.getId());
     }
 
-    private MockMultiDcState state = null;
+    private MockMultiDcService service = null;
     Iterator<Pair<ByteBuffer, Map<Scope, ExecutionInfo>>> iter;
     Pair<ByteBuffer, Map<Scope, ExecutionInfo>> next;
 
@@ -74,10 +74,10 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
     {
         clearAll();
 
-        state = new MockMultiDcState();
-        state.dcs.put(LOCALHOST, DC1);
-        state.dcs.put(LOCAL_ADDRESS, DC1);
-        state.dcs.put(REMOTE_ADDRESS, DC2);
+        service = new MockMultiDcService();
+        service.dcs.put(LOCALHOST, DC1);
+        service.dcs.put(LOCAL_ADDRESS, DC1);
+        service.dcs.put(REMOTE_ADDRESS, DC2);
 
         iter = null;
         next = null;
@@ -85,9 +85,9 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
 
     private QueryInstance createQueryInstance(int key, ConsistencyLevel cl, ReplayPosition position) throws InvalidInstanceStateChange
     {
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(key, key, cl));
-        instance.preaccept(state.getCurrentDependencies(instance).left);
-        state.recordExecuted(instance, position, 0l);
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(key, key, cl));
+        instance.preaccept(service.getCurrentDependencies(instance).left);
+        service.recordExecuted(instance, position, 0l);
         return instance;
     }
 
@@ -105,7 +105,7 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
         createQueryInstance(3, ConsistencyLevel.SERIAL, FUTURE);
 
         Map<Scope, ExecutionInfo> expected = new HashMap<>();
-        iter = state.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, LOCAL_ADDRESS);
+        iter = service.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, LOCAL_ADDRESS);
 
         // 1st key
         Assert.assertTrue(iter.hasNext());
@@ -144,7 +144,7 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
         createQueryInstance(3, ConsistencyLevel.LOCAL_SERIAL, PRESENT);
 
         Map<Scope, ExecutionInfo> expected = new HashMap<>();
-        iter = state.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, LOCAL_ADDRESS);
+        iter = service.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, LOCAL_ADDRESS);
 
         // 1st key, should only have global
         Assert.assertTrue(iter.hasNext());
@@ -188,7 +188,7 @@ public class EpaxosRangeExecutionInfoTest extends AbstractEpaxosTest
         createQueryInstance(3, ConsistencyLevel.LOCAL_SERIAL, PRESENT);
 
         Map<Scope, ExecutionInfo> expected = new HashMap<>();
-        iter = state.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, REMOTE_ADDRESS);
+        iter = service.getRangeExecutionInfo(cfm.cfId, new Range<>(token(0), token(10)), PRESENT, REMOTE_ADDRESS);
 
         // 1st key, should only have global
         Assert.assertTrue(iter.hasNext());

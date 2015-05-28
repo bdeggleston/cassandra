@@ -52,9 +52,9 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     {
         public volatile int doEpochVerbCalls = 0;
 
-        private Handler(EpaxosState state)
+        private Handler(EpaxosService service)
         {
-            super(state);
+            super(service);
         }
 
         @Override
@@ -64,7 +64,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         }
     }
 
-    private static class State extends MockVerbHandlerState
+    private static class Service extends MockVerbHandlerService
     {
         public volatile int remoteFailureCalls = 0;
         public volatile int localFailureCalls = 0;
@@ -72,12 +72,12 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         public final Map<Scope, Long> epochs = new EnumMap<>(Scope.class);
         public final TokenState.State state;
 
-        private State(long epoch)
+        private Service(long epoch)
         {
             this(epoch, TokenState.State.NORMAL);
         }
 
-        private State(long epoch, TokenState.State state)
+        private Service(long epoch, TokenState.State state)
         {
             this.epochs.put(Scope.GLOBAL, epoch);
             this.epochs.put(Scope.LOCAL, epoch);
@@ -108,73 +108,73 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     @Test
     public void successCase() throws Exception
     {
-        State state = new State(5);
-        state.epochs.put(Scope.LOCAL, 100l); // should be ignored
-        Handler handler = new Handler(state);
+        Service service = new Service(5);
+        service.epochs.put(Scope.LOCAL, 100l); // should be ignored
+        Handler handler = new Handler(service);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(4), 0);
 
         Assert.assertEquals(1, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(5), 0);
 
         Assert.assertEquals(2, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(6), 0);
 
         Assert.assertEquals(3, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
     }
 
     @Test
     public void localFailure() throws Exception
     {
-        State state = new State(5);
-        state.epochs.put(Scope.LOCAL, 7l); // should be ignored
-        Handler handler = new Handler(state);
+        Service service = new Service(5);
+        service.epochs.put(Scope.LOCAL, 7l); // should be ignored
+        Handler handler = new Handler(service);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(7), 0);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(1, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(1, service.localFailureCalls);
     }
 
     @Test
     public void remoteFailure() throws Exception
     {
-        State state = new State(5);
-        state.epochs.put(Scope.LOCAL, 3l); // should be ignored
-        Handler handler = new Handler(state);
+        Service service = new Service(5);
+        service.epochs.put(Scope.LOCAL, 3l); // should be ignored
+        Handler handler = new Handler(service);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(3), 0);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(1, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(1, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
     }
 
     private void assertModeResponse(TokenState.State mode, boolean doVerbExpected, final boolean passiveRecord) throws UnknownHostException
     {
-        State state = new State(5, mode);
-        Handler handler = new Handler(state) {
+        Service service = new Service(5, mode);
+        Handler handler = new Handler(service) {
             @Override
             public boolean canPassiveRecord()
             {
@@ -183,14 +183,14 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         };
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(5), 0);
 
         Assert.assertEquals(doVerbExpected ? 1 : 0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
     }
 
     @Test
@@ -212,16 +212,16 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
     @Test
     public void recoveryRequiredTokenState() throws Exception
     {
-        State state = new State(5, TokenState.State.RECOVERY_REQUIRED);
-        Handler handler = new Handler(state);
+        Service service = new Service(5, TokenState.State.RECOVERY_REQUIRED);
+        Handler handler = new Handler(service);
         handler.doVerb(getMessage(5), 0);
-        Assert.assertEquals(1, state.localFailureCalls);
+        Assert.assertEquals(1, service.localFailureCalls);
     }
 
     @Test
     public void localScopeMessagesFromRemoteDCsAreIgnored() throws Exception
     {
-        State state = new State(5) {
+        Service service = new Service(5) {
             @Override
             public TokenState getTokenState(IEpochMessage message)
             {
@@ -229,7 +229,7 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
             }
         };
 
-        Handler handler = new Handler(state) {
+        Handler handler = new Handler(service) {
             @Override
             public void doEpochVerb(MessageIn<Message> message, int id)
             {
@@ -238,13 +238,13 @@ public class EpaxosEpochVerbHandlerTest extends AbstractEpaxosTest
         };
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
 
         handler.doVerb(getMessage(4, REMOTE_ADDRESS, Scope.LOCAL), 0);
 
         Assert.assertEquals(0, handler.doEpochVerbCalls);
-        Assert.assertEquals(0, state.remoteFailureCalls);
-        Assert.assertEquals(0, state.localFailureCalls);
+        Assert.assertEquals(0, service.remoteFailureCalls);
+        Assert.assertEquals(0, service.localFailureCalls);
     }
 }

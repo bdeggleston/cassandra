@@ -30,7 +30,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -47,9 +46,9 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 
     private static class EpochMaintenanceTask extends TokenStateMaintenanceTask
     {
-        private EpochMaintenanceTask(EpaxosState state, Collection<TokenStateManager> tokenStateManagers)
+        private EpochMaintenanceTask(EpaxosService service, Collection<TokenStateManager> tokenStateManagers)
         {
-            super(state, tokenStateManagers);
+            super(service, tokenStateManagers);
         }
 
         @Override
@@ -73,9 +72,9 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 
     private static class TokenCoverageMaintenanceTask extends TokenStateMaintenanceTask
     {
-        private TokenCoverageMaintenanceTask(EpaxosState state, Collection<TokenStateManager> tokenStateManagers)
+        private TokenCoverageMaintenanceTask(EpaxosService service, Collection<TokenStateManager> tokenStateManagers)
         {
-            super(state, tokenStateManagers);
+            super(service, tokenStateManagers);
         }
 
         @Override
@@ -116,7 +115,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
     {
 
         final AtomicReference<EpochInstance> preaccepted = new AtomicReference<>();
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             public void preaccept(Instance instance)
             {
@@ -125,19 +124,19 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
+        TokenState ts = service.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         ts.setEpoch(5);
         Assert.assertNotNull(ts);
 
-        int threshold = state.getEpochIncrementThreshold(CFID, DEFAULT_SCOPE);
+        int threshold = service.getEpochIncrementThreshold(CFID, DEFAULT_SCOPE);
         while (ts.getExecutions() < threshold)
         {
-            new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
+            new EpochMaintenanceTask(service, service.tokenStateManagers.values()).run();
             Assert.assertNull(preaccepted.get());
             ts.recordExecution();
         }
         Assert.assertEquals(threshold, ts.getExecutions());
-        new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
+        new EpochMaintenanceTask(service, service.tokenStateManagers.values()).run();
 
         EpochInstance instance = preaccepted.get();
         Assert.assertNotNull(instance);
@@ -170,7 +169,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
         }
 
         final AtomicReference<FRCall> call = new AtomicReference<>();
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             public void startLocalFailureRecovery(Token token, UUID cfId, long epoch, Scope scope)
             {
@@ -178,12 +177,12 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        TokenState ts = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
+        TokenState ts = service.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         Assert.assertNotNull(ts);
         ts.setState(TokenState.State.RECOVERY_REQUIRED);
 
         Assert.assertNull(call.get());
-        new EpochMaintenanceTask(state, state.tokenStateManagers.values()).run();
+        new EpochMaintenanceTask(service, service.tokenStateManagers.values()).run();
         FRCall frCall = call.get();
         Assert.assertNotNull(frCall);
         Assert.assertEquals(ts.getToken(), frCall.token);
@@ -197,7 +196,7 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
     {
         final AtomicReference<TokenInstance> preaccepted = new AtomicReference<>();
         final AtomicInteger preacceptCalls = new AtomicInteger(0);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             public Object process(Instance instance) throws WriteTimeoutException
             {
@@ -207,10 +206,10 @@ public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
             }
         };
 
-        state.getTokenStateManager(DEFAULT_SCOPE).get(MockTokenStateManager.TOKEN0, CFID);
+        service.getTokenStateManager(DEFAULT_SCOPE).get(MockTokenStateManager.TOKEN0, CFID);
         Token newToken = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(5));
 
-        TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(state, state.tokenStateManagers.values());
+        TokenCoverageMaintenanceTask task = new TokenCoverageMaintenanceTask(service, service.tokenStateManagers.values());
         task.normalTokens.add(MockTokenStateManager.TOKEN0);
         task.normalTokens.add(newToken);
 

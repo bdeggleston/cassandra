@@ -40,12 +40,12 @@ import org.apache.cassandra.utils.Pair;
  */
 public abstract class PostStreamTask implements Runnable
 {
-    protected final EpaxosState state;
+    protected final EpaxosService service;
     protected final UUID cfId;
 
-    protected PostStreamTask(EpaxosState state, UUID cfId)
+    protected PostStreamTask(EpaxosService service, UUID cfId)
     {
-        this.state = state;
+        this.service = service;
         this.cfId = cfId;
     }
 
@@ -75,7 +75,7 @@ public abstract class PostStreamTask implements Runnable
             Collections.sort(activeIds, comparator);
             for (UUID id: activeIds)
             {
-                Instance instance = state.loadInstance(id);
+                Instance instance = service.loadInstance(id);
                 if (instance != null)
                 {
                     if (instance.getState().atLeast(Instance.State.EXECUTED))
@@ -85,7 +85,7 @@ public abstract class PostStreamTask implements Runnable
                     }
                     else if (instance.getState().atLeast(Instance.State.COMMITTED))
                     {
-                        state.execute(id);
+                        service.execute(id);
                         break;
                     }
                 }
@@ -98,9 +98,9 @@ public abstract class PostStreamTask implements Runnable
         private final Range<Token> range;
         private final Scope scope;
 
-        public Ranged(EpaxosState state, UUID cfId, Range<Token> range, Scope scope)
+        public Ranged(EpaxosService service, UUID cfId, Range<Token> range, Scope scope)
         {
-            super(state, cfId);
+            super(service, cfId);
             this.range = range;
             this.scope = scope;
         }
@@ -108,7 +108,7 @@ public abstract class PostStreamTask implements Runnable
         @Override
         protected Iterator<KeyState> getIterator()
         {
-            return state.getKeyStateManager(scope).getStaleKeyStateRange(cfId, range);
+            return service.getKeyStateManager(scope).getStaleKeyStateRange(cfId, range);
         }
     }
 
@@ -116,9 +116,9 @@ public abstract class PostStreamTask implements Runnable
     {
         private final Collection<Pair<ByteBuffer, Scope>> keys;
 
-        public KeyCollection(EpaxosState state, UUID cfId, Collection<Pair<ByteBuffer, Scope>> keys)
+        public KeyCollection(EpaxosService service, UUID cfId, Collection<Pair<ByteBuffer, Scope>> keys)
         {
-            super(state, cfId);
+            super(service, cfId);
             this.keys = keys;
         }
 
@@ -136,7 +136,7 @@ public abstract class PostStreamTask implements Runnable
                         return endOfData();
                     }
                     Pair<ByteBuffer, Scope> next = iter.next();
-                    return state.getKeyStateManager(next.right).loadKeyState(next.left, cfId);
+                    return service.getKeyStateManager(next.right).loadKeyState(next.left, cfId);
                 }
             };
         }

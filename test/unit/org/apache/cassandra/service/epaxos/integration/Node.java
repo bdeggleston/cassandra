@@ -8,7 +8,6 @@ import com.google.common.collect.Sets;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.dht.Token;
@@ -25,7 +24,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 import javax.annotation.Nullable;
 
-public class Node extends EpaxosState
+public class Node extends EpaxosService
 {
     private final InetAddress endpoint;
     private final Messenger messenger;

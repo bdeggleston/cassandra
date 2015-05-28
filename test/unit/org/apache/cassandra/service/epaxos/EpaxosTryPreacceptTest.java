@@ -28,7 +28,7 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
     {
         final AtomicReference<UUID> acceptedId = new AtomicReference<>(null);
         final AtomicReference<AcceptDecision> acceptedDecision = new AtomicReference<>(null);
-        MockMessengerState state = new MockMessengerState(3, 0) {
+        MockMessengerService service = new MockMessengerService(3, 0) {
             @Override
             public void accept(UUID iid, AcceptDecision decision, Runnable failureCallback)
             {
@@ -56,7 +56,7 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
         Assert.assertNull(acceptedDecision.get());
 
         UUID id = UUIDGen.getTimeUUID();
-        state.tryPreaccept(id, Lists.newArrayList(attempt), null, null);
+        service.tryPreaccept(id, Lists.newArrayList(attempt), null, null);
 
         Assert.assertEquals(id, acceptedId.get());
         AcceptDecision acceptDecision = acceptedDecision.get();
@@ -71,7 +71,7 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
     {
         final Map<UUID, Instance> instances = new HashMap<>();
         final long expectedEpoch = 100;
-        MockMessengerState state = new MockMessengerState(3, 0) {
+        MockMessengerService service = new MockMessengerService(3, 0) {
             @Override
             protected Instance loadInstance(UUID instanceId)
             {
@@ -92,30 +92,30 @@ public class EpaxosTryPreacceptTest extends AbstractEpaxosTest
         };
 
         TryPreacceptAttempt attempt1 = new TryPreacceptAttempt(Sets.newHashSet(UUIDGen.getTimeUUID()),
-                                                               Sets.newHashSet(state.localEndpoints.get(0), state.localEndpoints.get(1)),
+                                                               Sets.newHashSet(service.localEndpoints.get(0), service.localEndpoints.get(1)),
                                                                2,
-                                                               Sets.newHashSet(state.localEndpoints.get(2)),
+                                                               Sets.newHashSet(service.localEndpoints.get(2)),
                                                                true,
                                                                true,
                                                                null);
 
         TryPreacceptAttempt attempt2 = new TryPreacceptAttempt(Sets.newHashSet(UUIDGen.getTimeUUID()),
-                                                               Sets.newHashSet(state.localEndpoints.get(2)),
+                                                               Sets.newHashSet(service.localEndpoints.get(2)),
                                                                1,
-                                                               Sets.newHashSet(state.localEndpoints.get(0), state.localEndpoints.get(1)),
+                                                               Sets.newHashSet(service.localEndpoints.get(0), service.localEndpoints.get(1)),
                                                                true,
                                                                true,
                                                                null);
 
         List<TryPreacceptAttempt> attempts = Lists.newArrayList(attempt1, attempt2);
 
-        QueryInstance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        QueryInstance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instances.put(instance.getId(), instance);
-        state.tryPreaccept(instance.getId(), attempts, null, null);
+        service.tryPreaccept(instance.getId(), attempts, null, null);
 
-        Assert.assertEquals(2, state.sentMessages.size());
+        Assert.assertEquals(2, service.sentMessages.size());
         Set<InetAddress> expectedEndpoints = new HashSet<>(attempt1.toConvince);
-        for (MockMessengerState.SentMessage msg: state.sentMessages)
+        for (MockMessengerService.SentMessage msg: service.sentMessages)
         {
             Assert.assertNotNull(expectedEndpoints.remove(msg.to));
 

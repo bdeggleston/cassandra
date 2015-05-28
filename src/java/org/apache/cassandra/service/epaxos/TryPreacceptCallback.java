@@ -19,7 +19,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
     private final UUID id;
     private final TryPreacceptAttempt attempt;
     private final List<TryPreacceptAttempt> nextAttempts;
-    private final EpaxosState.ParticipantInfo participantInfo;
+    private final EpaxosService.ParticipantInfo participantInfo;
     private final Runnable failureCallback;
 
     private int responses = 0;
@@ -29,14 +29,14 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
     private boolean completed = false;
     private final HashSet<InetAddress> responded = Sets.newHashSet();
 
-    public TryPreacceptCallback(EpaxosState state,
+    public TryPreacceptCallback(EpaxosService service,
                                 UUID id,
                                 TryPreacceptAttempt attempt,
                                 List<TryPreacceptAttempt> nextAttempts,
-                                EpaxosState.ParticipantInfo participantInfo,
+                                EpaxosService.ParticipantInfo participantInfo,
                                 Runnable failureCallback)
     {
-        super(state);
+        super(service);
         this.id = id;
         this.attempt = attempt;
         this.nextAttempts = nextAttempts;
@@ -73,7 +73,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
         if (response.ballotFailure > 0)
         {
             completed = true;
-            state.updateBallot(id, response.ballotFailure, failureCallback);
+            service.updateBallot(id, response.ballotFailure, failureCallback);
             return;
         }
         if (response.decision == TryPreacceptDecision.ACCEPTED)
@@ -93,7 +93,7 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
             if (convinced >= attempt.requiredConvinced)
             {
                 // try-preaccept successful
-                state.accept(id, attempt.dependencies, vetoed, attempt.splitRange, failureCallback);
+                service.accept(id, attempt.dependencies, vetoed, attempt.splitRange, failureCallback);
             }
             else if (contended)
             {
@@ -110,12 +110,12 @@ public class TryPreacceptCallback extends AbstractEpochCallback<TryPreacceptResp
                 if (!nextAttempts.isEmpty())
                 {
                     // start the next trypreaccept
-                    state.tryPreaccept(id, nextAttempts, participantInfo, failureCallback);
+                    service.tryPreaccept(id, nextAttempts, participantInfo, failureCallback);
                 }
                 else
                 {
                     // fall back to regular preaccept
-                    state.preacceptPrepare(id, false, failureCallback);
+                    service.preacceptPrepare(id, false, failureCallback);
                 }
             }
         }

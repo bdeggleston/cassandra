@@ -11,9 +11,9 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitVerbHandler.class);
 
-    public CommitVerbHandler(EpaxosState state)
+    public CommitVerbHandler(EpaxosService service)
     {
-        super(state);
+        super(service);
     }
 
     @Override
@@ -22,17 +22,17 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
         Instance remoteInstance = message.payload.contents;
 
         logger.debug("Commit request received from {} for {}", message.from, remoteInstance.getId());
-        ReadWriteLock lock = state.getInstanceLock(remoteInstance.getId());
+        ReadWriteLock lock = service.getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         Instance instance;
         try
         {
-            instance = state.loadInstance(remoteInstance.getId());
+            instance = service.loadInstance(remoteInstance.getId());
             boolean recordDeps;
             if (instance == null)
             {
                 instance = remoteInstance.copyRemote();
-                state.recordMissingInstance(instance);
+                service.recordMissingInstance(instance);
                 recordDeps = true;
             }
             else
@@ -41,13 +41,13 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
                 instance.applyRemote(remoteInstance);
             }
             instance.commit(remoteInstance.getDependencies());
-            state.saveInstance(instance);
+            service.saveInstance(instance);
             if (recordDeps)
             {
-                state.getCurrentDependencies(instance);
+                service.getCurrentDependencies(instance);
             }
-            state.recordAcknowledgedDeps(instance);
-            state.notifyCommit(remoteInstance.getId());
+            service.recordAcknowledgedDeps(instance);
+            service.notifyCommit(remoteInstance.getId());
         }
         catch (InvalidInstanceStateChange e)
         {
@@ -60,7 +60,7 @@ public class CommitVerbHandler extends AbstractEpochVerbHandler<MessageEnvelope<
             lock.writeLock().unlock();
         }
 
-        state.execute(remoteInstance.getId());
+        service.execute(remoteInstance.getId());
     }
 
     @Override

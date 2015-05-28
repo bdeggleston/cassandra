@@ -26,7 +26,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
 import org.apache.cassandra.service.epaxos.integration.DumbExecutor;
 
-class MockMultiDcState extends EpaxosState
+class MockMultiDcService extends EpaxosService
 {
     final Map<InetAddress, String> dcs = new HashMap<>();
     {{

@@ -12,9 +12,9 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(AcceptVerbHandler.class);
 
-    public AcceptVerbHandler(EpaxosState state)
+    public AcceptVerbHandler(EpaxosService service)
     {
-        super(state);
+        super(service);
     }
 
     @Override
@@ -30,22 +30,22 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
             {
                 if (!missing.getId().equals(message.payload.instance.getId()))
                 {
-                    state.addMissingInstance(missing);
+                    service.addMissingInstance(missing);
                 }
             }
         }
 
-        ReadWriteLock lock = state.getInstanceLock(remoteInstance.getId());
+        ReadWriteLock lock = service.getInstanceLock(remoteInstance.getId());
         lock.writeLock().lock();
         Instance instance = null;
         try
         {
-            instance = state.loadInstance(remoteInstance.getId());
+            instance = service.loadInstance(remoteInstance.getId());
             boolean recordDeps;
             if (instance == null)
             {
                 instance = remoteInstance.copyRemote();
-                state.recordMissingInstance(instance);
+                service.recordMissingInstance(instance);
                 recordDeps = true;
             }
             else
@@ -55,27 +55,27 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
                 instance.applyRemote(remoteInstance);
             }
             instance.accept(remoteInstance.getDependencies());
-            state.saveInstance(instance);
+            service.saveInstance(instance);
 
             logger.debug("Accept request from {} successful for {}", message.from, remoteInstance.getId());
             AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
-                                                         state.getCurrentEpoch(instance),
+                                                         service.getCurrentEpoch(instance),
                                                          instance.getScope(), true, 0);
-            state.sendReply(response.getMessage(), id, message.from);
+            service.sendReply(response.getMessage(), id, message.from);
 
             if (recordDeps)
             {
-                state.getCurrentDependencies(instance);
+                service.getCurrentDependencies(instance);
             }
-            state.recordAcknowledgedDeps(instance);
+            service.recordAcknowledgedDeps(instance);
         }
         catch (BallotException e)
         {
             logger.debug("Accept request from {} for {}, rejected. Old ballot", message.from, remoteInstance.getId());
             AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
-                                                         state.getCurrentEpoch(instance),
+                                                         service.getCurrentEpoch(instance),
                                                          instance.getScope(), false, e.localBallot);
-            state.sendReply(response.getMessage(), id, message.from);
+            service.sendReply(response.getMessage(), id, message.from);
         }
         catch (InvalidInstanceStateChange e)
         {
@@ -87,9 +87,9 @@ public class AcceptVerbHandler extends AbstractEpochVerbHandler<AcceptRequest>
 
             logger.debug("Accept request from {} for {}, rejected. State demotion", message.from, remoteInstance.getId());
             AcceptResponse response = new AcceptResponse(instance.getToken(), instance.getCfId(),
-                                                         state.getCurrentEpoch(instance),
+                                                         service.getCurrentEpoch(instance),
                                                         instance.getScope(), true, 0);
-            state.sendReply(response.getMessage(), id, message.from);
+            service.sendReply(response.getMessage(), id, message.from);
         }
         finally
         {

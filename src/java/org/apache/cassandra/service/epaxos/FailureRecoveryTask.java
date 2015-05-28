@@ -44,9 +44,9 @@ import java.util.concurrent.FutureTask;
  */
 public class FailureRecoveryTask implements Runnable
 {
-    private static final Logger logger = LoggerFactory.getLogger(EpaxosState.class);
+    private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
 
-    public final EpaxosState state;
+    public final EpaxosService service;
     public final Token token;
     public final UUID cfId;
 
@@ -55,14 +55,14 @@ public class FailureRecoveryTask implements Runnable
     public final Scope scope;
     private final TokenStateManager tsm;
 
-    public FailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch, Scope scope)
+    public FailureRecoveryTask(EpaxosService service, Token token, UUID cfId, long epoch, Scope scope)
     {
-        this.state = state;
+        this.service = service;
         this.token = token;
         this.cfId = cfId;
         this.epoch = epoch;
         this.scope = scope;
-        tsm = state.getTokenStateManager(scope);
+        tsm = service.getTokenStateManager(scope);
     }
 
     @Override
@@ -76,7 +76,7 @@ public class FailureRecoveryTask implements Runnable
         if (epoch != task.epoch) return false;
         if (!cfId.equals(task.cfId)) return false;
         if (scope != task.scope) return false;
-        if (!state.equals(task.state)) return false;
+        if (!service.equals(task.service)) return false;
         if (!token.equals(task.token)) return false;
 
         return true;
@@ -85,7 +85,7 @@ public class FailureRecoveryTask implements Runnable
     @Override
     public int hashCode()
     {
-        int result = state.hashCode();
+        int result = service.hashCode();
         result = 31 * result + token.hashCode();
         result = 31 * result + cfId.hashCode();
         result = 31 * result + (int) (epoch ^ (epoch >>> 32));
@@ -141,7 +141,7 @@ public class FailureRecoveryTask implements Runnable
         }
 
         // erase data for all keys owned by recovering token manager
-        KeyStateManager ksm = state.getKeyStateManager(scope);
+        KeyStateManager ksm = service.getKeyStateManager(scope);
         Iterator<CfKey> cfKeys = ksm.getCfKeyIterator(tokenState);
         while (cfKeys.hasNext())
         {
@@ -169,7 +169,7 @@ public class FailureRecoveryTask implements Runnable
             // then delete them after we're done deleting the key state
             for (UUID id: toDelete)
             {
-                state.deleteInstance(id);
+                service.deleteInstance(id);
             }
         }
     }
@@ -206,10 +206,10 @@ public class FailureRecoveryTask implements Runnable
 
         for (InetAddress endpoint: getEndpoints(range))
         {
-            if (endpoint.equals(state.getEndpoint()))
+            if (endpoint.equals(service.getEndpoint()))
                 continue;
 
-            if (scope == Scope.LOCAL && !state.isInSameDC(endpoint))
+            if (scope == Scope.LOCAL && !service.isInSameDC(endpoint))
                 continue;
 
             streamPlan.requestEpaxosRange(endpoint, cfId, range, scope);
@@ -234,7 +234,7 @@ public class FailureRecoveryTask implements Runnable
                 if (event.eventType == StreamEvent.Type.STREAM_COMPLETE && !submitted)
                 {
                     logger.debug("Instance stream complete. Submitting data recovery task");
-                    state.getStage(Stage.MISC).submit(new Runnable()
+                    service.getStage(Stage.MISC).submit(new Runnable()
                     {
                         @Override
                         public void run()
@@ -313,7 +313,7 @@ public class FailureRecoveryTask implements Runnable
         }
         finally
         {
-            state.failureRecoveryTaskCompleted(this);
+            service.failureRecoveryTaskCompleted(this);
             tokenState.lock.writeLock().unlock();
         }
         logger.info("Epaxos failure recovery task for {} on {} to {} completed", token, cfId, epoch);
@@ -323,7 +323,7 @@ public class FailureRecoveryTask implements Runnable
 
     protected void runPostCompleteTask(TokenState tokenState)
     {
-        state.getStage(Stage.READ).submit(new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope));
+        service.getStage(Stage.READ).submit(new PostStreamTask.Ranged(service, cfId, tokenState.getRange(), scope));
     }
 
     @Override

@@ -36,11 +36,11 @@ public class ForwardedQueryVerbHandler implements IVerbHandler<SerializedRequest
 {
     private static final Logger logger = LoggerFactory.getLogger(ForwardedQueryVerbHandler.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
 
-    public ForwardedQueryVerbHandler(EpaxosState state)
+    public ForwardedQueryVerbHandler(EpaxosService service)
     {
-        this.state = state;
+        this.service = service;
     }
 
     @Override
@@ -48,8 +48,8 @@ public class ForwardedQueryVerbHandler implements IVerbHandler<SerializedRequest
     {
         final SerializedRequest request = message.payload;
         logger.debug("received forwarded query from {} for {}", message.from, request.getKey());
-        Instance instance = state.createQueryInstance(request);
-        SettableFuture future = state.setFuture(instance);
+        Instance instance = service.createQueryInstance(request);
+        SettableFuture future = service.setFuture(instance);
 
         Futures.addCallback(future, new FutureCallback()
         {
@@ -57,9 +57,9 @@ public class ForwardedQueryVerbHandler implements IVerbHandler<SerializedRequest
             public void onSuccess(@Nullable Object result)
             {
                 MessageOut<SerializedRequest.Result> msg = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
-                                                                              request.wrapResult(result),
-                                                                              SerializedRequest.Result.serializer);
-                state.sendReply(msg, id, message.from);
+                                                                            request.wrapResult(result),
+                                                                            SerializedRequest.Result.serializer);
+                service.sendReply(msg, id, message.from);
             }
 
             @Override
@@ -69,6 +69,6 @@ public class ForwardedQueryVerbHandler implements IVerbHandler<SerializedRequest
             }
         });
 
-        state.preaccept(instance);
+        service.preaccept(instance);
     }
 }

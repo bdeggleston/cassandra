@@ -48,7 +48,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void successCase() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -57,37 +57,37 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
-        state.saveInstance(missed);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         //
-        Instance previous = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance previous = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         previous.commit(Collections.<UUID>emptySet());
-        state.addMissingInstance(previous);
+        service.addMissingInstance(previous);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
-        Instance after1 = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after1.commit(state.getCurrentDependencies(after1).left);
+        Instance after1 = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        after1.commit(service.getCurrentDependencies(after1).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId()), after1.getDependencies());
-        state.saveInstance(after1);
+        service.saveInstance(after1);
 
-        Instance after2 = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after2.commit(state.getCurrentDependencies(after2).left);
+        Instance after2 = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        after2.commit(service.getCurrentDependencies(after2).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId(), after1.getId()), after2.getDependencies());
-        state.saveInstance(after2);
+        service.saveInstance(after2);
 
         Set<UUID> proposedDeps = Sets.newHashSet(previous.getId());
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         handler.doEpochVerb(createMessage(incrementedCopy(missed), proposedDeps), 0);
 
         Assert.assertEquals(1, replies.size());
 
         TryPreacceptResponse response = (TryPreacceptResponse) replies.get(0).payload;
         Assert.assertEquals(TryPreacceptDecision.ACCEPTED, response.decision);
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(proposedDeps, missed.getDependencies());
         Assert.assertEquals(Instance.State.PREACCEPTED, missed.getState());
     }
@@ -96,7 +96,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void rejectedCase() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -105,34 +105,34 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
-        state.saveInstance(missed);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         //
-        Instance previous = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance previous = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         previous.commit(Collections.<UUID>emptySet());
-        state.addMissingInstance(previous);
+        service.addMissingInstance(previous);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
-        Instance after = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        Set<UUID> afterDeps = state.getCurrentDependencies(after).left;
+        Instance after = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Set<UUID> afterDeps = service.getCurrentDependencies(after).left;
         afterDeps.remove(missed.getId());
         after.commit(afterDeps);
         Assert.assertEquals(Sets.newHashSet(previous.getId()), after.getDependencies());
-        state.saveInstance(after);
+        service.saveInstance(after);
 
         Set<UUID> proposedDeps = Sets.newHashSet(previous.getId());
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         handler.doEpochVerb(createMessage(incrementedCopy(missed), proposedDeps), 0);
 
         Assert.assertEquals(1, replies.size());
 
         TryPreacceptResponse response = (TryPreacceptResponse) replies.get(0).payload;
         Assert.assertEquals(TryPreacceptDecision.REJECTED, response.decision);
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
         Assert.assertEquals(Instance.State.PREACCEPTED, missed.getState());
     }
@@ -141,7 +141,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void contendedCase() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -150,32 +150,32 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
-        state.saveInstance(missed);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         // commit another in it's place, with no deps
-        Instance previous = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance previous = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         previous.commit(Collections.<UUID>emptySet());
-        state.addMissingInstance(previous);
+        service.addMissingInstance(previous);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
-        Instance after = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        after.accept(state.getCurrentDependencies(after).left);
+        Instance after = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        after.accept(service.getCurrentDependencies(after).left);
         Assert.assertEquals(Sets.newHashSet(missed.getId(), previous.getId()), after.getDependencies());
-        state.saveInstance(after);
+        service.saveInstance(after);
 
         Set<UUID> proposedDeps = Sets.newHashSet(previous.getId());
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         handler.doEpochVerb(createMessage(incrementedCopy(missed), proposedDeps), 0);
 
         Assert.assertEquals(1, replies.size());
 
         TryPreacceptResponse response = (TryPreacceptResponse) replies.get(0).payload;
         Assert.assertEquals(TryPreacceptDecision.CONTENDED, response.decision);
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
         Assert.assertEquals(Instance.State.PREACCEPTED, missed.getState());
     }
@@ -184,7 +184,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void nonPreacceptedInstanceRejected() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -193,21 +193,21 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.accept(state.getCurrentDependencies(missed).left);
-        state.saveInstance(missed);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.accept(service.getCurrentDependencies(missed).left);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Set<UUID> proposedDeps = Sets.newHashSet();
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         handler.doEpochVerb(createMessage(incrementedCopy(missed), proposedDeps), 0);
 
         Assert.assertEquals(1, replies.size());
 
         TryPreacceptResponse response = (TryPreacceptResponse) replies.get(0).payload;
         Assert.assertEquals(TryPreacceptDecision.REJECTED, response.decision);
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
         Assert.assertEquals(Instance.State.ACCEPTED, missed.getState());
     }
@@ -216,7 +216,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void ballotFailure() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -225,15 +225,15 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
         missed.updateBallot(5);
-        state.saveInstance(missed);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Set<UUID> proposedDeps = Sets.newHashSet();
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         // don't increment the ballot here
         handler.doEpochVerb(createMessage(missed, proposedDeps), 0);
 
@@ -243,7 +243,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         Assert.assertEquals(TryPreacceptDecision.REJECTED, response.decision);
         Assert.assertEquals(5, response.ballotFailure);
 
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
         Assert.assertEquals(Instance.State.PREACCEPTED, missed.getState());
     }
@@ -252,7 +252,7 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     public void epochVeto() throws Exception
     {
         final List<MessageOut> replies = new ArrayList<>(1);
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             @Override
             protected void sendReply(MessageOut message, int id, InetAddress to)
             {
@@ -261,13 +261,13 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         };
 
         // initially preaccept with no deps
-        Instance missed = state.createEpochInstance(TOKEN0, CFID, 2, DEFAULT_SCOPE);
-        missed.preaccept(state.getCurrentDependencies(missed).left);
-        state.saveInstance(missed);
+        Instance missed = service.createEpochInstance(TOKEN0, CFID, 2, DEFAULT_SCOPE);
+        missed.preaccept(service.getCurrentDependencies(missed).left);
+        service.saveInstance(missed);
         Assert.assertEquals(Collections.<UUID>emptySet(), missed.getDependencies());
 
         Assert.assertEquals(0, replies.size());
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         handler.doEpochVerb(createMessage(incrementedCopy(missed), Collections.<UUID>emptySet()), 0);
 
         Assert.assertEquals(1, replies.size());
@@ -275,15 +275,15 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         TryPreacceptResponse response = (TryPreacceptResponse) replies.get(0).payload;
         Assert.assertEquals(TryPreacceptDecision.ACCEPTED, response.decision);
         Assert.assertEquals(true, response.vetoed);
-        missed = state.loadInstance(missed.getId());
+        missed = service.loadInstance(missed.getId());
         Assert.assertEquals(Instance.State.PREACCEPTED, missed.getState());
     }
 
     @Test
     public void passiveRecord()
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
         Assert.assertFalse(handler.canPassiveRecord());
     }
 
@@ -295,11 +295,11 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     @Test(expected=RuntimeException.class)
     public void missingInstanceFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        MockCallbackService service = new MockCallbackService(3, 0);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
 
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
         handler.doEpochVerb(createMessage(missed, Collections.<UUID>emptySet()), 0);
     }
 
@@ -310,13 +310,13 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
     @Test(expected=RuntimeException.class)
     public void placeholderInstanceFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(state);
+        MockCallbackService service = new MockCallbackService(3, 0);
+        TryPreacceptVerbHandler handler = new TryPreacceptVerbHandler(service);
 
-        Instance missed = state.createQueryInstance(getSerializedCQLRequest(0, 0));
-        missed.preaccept(state.getCurrentDependencies(missed).left);
+        Instance missed = service.createQueryInstance(getSerializedCQLRequest(0, 0));
+        missed.preaccept(service.getCurrentDependencies(missed).left);
         missed.makePlacehoder();
-        state.saveInstance(missed);
+        service.saveInstance(missed);
         handler.doEpochVerb(createMessage(missed, Collections.<UUID>emptySet()), 0);
     }
 }

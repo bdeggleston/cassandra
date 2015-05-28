@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.*;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.service.epaxos.EpaxosState;
+import org.apache.cassandra.service.epaxos.EpaxosService;
 import org.apache.cassandra.service.epaxos.ExecutionInfo;
 import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.utils.UUIDGen;
@@ -252,7 +252,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     public void addEpaxosTransfer(UUID cfId, Range<Token> range, Scope scope)
     {
-        if (!EpaxosState.getInstance().managesCfId(cfId, scope))
+        if (!EpaxosService.getInstance().managesCfId(cfId, scope))
         {
             Pair<String, String> cf = Schema.instance.getCF(cfId);
             logger.info("Table {} not managed by epaxos, skipping token state transfer", cf != null ? cf : cfId);
@@ -797,7 +797,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         {
             for (EpaxosReceiveTask receiveTask: epaxosReceivers.values())
             {
-                EpaxosState.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId, receiveTask.scope);
+                EpaxosService.getInstance().prepareForIncomingStream(receiveTask.range, receiveTask.cfId, receiveTask.scope);
             }
         }
     }

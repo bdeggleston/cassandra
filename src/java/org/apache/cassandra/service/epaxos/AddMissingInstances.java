@@ -6,12 +6,12 @@ import java.util.Collection;
 public class AddMissingInstances implements Runnable
 {
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final Collection<Instance> instances;
 
-    public AddMissingInstances(EpaxosState state, Collection<Instance> instances)
+    public AddMissingInstances(EpaxosService service, Collection<Instance> instances)
     {
-        this.state = state;
+        this.service = service;
         this.instances = instances;
     }
 
@@ -20,7 +20,7 @@ public class AddMissingInstances implements Runnable
     {
         for (Instance instance: instances)
         {
-            state.addMissingInstance(instance);
+            service.addMissingInstance(instance);
         }
     }
 }

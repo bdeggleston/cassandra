@@ -15,20 +15,20 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
 {
     private static final Logger logger = LoggerFactory.getLogger(PrepareVerbHandler.class);
 
-    public PrepareVerbHandler(EpaxosState state)
+    public PrepareVerbHandler(EpaxosService service)
     {
-        super(state);
+        super(service);
     }
 
     @Override
     public void doEpochVerb(MessageIn<PrepareRequest> message, int id)
     {
         logger.debug("Prepare request received from {} for {}", message.from, message.payload.iid);
-        ReadWriteLock lock = state.getInstanceLock(message.payload.iid);
+        ReadWriteLock lock = service.getInstanceLock(message.payload.iid);
         lock.writeLock().lock();
         try
         {
-            Instance instance = state.loadInstance(message.payload.iid);
+            Instance instance = service.loadInstance(message.payload.iid);
 
             // generally, we don't want to send placeholder instances back from prepare requests, since
             // they complicate the prepare callback logic. If the ballot is 0, however, it means that the
@@ -43,7 +43,7 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
                 try
                 {
                     instance.checkBallot(message.payload.ballot);
-                    state.saveInstance(instance);
+                    service.saveInstance(instance);
                 }
                 catch (BallotException e)
                 {
@@ -67,11 +67,11 @@ public class PrepareVerbHandler extends AbstractEpochVerbHandler<PrepareRequest>
             MessageOut<MessageEnvelope<Instance>> reply = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                            new MessageEnvelope<>(token,
                                                                                                  cfId,
-                                                                                                 state.getCurrentEpoch(token, cfId, scope),
+                                                                                                 service.getCurrentEpoch(token, cfId, scope),
                                                                                                  scope,
                                                                                                  instance),
                                                                            Instance.envelopeSerializer);
-            state.sendReply(reply, id, message.from);
+            service.sendReply(reply, id, message.from);
         }
         finally
         {

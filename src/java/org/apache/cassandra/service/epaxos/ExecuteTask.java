@@ -17,19 +17,19 @@ public class ExecuteTask implements Runnable
 {
     private static final Logger logger = LoggerFactory.getLogger(ExecuteTask.class);
 
-    private final EpaxosState state;
+    private final EpaxosService service;
     private final UUID id;
 
-    public ExecuteTask(EpaxosState state, UUID id)
+    public ExecuteTask(EpaxosService service, UUID id)
     {
-        this.state = state;
+        this.service = service;
         this.id = id;
     }
 
     @Override
     public void run()
     {
-        Instance instance = state.getInstanceCopy(id);
+        Instance instance = service.getInstanceCopy(id);
 
         logger.debug("Running execution phase for instance {}, with deps: {}", id, instance.getDependencies());
 
@@ -40,14 +40,14 @@ public class ExecuteTask implements Runnable
         }
 
         assert instance.getState().atLeast(Instance.State.COMMITTED);
-        ExecutionSorter executionSorter = new ExecutionSorter(instance, state);
+        ExecutionSorter executionSorter = new ExecutionSorter(instance, service);
         executionSorter.buildGraph();
 
         if (!executionSorter.uncommitted.isEmpty())
         {
             logger.debug("Uncommitted ({}) instances found while attempting to execute {}:\n\t{}",
                          executionSorter.uncommitted.size(), id, executionSorter.uncommitted);
-            PrepareGroup prepareGroup = new PrepareGroup(state, id, executionSorter.uncommitted);
+            PrepareGroup prepareGroup = new PrepareGroup(service, id, executionSorter.uncommitted);
             prepareGroup.schedule();
         }
         else
@@ -55,9 +55,9 @@ public class ExecuteTask implements Runnable
             List<UUID> executionOrder = executionSorter.getOrder();
             for (UUID toExecuteId : executionOrder)
             {
-                ReadWriteLock lock = state.getInstanceLock(toExecuteId);
+                ReadWriteLock lock = service.getInstanceLock(toExecuteId);
                 lock.writeLock().lock();
-                Instance toExecute = state.loadInstance(toExecuteId);
+                Instance toExecute = service.loadInstance(toExecuteId);
                 try
                 {
                     if (toExecute.getState() == Instance.State.EXECUTED)
@@ -65,7 +65,7 @@ public class ExecuteTask implements Runnable
                         continue;
                     }
 
-                    if (state.isPaused(toExecute))
+                    if (service.isPaused(toExecute))
                     {
                         logger.debug("Execution is paused for instance {}. Deferring until unpause", toExecuteId);
                         return;
@@ -77,9 +77,9 @@ public class ExecuteTask implements Runnable
                     long maxTimestamp = 0;
                     try
                     {
-                        if (!instance.skipExecution() && state.canExecute(instance))
+                        if (!instance.skipExecution() && service.canExecute(instance))
                         {
-                            Pair<ReplayPosition, Long> result = state.executeInstance(toExecute);
+                            Pair<ReplayPosition, Long> result = service.executeInstance(toExecute);
                             if (result != null)
                             {
                                 position = result.left;
@@ -88,7 +88,7 @@ public class ExecuteTask implements Runnable
                         }
                         else if (instance.getType() != Instance.Type.QUERY)
                         {
-                            state.maybeSetResultFuture(instance.getId(), null);
+                            service.maybeSetResultFuture(instance.getId(), null);
                             logger.debug("Skipping execution for {}.", instance);
                         }
                     }
@@ -96,9 +96,9 @@ public class ExecuteTask implements Runnable
                     {
                         throw new RuntimeException(e);
                     }
-                    toExecute.setExecuted(state.getCurrentEpoch(instance));
-                    state.recordExecuted(toExecute, position, maxTimestamp);
-                    state.saveInstance(toExecute);
+                    toExecute.setExecuted(service.getCurrentEpoch(instance));
+                    service.recordExecuted(toExecute, position, maxTimestamp);
+                    service.saveInstance(toExecute);
 
                 }
                 finally

@@ -26,12 +26,12 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
     @Test
     public void normalCase() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
 
         FailureCallback failureCallback = new FailureCallback();
 
-        PreacceptTask task = new PreacceptTask.Leader(state, instance, failureCallback);
+        PreacceptTask task = new PreacceptTask.Leader(service, instance, failureCallback);
 
         Assert.assertEquals(0, instance.getBallot());
         Assert.assertEquals(Instance.State.INITIALIZED, instance.getState());
@@ -40,14 +40,14 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
 
         Assert.assertEquals(1, instance.getBallot());
         Assert.assertEquals(Instance.State.PREACCEPTED, instance.getState());
-        Assert.assertEquals(2, state.sentMessages.size());
+        Assert.assertEquals(2, service.sentMessages.size());
         Assert.assertFalse(failureCallback.called);
     }
 
     @Test
     public void quorumFailure() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0) {
+        MockCallbackService service = new MockCallbackService(3, 0) {
             protected Predicate<InetAddress> livePredicate()
             {
                 return new Predicate<InetAddress>()
@@ -59,11 +59,11 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
                 };
             }
         };
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
 
         FailureCallback failureCallback = new FailureCallback();
 
-        PreacceptTask task = new PreacceptTask.Leader(state, instance, failureCallback);
+        PreacceptTask task = new PreacceptTask.Leader(service, instance, failureCallback);
 
         Assert.assertEquals(0, instance.getBallot());
         Assert.assertEquals(Instance.State.INITIALIZED, instance.getState());
@@ -81,22 +81,22 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
         // instance should not have been preaccepted if a quorum couldn't be reached
         Assert.assertEquals(0, instance.getBallot());
         Assert.assertEquals(Instance.State.INITIALIZED, instance.getState());
-        Assert.assertEquals(0, state.sentMessages.size());
+        Assert.assertEquals(0, service.sentMessages.size());
         Assert.assertTrue(failureCallback.called);
     }
 
     @Test
     public void unexpectedInstanceState() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.accept(Collections.<UUID>emptySet());
         instance.checkBallot(1);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         FailureCallback failureCallback = new FailureCallback();
 
-        PreacceptTask task = new PreacceptTask.Prepare(state, instance.getId(), false, failureCallback);
+        PreacceptTask task = new PreacceptTask.Prepare(service, instance.getId(), false, failureCallback);
 
         Assert.assertEquals(1, instance.getBallot());
         Assert.assertEquals(Instance.State.ACCEPTED, instance.getState());
@@ -105,21 +105,21 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
 
         Assert.assertEquals(1, instance.getBallot());
         Assert.assertEquals(Instance.State.ACCEPTED, instance.getState());
-        Assert.assertEquals(0, state.sentMessages.size());
+        Assert.assertEquals(0, service.sentMessages.size());
         Assert.assertTrue(failureCallback.called);
     }
 
     @Test
     public void noopPrepare() throws Exception
     {
-        MockCallbackState state = new MockCallbackState(3, 0);
-        Instance instance = state.createQueryInstance(getSerializedCQLRequest(0, 0));
+        MockCallbackService service = new MockCallbackService(3, 0);
+        Instance instance = service.createQueryInstance(getSerializedCQLRequest(0, 0));
         instance.preaccept(Collections.<UUID>emptySet());
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         FailureCallback failureCallback = new FailureCallback();
 
-        PreacceptTask task = new PreacceptTask.Prepare(state, instance.getId(), true, failureCallback);
+        PreacceptTask task = new PreacceptTask.Prepare(service, instance.getId(), true, failureCallback);
 
         Assert.assertEquals(0, instance.getBallot());
         Assert.assertEquals(Instance.State.PREACCEPTED, instance.getState());
@@ -130,7 +130,7 @@ public class EpaxosPreacceptTaskTest extends AbstractEpaxosTest
         Assert.assertEquals(1, instance.getBallot());
         Assert.assertEquals(Instance.State.PREACCEPTED, instance.getState());
         Assert.assertTrue(instance.isNoop());
-        Assert.assertEquals(2, state.sentMessages.size());
+        Assert.assertEquals(2, service.sentMessages.size());
         Assert.assertFalse(failureCallback.called);
     }
 }

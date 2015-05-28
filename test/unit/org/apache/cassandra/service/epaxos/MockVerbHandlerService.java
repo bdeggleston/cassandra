@@ -12,7 +12,7 @@ import org.apache.cassandra.utils.Pair;
 import java.net.InetAddress;
 import java.util.*;
 
-public class MockVerbHandlerState extends MockMultiDcState
+public class MockVerbHandlerService extends MockMultiDcService
 {
 
     @Override

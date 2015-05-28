@@ -51,27 +51,27 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void newInstanceSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(expectedDeps);
 
-        state.currentDeps.addAll(expectedDeps);
+        service.currentDeps.addAll(expectedDeps);
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertTrue(response.payload.success);
         Assert.assertEquals(0, response.payload.ballotFailure);
         Assert.assertEquals(expectedDeps, response.payload.dependencies);
         Assert.assertEquals(0, response.payload.missingInstances.size());
 
-        Instance saved = state.savedInstances.get(instance.getId());
+        Instance saved = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.PREACCEPTED, saved.getState());
         Assert.assertEquals(expectedDeps, saved.getDependencies());
     }
@@ -79,8 +79,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void existingInstanceSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
@@ -89,22 +89,22 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
 
         Instance copy = instance.copy();
         copy.setDependencies(Sets.<UUID>newHashSet());
-        state.instanceMap.put(instance.getId(), copy);
+        service.instanceMap.put(instance.getId(), copy);
 
-        state.currentDeps.addAll(expectedDeps);
+        service.currentDeps.addAll(expectedDeps);
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertTrue(response.payload.success);
         Assert.assertEquals(0, response.payload.ballotFailure);
         Assert.assertEquals(expectedDeps, response.payload.dependencies);
         Assert.assertEquals(0, response.payload.missingInstances.size());
 
-        Instance saved = state.savedInstances.get(instance.getId());
+        Instance saved = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.PREACCEPTED, saved.getState());
         Assert.assertEquals(expectedDeps, saved.getDependencies());
     }
@@ -112,8 +112,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void disagreeingDepsSuccessCase() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         UUID dep1 = UUIDGen.getTimeUUID();
         UUID dep2 = UUIDGen.getTimeUUID();
@@ -121,21 +121,21 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(dep1, dep2));
 
-        state.currentDeps.add(dep1);
+        service.currentDeps.add(dep1);
         Set<UUID> expectedDeps = Sets.newHashSet(dep1);
 
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertFalse(response.payload.success);
         Assert.assertEquals(0, response.payload.ballotFailure);
         Assert.assertEquals(expectedDeps, response.payload.dependencies);
         Assert.assertEquals(0, response.payload.missingInstances.size());
 
-        Instance saved = state.savedInstances.get(instance.getId());
+        Instance saved = service.savedInstances.get(instance.getId());
         Assert.assertEquals(Instance.State.PREACCEPTED, saved.getState());
         Assert.assertEquals(expectedDeps, saved.getDependencies());
     }
@@ -143,8 +143,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void ballotFailure() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         Set<UUID> expectedDeps = Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID());
 
@@ -154,16 +154,16 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         Instance copy = instance.copy();
         copy.setDependencies(Sets.<UUID>newHashSet());
         copy.updateBallot(10);
-        state.instanceMap.put(instance.getId(), copy);
+        service.instanceMap.put(instance.getId(), copy);
 
-        state.currentDeps.addAll(expectedDeps);
+        service.currentDeps.addAll(expectedDeps);
         instance.incrementBallot();
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(0, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(0, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertFalse(response.payload.success);
         Assert.assertEquals(10, response.payload.ballotFailure);
         Assert.assertEquals(Collections.EMPTY_SET, response.payload.dependencies);
@@ -173,8 +173,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void missingInstanceReturned() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         UUID dep1 = UUIDGen.getTimeUUID();
         Instance missingInstance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
@@ -182,15 +182,15 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         Instance instance = new QueryInstance(getSerializedCQLRequest(0, 0), LEADER);
         instance.preaccept(Sets.newHashSet(dep1));
 
-        state.currentDeps.add(dep1);
-        state.currentDeps.add(missingInstance.getId());
-        state.instanceMap.put(missingInstance.getId(), missingInstance);
+        service.currentDeps.add(dep1);
+        service.currentDeps.add(missingInstance.getId());
+        service.instanceMap.put(missingInstance.getId(), missingInstance);
         handler.doVerb(createMessage(instance), 0);
 
-        Assert.assertEquals(1, state.savedInstances.size());
-        Assert.assertEquals(1, state.replies.size());
+        Assert.assertEquals(1, service.savedInstances.size());
+        Assert.assertEquals(1, service.replies.size());
 
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertEquals(1, response.payload.missingInstances.size());
         Assert.assertEquals(missingInstance.getId(), response.payload.missingInstances.get(0).getId());
 
@@ -204,8 +204,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void epochVetoBehindLocally() throws Exception
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
 
         Token token = DatabaseDescriptor.getPartitioner().getToken(ByteBufferUtil.bytes(1234));
         UUID cfId = UUIDGen.getTimeUUID();
@@ -213,16 +213,16 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
         long currentEpoch = 5;
         long remoteEpoch = 6;
         long proposedEpoch = 7;
-        TokenState tokenState = state.getTokenStateManager(DEFAULT_SCOPE).get(token, cfId);
+        TokenState tokenState = service.getTokenStateManager(DEFAULT_SCOPE).get(token, cfId);
         tokenState.setEpoch(currentEpoch);
-        state.getTokenStateManager(DEFAULT_SCOPE).save(tokenState);
+        service.getTokenStateManager(DEFAULT_SCOPE).save(tokenState);
 
         EpochInstance instance = new EpochInstance(LEADER, token, cfId, proposedEpoch, DEFAULT_SCOPE);
         instance.preaccept(Collections.EMPTY_SET);
         handler.doVerb(createMessage(instance, remoteEpoch), 0);
 
-        Assert.assertEquals(1, state.replies.size());
-        MessageOut<PreacceptResponse> response = state.replies.get(0);
+        Assert.assertEquals(1, service.replies.size());
+        MessageOut<PreacceptResponse> response = service.replies.get(0);
         Assert.assertFalse(response.payload.success);
         Assert.assertTrue(response.payload.vetoed);
     }
@@ -230,8 +230,8 @@ public class EpaxosPreacceptHandlerTest extends AbstractEpaxosTest
     @Test
     public void passiveRecord()
     {
-        MockVerbHandlerState state = new MockVerbHandlerState();
-        PreacceptVerbHandler handler = new PreacceptVerbHandler(state);
+        MockVerbHandlerService service = new MockVerbHandlerService();
+        PreacceptVerbHandler handler = new PreacceptVerbHandler(service);
         Assert.assertFalse(handler.canPassiveRecord());
     }
 }

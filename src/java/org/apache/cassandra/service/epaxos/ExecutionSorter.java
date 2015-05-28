@@ -22,18 +22,18 @@ public class ExecutionSorter
 
     private final Instance target;
     private final Set<UUID> targetDeps;
-    private final EpaxosState state;
+    private final EpaxosService service;
 
     // prevents saving the same scc over and over
     private final Map<UUID, Set<UUID>> loadedScc = Maps.newHashMap();
 
     private int traversals = 0;
 
-    ExecutionSorter(Instance target, EpaxosState state)
+    ExecutionSorter(Instance target, EpaxosService service)
     {
         this.target = target;
         targetDeps = target.getDependencies();
-        this.state = state;
+        this.service = service;
     }
 
     private void addInstance(Instance instance)
@@ -44,7 +44,7 @@ public class ExecutionSorter
         // we're not concerned with instances affecting tokens not replicated by this node
         // epoch instances from non-replicated tokens are sometimes streamed over during ring changes
         // from ring changes. This prevents those from causing problems
-        if (!state.replicates(instance))
+        if (!service.replicates(instance))
         {
             logger.debug("Excluding {} {} with non-replicated token {} from dependency graph of {}",
                          instance.getClass().getSimpleName(), instance.getId(), instance.getToken(), target.getId());
@@ -71,7 +71,7 @@ public class ExecutionSorter
                     boolean targetDep = targetDeps.contains(dep);
                     boolean required = requiredInstances.contains(dep);
 
-                    Instance depInstance = this.state.getInstanceCopy(dep);
+                    Instance depInstance = this.service.getInstanceCopy(dep);
                     boolean notExecuted;
                     if (depInstance == null)
                     {
@@ -79,7 +79,7 @@ public class ExecutionSorter
                         // epoch AND it's not not connected to the target instance by dependency or strongly connected
                         // component, it's been GC'd, and can be ignored
                         long parentEpoch = instance.getExecutionEpoch();
-                        long currentEpoch = state.getCurrentEpoch(instance);
+                        long currentEpoch = service.getCurrentEpoch(instance);
                         notExecuted = parentEpoch >= currentEpoch;
                     }
                     else
@@ -118,7 +118,7 @@ public class ExecutionSorter
             if (dependencyGraph.contains(dep))
                 continue;
 
-            Instance depInst = this.state.getInstanceCopy(dep);
+            Instance depInst = this.service.getInstanceCopy(dep);
             if (depInst == null)
             {
                 logger.debug("Unknown dependency encountered, adding to uncommitted. " + dep.toString());
@@ -160,9 +160,9 @@ public class ExecutionSorter
                             assert loadedScc.get(iid).equals(componentSet);
                             continue;
                         }
-                        Instance instance = state.loadInstance(iid);
+                        Instance instance = service.loadInstance(iid);
                         instance.setStronglyConnected(componentSet);
-                        state.saveInstance(instance);
+                        service.saveInstance(instance);
                     }
                 }
 

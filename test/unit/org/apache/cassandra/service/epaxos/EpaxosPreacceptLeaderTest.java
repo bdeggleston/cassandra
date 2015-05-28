@@ -15,10 +15,10 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
 
     private volatile AcceptDecision lastAcceptDecision = null;
 
-    private class State extends Node.SingleThreaded
+    private class Service extends Node.SingleThreaded
     {
 
-        private State(int number, Messenger messenger, String dc, String ksName)
+        private Service(int number, Messenger messenger, String dc, String ksName)
         {
             super(number, messenger, dc, ksName);
         }
@@ -40,7 +40,7 @@ public class EpaxosPreacceptLeaderTest extends AbstractEpaxosIntegrationTest.Sin
     @Override
     public Node createNode(int nodeNumber, Messenger messenger, String dc, String ks)
     {
-        return new State(nodeNumber, messenger, dc, ks);
+        return new Service(nodeNumber, messenger, dc, ks);
     }
 
     @Override

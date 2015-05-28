@@ -20,13 +20,13 @@ public abstract class PreacceptTask implements Runnable
 {
     protected static final Logger logger = LoggerFactory.getLogger(PreacceptTask.class);
 
-    protected final EpaxosState state;
+    protected final EpaxosService service;
     protected final UUID id;
     private final Runnable failureCallback;
 
-    protected PreacceptTask(EpaxosState state, UUID id, Runnable failureCallback)
+    protected PreacceptTask(EpaxosService service, UUID id, Runnable failureCallback)
     {
-        this.state = state;
+        this.service = service;
         this.id = id;
         this.failureCallback = failureCallback;
     }
@@ -39,8 +39,8 @@ public abstract class PreacceptTask implements Runnable
     {
         logger.debug("preaccepting instance {}, {}", id, this.getClass().getSimpleName());
         Instance instanceCopy;
-        EpaxosState.ParticipantInfo participantInfo;
-        ReadWriteLock lock = state.getInstanceLock(id);
+        EpaxosService.ParticipantInfo participantInfo;
+        ReadWriteLock lock = service.getInstanceLock(id);
         lock.writeLock().lock();
         try
         {
@@ -58,8 +58,8 @@ public abstract class PreacceptTask implements Runnable
                 return;
             }
 
-            participantInfo = state.getParticipants(instance);
-            if (!participantInfo.endpoints.contains(state.getEndpoint()))
+            participantInfo = service.getParticipants(instance);
+            if (!participantInfo.endpoints.contains(service.getEndpoint()))
             {
                 throw new AssertionError("Query should have been forwarded"
                                          + instance.getToken().toString() + " -> "
@@ -70,7 +70,7 @@ public abstract class PreacceptTask implements Runnable
             // won't have initialized instances floating around
             participantInfo.quorumExistsOrDie();
 
-            Pair<Set<UUID>, Range<Token>> attrs = state.getCurrentDependencies(instance);
+            Pair<Set<UUID>, Range<Token>> attrs = service.getCurrentDependencies(instance);
             instance.preaccept(attrs.left);
 
             if (instance instanceof TokenInstance)
@@ -79,7 +79,7 @@ public abstract class PreacceptTask implements Runnable
             }
 
             instance.incrementBallot();
-            state.saveInstance(instance);
+            service.saveInstance(instance);
 
             instanceCopy = instance.copy();
         }
@@ -98,18 +98,18 @@ public abstract class PreacceptTask implements Runnable
         sendMessage(instanceCopy, participantInfo);
     }
 
-    protected void sendMessage(Instance instance, EpaxosState.ParticipantInfo participantInfo)
+    protected void sendMessage(Instance instance, EpaxosService.ParticipantInfo participantInfo)
     {
         MessageOut<MessageEnvelope<Instance>> message = instance.getMessage(MessagingService.Verb.EPAXOS_PREACCEPT,
-                                                                            state.getTokenStateManager(instance).getEpoch(instance));
-        PreacceptCallback callback = state.getPreacceptCallback(instance, participantInfo, failureCallback, forceAccept());
+                                                                            service.getTokenStateManager(instance).getEpoch(instance));
+        PreacceptCallback callback = service.getPreacceptCallback(instance, participantInfo, failureCallback, forceAccept());
 
         for (InetAddress endpoint : participantInfo.liveEndpoints)
         {
-            if (!endpoint.equals(state.getEndpoint()))
+            if (!endpoint.equals(service.getEndpoint()))
             {
                 logger.debug("sending preaccept request to {} for instance {}", endpoint, instance.getId());
-                state.sendRR(message, endpoint, callback);
+                service.sendRR(message, endpoint, callback);
             }
             else
             {
@@ -124,14 +124,14 @@ public abstract class PreacceptTask implements Runnable
 
         private final Instance target;
 
-        public Leader(EpaxosState state, Instance target)
+        public Leader(EpaxosService service, Instance target)
         {
-            this(state, target, null);
+            this(service, target, null);
         }
 
-        public Leader(EpaxosState state, Instance target, Runnable failureCallback)
+        public Leader(EpaxosService service, Instance target, Runnable failureCallback)
         {
-            super(state, target.getId(), failureCallback);
+            super(service, target.getId(), failureCallback);
             this.target = target;
         }
 
@@ -154,16 +154,16 @@ public abstract class PreacceptTask implements Runnable
 
         private final boolean noop;
 
-        public Prepare(EpaxosState state, UUID id, boolean noop, Runnable failureCallback)
+        public Prepare(EpaxosService service, UUID id, boolean noop, Runnable failureCallback)
         {
-            super(state, id, failureCallback);
+            super(service, id, failureCallback);
             this.noop = noop;
         }
 
         @Override
         protected Instance getInstance()
         {
-            Instance instance = state.loadInstance(id);
+            Instance instance = service.loadInstance(id);
             assert instance != null;
             instance.setNoop(noop);
             return instance;

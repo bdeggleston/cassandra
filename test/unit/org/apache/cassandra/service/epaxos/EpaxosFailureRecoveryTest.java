@@ -17,7 +17,6 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,9 +33,9 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
 
     private static class InstrumentedFailureRecoveryTask extends FailureRecoveryTask
     {
-        private InstrumentedFailureRecoveryTask(EpaxosState state, Token token, UUID cfId, long epoch, Scope scope)
+        private InstrumentedFailureRecoveryTask(EpaxosService service, Token token, UUID cfId, long epoch, Scope scope)
         {
-            super(state, token, cfId, epoch, scope);
+            super(service, token, cfId, epoch, scope);
         }
 
         @Override
@@ -111,7 +110,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     {
         final Set<UUID> deleted = Sets.newHashSet();
 
-        EpaxosState state = new MockVerbHandlerState(){
+        EpaxosService service = new MockVerbHandlerService(){
 
             @Override
             void deleteInstance(UUID id)
@@ -122,7 +121,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
 
         final TokenState tokenState = new TokenState(range(TOKEN0, TOKEN0), CFID, 2, 5);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
-        Assert.assertFalse(state.managesCfId(CFID));
+        Assert.assertFalse(service.managesCfId(CFID));
 
         // make a bunch of keys & instance ids
         final Set<ByteBuffer> keys = Sets.newHashSet();
@@ -133,7 +132,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             ByteBuffer key = ByteBufferUtil.bytes(i);
             keys.add(key);
 
-            KeyState ks = state.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, CFID);
+            KeyState ks = service.getKeyStateManager(DEFAULT_SCOPE).loadKeyState(key, CFID);
             UUID prev = null;
             for (int j=0; j<9; j++)
             {
@@ -154,7 +153,7 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             Assert.assertTrue(ks.getEpochExecutions().size() > 0);
         }
 
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 3, DEFAULT_SCOPE)
+        FailureRecoveryTask task = new FailureRecoveryTask(service, TOKEN0, CFID, 3, DEFAULT_SCOPE)
         {
             @Override
             protected TokenState getTokenState()
@@ -163,11 +162,11 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
             }
         };
 
-        Assert.assertTrue(state.managesCfId(CFID));
+        Assert.assertTrue(service.managesCfId(CFID));
         Assert.assertTrue(deleted.isEmpty());
         for (ByteBuffer key: keys)
         {
-            Assert.assertTrue(state.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
+            Assert.assertTrue(service.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
         }
 
         task.preRecover();
@@ -177,19 +176,19 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Assert.assertEquals(expectedIds, deleted);
         for (ByteBuffer key: keys)
         {
-            Assert.assertFalse(state.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
+            Assert.assertFalse(service.getKeyStateManager(DEFAULT_SCOPE).managesKey(key, CFID));
         }
     }
 
     @Test
     public void preRecoverBailsIfNotBehindRemoteEpoch()
     {
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
-        state.getTokenStateManager(DEFAULT_SCOPE).save(tokenState);
+        service.getTokenStateManager(DEFAULT_SCOPE).save(tokenState);
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 2, DEFAULT_SCOPE);
+        FailureRecoveryTask task = new FailureRecoveryTask(service, TOKEN0, CFID, 2, DEFAULT_SCOPE);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.NORMAL, tokenState.getState());
@@ -200,11 +199,11 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     public void preRecoverAlwaysContinuesIfTokenStateIsNotNormal()
     {
 
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(DEFAULT_SCOPE).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERY_REQUIRED);
-        FailureRecoveryTask task = new FailureRecoveryTask(state, TOKEN0, CFID, 0, DEFAULT_SCOPE);
+        FailureRecoveryTask task = new FailureRecoveryTask(service, TOKEN0, CFID, 0, DEFAULT_SCOPE);
 
         task.preRecover();
         Assert.assertEquals(TokenState.State.PRE_RECOVERY, tokenState.getState());
@@ -213,12 +212,12 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void recoverInstancesTestGlobalScope()
     {
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.PRE_RECOVERY);
 
-        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.GLOBAL);
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(service, TOKEN0, CFID, 0, Scope.GLOBAL);
 
         task.recoverInstances();
         Assert.assertEquals(TokenState.State.RECOVERING_INSTANCES, tokenState.getState());
@@ -240,12 +239,12 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void recoverInstancesTestLocalScope()
     {
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.PRE_RECOVERY);
 
-        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.LOCAL);
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(service, TOKEN0, CFID, 0, Scope.LOCAL);
 
         task.recoverInstances();
         Assert.assertEquals(TokenState.State.RECOVERING_INSTANCES, tokenState.getState());
@@ -264,12 +263,12 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void recoverDataGlobalScope()
     {
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(Scope.GLOBAL).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
 
-        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.GLOBAL);
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(service, TOKEN0, CFID, 0, Scope.GLOBAL);
 
         task.recoverData();
         Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
@@ -281,12 +280,12 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void recoverDataLocalcope()
     {
-        EpaxosState state = new MockVerbHandlerState();
-        TokenState tokenState = state.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
+        EpaxosService service = new MockVerbHandlerService();
+        TokenState tokenState = service.getTokenStateManager(Scope.LOCAL).get(TOKEN0, CFID);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERING_INSTANCES);
 
-        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, CFID, 0, Scope.LOCAL);
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(service, TOKEN0, CFID, 0, Scope.LOCAL);
 
         task.recoverData();
         Assert.assertEquals(TokenState.State.RECOVERING_DATA, tokenState.getState());
@@ -299,16 +298,16 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     public void postRecoveryTask() throws Exception
     {
         final Set<UUID> executed = new HashSet<>();
-        EpaxosState state = new MockMultiDcState() {
+        EpaxosService service = new MockMultiDcService() {
             @Override
             public void execute(UUID instanceId)
             {
                 executed.add(instanceId);
             }
         };
-        ((MockTokenStateManager) state.getTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, token(100));
+        ((MockTokenStateManager) service.getTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, token(100));
 
-        TokenState tokenState = state.getTokenStateManager(Scope.GLOBAL).get(token(50), cfm.cfId);
+        TokenState tokenState = service.getTokenStateManager(Scope.GLOBAL).get(token(50), cfm.cfId);
         tokenState.setEpoch(2);
         tokenState.setState(TokenState.State.RECOVERING_DATA);
 
@@ -317,42 +316,42 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Set<UUID> expected = new HashSet<>();
 
         // key1, nothing committed
-        instance = state.createQueryInstance(getSerializedCQLRequest(10, 10));
-        instance.preaccept(state.getCurrentDependencies(instance).left);
-        state.saveInstance(instance);
+        instance = service.createQueryInstance(getSerializedCQLRequest(10, 10));
+        instance.preaccept(service.getCurrentDependencies(instance).left);
+        service.saveInstance(instance);
 
         // key2, 2 instances committed
-        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
-        instance.commit(state.getCurrentDependencies(instance).left);
-        state.saveInstance(instance);
+        instance = service.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(service.getCurrentDependencies(instance).left);
+        service.saveInstance(instance);
 
         lastId = instance.getId();
-        instance = state.createQueryInstance(getSerializedCQLRequest(20, 10));
-        instance.commit(state.getCurrentDependencies(instance).left);
-        state.saveInstance(instance);
+        instance = service.createQueryInstance(getSerializedCQLRequest(20, 10));
+        instance.commit(service.getCurrentDependencies(instance).left);
+        service.saveInstance(instance);
         expected.add(instance.getId());
 
         Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
 
         // key3, 1 committed, head executed
         // executed head will prevent 1st instance from being executed
-        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
-        instance.commit(state.getCurrentDependencies(instance).left);
-        state.saveInstance(instance);
+        instance = service.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(service.getCurrentDependencies(instance).left);
+        service.saveInstance(instance);
 
         lastId = instance.getId();
-        instance = state.createQueryInstance(getSerializedCQLRequest(30, 10));
-        instance.commit(state.getCurrentDependencies(instance).left);
+        instance = service.createQueryInstance(getSerializedCQLRequest(30, 10));
+        instance.commit(service.getCurrentDependencies(instance).left);
         instance.setExecuted(2);
-        state.saveInstance(instance);
+        service.saveInstance(instance);
 
         Assert.assertEquals(Sets.newHashSet(lastId), instance.getDependencies());
 
-        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(state, TOKEN0, cfm.cfId, 0, Scope.GLOBAL) {
+        InstrumentedFailureRecoveryTask task = new InstrumentedFailureRecoveryTask(service, TOKEN0, cfm.cfId, 0, Scope.GLOBAL) {
             @Override
             protected void runPostCompleteTask(TokenState tokenState)
             {
-                new PostStreamTask.Ranged(state, cfId, tokenState.getRange(), scope).run();
+                new PostStreamTask.Ranged(service, cfId, tokenState.getRange(), scope).run();
             }
         };
 
@@ -366,27 +365,27 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
     @Test
     public void pausedInstance() throws Exception
     {
-        MockMultiDcState state = new MockMultiDcState() {
+        MockMultiDcService service = new MockMultiDcService() {
             @Override
             public boolean replicates(Instance instance)
             {
                 return true;
             }
         };
-        ((MockTokenStateManager) state.createTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, TOKEN100);
+        ((MockTokenStateManager) service.createTokenStateManager(Scope.GLOBAL)).setTokens(TOKEN0, TOKEN100);
 
-        QueryInstance i1 = state.createQueryInstance(getSerializedCQLRequest(1, 1));
-        i1.commit(state.getCurrentDependencies(i1).left);
-        state.saveInstance(i1);
-        QueryInstance i2 = state.createQueryInstance(getSerializedCQLRequest(2, 2));
-        i2.commit(state.getCurrentDependencies(i2).left);
-        state.saveInstance(i2);
-        QueryInstance i3 = state.createQueryInstance(getSerializedCQLRequest(3, 3));
-        i3.commit(state.getCurrentDependencies(i3).left);
-        state.saveInstance(i3);
+        QueryInstance i1 = service.createQueryInstance(getSerializedCQLRequest(1, 1));
+        i1.commit(service.getCurrentDependencies(i1).left);
+        service.saveInstance(i1);
+        QueryInstance i2 = service.createQueryInstance(getSerializedCQLRequest(2, 2));
+        i2.commit(service.getCurrentDependencies(i2).left);
+        service.saveInstance(i2);
+        QueryInstance i3 = service.createQueryInstance(getSerializedCQLRequest(3, 3));
+        i3.commit(service.getCurrentDependencies(i3).left);
+        service.saveInstance(i3);
 
         for (Instance instance: new Instance[]{i1, i2, i3})
-            Assert.assertTrue(state.canExecute(instance));
+            Assert.assertTrue(service.canExecute(instance));
 
         ByteBuffer k1 = i1.getQuery().getKey();
         ByteBuffer k2 = i2.getQuery().getKey();
@@ -395,44 +394,44 @@ public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
         Set<ByteBuffer> keys1 = Sets.newHashSet(k1, k2);
         Set<ByteBuffer> keys2 = Sets.newHashSet(k2, k3);
 
-        EpaxosState.PausedKeys pause1 = state.pauseKeys(keys1, cfm.cfId);
-        Assert.assertEquals(1, state.numPauseSets());
-        EpaxosState.PausedKeys pause2 = state.pauseKeys(keys2, cfm.cfId);
-        Assert.assertEquals(2, state.numPauseSets());
+        EpaxosService.PausedKeys pause1 = service.pauseKeys(keys1, cfm.cfId);
+        Assert.assertEquals(1, service.numPauseSets());
+        EpaxosService.PausedKeys pause2 = service.pauseKeys(keys2, cfm.cfId);
+        Assert.assertEquals(2, service.numPauseSets());
 
         for (Instance instance: new Instance[]{i1, i2, i3})
-            Assert.assertTrue(state.isPaused(instance));
+            Assert.assertTrue(service.isPaused(instance));
 
         Assert.assertEquals(Sets.newHashSet(Pair.create(k1, Scope.GLOBAL), Pair.create(k2, Scope.GLOBAL)), pause1.getSkipped());
         Assert.assertEquals(Sets.newHashSet(Pair.create(k2, Scope.GLOBAL), Pair.create(k3, Scope.GLOBAL)), pause2.getSkipped());
 
         for (UUID id: new UUID[]{i1.getId(), i2.getId(), i3.getId()})
         {
-            Assert.assertEquals(Instance.State.COMMITTED, state.loadInstance(id).getState());
+            Assert.assertEquals(Instance.State.COMMITTED, service.loadInstance(id).getState());
         }
 
-        state.unPauseKeys(pause1); // should submit keys to be executed
-        Assert.assertEquals(1, state.numPauseSets());
+        service.unPauseKeys(pause1); // should submit keys to be executed
+        Assert.assertEquals(1, service.numPauseSets());
 
-        Assert.assertFalse(state.isPaused(i1));
+        Assert.assertFalse(service.isPaused(i1));
         for (Instance instance: new Instance[]{i2, i3})
-            Assert.assertTrue(state.isPaused(instance));
+            Assert.assertTrue(service.isPaused(instance));
 
-        Assert.assertEquals(Instance.State.EXECUTED, state.loadInstance(i1.getId()).getState());
+        Assert.assertEquals(Instance.State.EXECUTED, service.loadInstance(i1.getId()).getState());
         for (UUID id: new UUID[]{i2.getId(), i3.getId()})
         {
-            Assert.assertEquals(Instance.State.COMMITTED, state.loadInstance(id).getState());
+            Assert.assertEquals(Instance.State.COMMITTED, service.loadInstance(id).getState());
         }
 
-        state.unPauseKeys(pause2); // should submit keys to be executed
-        Assert.assertEquals(0, state.numPauseSets());
+        service.unPauseKeys(pause2); // should submit keys to be executed
+        Assert.assertEquals(0, service.numPauseSets());
 
         for (Instance instance: new Instance[]{i1, i2, i3})
-            Assert.assertFalse(state.isPaused(instance));
+            Assert.assertFalse(service.isPaused(instance));
 
         for (UUID id: new UUID[]{i1.getId(), i2.getId(), i3.getId()})
         {
-            Assert.assertEquals(Instance.State.EXECUTED, state.loadInstance(id).getState());
+            Assert.assertEquals(Instance.State.EXECUTED, service.loadInstance(id).getState());
         }
     }
 }

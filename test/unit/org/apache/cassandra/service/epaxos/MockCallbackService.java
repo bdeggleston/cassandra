@@ -1,20 +1,13 @@
 package org.apache.cassandra.service.epaxos;
 
-import com.google.common.base.Predicate;
-import org.apache.cassandra.net.IAsyncCallback;
-import org.apache.cassandra.net.MessageOut;
-import org.apache.cassandra.utils.ByteBufferUtil;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 
 /**
  * Mocked state for testing the behavior of callback classes
  */
-public class MockCallbackState extends MockMessengerState
+public class MockCallbackService extends MockMessengerService
 {
-    public MockCallbackState(int numLocal, int numRemote)
+    public MockCallbackService(int numLocal, int numRemote)
     {
         super(numLocal, numRemote);
     }
