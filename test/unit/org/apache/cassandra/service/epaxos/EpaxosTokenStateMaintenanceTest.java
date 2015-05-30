@@ -37,13 +37,6 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 public class EpaxosTokenStateMaintenanceTest extends AbstractEpaxosTest
 {
 
-    @Before
-    public void setUp()
-    {
-        clearTokenStates();
-        clearKeyStates();
-    }
-
     private static class EpochMaintenanceTask extends TokenStateMaintenanceTask
     {
         private EpochMaintenanceTask(EpaxosService service, Collection<TokenStateManager> tokenStateManagers)

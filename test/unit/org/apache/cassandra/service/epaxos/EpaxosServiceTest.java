@@ -18,9 +18,6 @@ public class EpaxosServiceTest extends AbstractEpaxosTest
     @Test
     public void deleteInstance() throws Exception
     {
-        clearInstances();
-        clearKeyStates();
-        clearTokenStates();
         final AtomicReference<Cache<UUID, Instance>> cacheRef = new AtomicReference<>();
 
         EpaxosService service = new EpaxosService() {

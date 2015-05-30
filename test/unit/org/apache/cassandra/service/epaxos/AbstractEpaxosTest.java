@@ -14,6 +14,7 @@ import org.apache.cassandra.cql3.statements.ModificationStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
@@ -137,65 +138,16 @@ public abstract class AbstractEpaxosTest
         Schema.instance.load(ksm);
     }
 
-    protected static void clearInstances()
+    private static void truncate(String table)
     {
-        String select = String.format("SELECT id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
-        String delete = String.format("DELETE FROM %s.%s WHERE id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_INSTANCE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (!result.isEmpty())
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getUUID("id"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
-    protected static void clearKeyStates()
-    {
-        String select = String.format("SELECT row_key FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE row_key=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_KEY_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (!result.isEmpty())
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("row_key"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
-    }
-
-    protected static void clearTokenStates()
-    {
-        String select = String.format("SELECT cf_id FROM %s.%s", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        String delete = String.format("DELETE FROM %s.%s WHERE cf_id=?", Keyspace.SYSTEM_KS, SystemKeyspace.EPAXOS_TOKEN_STATE);
-        UntypedResultSet result = QueryProcessor.executeInternal(select);
-
-        while (!result.isEmpty())
-        {
-            for (UntypedResultSet.Row row: result)
-            {
-                QueryProcessor.executeInternal(delete, row.getBlob("cf_id"));
-            }
-            result = QueryProcessor.executeInternal(select);
-        }
-
-        Assert.assertEquals(0, QueryProcessor.executeInternal(select).size());
+        Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(table).truncateBlocking();
     }
 
     protected static void clearAll()
     {
-        clearInstances();
-        clearKeyStates();
-        clearTokenStates();
+        truncate(SystemKeyspace.EPAXOS_INSTANCE);
+        truncate(SystemKeyspace.EPAXOS_KEY_STATE);
+        truncate(SystemKeyspace.EPAXOS_TOKEN_STATE);
     }
 
     @Before

@@ -37,13 +37,6 @@ public class EpaxosTryPreacceptHandlerTest extends AbstractEpaxosTest
         return copy;
     }
 
-    @Before
-    public void setUp()
-    {
-        clearKeyStates();
-        clearTokenStates();
-    }
-
     @Test
     public void successCase() throws Exception
     {

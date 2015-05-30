@@ -24,13 +24,6 @@ import java.util.UUID;
 
 public class EpaxosFailureRecoveryTest extends AbstractEpaxosTest
 {
-    @Before
-    public void setUp()
-    {
-        clearKeyStates();
-        clearTokenStates();
-    }
-
     private static class InstrumentedFailureRecoveryTask extends FailureRecoveryTask
     {
         private InstrumentedFailureRecoveryTask(EpaxosService service, Token token, UUID cfId, long epoch, Scope scope)
