@@ -6,7 +6,7 @@ import java.util.*;
  * Used by the execution stage to build up a directed (sometimes cyclic) graph,
  * which is then sorted to determine execution order.
  *
- * DependencyGraph is not thread safe, and getExecutionOrder should *only* be called once
+ * DependencyGraph is not thread safe, and getExecutionOrder should only be called once
  */
 public class DependencyGraph
 {
@@ -47,11 +47,7 @@ public class DependencyGraph
             if (tsDiff != 0)
                 return (int) tsDiff;
 
-            long msbDiff = o1.getMostSignificantBits() - o2.getMostSignificantBits();
-            if (msbDiff != 0)
-                return (int) msbDiff;
-
-            return (int) (o1.getLeastSignificantBits() - o2.getLeastSignificantBits());
+            return o1.compareTo(o2);
         }
     };
 
