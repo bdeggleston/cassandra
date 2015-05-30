@@ -88,6 +88,7 @@ public class SystemKeyspace
     public static final String EPAXOS_INSTANCE = "epaxos_instance";
     public static final String EPAXOS_KEY_STATE = "epaxos_key_state";
     public static final String EPAXOS_TOKEN_STATE = "epaxos_token_state";
+    public static final String PAXOS_UPGRADE = "paxos_upgrade";
 
     private static final String LOCAL_KEY = "local";
 

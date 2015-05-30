@@ -366,6 +366,11 @@ public final class CFMetaData
                                                                         + "data blob,"
                                                                         + "PRIMARY KEY (cf_id, token_bytes, scope))");
 
+    public static final CFMetaData PaxosUpgradeCF = compile("CREATE TABLE " + SystemKeyspace.PAXOS_UPGRADE + " ("
+                                                              + "key int PRIMARY KEY,"
+                                                              + "upgraded boolean,"
+                                                              + "last_ballot uuid)");
+
     public static class SpeculativeRetry
     {
         public enum RetryType

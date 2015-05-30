@@ -325,6 +325,11 @@ public class EpaxosService
         return Math.max(1, DatabaseDescriptor.getRpcTimeout() - (System.currentTimeMillis() - start));
     }
 
+    long getUpgradeTimeout()
+    {
+        return DatabaseDescriptor.getWriteRpcTimeout();
+    }
+
     /**
      * Initiates an epaxos instance and waits for the result to become available
      */
@@ -1170,6 +1175,8 @@ public class EpaxosService
         KeyStateManager keyStateManager = getKeyStateManager(scope);
 
         tokenStateManager.prepareForIncomingStream(range, cfId);
+
+        // TODO: replace below with call to EpaxosService.clearTokenStateData
         Iterator<CfKey> cfKeys = keyStateManager.getCfKeyIterator(range, cfId, 10000);
         while (cfKeys.hasNext())
         {
@@ -1202,6 +1209,53 @@ public class EpaxosService
         }
 
         return true;
+    }
+
+    void clearTokenStateData(TokenState ts, Scope scope, TokenState.State state)
+    {
+        ts.lock.writeLock().lock();
+        try
+        {
+            ts.setState(state);
+            getTokenStateManager(scope).save(ts);
+        }
+        finally
+        {
+            ts.lock.writeLock().unlock();
+        }
+
+        // erase data for all keys owned by recovering token manager
+        KeyStateManager ksm = getKeyStateManager(scope);
+        Iterator<CfKey> cfKeys = ksm.getCfKeyIterator(ts);
+        while (cfKeys.hasNext())
+        {
+            Set<UUID> toDelete = new HashSet<>();
+            CfKey cfKey = cfKeys.next();
+            ksm.getCfKeyLock(cfKey).lock();
+            try
+            {
+                KeyState ks = ksm.loadKeyState(cfKey);
+
+                toDelete.addAll(ks.getActiveInstanceIds());
+                for (Set<UUID> ids: ks.getEpochExecutions().values())
+                {
+                    toDelete.addAll(ids);
+                }
+                ksm.deleteKeyState(cfKey);
+            }
+            finally
+            {
+                ksm.getCfKeyLock(cfKey).unlock();
+            }
+
+            // aquiring the instance lock after the key state lock can create
+            // a deadlock, so we get all the instance ids we want to delete,
+            // then delete them after we're done deleting the key state
+            for (UUID id: toDelete)
+            {
+                deleteInstance(id);
+            }
+        }
     }
 
     public boolean managesCfId(UUID cfId, Scope scope)
@@ -1719,21 +1773,26 @@ public class EpaxosService
         return isInSameDC(address) ? Scope.BOTH : Scope.GLOBAL_ONLY;
     }
 
-    protected String getInstanceKeyspace(Instance instance)
+    protected String getCfIdKeyspace(UUID cfId)
     {
-        return Schema.instance.getCF(instance.getCfId()).left;
+        return Schema.instance.getCF(cfId).left;
     }
 
     protected ParticipantInfo getParticipants(Instance instance)
     {
-        String ks = getInstanceKeyspace(instance);
+        return getParticipants(instance.getToken(), instance.getCfId(), instance.getScope());
+    }
 
-        List<InetAddress> naturalEndpoints = getNaturalEndpoints(ks, instance.getToken());
-        Collection<InetAddress> pendingEndpoints = getPendingEndpoints(ks, instance.getToken());
+    protected ParticipantInfo getParticipants(Token token, UUID cfId, Scope scope)
+    {
+        String ks = getCfIdKeyspace(cfId);
+
+        List<InetAddress> naturalEndpoints = getNaturalEndpoints(ks, token);
+        Collection<InetAddress> pendingEndpoints = getPendingEndpoints(ks, token);
 
         List<InetAddress> endpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), duplicateFilter()));
         List<InetAddress> remoteEndpoints = null;
-        if (instance.getConsistencyLevel() == ConsistencyLevel.LOCAL_SERIAL)
+        if (scope == Scope.LOCAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
             String localDc = getDc();
@@ -1746,9 +1805,9 @@ public class EpaxosService
         if (endpoints.isEmpty())
         {
             logger.warn("no endpoints found for instance: {} at {}, natural: {}, pending: {}, remote: {}",
-                        instance, instance.getConsistencyLevel(), naturalEndpoints, pendingEndpoints, remoteEndpoints);
+                        scope, naturalEndpoints, pendingEndpoints, remoteEndpoints);
         }
-        return new ParticipantInfo(endpoints, remoteEndpoints, instance.getConsistencyLevel());
+        return new ParticipantInfo(endpoints, remoteEndpoints, scope.cl);
     }
 
     protected boolean isAlive(InetAddress endpoint)

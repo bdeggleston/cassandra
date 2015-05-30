@@ -302,7 +302,7 @@ public class Node extends EpaxosService
     }
 
     @Override
-    protected String getInstanceKeyspace(Instance instance)
+    protected String getCfIdKeyspace(UUID cfId)
     {
         return "ks";
     }

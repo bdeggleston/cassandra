@@ -261,12 +261,17 @@ public class TokenStateManager
         return replicated;
     }
 
+    ManagedCf getOrInitManagedCf(UUID cfId)
+    {
+        return getOrInitManagedCf(cfId, TokenState.State.NORMAL);
+    }
+
     /**
      * Returns the ManagedCf instance for the given cfId, if it exists. If it
      * doesn't exist, it will initialize the ManagedCf with token states at epoch
      * 0 for each token replicated by this node, for that token state.
      */
-    ManagedCf getOrInitManagedCf(UUID cfId)
+    ManagedCf getOrInitManagedCf(UUID cfId, TokenState.State defaultState)
     {
         ManagedCf cf = states.get(cfId);
         if (cf == null)
@@ -282,7 +287,7 @@ public class TokenStateManager
 
                 for (Range<Token> range: getReplicatedRangesForCf(cfId))
                 {
-                    TokenState ts = new TokenState(range, cfId, 0, 0);
+                    TokenState ts = new TokenState(range, cfId, 0, 0, defaultState);
                     TokenState prevTs = cf.putIfAbsent(ts);
                     assert prevTs == ts;
                     save(ts);
@@ -300,6 +305,11 @@ public class TokenStateManager
     public Scope getScope()
     {
         return scope;
+    }
+
+    public TokenState getWithDefaultState(Token token, UUID cfId, TokenState.State state)
+    {
+        return getOrInitManagedCf(cfId, state).get(token);
     }
 
     public TokenState get(CfKey cfKey)

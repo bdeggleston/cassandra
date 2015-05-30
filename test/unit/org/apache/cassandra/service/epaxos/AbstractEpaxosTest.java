@@ -114,6 +114,7 @@ public abstract class AbstractEpaxosTest
 
     protected static final Token TOKEN0 = token(0);
     protected static final Token TOKEN100 = token(100);
+    protected static final Range<Token> RANGE = new Range<>(TOKEN0, TOKEN100);
     protected static final UUID CFID = UUIDGen.getTimeUUID();
 
     static class DoNothing implements Runnable
@@ -148,6 +149,9 @@ public abstract class AbstractEpaxosTest
         truncate(SystemKeyspace.EPAXOS_INSTANCE);
         truncate(SystemKeyspace.EPAXOS_KEY_STATE);
         truncate(SystemKeyspace.EPAXOS_TOKEN_STATE);
+
+        truncate(SystemKeyspace.PAXOS_CF);
+        truncate(SystemKeyspace.PAXOS_UPGRADE);
     }
 
     @Before
