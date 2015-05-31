@@ -64,6 +64,8 @@ public class TokenStateMaintenanceTask implements Runnable
                     if (!replicatesTokenForKeyspace(token, cfId))
                         continue;
 
+                    // TODO: skip if not upgraded
+                    // TODO: test
                     TokenState ts = tsm.getExact(token, cfId);
 
                     ts.lock.readLock().lock();

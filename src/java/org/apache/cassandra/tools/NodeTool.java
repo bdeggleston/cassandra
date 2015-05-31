@@ -144,7 +144,10 @@ public class NodeTool
                 TruncateHints.class,
                 TpStats.class,
                 SetLoggingLevel.class,
-                GetLoggingLevels.class
+                GetLoggingLevels.class,
+                UpgradePaxos.class,
+                GetPaxosUpgrade.class,
+                PrintEpaxosStates.class
         );
 
         Cli<Runnable> parser = Cli.<Runnable>builder("nodetool")
@@ -2428,6 +2431,56 @@ public class NodeTool
             System.out.printf("%n%-50s%10s%n", "Logger Name", "Log Level");
             for (Map.Entry<String, String> entry : probe.getLoggingLevels().entrySet())
                 System.out.printf("%-50s%10s%n", entry.getKey(), entry.getValue());
+        }
+    }
+
+    @Command(name = "upgradepaxos", description = "Upgrade this token ranges replicate by this node to epaxos. All nodes must be upgraded to an epaxos compatible version before upgrading")
+    public static class UpgradePaxos extends NodeToolCmd
+    {
+        @Override
+        protected void execute(NodeProbe probe)
+        {
+            probe.upgradePaxos(System.out);
+        }
+    }
+
+    @Command(name = "getpaxosupgrade", description = "Print whether this node has been upgraded to epaxos")
+    public static class GetPaxosUpgrade extends NodeToolCmd
+    {
+        @Override
+        protected void execute(NodeProbe probe)
+        {
+            System.out.println("Is upgraded to epaxos: " + probe.paxosIsUpgraded());
+        }
+    }
+
+    @Command(name="epaxosstates", description = "prints the current state of epaxos token states", hidden = true)
+    public static class PrintEpaxosStates extends NodeToolCmd
+    {
+        @Override
+        protected void execute(NodeProbe probe)
+        {
+            Map<String, List<Map<String, String>>> tables = probe.getPaxosStates();
+            List<String> keys = new ArrayList<>(tables.keySet());
+            Collections.sort(keys);
+
+            int numTables = 0;
+            int numTokens = 0;
+
+            for (String key: keys)
+            {
+                numTables++;
+                System.out.println(key);
+                for (Map<String, String> attrs: tables.get(key))
+                {
+                    numTokens++;
+                    System.out.println(String.format("range: [%s,%s), epoch: %s, executed: %s, scope: %s, state: %s",
+                                                     attrs.get("tokenHi"), attrs.get("tokenLo"), attrs.get("epoch"),
+                                                     attrs.get("executions"), attrs.get("scope"), attrs.get("state")));
+                }
+            }
+
+            System.out.println(String.format("\n %s tables with %s token ranges", numTables, numTokens));
         }
     }
 

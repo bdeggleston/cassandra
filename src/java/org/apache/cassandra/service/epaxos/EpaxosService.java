@@ -45,18 +45,38 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
-public class EpaxosService
+public class EpaxosService implements EpaxosServiceMBean
 {
+    public static final String MBEAN_NAME = "org.apache.cassandra.service.epaxos:type=EpaxosService";
+
     private static class Handle
     {
-        private static final EpaxosService instance = new EpaxosService();
+        private static final EpaxosService instance;
+
+        static
+        {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                ObjectName jmxName = new ObjectName(MBEAN_NAME);
+                instance = new EpaxosService();
+                mbs.registerMBean(instance, jmxName);
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public static EpaxosService getInstance()
@@ -1870,4 +1890,41 @@ public class EpaxosService
         sleep(ThreadLocalRandom.current().nextInt(millis));
     }
 
+    @Override
+    public Map<String, List<Map<String, String>>> getTokenStates()
+    {
+        Map<String, List<Map<String, String>>> results = new HashMap<>();
+
+        Set<UUID> cfIds = new HashSet<>();
+        cfIds.addAll(getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds());
+        cfIds.addAll(getTokenStateManager(Scope.LOCAL).getAllManagedCfIds());
+
+        for (UUID cfId: cfIds)
+        {
+            Pair<String, String> ksTbl = Schema.instance.getCF(cfId);
+            String tbl = ksTbl.left + "." + ksTbl.right;
+
+            List<Map<String, String>> states = new LinkedList<>();
+            TokenStateManager tsm;
+            tsm = getTokenStateManager(Scope.GLOBAL);
+            for (Token token: tsm.allTokenStatesForCf(cfId))
+            {
+                TokenState ts = tsm.get(token, cfId);
+                Map<String, String> attrs = ts.jmxAttrs();
+                attrs.put("scope", Scope.GLOBAL.toString());
+                states.add(attrs);
+            }
+            tsm = getTokenStateManager(Scope.LOCAL);
+            for (Token token: tsm.allTokenStatesForCf(cfId))
+            {
+                TokenState ts = tsm.get(token, cfId);
+                Map<String, String> attrs = ts.jmxAttrs();
+                attrs.put("scope", Scope.LOCAL.toString());
+                states.add(attrs);
+            }
+
+            results.put(tbl, states);
+        }
+        return results;
+    }
 }

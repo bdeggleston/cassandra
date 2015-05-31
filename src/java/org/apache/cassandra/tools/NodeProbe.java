@@ -58,6 +58,10 @@ import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.MessagingServiceMBean;
 import org.apache.cassandra.service.*;
+import org.apache.cassandra.service.epaxos.EpaxosService;
+import org.apache.cassandra.service.epaxos.EpaxosServiceMBean;
+import org.apache.cassandra.service.epaxos.UpgradeService;
+import org.apache.cassandra.service.epaxos.UpgradeServiceMBean;
 import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.streaming.StreamManagerMBean;
 import org.apache.cassandra.streaming.management.StreamStateCompositeData;
@@ -90,6 +94,8 @@ public class NodeProbe implements AutoCloseable
     private CacheServiceMBean cacheService;
     private StorageProxyMBean spProxy;
     private HintedHandOffManagerMBean hhProxy;
+    private UpgradeServiceMBean upgradeProxy;
+    private EpaxosServiceMBean epaxosProxy;
     private boolean failed;
 
     /**
@@ -177,6 +183,10 @@ public class NodeProbe implements AutoCloseable
             gcProxy = JMX.newMBeanProxy(mbeanServerConn, name, GCInspectorMXBean.class);
             name = new ObjectName(Gossiper.MBEAN_NAME);
             gossProxy = JMX.newMBeanProxy(mbeanServerConn, name, GossiperMBean.class);
+            name = new ObjectName(UpgradeService.MBEAN_NAME);
+            upgradeProxy = JMX.newMBeanProxy(mbeanServerConn, name, UpgradeServiceMBean.class);
+            name = new ObjectName(EpaxosService.MBEAN_NAME);
+            epaxosProxy = JMX.newMBeanProxy(mbeanServerConn, name, EpaxosServiceMBean.class);
         }
         catch (MalformedObjectNameException e)
         {
@@ -1160,6 +1170,45 @@ public class NodeProbe implements AutoCloseable
     public Map<String, String> getLoggingLevels()
     {
         return ssProxy.getLoggingLevels();
+    }
+
+    public void upgradePaxos(PrintStream out)
+    {
+        UpgradeServiceMBean.UpgradeRunner runner = new UpgradeServiceMBean.UpgradeRunner(out);
+        try
+        {
+            jmxc.addConnectionNotificationListener(runner, null, null);
+            upgradeProxy.addNotificationListener(runner, null, null);
+            upgradeProxy.upgradeNode();
+            runner.await();
+        }
+        catch (Exception e)
+        {
+            out.println("Exception occurred during upgrade. " + e);
+            throw new RuntimeException(e);
+        }
+        finally
+        {
+            try
+            {
+                upgradeProxy.removeNotificationListener(runner);
+                jmxc.removeConnectionNotificationListener(runner);
+            }
+            catch (Throwable e)
+            {
+                out.println("Exception occurred during clean-up. " + e);
+            }
+        }
+    }
+
+    public boolean paxosIsUpgraded()
+    {
+        return upgradeProxy.isUpgraded();
+    }
+
+    public Map<String, List<Map<String, String>>> getPaxosStates()
+    {
+        return epaxosProxy.getTokenStates();
     }
 }
 

@@ -21,6 +21,7 @@ package org.apache.cassandra.service.epaxos;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -32,6 +33,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import javax.management.MBeanServer;
+import javax.management.Notification;
+import javax.management.NotificationBroadcasterSupport;
+import javax.management.ObjectName;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
@@ -104,11 +111,28 @@ import org.apache.cassandra.utils.UUIDSerializer;
  */
 // TODO: bootstrapping clusters should default to epaxos
 // TODO: new nodes should default to upgraded in a upgraded cluster (should be handled by streaming)
-public class UpgradeService
+public class UpgradeService extends NotificationBroadcasterSupport implements UpgradeServiceMBean
 {
+    public static final String MBEAN_NAME = "org.apache.cassandra.service.epaxos:type=UpgradeService";
+
     private static class Handle
     {
-        private static final UpgradeService instance = new UpgradeService();
+        private static final UpgradeService instance;
+
+        static
+        {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try
+            {
+                ObjectName jmxName = new ObjectName(MBEAN_NAME);
+                instance = new UpgradeService(jmxName);
+                mbs.registerMBean(instance, jmxName);
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public static UpgradeService instance()
@@ -123,6 +147,9 @@ public class UpgradeService
             super(message);
         }
     }
+
+    /* JMX notification serial number counter */
+    private final AtomicLong notificationSerialNumber = new AtomicLong();
 
     private static final Logger logger = LoggerFactory.getLogger(EpaxosService.class);
     private static final Comparator<UUID> comparator = new Comparator<UUID>()
@@ -145,10 +172,17 @@ public class UpgradeService
     private final String keyspace;
     private final String upgradeTable;
     private final String paxosTable;
+    private final ObjectName jmxName;
 
     private volatile boolean started = false;
     private volatile boolean upgraded = false;
     private volatile UUID lastBallot = MIN_BALLOT;
+
+
+    public UpgradeService(ObjectName jmxName)
+    {
+        this(EpaxosService.getInstance(), SystemKeyspace.PAXOS_UPGRADE, SystemKeyspace.PAXOS_CF, jmxName);
+    }
 
     public UpgradeService()
     {
@@ -162,10 +196,16 @@ public class UpgradeService
 
     public UpgradeService(EpaxosService service, String upgradeTable, String paxosTable)
     {
+        this(service, upgradeTable, paxosTable, null);
+    }
+
+    public UpgradeService(EpaxosService service, String upgradeTable, String paxosTable, ObjectName jmxName)
+    {
         this.service = service;
         this.upgradeTable = upgradeTable;
         this.paxosTable = paxosTable;
         keyspace = service.getKeyspace();
+        this.jmxName = jmxName;
     }
 
     private TokenState.State defaultState()
@@ -461,29 +501,46 @@ public class UpgradeService
 
     // upgrade stuff
 
-    public int upgradeNode()
+    @Override
+    public void upgradeNode()
     {
-        // TODO: fancy jmx notifications
-        checkStarted();
-        if (upgraded)
+        try
         {
-            // TODO: test
-            logger.info("Paxos already upgraded");
-            return 0;
-        }
-        // TODO: maybe lock queries on new cfIds
-        Set<UUID> cfIds = new HashSet<>();
-        cfIds.addAll(service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds());
-        cfIds.addAll(service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds());
+            checkStarted();
+            if (upgraded)
+            {
+                logger.info("Paxos already upgraded");
+                sendNotification("cancel", "paxos is already upgraded");
+                return;
+            }
+            // TODO: maybe lock queries on new cfIds
+            Set<UUID> cfIds = new HashSet<>();
+            cfIds.addAll(service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds());
+            cfIds.addAll(service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds());
 
-        int failures = 0;
-        for (UUID cfId: cfIds)
-        {
-            logger.info("Upgrading paxos on {}", Schema.instance.getCF(cfId));
-            failures += upgradeCfScope(cfId, Scope.GLOBAL);
-            failures += upgradeCfScope(cfId, Scope.LOCAL);
+            int tables = 0;
+            int failures = 0;
+            for (UUID cfId: cfIds)
+            {
+                logger.info("Upgrading paxos on {}", Schema.instance.getCF(cfId));
+                sendNotification("upgrading", "Upgrading %s", Schema.instance.getCF(cfId));
+                failures += upgradeCfScope(cfId, Scope.GLOBAL);
+                failures += upgradeCfScope(cfId, Scope.LOCAL);
+                tables++;
+            }
+            refreshUpgradedStatus();
+            if (tables == 0 && failures == 0)
+            {
+                upgraded = true;
+                saveState();
+            }
+            logger.info("Upgraded {} tables with {} errors. upgraded: {}", tables, failures, upgraded);
+            sendNotification("finished", "Upgraded %s tables with %s errors. upgraded: %s", tables, failures, upgraded);
         }
-        return failures;
+        finally
+        {
+            sendNotification(COMPLETE_NOTIFICATION, "done");
+        }
     }
 
     protected int upgradeCfScope(UUID cfId, Scope scope)
@@ -499,9 +556,11 @@ public class UpgradeService
                 TokenState ts = tsm.getExact(token, cfId);
                 assert ts != null;
 
+                sendNotification("upgrading", "%s:%s on %s", ts.getRange(), scope, tbl);
                 if (TokenState.State.isUpgraded(ts.getState()))
                 {
                     logger.debug("Range {}:{} for {} is already upgraded, skipping", ts.getRange(), scope, tbl);
+                    sendNotification("skipping", "%s:%s on %s - already upgraded", ts.getRange(), scope, tbl);
                     continue;
                 }
 
@@ -512,6 +571,7 @@ public class UpgradeService
                 }
                 catch (UpgradeFailure e)
                 {
+                    sendNotification("error", "%s:%s on %s: %s", ts.getRange(), scope, tbl, e.getMessage());
                     logger.warn("Unable to upgrade {}:{} for {}. {}", ts.getRange(), scope, tbl, e.getMessage());
                     failures++;
                 }
@@ -1099,4 +1159,20 @@ public class UpgradeService
             return handler;
         }
     }
+
+    public static IVerbHandler wrap(final IVerbHandler handler)
+    {
+        return instance().maybeWrapVerbHandler(handler);
+    }
+
+    private void sendNotification(String type, String fmt, Object... args)
+    {
+        if (jmxName != null)
+        {
+            String message = String.format(fmt, args);
+            Notification jmxNotification = new Notification(type, jmxName, notificationSerialNumber.incrementAndGet(), message);
+            sendNotification(jmxNotification);
+        }
+    }
+
 }

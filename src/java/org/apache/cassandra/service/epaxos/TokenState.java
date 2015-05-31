@@ -10,6 +10,7 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -507,5 +508,16 @@ public class TokenState
                 ", executions=" + executions +
                 ", state=" + state +
                 '}';
+    }
+
+    public Map<String, String> jmxAttrs()
+    {
+        Map<String, String> attrs = new HashMap<>();
+        attrs.put("tokenHi", token.toString());
+        attrs.put("tokenLo", predecessor.toString());
+        attrs.put("epoch", String.format("%s", epoch));
+        attrs.put("executions", String.format("%s", executions));
+        attrs.put("state", state.toString());
+        return attrs;
     }
 }
