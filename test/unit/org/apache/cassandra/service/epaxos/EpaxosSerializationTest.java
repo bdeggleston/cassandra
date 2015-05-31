@@ -42,7 +42,7 @@ import java.util.*;
 
 public class EpaxosSerializationTest
 {
-
+    // TODO: use MS.current_version in all serialization tests
     private static KSMetaData ksm;
     private static CFMetaData cqlcf;
     private static CFMetaData thriftcf;

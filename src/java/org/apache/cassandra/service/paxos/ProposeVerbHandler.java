@@ -21,18 +21,41 @@ package org.apache.cassandra.service.paxos;
  */
 
 
+import java.util.Set;
+import java.util.UUID;
+
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.epaxos.UpgradeService;
 import org.apache.cassandra.utils.BooleanSerializer;
+
+import static org.apache.cassandra.service.epaxos.UpgradeService.*;
 
 public class ProposeVerbHandler implements IVerbHandler<Commit>
 {
     public void doVerb(MessageIn<Commit> message, int id)
     {
+        // TODO: fail if we've been upgraded
         Boolean response = PaxosState.propose(message.payload);
+
+        Set<UUID> deps = null;
+        if (response)
+        {
+            deps = UpgradeService.instance().reportPaxosProposal(message.payload,
+                                                                 message.from,
+                                                                 clFromBytes(message.parameters.get(PAXOS_CONSISTEMCY_PARAM)));
+        }
+
         MessageOut<Boolean> reply = new MessageOut<Boolean>(MessagingService.Verb.REQUEST_RESPONSE, response, BooleanSerializer.serializer);
+
+        // TODO: add parameter for 'upgraded to epaxos - request failed'
+        if (deps != null)
+        {
+            reply = reply.withParameter(PAXOS_DEPS_PARAM, depsToBytes(deps));
+        }
+
         MessagingService.instance().sendReply(reply, id, message.from);
     }
 }

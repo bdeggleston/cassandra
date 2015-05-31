@@ -310,16 +310,4 @@ public class EpaxosUpgradeLeaderTest extends AbstractEpaxosTest
         service.complete(RANGE, CFID, Scope.GLOBAL, targets, ballot);
         checkRequests(new Request(RANGE, CFID, Scope.GLOBAL, ballot, Stage.COMPLETE));
     }
-
-    @Test
-    public void fullCycleSuccess()
-    {
-
-    }
-
-    @Test
-    public void fullCycleFailures()
-    {
-
-    }
 }

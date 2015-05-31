@@ -3,6 +3,7 @@ package org.apache.cassandra.service.epaxos;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -307,9 +308,15 @@ public class TokenStateManager
         return scope;
     }
 
+    public TokenState getWithDefaultState(ByteBuffer key, UUID cfId, TokenState.State state)
+    {
+        return getWithDefaultState(DatabaseDescriptor.getPartitioner().getToken(key), cfId, state);
+    }
+
     public TokenState getWithDefaultState(Token token, UUID cfId, TokenState.State state)
     {
-        return getOrInitManagedCf(cfId, state).get(token);
+        getOrInitManagedCf(cfId, state);
+        return get(token, cfId);
     }
 
     public TokenState get(CfKey cfKey)

@@ -5,8 +5,13 @@ import java.util.Queue;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedTransferQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class QueuedExecutor extends AbstractExecutorService
 {
+    private static final Logger logger = LoggerFactory.getLogger(QueuedExecutor.class);
+
     private Queue<Runnable> queue = new LinkedTransferQueue<>();
     private volatile int executed = 0;
 
@@ -76,5 +81,24 @@ public class QueuedExecutor extends AbstractExecutorService
     {
         assertThread();
         postRunCallbacks.add(r);
+    }
+
+    public void sleep(int numTasks)
+    {
+        logger.debug("Sleeping for {} tasks", numTasks);
+        // same as maybe run, except queue.remove is called before getting the next task/ instead of after. This
+        // is because the calling task will still be at the head of the queue, and the last task we run will be
+        // removed by maybeRun
+        for (int i=0; i<numTasks; i++)
+        {
+            queue.remove(); // this is here so that the current (calling) task isn't run twice, and the last task is removed by maybeRun
+            Runnable nextTask = queue.peek();  // prevents the next added task thinking it should run
+            nextTask.run();
+            executed++;
+            for (Runnable r: postRunCallbacks)
+            {
+                r.run();
+            }
+        }
     }
 }

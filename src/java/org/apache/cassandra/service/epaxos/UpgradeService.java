@@ -19,8 +19,10 @@
 package org.apache.cassandra.service.epaxos;
 
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -43,17 +45,24 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.service.ThriftCASRequest;
+import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
+import org.apache.cassandra.service.paxos.Commit;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.UUIDSerializer;
@@ -134,8 +143,8 @@ public class UpgradeService
 
     private final EpaxosService service;
     private final String keyspace;
-    private final String paxosTable;
     private final String upgradeTable;
+    private final String paxosTable;
 
     private volatile boolean started = false;
     private volatile boolean upgraded = false;
@@ -148,15 +157,20 @@ public class UpgradeService
 
     public UpgradeService(EpaxosService service)
     {
-        this(service, SystemKeyspace.PAXOS_CF, SystemKeyspace.PAXOS_UPGRADE);
+        this(service, SystemKeyspace.PAXOS_UPGRADE, SystemKeyspace.PAXOS_CF);
     }
 
-    public UpgradeService(EpaxosService service, String paxosTable, String upgradeTable)
+    public UpgradeService(EpaxosService service, String upgradeTable, String paxosTable)
     {
         this.service = service;
-        this.paxosTable = paxosTable;
         this.upgradeTable = upgradeTable;
+        this.paxosTable = paxosTable;
         keyspace = service.getKeyspace();
+    }
+
+    private TokenState.State defaultState()
+    {
+        return upgraded ? TokenState.State.NORMAL : TokenState.State.INACTIVE;
     }
 
     private void saveState()
@@ -211,6 +225,19 @@ public class UpgradeService
             }
         }
         started = true;
+
+        // TODO: add default setting to cassandra.yaml
+        // TODO: if no paxos data and default is set to epaxos, set upgraded
+        if (!upgraded)
+        {
+            logger.warn("Previous paxos data detected and/or epaxos not enabled in cassandra.yaml. " +
+                        "Run nodetool upgradepaxos after entire ring is upgraded to use epaxos");
+        }
+    }
+
+    public boolean isUpgraded()
+    {
+        return upgraded;
     }
 
     // runtime stuff
@@ -218,10 +245,8 @@ public class UpgradeService
     public boolean isUpgradedForQuery(Token token, UUID cfId, Scope scope)
     {
         checkStarted();
-        // TODO: test
         if (upgraded)
             return true;
-        // TODO: test
         TokenState ts = service.getTokenStateManager(scope).getWithDefaultState(token, cfId, TokenState.State.INACTIVE);
         return TokenState.State.isUpgraded(ts.getState());
     }
@@ -230,9 +255,37 @@ public class UpgradeService
      * after token states are set to normal, this checks all token
      * states, and sets the status to upgraded if they're all normal
      */
-    protected void reevaluateUpgradedStatus()
+    protected void refreshUpgradedStatus()
     {
-        // TODO: this
+        for (Scope scope: Scope.BOTH)
+        {
+            TokenStateManager tsm = service.getTokenStateManager(scope);
+            for (UUID cfId: tsm.getAllManagedCfIds())
+            {
+                for (Token token: tsm.getManagedTokensForCf(cfId))
+                {
+                    TokenState ts = tsm.getExact(token, cfId);
+                    if (ts == null)
+                        continue;
+
+                    ts.lock.readLock().lock();
+                    try
+                    {
+                        if (!TokenState.State.isUpgraded(ts.getState()))
+                            return;
+                    }
+                    finally
+                    {
+                        ts.lock.readLock().unlock();
+                    }
+                }
+            }
+        }
+
+        // either every token state is upgraded, or someone
+        // called upgrade on a node with no token states
+        upgraded = true;
+        saveState();
     }
 
     public void reportEpaxosActivity(Token token, UUID cfId, Scope scope)
@@ -253,6 +306,7 @@ public class UpgradeService
                 {
                     ts.setState(TokenState.State.NORMAL);
                     tsm.save(ts);
+                    refreshUpgradedStatus();
                 }
             }
             finally
@@ -260,18 +314,154 @@ public class UpgradeService
                 ts.lock.writeLock().unlock();
             }
         }
-        // TODO: re-evaluate upgraded state
     }
 
-    public void reportPaxosCommit()
+    public static final String PAXOS_DEPS_PARAM = "EPX";
+    public static final String PAXOS_CONSISTEMCY_PARAM = "SCL";
+
+    public static byte[] clToBytes(ConsistencyLevel cl)
+    {
+        assert cl.isSerialConsistency();
+        return new byte[]{(byte)cl.ordinal()};
+    }
+
+    public static ConsistencyLevel clFromBytes(byte[] bytes)
+    {
+        if (bytes == null)
+            return null;
+        assert bytes.length == 1;
+        ConsistencyLevel cl = ConsistencyLevel.values()[bytes[0]];
+        assert cl.isSerialConsistency();
+        return cl;
+    }
+
+    public static byte[] depsToBytes(Set<UUID> deps)
+    {
+        int version = MessagingService.VERSION_30;
+        try (DataOutputBuffer out = new DataOutputBuffer((int) Serializers.uuidSets.serializedSize(deps, version) + 4))
+        {
+            out.writeInt(version);
+            Serializers.uuidSets.serialize(deps, out, version);
+            return out.getData();
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
+        }
+    }
+
+    public static Set<UUID> depsFromBytes(byte[] bytes)
+    {
+        if (bytes == null)
+            return null;
+
+        try (DataInputStream in = new DataInputStream(ByteBufferUtil.inputStream(ByteBuffer.wrap(bytes))))
+        {
+            int version = in.readInt();
+            return Serializers.uuidSets.deserialize(in, version);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError();
+        }
+    }
+
+    public Set<UUID> reportPaxosProposal(Commit proposal, InetAddress from, ConsistencyLevel cl)
+    {
+        // don't create instance for local_serial instance from other DC
+        if (cl == ConsistencyLevel.LOCAL_SERIAL && !service.getDc().equals(service.getDc(from)))
+        {
+            return null;
+        }
+
+        TokenState ts = service.getTokenStateManager(Scope.get(cl)).getWithDefaultState(proposal.key, proposal.update.id(), defaultState());
+        if (ts.getState() != TokenState.State.UPGRADING)
+        {
+            logger.debug("Skipping proposal report for ts {}, which is not upgrading", ts);
+            return null;
+        }
+
+        // TODO: maybe noop uncommitted deps?
+
+        CASRequest request = new ThriftCASRequest(null, proposal.update, true);
+
+        Pair<String, String> cf = Schema.instance.getCF(proposal.update.id());
+        SerializedRequest.Builder builder = SerializedRequest.builder();
+        builder.keyspaceName(cf.left)
+               .cfName(cf.right)
+               .consistencyLevel(cl)
+               .key(proposal.key)
+               .casRequest(request);
+
+        Instance instance = new QueryInstance(proposal.ballot, builder.build(), from);
+        try
+        {
+            Set<UUID> deps = service.getCurrentDependencies(instance).left;
+            instance.preaccept(deps, deps);
+        }
+        catch (InvalidInstanceStateChange e)
+        {
+            throw new AssertionError(e);
+        }
+
+        service.saveInstance(instance);
+        return instance.getDependencies();
+    }
+
+    /**
+     * TODO: explain how this works with the upgrade protocol
+     * TODO: explain why alwaysApplies makes sense
+     */
+    public void reportPaxosCommit(Commit commit, InetAddress from, ConsistencyLevel cl, Set<UUID> deps)
     {
         checkStarted();
 
+        if (cl == null || deps == null)
+        {
+            return;
+        }
+
+        // don't create instance for local_serial instance from other DC
+        if (cl == ConsistencyLevel.LOCAL_SERIAL && !service.getDc().equals(service.getDc(from)))
+        {
+            return;
+        }
+
+        // TODO: check that ts is in upgrading or normal state
+
+        Instance instance = service.loadInstance(commit.ballot);
+        if (instance == null)
+        {
+            CASRequest request = new ThriftCASRequest(null, commit.update, true);
+
+            Pair<String, String> cf = Schema.instance.getCF(commit.update.id());
+            SerializedRequest.Builder builder = SerializedRequest.builder();
+            builder.keyspaceName(cf.left)
+                   .cfName(cf.right)
+                   .consistencyLevel(cl)
+                   .key(commit.key)
+                   .casRequest(request);
+
+            instance = new QueryInstance(commit.ballot, builder.build(), from);
+        }
+
+        try
+        {
+            instance.commit(deps);
+        }
+        catch (InvalidInstanceStateChange e)
+        {
+            throw new AssertionError(e);
+        }
+        instance.setExecuted(0);
+        service.recordAcknowledgedDeps(instance);
+        service.recordExecuted(instance, null, commit.update.maxTimestamp());
+        service.saveInstance(instance);
     }
 
     // upgrade stuff
 
-    public void upgradeNode()
+    public int upgradeNode()
     {
         // TODO: fancy jmx notifications
         checkStarted();
@@ -279,22 +469,24 @@ public class UpgradeService
         {
             // TODO: test
             logger.info("Paxos already upgraded");
-            return;
+            return 0;
         }
         // TODO: maybe lock queries on new cfIds
         Set<UUID> cfIds = new HashSet<>();
         cfIds.addAll(service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds());
         cfIds.addAll(service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds());
 
+        int failures = 0;
         for (UUID cfId: cfIds)
         {
             logger.info("Upgrading paxos on {}", Schema.instance.getCF(cfId));
-            upgradeCfScope(cfId, Scope.GLOBAL);
-            upgradeCfScope(cfId, Scope.LOCAL);
+            failures += upgradeCfScope(cfId, Scope.GLOBAL);
+            failures += upgradeCfScope(cfId, Scope.LOCAL);
         }
+        return failures;
     }
 
-    protected void upgradeCfScope(UUID cfId, Scope scope)
+    protected int upgradeCfScope(UUID cfId, Scope scope)
     {
         int numUpgraded = 0;
         int failures = 0;
@@ -309,7 +501,6 @@ public class UpgradeService
 
                 if (TokenState.State.isUpgraded(ts.getState()))
                 {
-                    // TODO: test
                     logger.debug("Range {}:{} for {} is already upgraded, skipping", ts.getRange(), scope, tbl);
                     continue;
                 }
@@ -332,11 +523,7 @@ public class UpgradeService
             logger.info("No ranges to upgrade for {}", Schema.instance.getCF(cfId));
         }
 
-        if (failures == 0)
-        {
-            upgraded = true;
-            saveState();
-        }
+        return failures;
     }
 
     public static enum Stage { BEGIN, UPGRADE, COMPLETE }
@@ -364,7 +551,7 @@ public class UpgradeService
         {
             newBallot = UUIDGen.getTimeUUID();
         }
-        while (comparator.compare(newBallot, lastBallot) > 0);
+        while (comparator.compare(lastBallot, newBallot) > 0);
         return newBallot;
     }
 
@@ -506,11 +693,8 @@ public class UpgradeService
     protected synchronized Response handleRequest(Request request)
     {
         checkStarted();
-        // TODO: handle cases where the node is already upgraded
-        // TODO: test everything
         TokenStateManager tsm = service.getTokenStateManager(request.scope);
-        tsm.getOrInitManagedCf(request.cfId, upgraded ? TokenState.State.NORMAL : TokenState.State.INACTIVE);
-        TokenState ts = tsm.get(request.range.right, request.cfId);
+        TokenState ts = tsm.getWithDefaultState(request.range.right, request.cfId, defaultState());
         ts.lock.writeLock().lock();
 
         if (TokenState.State.isUpgraded(ts.getState()))
@@ -547,9 +731,11 @@ public class UpgradeService
                 case COMPLETE:
                     ts.setState(TokenState.State.NORMAL);
                     tsm.save(ts);
+                    refreshUpgradedStatus();
                     return null;
             }
-            return null;
+            // shouldn't be reachable
+            throw new AssertionError();
         }
         finally
         {
@@ -889,5 +1075,28 @@ public class UpgradeService
     public IVerbHandler<Request> getVerbHandler()
     {
         return new Handler();
+    }
+
+    public IVerbHandler maybeWrapVerbHandler(final IVerbHandler handler)
+    {
+        if (handler instanceof AbstractEpochVerbHandler && !upgraded)
+        {
+            return new IVerbHandler()
+            {
+                @Override
+                public void doVerb(MessageIn message, int id)
+                {
+                    IEpochMessage epochMessage = (IEpochMessage) message.payload;
+
+                    reportEpaxosActivity(epochMessage.getToken(), epochMessage.getCfId(), epochMessage.getScope());
+
+                    handler.doVerb(message, id);
+                }
+            };
+        }
+        else
+        {
+            return handler;
+        }
     }
 }

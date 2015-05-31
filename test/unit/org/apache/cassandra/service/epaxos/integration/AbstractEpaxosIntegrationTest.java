@@ -48,6 +48,22 @@ public abstract class AbstractEpaxosIntegrationTest extends AbstractEpaxosTest
             tokenStateTable = CFMetaData.copyOpts(tokenStateTable, CFMetaData.EpaxosTokenStateCF);
 
             cfDefs.add(tokenStateTable);
+
+            CFMetaData upgradeTable = new CFMetaData(ksName,
+                                                     Node.nUpgradeTable(n),
+                                                     CFMetaData.PaxosUpgradeCF.cfType,
+                                                     CFMetaData.PaxosUpgradeCF.comparator);
+            upgradeTable = CFMetaData.copyOpts(upgradeTable, CFMetaData.PaxosUpgradeCF);
+
+            cfDefs.add(upgradeTable);
+
+            CFMetaData paxosTable = new CFMetaData(ksName,
+                                                   Node.nPaxosTable(n),
+                                                   CFMetaData.PaxosCf.cfType,
+                                                   CFMetaData.PaxosCf.comparator);
+            paxosTable = CFMetaData.copyOpts(paxosTable, CFMetaData.PaxosCf);
+
+            cfDefs.add(paxosTable);
         }
 
         KSMetaData ks = KSMetaData.newKeyspace(ksName, LocalStrategy.class, Collections.<String, String>emptyMap(), true, cfDefs);

@@ -7,6 +7,8 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Striped;
+import com.google.common.util.concurrent.Uninterruptibles;
+
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.concurrent.TracingAwareExecutorService;
@@ -1856,6 +1858,16 @@ public class EpaxosService
     protected Predicate<InetAddress> livePredicate()
     {
         return IAsyncCallback.isAlive;
+    }
+
+    protected void sleep(int millis)
+    {
+        Uninterruptibles.sleepUninterruptibly(millis, TimeUnit.MILLISECONDS);
+    }
+
+    protected void randomSleep(int millis)
+    {
+        sleep(ThreadLocalRandom.current().nextInt(millis));
     }
 
 }

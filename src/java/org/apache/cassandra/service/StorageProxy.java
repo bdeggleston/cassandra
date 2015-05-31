@@ -266,9 +266,11 @@ public class StorageProxy implements StorageProxyMBean
 
             Commit proposal = Commit.newProposal(key, ballot, updates);
             Tracing.trace("CAS precondition is met; proposing client-requested updates for {}", ballot);
-            if (proposePaxos(proposal, liveEndpoints, requiredParticipants, true, consistencyForPaxos))
+
+            Pair<Boolean, Set<UUID>> proposeResult = proposePaxos(proposal, liveEndpoints, requiredParticipants, true, consistencyForPaxos);
+            if (proposeResult.left)
             {
-                commitPaxos(proposal, consistencyForCommit);
+                commitPaxos(proposal, consistencyForCommit, consistencyForPaxos, proposeResult.right);
                 Tracing.trace("CAS successful");
                 return null;
             }
@@ -353,9 +355,10 @@ public class StorageProxy implements StorageProxyMBean
             {
                 Tracing.trace("Finishing incomplete paxos round {}", inProgress);
                 Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update);
-                if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos))
+                Pair<Boolean, Set<UUID>> proposalResult = proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos);
+                if (proposalResult.left)
                 {
-                    commitPaxos(refreshedInProgress, consistencyForCommit);
+                    commitPaxos(refreshedInProgress, consistencyForCommit, consistencyForPaxos, proposalResult.right);
                 }
                 else
                 {
@@ -409,7 +412,7 @@ public class StorageProxy implements StorageProxyMBean
         return callback;
     }
 
-    private static boolean proposePaxos(Commit proposal, List<InetAddress> endpoints, int requiredParticipants, boolean timeoutIfPartial, ConsistencyLevel consistencyLevel)
+    private static Pair<Boolean, Set<UUID>> proposePaxos(Commit proposal, List<InetAddress> endpoints, int requiredParticipants, boolean timeoutIfPartial, ConsistencyLevel consistencyLevel)
     throws WriteTimeoutException
     {
         ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial, consistencyLevel);
@@ -420,15 +423,15 @@ public class StorageProxy implements StorageProxyMBean
         callback.await();
 
         if (callback.isSuccessful())
-            return true;
+            return Pair.create(true, callback.getEpaxosDeps());
 
         if (timeoutIfPartial && !callback.isFullyRefused())
             throw new WriteTimeoutException(WriteType.CAS, consistencyLevel, callback.getAcceptCount(), requiredParticipants);
 
-        return false;
+        return Pair.create(false, null);
     }
 
-    private static void commitPaxos(Commit proposal, ConsistencyLevel consistencyLevel) throws WriteTimeoutException
+    private static void commitPaxos(Commit proposal, ConsistencyLevel consistencyLevel, ConsistencyLevel serialCL, Set<UUID> epaxosDeps) throws WriteTimeoutException
     {
         boolean shouldBlock = consistencyLevel != ConsistencyLevel.ANY;
         Keyspace keyspace = Keyspace.open(proposal.update.metadata().ksName);
@@ -445,6 +448,11 @@ public class StorageProxy implements StorageProxyMBean
         }
 
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT, proposal, Commit.serializer);
+        message = message.withParameter(UpgradeService.PAXOS_CONSISTEMCY_PARAM, UpgradeService.clToBytes(serialCL));
+        if (epaxosDeps != null)
+        {
+            message = message.withParameter(UpgradeService.PAXOS_DEPS_PARAM, UpgradeService.depsToBytes(epaxosDeps));
+        }
         for (InetAddress destination : Iterables.concat(naturalEndpoints, pendingEndpoints))
         {
             if (FailureDetector.instance.isAlive(destination))

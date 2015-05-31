@@ -115,7 +115,7 @@ public abstract class AbstractEpaxosTest
     protected static final Token TOKEN0 = token(0);
     protected static final Token TOKEN100 = token(100);
     protected static final Range<Token> RANGE = new Range<>(TOKEN0, TOKEN100);
-    protected static final UUID CFID = UUIDGen.getTimeUUID();
+    protected static UUID CFID;
 
     static class DoNothing implements Runnable
     {
@@ -137,6 +137,7 @@ public abstract class AbstractEpaxosTest
         ksOpts.put("replication_factor", "1");
         ksm = KSMetaData.newKeyspace("ks", SimpleStrategy.class, ksOpts, true, Arrays.asList(cfm, thriftcf));
         Schema.instance.load(ksm);
+        CFID = cfm.cfId;
     }
 
     private static void truncate(String table)
