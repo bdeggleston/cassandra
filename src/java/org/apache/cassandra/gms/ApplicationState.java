@@ -34,7 +34,7 @@ public enum ApplicationState
     HOST_ID,
     TOKENS,
     // pad to allow adding new states to existing cluster
-    X1,
+    PAXOS_UPGRADE,
     X2,
     X3,
     X4,

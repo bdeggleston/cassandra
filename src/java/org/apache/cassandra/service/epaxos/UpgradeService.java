@@ -35,7 +35,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.annotation.Nullable;
 import javax.management.MBeanServer;
 import javax.management.Notification;
 import javax.management.NotificationBroadcasterSupport;
@@ -58,6 +57,10 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.gms.ApplicationState;
+import org.apache.cassandra.gms.EndpointState;
+import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -67,6 +70,7 @@ import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.CASRequest;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.ThriftCASRequest;
 import org.apache.cassandra.service.epaxos.exceptions.InvalidInstanceStateChange;
 import org.apache.cassandra.service.paxos.Commit;
@@ -216,6 +220,7 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
     {
         String dml = String.format("INSERT INTO %s.%s (key, upgraded, last_ballot) VALUES (?,?,?)", keyspace, upgradeTable);
         QueryProcessor.executeInternal(dml, UPGRADE_KEY, upgraded, lastBallot);
+        reportUpgradeStatus();
     }
 
     /**
@@ -267,6 +272,7 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
                 service.getTokenStateManager(Scope.LOCAL).getOrInitManagedCf(row.getUUID("cf_id"), TokenState.State.INACTIVE);
             }
         }
+
         int cfs = service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds().size();
         cfs += service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds().size();
         if (cfs == 0)
@@ -286,6 +292,7 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
                         "Run nodetool upgradepaxos after entire ring is upgraded to use epaxos");
         }
 
+        reportUpgradeStatus();
         started = true;
     }
 
@@ -298,8 +305,15 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
 
     protected boolean nodeIsUpgraded(InetAddress endpoint)
     {
-        // TODO: check gossip
-        return true;
+        EndpointState endpointState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        VersionedValue vv = endpointState.getApplicationState(ApplicationState.PAXOS_UPGRADE);
+        return vv != null && Boolean.valueOf(vv.value);
+    }
+
+    protected void reportUpgradeStatus()
+    {
+        Gossiper.instance.addLocalApplicationState(ApplicationState.PAXOS_UPGRADE,
+                                                   StorageService.instance.valueFactory.bool(upgraded));
     }
 
     private final Predicate<InetAddress> nodeIsUpgraded = new Predicate<InetAddress>()
