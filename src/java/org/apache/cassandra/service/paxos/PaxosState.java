@@ -20,7 +20,6 @@
  */
 package org.apache.cassandra.service.paxos;
 
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 
@@ -28,15 +27,15 @@ import com.google.common.util.concurrent.Striped;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.service.epaxos.UpgradeService;
 import org.apache.cassandra.tracing.Tracing;
 
 public class PaxosState
 {
+    public static class UpgradedException extends Exception {}
+
     private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
     private final Commit promised;

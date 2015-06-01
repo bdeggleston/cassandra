@@ -62,7 +62,7 @@ public class ProposeCallback extends AbstractPaxosCallback<Boolean>
         this.failFast = failFast;
     }
 
-    public void response(MessageIn<Boolean> msg)
+    public void handleResponse(MessageIn<Boolean> msg)
     {
         logger.debug("Propose response {} from {}", msg.payload, msg.from);
 

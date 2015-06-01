@@ -88,15 +88,15 @@ import org.apache.cassandra.utils.UUIDSerializer;
  *
  * Token state behavior:
  *  INACTIVE: classic paxos is used for queries, epaxos isn't touched
- *  UPGRADING: classic paxos is used for queries, commits are mirrored into epaxos as executed instances
+ *  UPGRADING: classic paxos is used for queries, commits are mirrored into epaxos as executed instances [see a]
  *  NORMAL (or other upgraded state): epaxos is used
  *
  * Upgrading process for a given scoped token range is:
  *  1) Leader: create a new ballot value, send to every node that replicates the range
  *     Replica: respond with highest seen ballot, and state for the token state
  *     Leader:
- *       - if any of the replicas respond with an upgraded status for the token state, proceed to step 3
- *       - if all replicas agree with the ballot, and all are on the UPGRADING state, proceed to step 3
+ *       - if any of the replicas respond with an upgraded status for the token state, proceed to step 3 [see b]
+ *       - if all replicas agree with the ballot, and all are on the UPGRADING state, proceed to step 3 [see b]
  *       - if all replicas agree with the ballot, and have an upgradeable state for that range (INACTIVE, UPGRADING), proceed to step 2
  *       - otherwise, abort
  *
@@ -113,10 +113,29 @@ import org.apache.cassandra.utils.UUIDSerializer;
  *  3) Leader: send messages to all replicas instructing them to set token state status to normal
  *     Replica: always set status to normal (if not upgraded already)
  *
+ *
+ *  [a] since classic paxos only sends commits after it's checked that the CASRequest applies, we skip the applies()
+ *      step on these instances. The mirrored instances are also marked EXECUTED, so they're not executed twice. If
+ *      another node misses these paxos commits, but learns of them from later during the epaxos prepare process, they'll
+ *      be executed normally, since nodes save executed instances as committed when they learn of them from other nodes.
+ *  [b] If another node has a normal state, it means that this node missed the complete step from another ugprade. So
+ *      we can finish it here.
+ *  [c] Nodes don't check message ballots when receiving upgrade complete messages. So it's possible that the other
+ *      nodes have accepted the new ballot, but an older upgrade process is about to send the complete step. Doing
+ *      this effectively completes an otherwise successful upgrade round.
+ *
+ *  When any epaxos messages are received from other nodes for a token range, that token range is upgraded to
+ *  normal, if it's not already. This makes the upgrade process tolerant of failures during the final step of
+ *  upgrading.
+ *
  */
 public class UpgradeService extends NotificationBroadcasterSupport implements UpgradeServiceMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.service.epaxos:type=UpgradeService";
+
+    // for testing paxos callback tests
+    private static final boolean DISABLE_UPGRADE_GOSSIP = Boolean.getBoolean("cassandra.epaxos.debug.disable_upgrade_gossip");
+    private static final boolean ALWAYS_USE_PAXOS = Boolean.getBoolean("cassandra.epaxos.debug.always_use_paxos");
 
     private static class Handle
     {
@@ -149,6 +168,11 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
         {
             super(message);
         }
+    }
+
+    private static Token getToken(ByteBuffer key)
+    {
+        return DatabaseDescriptor.getPartitioner().getToken(key);
     }
 
     /* JMX notification serial number counter */
@@ -258,7 +282,6 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
         if (started)
             return;
 
-        // TODO: add some flags to force things (setting upgraded true, removing inactive states, putting node in non-upgraded state, ignoring previous state)
         if (!loadState())
         {
             Token minToken = DatabaseDescriptor.getPartitioner().getMinimumToken();
@@ -312,8 +335,11 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
 
     protected void reportUpgradeStatus()
     {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.PAXOS_UPGRADE,
-                                                   StorageService.instance.valueFactory.bool(upgraded));
+        if (!DISABLE_UPGRADE_GOSSIP)
+        {
+            Gossiper.instance.addLocalApplicationState(ApplicationState.PAXOS_UPGRADE,
+                                                       StorageService.instance.valueFactory.bool(upgraded));
+        }
     }
 
     private final Predicate<InetAddress> nodeIsUpgraded = new Predicate<InetAddress>()
@@ -325,9 +351,21 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
         }
     };
 
+    public final boolean isUpgradedForQuery(String ks, String tbl, ByteBuffer key, ConsistencyLevel cl)
+    {
+        return isUpgradedForQuery(getToken(key), Schema.instance.getId(ks, tbl), Scope.get(cl));
+    }
+
+    public final boolean isUpgradedForQuery(MessageIn<Commit> message)
+    {
+        ConsistencyLevel cl = clFromBytes(message.parameters.get(PAXOS_CONSISTEMCY_PARAM));
+        Commit commit = message.payload;
+        return cl != null && isUpgradedForQuery(getToken(commit.key), commit.update.id(), Scope.get(cl));
+    }
 
     public boolean isUpgradedForQuery(Token token, UUID cfId, Scope scope)
     {
+        if (ALWAYS_USE_PAXOS) return false;
         checkStarted();
         EpaxosService.ParticipantInfo pi = service.getParticipants(token, cfId, scope);
         if (!pi.endpoints.contains(service.getEndpoint()))
@@ -410,6 +448,7 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
 
     public static final String PAXOS_DEPS_PARAM = "EPX";
     public static final String PAXOS_CONSISTEMCY_PARAM = "SCL";
+    public static final String PAXOS_UPGRADE_ERROR = "PAXOS_UPGRADED";
 
     public static byte[] clToBytes(ConsistencyLevel cl)
     {
@@ -473,8 +512,6 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
             return null;
         }
 
-        // TODO: maybe noop uncommitted deps?
-
         CASRequest request = new ThriftCASRequest(null, proposal.update, true);
 
         Pair<String, String> cf = Schema.instance.getCF(proposal.update.id());
@@ -500,10 +537,6 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
         return instance.getDependencies();
     }
 
-    /**
-     * TODO: explain how this works with the upgrade protocol
-     * TODO: explain why alwaysApplies makes sense
-     */
     public void reportPaxosCommit(Commit commit, InetAddress from, ConsistencyLevel cl, Set<UUID> deps)
     {
         checkStarted();
@@ -519,7 +552,11 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
             return;
         }
 
-        // TODO: check that ts is in upgrading or normal state
+        TokenState ts = service.getTokenStateManager(Scope.get(cl)).get(commit.key, commit.update.id());
+        if (ts == null || ts.getState() == TokenState.State.INACTIVE)
+        {
+            return;
+        }
 
         Instance instance = service.loadInstance(commit.ballot);
         if (instance == null)
@@ -565,7 +602,6 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
                 sendNotification("cancel", "paxos is already upgraded");
                 return;
             }
-            // TODO: maybe lock queries on new cfIds
             Set<UUID> cfIds = new HashSet<>();
             cfIds.addAll(service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds());
             cfIds.addAll(service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds());
