@@ -1800,7 +1800,7 @@ public class EpaxosService implements EpaxosServiceMBean
         return Schema.instance.getCF(cfId).left;
     }
 
-    protected ParticipantInfo getParticipants(Instance instance)
+    protected final ParticipantInfo getParticipants(Instance instance)
     {
         return getParticipants(instance.getToken(), instance.getCfId(), instance.getScope());
     }

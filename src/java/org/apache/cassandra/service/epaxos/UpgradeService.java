@@ -35,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.annotation.Nullable;
 import javax.management.MBeanServer;
 import javax.management.Notification;
 import javax.management.NotificationBroadcasterSupport;
@@ -109,8 +110,6 @@ import org.apache.cassandra.utils.UUIDSerializer;
  *     Replica: always set status to normal (if not upgraded already)
  *
  */
-// TODO: bootstrapping clusters should default to epaxos
-// TODO: new nodes should default to upgraded in a upgraded cluster (should be handled by streaming)
 public class UpgradeService extends NotificationBroadcasterSupport implements UpgradeServiceMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.service.epaxos:type=UpgradeService";
@@ -238,6 +237,11 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
         return true;
     }
 
+    protected boolean isEpaxosEnabled()
+    {
+        return DatabaseDescriptor.isEpaxosEnabled();
+    }
+
     public void checkStarted()
     {
         if (!started)
@@ -256,7 +260,6 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
             Range<Token> everything = new Range<>(minToken, minToken);
             KeyTableIterable iterable = new KeyTableIterable(keyspace, paxosTable, everything, true);
 
-            // TODO: discourage, but handle ring mutations - needs to recompute the token states and cancel any in progress upgrades
             // create inactive epaxos token states for any previous paxos instances
             for (UntypedResultSet.Row row: iterable)
             {
@@ -264,15 +267,26 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
                 service.getTokenStateManager(Scope.LOCAL).getOrInitManagedCf(row.getUUID("cf_id"), TokenState.State.INACTIVE);
             }
         }
-        started = true;
+        int cfs = service.getTokenStateManager(Scope.GLOBAL).getAllManagedCfIds().size();
+        cfs += service.getTokenStateManager(Scope.LOCAL).getAllManagedCfIds().size();
+        if (cfs == 0)
+        {
+            boolean previous = upgraded;
+            upgraded = isEpaxosEnabled();
+            if (upgraded != previous)
+            {
+                saveState();
+                logger.info("paxos set to upgraded: {}", upgraded);
+            }
+        }
 
-        // TODO: add default setting to cassandra.yaml
-        // TODO: if no paxos data and default is set to epaxos, set upgraded
         if (!upgraded)
         {
             logger.warn("Previous paxos data detected and/or epaxos not enabled in cassandra.yaml. " +
                         "Run nodetool upgradepaxos after entire ring is upgraded to use epaxos");
         }
+
+        started = true;
     }
 
     public boolean isUpgraded()
@@ -282,13 +296,37 @@ public class UpgradeService extends NotificationBroadcasterSupport implements Up
 
     // runtime stuff
 
+    protected boolean nodeIsUpgraded(InetAddress endpoint)
+    {
+        // TODO: check gossip
+        return true;
+    }
+
+    private final Predicate<InetAddress> nodeIsUpgraded = new Predicate<InetAddress>()
+    {
+        @Override
+        public boolean apply(InetAddress address)
+        {
+            return nodeIsUpgraded(address);
+        }
+    };
+
+
     public boolean isUpgradedForQuery(Token token, UUID cfId, Scope scope)
     {
         checkStarted();
-        if (upgraded)
-            return true;
-        TokenState ts = service.getTokenStateManager(scope).getWithDefaultState(token, cfId, TokenState.State.INACTIVE);
-        return TokenState.State.isUpgraded(ts.getState());
+        EpaxosService.ParticipantInfo pi = service.getParticipants(token, cfId, scope);
+        if (!pi.endpoints.contains(service.getEndpoint()))
+        {
+            return Iterables.any(pi.endpoints, nodeIsUpgraded);
+        }
+        else
+        {
+            if (upgraded)
+                return true;
+            TokenState ts = service.getTokenStateManager(scope).getWithDefaultState(token, cfId, TokenState.State.INACTIVE);
+            return TokenState.State.isUpgraded(ts.getState());
+        }
     }
 
     /**

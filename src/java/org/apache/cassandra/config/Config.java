@@ -216,6 +216,8 @@ public class Config
     private static final CsvPreference STANDARD_SURROUNDING_SPACES_NEED_QUOTES = new CsvPreference.Builder(CsvPreference.STANDARD_PREFERENCE)
                                                                                                   .surroundingSpacesNeedQuotes(true).build();
 
+    public EpaxosOptions epaxos_options = new EpaxosOptions();
+
     public static boolean getOutboundBindAny()
     {
         return outboundBindAny;

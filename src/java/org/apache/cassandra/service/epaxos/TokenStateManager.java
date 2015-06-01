@@ -37,13 +37,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TokenStateManager
 {
     // how many instances should be executed under an epoch before the epoch is incremented
-    protected static final int EPOCH_INCREMENT_THRESHOLD = Integer.getInteger("cassandra.epaxos.epoch_increment_threshold", 100);
     protected static final int MIN_EPOCH_INCREMENT_THRESHOLD = 5;
 
     // we don't save the token state every time an instance is executed.
     // This sets the percentage of the increment threshold that can be executed
     // before we must persist the execution count
-    protected static final int EXECUTION_PERSISTENCE_PERCENT = Integer.getInteger("cassandra.epaxos.execution_persistence_percent", 100);
+    protected static final float EXECUTION_PERSISTENCE_PERCENT = Float.parseFloat(System.getProperty("cassandra.epaxos.execution_persistence_percent", "0.1"));
 
     private final String keyspace;
     private final String table;
@@ -70,10 +69,9 @@ public class TokenStateManager
             Collections.sort(tokens);
 
             // recalculate the epoch increment threshold
-            epochThreshold = Math.max(EPOCH_INCREMENT_THRESHOLD / tokens.size(), MIN_EPOCH_INCREMENT_THRESHOLD);
-
-            double amount = ((double) EXECUTION_PERSISTENCE_PERCENT) / 100.0;
-            unsavedExecutionThreshold = (int) (((double) epochThreshold) * amount);
+            epochThreshold = Math.max(DatabaseDescriptor.getEpaxosEpochIncrementThreshold() / tokens.size(),
+                                      MIN_EPOCH_INCREMENT_THRESHOLD);
+            unsavedExecutionThreshold = (int) (((float) epochThreshold) * EXECUTION_PERSISTENCE_PERCENT);
         }
 
         TokenState putIfAbsent(TokenState state)

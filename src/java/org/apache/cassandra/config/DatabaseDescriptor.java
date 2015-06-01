@@ -1619,4 +1619,14 @@ public class DatabaseDescriptor
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
     }
+
+    public static int getEpaxosEpochIncrementThreshold()
+    {
+        return conf.epaxos_options.epoch_increment_threshold;
+    }
+
+    public static boolean isEpaxosEnabled()
+    {
+        return conf.epaxos_options.enabled;
+    }
 }
