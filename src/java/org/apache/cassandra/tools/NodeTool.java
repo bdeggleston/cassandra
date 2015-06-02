@@ -39,14 +39,12 @@ import com.yammer.metrics.reporting.JmxReporter;
 import io.airlift.command.*;
 
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManagerMBean;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
-import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.net.MessagingServiceMBean;
 import org.apache.cassandra.service.CacheServiceMBean;
 import org.apache.cassandra.streaming.ProgressInfo;
@@ -146,7 +144,7 @@ public class NodeTool
                 SetLoggingLevel.class,
                 GetLoggingLevels.class,
                 UpgradePaxos.class,
-                GetPaxosUpgrade.class,
+                GetPaxosUpgraded.class,
                 PrintEpaxosStates.class
         );
 
@@ -2444,8 +2442,8 @@ public class NodeTool
         }
     }
 
-    @Command(name = "getpaxosupgrade", description = "Print whether this node has been upgraded to epaxos")
-    public static class GetPaxosUpgrade extends NodeToolCmd
+    @Command(name = "getpaxosupgraded", description = "Print whether this node has been upgraded to epaxos")
+    public static class GetPaxosUpgraded extends NodeToolCmd
     {
         @Override
         protected void execute(NodeProbe probe)
