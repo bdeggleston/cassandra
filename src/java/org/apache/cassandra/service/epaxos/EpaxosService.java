@@ -38,7 +38,6 @@ import org.apache.cassandra.utils.IFilter;
 import org.apache.cassandra.utils.MergeIterator;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
-import org.apache.mina.util.ConcurrentHashSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +120,7 @@ public class EpaxosService implements EpaxosServiceMBean
         private final UUID cfId;
 
         // keys that had skipped executions because of pause
-        private final Set<Pair<ByteBuffer, Scope>> skipped = new ConcurrentHashSet<>();
+        private final Set<Pair<ByteBuffer, Scope>> skipped = new HashSet<>();
 
         public PausedKeys(Set<ByteBuffer> keys, UUID cfId)
         {
@@ -130,12 +129,12 @@ public class EpaxosService implements EpaxosServiceMBean
         }
 
         @VisibleForTesting
-        Set<Pair<ByteBuffer, Scope>> getSkipped()
+        synchronized Set<Pair<ByteBuffer, Scope>> getSkipped()
         {
             return skipped;
         }
 
-        private boolean shouldSkip(ByteBuffer key, UUID cfId, Scope scope)
+        private synchronized boolean shouldSkip(ByteBuffer key, UUID cfId, Scope scope)
         {
             if (!this.cfId.equals(cfId))
             {
@@ -1373,7 +1372,7 @@ public class EpaxosService implements EpaxosServiceMBean
             pausedKeys = ImmutableSet.copyOf(temp);
         }
 
-        getStage(Stage.READ).submit(new PostStreamTask.KeyCollection(this, keySet.cfId, keySet.skipped));
+        getStage(Stage.READ).submit(new PostStreamTask.KeyCollection(this, keySet.cfId, keySet.getSkipped()));
         // TODO: test
     }
 

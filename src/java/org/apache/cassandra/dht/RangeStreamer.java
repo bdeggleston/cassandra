@@ -40,6 +40,7 @@ import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.TokenMetadata;
+import org.apache.cassandra.service.epaxos.EpaxosService;
 import org.apache.cassandra.service.epaxos.Scope;
 import org.apache.cassandra.streaming.StreamPlan;
 import org.apache.cassandra.streaming.StreamResultFuture;
@@ -314,17 +315,12 @@ public class RangeStreamer
             if (logger.isDebugEnabled())
                 logger.debug("{}ing from {} ranges {}", description, source, StringUtils.join(ranges, ", "));
 
-            // TODO: request a list of managed cfIds so we can proactively create 'recovering' token states
             KSMetaData ks = Schema.instance.getKSMetaData(keyspace);
             for (CFMetaData cf: ks.cfMetaData().values())
             {
                 for (Range<Token> range: ranges)
                 {
-                    // TODO: should instances and token ranges be deleted first?
-                    // TODO: maybe assert JOINING?
-                    // TODO: just request the keyspace + ranges, this might be a little too intense
-                    streamPlan.requestEpaxosRange(source, cf.cfId, range, Scope.GLOBAL);
-                    streamPlan.requestEpaxosRange(source, cf.cfId, range, Scope.LOCAL);
+                    streamPlan.requestEpaxosRange(source, cf.cfId, range, EpaxosService.getInstance().getActiveScopes(source));
                 }
             }
             streamPlan.requestRanges(source, keyspace, ranges);

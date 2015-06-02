@@ -44,7 +44,7 @@ public class PrepareMessage extends StreamMessage
             for (int i = 0; i < numSummaries; i++)
                 message.summaries.add(StreamSummary.serializer.deserialize(input, version));
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 numRequests = input.readInt();
                 for (int i = 0; i < numRequests; i++)
@@ -68,7 +68,7 @@ public class PrepareMessage extends StreamMessage
             for (StreamSummary summary : message.summaries)
                 StreamSummary.serializer.serialize(summary, out, version);
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 out.writeInt(message.epaxosRequests.size());
                 for (EpaxosRequest request: message.epaxosRequests)

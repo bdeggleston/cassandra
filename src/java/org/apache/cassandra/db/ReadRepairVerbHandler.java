@@ -63,6 +63,7 @@ public class ReadRepairVerbHandler implements IVerbHandler<Mutation>
         UUID cfId = mutation.getColumnFamilyIds().iterator().next();
         if (state.shouldApplyRepair(mutation.key(), cfId, message))
         {
+            logger.debug("Applying read repair");
             applyMutation(mutation);
         }
         else

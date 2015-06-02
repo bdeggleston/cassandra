@@ -31,6 +31,7 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.streaming.messages.StreamMessage;
 
 public class StreamRequest
 {
@@ -81,7 +82,7 @@ public class StreamRequest
             for (String cf : request.columnFamilies)
                 out.writeUTF(cf);
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 out.writeBoolean(request.epaxos);
             }
@@ -104,7 +105,7 @@ public class StreamRequest
             for (int i = 0; i < cfCount; i++)
                 columnFamilies.add(in.readUTF());
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 return new StreamRequest(keyspace, ranges, columnFamilies, repairedAt, in.readBoolean());
             }
@@ -128,7 +129,7 @@ public class StreamRequest
             for (String cf : request.columnFamilies)
                 size += TypeSizes.NATIVE.sizeof(cf);
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
                 size += 1;
             return size;
         }

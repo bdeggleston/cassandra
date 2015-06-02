@@ -315,7 +315,6 @@ public class CQL3CasRequest implements CASRequest
 
     /**
      * this is pretty ghetto
-     * ... and totally busted for batch statements. Look at BatchStatement.executeWithConditions
      */
     private static class Serializer implements IVersionedSerializer<CASRequest>
     {

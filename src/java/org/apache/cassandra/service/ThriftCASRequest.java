@@ -104,10 +104,7 @@ public class ThriftCASRequest implements CASRequest
             ColumnFamily.serializer.serialize(req.expected, out, version);
             ColumnFamily.serializer.serialize(req.updates, out, version);
 
-            if (version >= MessagingService.VERSION_30)
-            {
-                out.writeBoolean(req.alwaysApply);
-            }
+            out.writeBoolean(req.alwaysApply);
         }
 
         @Override
@@ -116,7 +113,7 @@ public class ThriftCASRequest implements CASRequest
             return new ThriftCASRequest(
                     ColumnFamily.serializer.deserialize(in, version),
                     ColumnFamily.serializer.deserialize(in, version),
-                    version >= MessagingService.VERSION_30 && in.readBoolean()
+                    in.readBoolean()
             );
         }
 
@@ -128,7 +125,7 @@ public class ThriftCASRequest implements CASRequest
 
             return ColumnFamily.serializer.serializedSize(req.expected, version)
                  + ColumnFamily.serializer.serializedSize(req.updates, version)
-                 + (version >= MessagingService.VERSION_30 ? 1 : 0);
+                 + 1;
         }
     }
 

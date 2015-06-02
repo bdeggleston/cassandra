@@ -214,10 +214,12 @@ public class StorageProxy implements StorageProxyMBean
 
         if (UpgradeService.instance().isUpgradedForQuery(keyspaceName, cfName, key, consistencyForPaxos))
         {
+            logger.debug("performing epaxos cas");
             return epaxosCas(keyspaceName, cfName, key, request, consistencyForPaxos);
         }
         else
         {
+            logger.debug("performing paxos cas");
             try
             {
                 long start = System.nanoTime();
@@ -1179,10 +1181,12 @@ public class StorageProxy implements StorageProxyMBean
 
                 if (UpgradeService.instance().isUpgradedForQuery(command.ksName, command.cfName, command.key, consistency_level))
                 {
+                    logger.debug("performing epaxos read");
                     return epaxosRead(command, consistency_level);
                 }
                 else
                 {
+                    logger.debug("performing paxos read");
                     try
                     {
                         CFMetaData metadata = Schema.instance.getCFMetaData(command.ksName, command.cfName);

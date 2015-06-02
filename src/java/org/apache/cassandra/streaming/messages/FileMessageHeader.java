@@ -151,7 +151,7 @@ public class FileMessageHeader
             CompressionInfo.serializer.serialize(header.compressionInfo, out, version);
             out.writeLong(header.repairedAt);
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 out.writeInt(header.epaxos.size());
                 for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
@@ -183,7 +183,7 @@ public class FileMessageHeader
 
 
             Map<ByteBuffer, Map<Scope, ExecutionInfo>> epaxos;
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 int epaxosSize = in.readInt();
                 epaxos = new HashMap<>(epaxosSize);
@@ -225,7 +225,7 @@ public class FileMessageHeader
             }
             size += CompressionInfo.serializer.serializedSize(header.compressionInfo, version);
 
-            if (version >= MessagingService.VERSION_30)
+            if (version >= StreamMessage.CURRENT_VERSION)
             {
                 size += 4;
                 for (Map.Entry<ByteBuffer, Map<Scope, ExecutionInfo>> keyEntry: header.epaxos.entrySet())
