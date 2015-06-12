@@ -257,13 +257,13 @@ public abstract class ReadCommand implements ReadQuery
      */
     @SuppressWarnings("resource") // The result iterator is closed upon exceptions (we know it's fine to potentially not close the intermediary
                                   // iterators created inside the try as long as we do close the original resultIterator), or by closing the result.
-    public UnfilteredPartitionIterator executeLocally()
+    public UnfilteredPartitionIterator executeLocally(ReadOrderGroup orderGroup)
     {
         ColumnFamilyStore cfs = Keyspace.openAndGetStore(metadata());
         SecondaryIndexSearcher searcher = getIndexSearcher(cfs);
         UnfilteredPartitionIterator resultIterator = searcher == null
                                          ? queryStorage(cfs)
-                                         : searcher.search(this);
+                                         : searcher.search(this, orderGroup);
 
         try
         {
@@ -296,9 +296,14 @@ public abstract class ReadCommand implements ReadQuery
         }
     }
 
-    public PartitionIterator executeInternal()
+    public PartitionIterator executeInternal(ReadOrderGroup orderGroup)
     {
-        return UnfilteredPartitionIterators.filter(executeLocally());
+        return UnfilteredPartitionIterators.filter(executeLocally(orderGroup));
+    }
+
+    public ReadOrderGroup startOrderGroup()
+    {
+        return ReadOrderGroup.forCommand(this);
     }
 
     /**

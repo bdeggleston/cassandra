@@ -38,9 +38,9 @@ public class RangeNamesQueryPager extends AbstractQueryPager
     private final PartitionRangeReadCommand command;
     private volatile DecoratedKey lastReturnedKey;
 
-    public RangeNamesQueryPager(PartitionRangeReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    public RangeNamesQueryPager(PartitionRangeReadCommand command, ConsistencyLevel consistencyLevel, PagingState state)
     {
-        super(consistencyLevel, localQuery, command.metadata(), command.limits());
+        super(consistencyLevel, command.metadata(), null, command.limits());
         this.command = command;
         assert command.isNamesQuery();
 
@@ -58,14 +58,24 @@ public class RangeNamesQueryPager extends AbstractQueryPager
              : new PagingState(lastReturnedKey.getKey(), null, maxRemaining(), remainingInPartition());
     }
 
-    protected PartitionIterator queryNextPage(int pageSize, ConsistencyLevel consistencyLevel, boolean localQuery)
+    protected ReadCommand nextPageReadCommand(int pageSize, ConsistencyLevel consistencyLevel)
     throws RequestExecutionException
     {
         PartitionRangeReadCommand pageCmd = command.withUpdatedLimit(command.limits().forPaging(pageSize));
         if (lastReturnedKey != null)
             pageCmd = pageCmd.forSubRange(makeExcludingKeyBounds(lastReturnedKey));
 
-        return localQuery ? pageCmd.executeInternal() : pageCmd.execute(consistencyLevel, null);
+        return pageCmd;
+    }
+
+    protected PartitionIterator queryNextPageInternally(int pageSize, ReadOrderGroup orderGroup)
+    throws RequestExecutionException
+    {
+        PartitionRangeReadCommand pageCmd = command.withUpdatedLimit(command.limits().forPaging(pageSize));
+        if (lastReturnedKey != null)
+            pageCmd = pageCmd.forSubRange(makeExcludingKeyBounds(lastReturnedKey));
+
+        return pageCmd.executeInternal(orderGroup);
     }
 
     protected void recordLast(DecoratedKey key, Row last)

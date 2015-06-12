@@ -138,22 +138,12 @@ public class PartitionRangeReadCommand extends ReadCommand
         return StorageProxy.getRangeSlice(this, consistency);
     }
 
-    public QueryPager getPager(ConsistencyLevel consistency, ClientState clientState, PagingState pagingState)
-    {
-        return getPager(consistency, pagingState, false);
-    }
-
-    public QueryPager getLocalPager()
-    {
-        return getPager(null, null, true);
-    }
-
-    private QueryPager getPager(ConsistencyLevel consistency, PagingState pagingState, boolean local)
+    public QueryPager getPager(PagingState pagingState)
     {
         if (isNamesQuery())
-            return new RangeNamesQueryPager(this, consistency, local, pagingState);
+            return new RangeNamesQueryPager(this, pagingState);
         else
-            return new RangeSliceQueryPager(this, consistency, local, pagingState);
+            return new RangeSliceQueryPager(this, pagingState);
     }
 
     protected UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs)

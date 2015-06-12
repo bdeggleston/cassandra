@@ -196,19 +196,14 @@ public abstract class SinglePartitionReadCommand<F extends PartitionFilter> exte
         return StorageProxy.read(Group.one(this), consistency, clientState);
     }
 
-    public SinglePartitionPager getPager(ConsistencyLevel consistency, ClientState clientState, PagingState pagingState)
+    public SinglePartitionPager getPager(PagingState pagingState)
     {
-        return getPager(this, consistency, clientState, pagingState, false);
+        return getPager(this, pagingState);
     }
 
-    public SinglePartitionPager getLocalPager()
+    private static SinglePartitionPager getPager(SinglePartitionReadCommand command, PagingState pagingState)
     {
-        return getPager(this, null, null, null, true);
-    }
-
-    private static SinglePartitionPager getPager(SinglePartitionReadCommand command, ConsistencyLevel consistency, ClientState clientState, PagingState pagingState, boolean local)
-    {
-        return new SinglePartitionPager(command, consistency, clientState, local, pagingState);
+        return new SinglePartitionPager(command, pagingState);
     }
 
     @SuppressWarnings("resource") // we close 'result' on exception or through closing the result of this method
@@ -491,32 +486,29 @@ public abstract class SinglePartitionReadCommand<F extends PartitionFilter> exte
             return commands.get(0).metadata();
         }
 
-        public PartitionIterator executeInternal()
+        public ReadOrderGroup startOrderGroup()
+        {
+            // Note that the only difference between the command in a group must be the partition key on which
+            // they applied. So as far as ReadOrderGroup is concerned, we can use any of the commands to start one.
+            return commands.get(0).startOrderGroup();
+        }
+
+        public PartitionIterator executeInternal(ReadOrderGroup orderGroup)
         {
             List<PartitionIterator> partitions = new ArrayList<>(commands.size());
             for (SinglePartitionReadCommand cmd : commands)
-                partitions.add(cmd.executeInternal());
+                partitions.add(cmd.executeInternal(orderGroup));
 
             // Because we only have enforce the limit per command, we need to enforce it globally.
             return limits.filter(PartitionIterators.concat(partitions));
         }
 
-        public QueryPager getPager(ConsistencyLevel consistency, ClientState clientState, PagingState pagingState)
-        {
-            return getPager(consistency, clientState, pagingState, false);
-        }
-
-        public QueryPager getLocalPager()
-        {
-            return getPager(null, null, null, true);
-        }
-
-        private QueryPager getPager(ConsistencyLevel consistency, ClientState clientState, PagingState pagingState, boolean local)
+        public QueryPager getPager(PagingState pagingState)
         {
             if (commands.size() == 1)
-                return SinglePartitionReadCommand.getPager(commands.get(0), consistency, clientState, pagingState, local);
+                return SinglePartitionReadCommand.getPager(commands.get(0), pagingState);
 
-            return new MultiPartitionPager(commands, consistency, clientState, local, pagingState, limits);
+            return new MultiPartitionPager(commands, pagingState, limits);
         }
 
         @Override

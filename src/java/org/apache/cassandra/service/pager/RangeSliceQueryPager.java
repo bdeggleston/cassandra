@@ -42,9 +42,9 @@ public class RangeSliceQueryPager extends AbstractQueryPager
     private volatile DecoratedKey lastReturnedKey;
     private volatile Clustering lastReturnedClustering;
 
-    public RangeSliceQueryPager(PartitionRangeReadCommand command, ConsistencyLevel consistencyLevel, boolean localQuery, PagingState state)
+    public RangeSliceQueryPager(PartitionRangeReadCommand command, ConsistencyLevel consistencyLevel, PagingState state)
     {
-        super(consistencyLevel, localQuery, command.metadata(), command.limits());
+        super(consistencyLevel, command.metadata(), null, command.limits());
         this.command = command;
         assert !command.isNamesQuery();
 
@@ -63,7 +63,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
              : new PagingState(lastReturnedKey.getKey(), LegacyLayout.encodeClustering(command.metadata(), lastReturnedClustering), maxRemaining(), remainingInPartition());
     }
 
-    protected PartitionIterator queryNextPage(int pageSize, ConsistencyLevel consistencyLevel, boolean localQuery)
+    protected ReadCommand nextPageReadCommand(int pageSize)
     throws RequestExecutionException
     {
         DataRange range;
@@ -90,13 +90,7 @@ public class RangeSliceQueryPager extends AbstractQueryPager
             }
         }
 
-        PartitionRangeReadCommand pageCmd = new PartitionRangeReadCommand(command.metadata(),
-                                                                          command.nowInSec(),
-                                                                          command.columnFilter(),
-                                                                          limits,
-                                                                          range);
-
-        return localQuery ? pageCmd.executeInternal() : pageCmd.execute(consistencyLevel, null);
+        return new PartitionRangeReadCommand(command.metadata(), command.nowInSec(), command.columnFilter(), limits, range);
     }
 
     protected void recordLast(DecoratedKey key, Row last)

@@ -185,7 +185,7 @@ public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
                         if (pager.isExhausted())
                             return endOfData();
 
-                        try (PartitionIterator iter = pager.fetchPage(pageSize))
+                        try (ReadOrderGroup orderGroup = pager.startOrderGroup(); PartitionIterator iter = pager.fetchPage(pageSize, orderGroup))
                         {
                             currentPage = select.process(iter).rows.iterator();
                         }

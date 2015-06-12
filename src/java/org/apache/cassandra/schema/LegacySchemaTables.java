@@ -200,7 +200,8 @@ public class LegacySchemaTables
 
     public static Collection<KSMetaData> readSchemaFromSystemTables()
     {
-        try (PartitionIterator serializedSchema = UnfilteredPartitionIterators.filter(getSchemaPartitionsForTable(KEYSPACES)))
+        ReadCommand cmd = getReadCommandForTableSchema(KEYSPACES);
+        try (ReadOrderGroup orderGroup = cmd.startOrderGroup(); PartitionIterator schema = cmd.executeInternal(orderGroup))
         {
             List<KSMetaData> keyspaces = new ArrayList<>();
 
@@ -263,7 +264,8 @@ public class LegacySchemaTables
 
         for (String table : ALL)
         {
-            try (PartitionIterator schema = UnfilteredPartitionIterators.filter(getSchemaPartitionsForTable(table)))
+            ReadCommand cmd = getReadCommandForTableSchema(table);
+            try (ReadOrderGroup orderGroup = cmd.startOrderGroup(); PartitionIterator schema = cmd.executeInternal(orderGroup))
             {
                 while (schema.hasNext())
                 {
@@ -291,11 +293,10 @@ public class LegacySchemaTables
      * @param schemaTableName The name of the table responsible for part of the schema.
      * @return low-level schema representation
      */
-    private static UnfilteredPartitionIterator getSchemaPartitionsForTable(String schemaTableName)
+    private static UnfilteredPartitionIterator getReadCommandForTableSchema(String schemaTableName, ReadOrderGroup orderGroup)
     {
         ColumnFamilyStore cfs = getSchemaCFS(schemaTableName);
-        ReadCommand cmd = PartitionRangeReadCommand.allDataRead(cfs.metadata, FBUtilities.nowInSeconds());
-        return cmd.executeLocally();
+        return PartitionRangeReadCommand.allDataRead(cfs.metadata, FBUtilities.nowInSeconds());
     }
 
     public static Collection<Mutation> convertSchemaToMutations()
@@ -310,7 +311,8 @@ public class LegacySchemaTables
 
     private static void convertSchemaToMutations(Map<DecoratedKey, Mutation> mutationMap, String schemaTableName)
     {
-        try (UnfilteredPartitionIterator iter = getSchemaPartitionsForTable(schemaTableName))
+        ReadCommand cmd = getReadCommandForTableSchema(schemaTableName);
+        try (ReadOrderGroup orderGroup = cmd.startOrderGroup(); UnfilteredPartitionIterator iter = cmd.executeLocally(orderGroup))
         {
             while (iter.hasNext())
             {
