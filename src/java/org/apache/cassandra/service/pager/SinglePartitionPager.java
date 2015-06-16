@@ -45,12 +45,12 @@ public class SinglePartitionPager extends AbstractQueryPager
 
     public SinglePartitionPager(SinglePartitionReadCommand<?> command, PagingState state)
     {
-        super(command.metadata(), command.limits());
+        super(command);
         this.command = command;
 
         if (state != null)
         {
-            lastReturned = LegacyLayout.decodeClustering(cfm, state.cellName);
+            lastReturned = LegacyLayout.decodeClustering(command.metadata(), state.cellName);
             restoreState(command.partitionKey(), state.remaining, state.remainingInPartition);
         }
     }

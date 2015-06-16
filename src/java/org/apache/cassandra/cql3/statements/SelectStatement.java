@@ -193,7 +193,7 @@ public class SelectStatement implements CQLStatement
         QueryPager pager = query.getPager(options.getPagingState());
 
         if (selection.isAggregate())
-            return pageAggregateQuery(pager, options, pageSize, consistency, state.getClientState());
+            return pageAggregateQuery(pager, options, pageSize, cl, state.getClientState());
 
         // We can't properly do post-query ordering if we page (see #6722)
         checkFalse(needsPostQueryOrdering(),

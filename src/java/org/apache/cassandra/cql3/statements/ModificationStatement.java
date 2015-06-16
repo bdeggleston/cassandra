@@ -533,8 +533,6 @@ public abstract class ModificationStatement implements CQLStatement
                 return asMaterializedMap(iter);
             }
         }
-
-        return map;
     }
 
     private Map<DecoratedKey, Partition> asMaterializedMap(PartitionIterator iterator)

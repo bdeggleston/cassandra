@@ -205,9 +205,9 @@ public class LegacySchemaTables
         {
             List<KSMetaData> keyspaces = new ArrayList<>();
 
-            while (serializedSchema.hasNext())
+            while (schema.hasNext())
             {
-                try (RowIterator partition = serializedSchema.next())
+                try (RowIterator partition = schema.next())
                 {
                     if (isSystemKeyspaceSchemaPartition(partition.partitionKey()))
                         continue;
@@ -293,7 +293,7 @@ public class LegacySchemaTables
      * @param schemaTableName The name of the table responsible for part of the schema.
      * @return low-level schema representation
      */
-    private static UnfilteredPartitionIterator getReadCommandForTableSchema(String schemaTableName, ReadOrderGroup orderGroup)
+    private static ReadCommand getReadCommandForTableSchema(String schemaTableName)
     {
         ColumnFamilyStore cfs = getSchemaCFS(schemaTableName);
         return PartitionRangeReadCommand.allDataRead(cfs.metadata, FBUtilities.nowInSeconds());

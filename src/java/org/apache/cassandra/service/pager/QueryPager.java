@@ -48,6 +48,11 @@ public interface QueryPager
 {
     public static final QueryPager EMPTY = new QueryPager()
     {
+        public ReadOrderGroup startOrderGroup()
+        {
+            return ReadOrderGroup.emptyGroup();
+        }
+
         public PartitionIterator fetchPage(int pageSize, ConsistencyLevel consistency, ClientState clientState) throws RequestValidationException, RequestExecutionException
         {
             return PartitionIterators.EMPTY;
