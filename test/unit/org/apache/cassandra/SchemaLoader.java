@@ -358,9 +358,9 @@ public class SchemaLoader
                                                       SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,
                                                       PerRowSecondaryIndexTest.TestIndex.class.getName());
 
-        CFMetaData cfm =  CFMetaData.Builder.create(ksName, cfName)
-                .addPartitionKey("key", AsciiType.instance)
-                .build();
+        CFMetaData cfm =  CFMetaDataFactory.instance.createBuilder(ksName, cfName)
+                                                    .addPartitionKey("key", AsciiType.instance)
+                                                    .build();
 
         return cfm.addOrReplaceColumnDefinition(ColumnDefinition.regularDef(ksName, cfName, "indexed", AsciiType.instance, null)
                                                                 .setIndex("indexe1", IndexType.CUSTOM, indexOptions));
@@ -379,7 +379,7 @@ public class SchemaLoader
 
     public static CFMetaData counterCFMD(String ksName, String cfName)
     {
-        return CFMetaData.Builder.create(ksName, cfName, false, true, true)
+        return CFMetaDataFactory.instance.createBuilder(ksName, cfName, false, true, true)
                 .addPartitionKey("key", AsciiType.instance)
                 .addClusteringColumn("name", AsciiType.instance)
                 .addRegularColumn("val", CounterColumnType.instance)
@@ -405,7 +405,7 @@ public class SchemaLoader
 
     public static CFMetaData standardCFMD(String ksName, String cfName, int columnCount, AbstractType<?> keyType, AbstractType<?> valType, AbstractType<?> clusteringType)
     {
-        CFMetaData.Builder builder = CFMetaData.Builder.create(ksName, cfName)
+        CFMetaDataFactory.Builder builder = CFMetaDataFactory.instance.createBuilder(ksName, cfName)
                 .addPartitionKey("key", keyType)
                 .addClusteringColumn("name", clusteringType)
                 .addRegularColumn("val", valType);
@@ -431,7 +431,7 @@ public class SchemaLoader
         if (subcc != null)
             comp = CompositeType.getInstance(Arrays.asList(new AbstractType<?>[]{cc, subcc}));
 
-        return CFMetaData.Builder.createDense(ksName, cfName, subcc != null, false)
+        return CFMetaDataFactory.instance.createDenseBuilder(ksName, cfName, subcc != null, false)
             .addPartitionKey("key", AsciiType.instance)
             .addClusteringColumn("cols", comp)
             .addRegularColumn("val", AsciiType.instance)
@@ -464,7 +464,7 @@ public class SchemaLoader
     {
         // the withIndex flag exists to allow tests index creation
         // on existing columns
-        CFMetaData cfm = CFMetaData.Builder.create(ksName, cfName)
+        CFMetaData cfm = CFMetaDataFactory.instance.createBuilder(ksName, cfName)
                 .addPartitionKey("key", AsciiType.instance)
                 .addClusteringColumn("c1", AsciiType.instance)
                 .addRegularColumn("birthdate", LongType.instance)
@@ -479,7 +479,7 @@ public class SchemaLoader
     }
     public static CFMetaData keysIndexCFMD(String ksName, String cfName, boolean withIndex) throws ConfigurationException
     {
-        CFMetaData cfm = CFMetaData.Builder.createDense(ksName, cfName, false, false)
+        CFMetaData cfm = CFMetaDataFactory.instance.createDenseBuilder(ksName, cfName, false, false)
                                            .addPartitionKey("key", AsciiType.instance)
                                            .addClusteringColumn("c1", AsciiType.instance)
                                            .addStaticColumn("birthdate", LongType.instance)
@@ -496,9 +496,9 @@ public class SchemaLoader
     
     public static CFMetaData jdbcCFMD(String ksName, String cfName, AbstractType comp)
     {
-        return CFMetaData.Builder.create(ksName, cfName).addPartitionKey("key", BytesType.instance)
-                                                        .build()
-                                                        .compressionParameters(getCompressionParameters());
+        return CFMetaDataFactory.instance.createBuilder(ksName, cfName).addPartitionKey("key", BytesType.instance)
+                                         .build()
+                                         .compressionParameters(getCompressionParameters());
     }
 
     public static CompressionParameters getCompressionParameters()

@@ -59,7 +59,7 @@ import org.apache.cassandra.utils.Pair;
  * This class can be tricky to modify. Please read http://wiki.apache.org/cassandra/ConfigurationNotes for how to do so safely.
  */
 @Unmetered
-public final class CFMetaData
+public class CFMetaData
 {
     private static final Logger logger = LoggerFactory.getLogger(CFMetaData.class);
 
@@ -239,16 +239,16 @@ public final class CFMetaData
     public CFMetaData droppedColumns(Map<ColumnIdentifier, DroppedColumn> cols) {droppedColumns = cols; return this;}
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
 
-    private CFMetaData(String keyspace,
-                       String name,
-                       UUID cfId,
-                       boolean isSuper,
-                       boolean isCounter,
-                       boolean isDense,
-                       boolean isCompound,
-                       List<ColumnDefinition> partitionKeyColumns,
-                       List<ColumnDefinition> clusteringColumns,
-                       PartitionColumns partitionColumns)
+    CFMetaData(String keyspace,
+               String name,
+               UUID cfId,
+               boolean isSuper,
+               boolean isCounter,
+               boolean isDense,
+               boolean isCompound,
+               List<ColumnDefinition> partitionKeyColumns,
+               List<ColumnDefinition> clusteringColumns,
+               PartitionColumns partitionColumns)
     {
         this.cfId = cfId;
         this.ksName = keyspace;
@@ -322,16 +322,8 @@ public final class CFMetaData
         Collections.sort(partitions);
         Collections.sort(clusterings);
 
-        return new CFMetaData(ksName,
-                              name,
-                              cfId,
-                              isSuper,
-                              isCounter,
-                              isDense,
-                              isCompound,
-                              partitions,
-                              clusterings,
-                              builder.build());
+        return CFMetaDataFactory.instance.newCFMetaData(ksName, name, cfId, isSuper, isCounter, isDense, isCompound,
+                                                        partitions, clusterings, builder.build());
     }
 
     private static List<AbstractType<?>> extractTypes(List<ColumnDefinition> clusteringColumns)
@@ -349,7 +341,7 @@ public final class CFMetaData
      */
     public static CFMetaData createFake(String keyspace, String name)
     {
-        return CFMetaData.Builder.create(keyspace, name).addPartitionKey("key", BytesType.instance).build();
+        return CFMetaDataFactory.instance.createBuilder(keyspace, name).addPartitionKey("key", BytesType.instance).build();
     }
 
     public Map<String, TriggerDefinition> getTriggers()
@@ -363,7 +355,7 @@ public final class CFMetaData
         CFStatement parsed = (CFStatement)QueryProcessor.parseStatement(cql);
         parsed.prepareKeyspace(keyspace);
         CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
-        CFMetaData.Builder builder = statement.metadataBuilder();
+        CFMetaDataFactory.Builder builder = statement.metadataBuilder();
         builder.withId(generateLegacyCfId(keyspace, statement.columnFamily()));
         CFMetaData cfm = builder.build();
         statement.applyPropertiesTo(cfm);
@@ -418,16 +410,16 @@ public final class CFMetaData
      */
     public CFMetaData copy(UUID newCfId)
     {
-        return copyOpts(new CFMetaData(ksName,
-                                       cfName,
-                                       newCfId,
-                                       isSuper,
-                                       isCounter,
-                                       isDense,
-                                       isCompound,
-                                       copy(partitionKeyColumns),
-                                       copy(clusteringColumns),
-                                       copy(partitionColumns)),
+        return copyOpts(CFMetaDataFactory.instance.newCFMetaData(ksName,
+                                                                 cfName,
+                                                                 newCfId,
+                                                                 isSuper,
+                                                                 isCounter,
+                                                                 isDense,
+                                                                 isCompound,
+                                                                 copy(partitionKeyColumns),
+                                                                 copy(clusteringColumns),
+                                                                 copy(partitionColumns)),
                         this);
     }
 
@@ -1368,173 +1360,6 @@ public final class CFMetaData
             .append("droppedColumns", droppedColumns)
             .append("triggers", triggers.values())
             .toString();
-    }
-
-    public static class Builder
-    {
-        private final String keyspace;
-        private final String table;
-        private final boolean isDense;
-        private final boolean isCompound;
-        private final boolean isSuper;
-        private final boolean isCounter;
-
-        private UUID tableId;
-
-        private final List<Pair<ColumnIdentifier, AbstractType>> partitionKeys = new ArrayList<>();
-        private final List<Pair<ColumnIdentifier, AbstractType>> clusteringColumns = new ArrayList<>();
-        private final List<Pair<ColumnIdentifier, AbstractType>> staticColumns = new ArrayList<>();
-        private final List<Pair<ColumnIdentifier, AbstractType>> regularColumns = new ArrayList<>();
-
-        private Builder(String keyspace, String table, boolean isDense, boolean isCompound, boolean isSuper, boolean isCounter)
-        {
-            this.keyspace = keyspace;
-            this.table = table;
-            this.isDense = isDense;
-            this.isCompound = isCompound;
-            this.isSuper = isSuper;
-            this.isCounter = isCounter;
-        }
-
-        public static Builder create(String keyspace, String table)
-        {
-            return create(keyspace, table, false, true, false);
-        }
-
-        public static Builder create(String keyspace, String table, boolean isDense, boolean isCompound, boolean isCounter)
-        {
-            return create(keyspace, table, isDense, isCompound, false, isCounter);
-        }
-
-        public static Builder create(String keyspace, String table, boolean isDense, boolean isCompound, boolean isSuper, boolean isCounter)
-        {
-            return new Builder(keyspace, table, isDense, isCompound, isSuper, isCounter);
-        }
-
-        public static Builder createDense(String keyspace, String table, boolean isCompound, boolean isCounter)
-        {
-            return create(keyspace, table, true, isCompound, isCounter);
-        }
-
-        public static Builder createSuper(String keyspace, String table, boolean isCounter)
-        {
-            return create(keyspace, table, false, false, true, isCounter);
-        }
-
-        public Builder withId(UUID tableId)
-        {
-            this.tableId = tableId;
-            return this;
-        }
-
-        public Builder addPartitionKey(String name, AbstractType type)
-        {
-            return addPartitionKey(ColumnIdentifier.getInterned(name, false), type);
-        }
-
-        public Builder addPartitionKey(ColumnIdentifier name, AbstractType type)
-        {
-            this.partitionKeys.add(Pair.create(name, type));
-            return this;
-        }
-
-        public Builder addClusteringColumn(String name, AbstractType type)
-        {
-            return addClusteringColumn(ColumnIdentifier.getInterned(name, false), type);
-        }
-
-        public Builder addClusteringColumn(ColumnIdentifier name, AbstractType type)
-        {
-            this.clusteringColumns.add(Pair.create(name, type));
-            return this;
-        }
-
-        public Builder addRegularColumn(String name, AbstractType type)
-        {
-            return addRegularColumn(ColumnIdentifier.getInterned(name, false), type);
-        }
-
-        public Builder addRegularColumn(ColumnIdentifier name, AbstractType type)
-        {
-            this.regularColumns.add(Pair.create(name, type));
-            return this;
-        }
-
-        public boolean hasRegulars()
-        {
-            return !this.regularColumns.isEmpty();
-        }
-
-        public Builder addStaticColumn(String name, AbstractType type)
-        {
-            return addStaticColumn(ColumnIdentifier.getInterned(name, false), type);
-        }
-
-        public Builder addStaticColumn(ColumnIdentifier name, AbstractType type)
-        {
-            this.staticColumns.add(Pair.create(name, type));
-            return this;
-        }
-
-        public Set<String> usedColumnNames()
-        {
-            Set<String> usedNames = new HashSet<>();
-            for (Pair<ColumnIdentifier, AbstractType> p : partitionKeys)
-                usedNames.add(p.left.toString());
-            for (Pair<ColumnIdentifier, AbstractType> p : clusteringColumns)
-                usedNames.add(p.left.toString());
-            for (Pair<ColumnIdentifier, AbstractType> p : staticColumns)
-                usedNames.add(p.left.toString());
-            for (Pair<ColumnIdentifier, AbstractType> p : regularColumns)
-                usedNames.add(p.left.toString());
-            return usedNames;
-        }
-
-        public CFMetaData build()
-        {
-            if (tableId == null)
-                tableId = UUIDGen.getTimeUUID();
-
-            List<ColumnDefinition> partitions = new ArrayList<>(partitionKeys.size());
-            List<ColumnDefinition> clusterings = new ArrayList<>(clusteringColumns.size());
-            PartitionColumns.Builder builder = PartitionColumns.builder();
-
-            for (int i = 0; i < partitionKeys.size(); i++)
-            {
-                Pair<ColumnIdentifier, AbstractType> p = partitionKeys.get(i);
-                Integer componentIndex = partitionKeys.size() == 1 ? null : i;
-                partitions.add(new ColumnDefinition(keyspace, table, p.left, p.right, componentIndex, ColumnDefinition.Kind.PARTITION_KEY));
-            }
-
-            for (int i = 0; i < clusteringColumns.size(); i++)
-            {
-                Pair<ColumnIdentifier, AbstractType> p = clusteringColumns.get(i);
-                clusterings.add(new ColumnDefinition(keyspace, table, p.left, p.right, i, ColumnDefinition.Kind.CLUSTERING_COLUMN));
-            }
-
-            for (int i = 0; i < regularColumns.size(); i++)
-            {
-                Pair<ColumnIdentifier, AbstractType> p = regularColumns.get(i);
-                builder.add(new ColumnDefinition(keyspace, table, p.left, p.right, null, ColumnDefinition.Kind.REGULAR));
-            }
-
-            for (int i = 0; i < staticColumns.size(); i++)
-            {
-                Pair<ColumnIdentifier, AbstractType> p = staticColumns.get(i);
-                builder.add(new ColumnDefinition(keyspace, table, p.left, p.right, null, ColumnDefinition.Kind.STATIC));
-            }
-
-            return new CFMetaData(keyspace,
-                                  table,
-                                  tableId,
-                                  isSuper,
-                                  isCounter,
-                                  isDense,
-                                  isCompound,
-                                  partitions,
-                                  clusterings,
-                                  builder.build());
-        }
     }
 
     // We don't use UUIDSerializer below because we want to use this with vint-encoded streams and UUIDSerializer

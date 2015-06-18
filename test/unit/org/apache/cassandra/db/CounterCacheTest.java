@@ -20,6 +20,7 @@ package org.apache.cassandra.db;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.AfterClass;
@@ -50,7 +51,7 @@ public class CounterCacheTest
     {
         SchemaLoader.prepareServer();
 
-        CFMetaData counterTable = CFMetaData.Builder.create(KEYSPACE1, COUNTER1, false, true, true)
+        CFMetaData counterTable = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, COUNTER1, false, true, true)
                                   .addPartitionKey("key", Int32Type.instance)
                                   .addClusteringColumn("name", Int32Type.instance)
                                   .addRegularColumn("c", CounterColumnType.instance)

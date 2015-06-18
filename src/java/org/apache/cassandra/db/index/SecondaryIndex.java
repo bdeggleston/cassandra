@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.IndexType;
 import org.apache.cassandra.cql3.Operator;
@@ -382,9 +383,9 @@ public abstract class SecondaryIndex
         if (def.getIndexType() == IndexType.CUSTOM)
             return null;
 
-        CFMetaData.Builder builder = CFMetaData.Builder.create(baseMetadata.ksName, baseMetadata.indexColumnFamilyName(def))
-                                                       .withId(baseMetadata.cfId)
-                                                       .addPartitionKey(def.name, def.type);
+        CFMetaDataFactory.Builder builder = CFMetaDataFactory.instance.createBuilder(baseMetadata.ksName, baseMetadata.indexColumnFamilyName(def))
+                                                                      .withId(baseMetadata.cfId)
+                                                                      .addPartitionKey(def.name, def.type);
 
         if (def.getIndexType() == IndexType.COMPOSITES)
         {

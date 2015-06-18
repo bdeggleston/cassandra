@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -59,7 +60,7 @@ public class RowTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
-        CFMetaData cfMetadata = CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD1)
+        CFMetaData cfMetadata = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD1)
                                                   .addPartitionKey("key", BytesType.instance)
                                                   .addClusteringColumn("col1", AsciiType.instance)
                                                   .addRegularColumn("a", AsciiType.instance)

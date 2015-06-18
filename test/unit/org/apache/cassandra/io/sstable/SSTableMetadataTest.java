@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.db.ClusteringComparator;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -73,11 +74,11 @@ public class SSTableMetadataTest
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD2),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD3),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_STANDARDCOMPOSITE2)
-                                                      .addPartitionKey("key", AsciiType.instance)
-                                                      .addClusteringColumn("name", AsciiType.instance)
-                                                      .addClusteringColumn("int", IntegerType.instance)
-                                                      .addRegularColumn("val", AsciiType.instance).build(),
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARDCOMPOSITE2)
+                                                              .addPartitionKey("key", AsciiType.instance)
+                                                              .addClusteringColumn("name", AsciiType.instance)
+                                                              .addClusteringColumn("int", IntegerType.instance)
+                                                              .addRegularColumn("val", AsciiType.instance).build(),
                                     SchemaLoader.counterCFMD(KEYSPACE1, CF_COUNTER1));
     }
 
