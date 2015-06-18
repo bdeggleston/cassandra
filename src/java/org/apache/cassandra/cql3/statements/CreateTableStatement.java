@@ -112,9 +112,9 @@ public class CreateTableStatement extends SchemaAlteringStatement
         }
     }
 
-    public CFMetaData.Builder metadataBuilder()
+    public CFMetaDataFactory.Builder metadataBuilder()
     {
-        CFMetaData.Builder builder = CFMetaData.Builder.create(keyspace(), columnFamily(), isDense, isCompound, hasCounters);
+        CFMetaDataFactory.Builder builder = CFMetaDataFactory.instance.createBuilder(keyspace(), columnFamily(), isDense, isCompound, hasCounters);
         for (int i = 0; i < keyAliases.size(); i++)
             builder.addPartitionKey(keyAliases.get(i), keyTypes.get(i));
         for (int i = 0; i < columnAliases.size(); i++)

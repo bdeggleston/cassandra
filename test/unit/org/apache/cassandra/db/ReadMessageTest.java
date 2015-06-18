@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.commitlog.CommitLogTestReplayer;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -56,19 +57,19 @@ public class ReadMessageTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
-        CFMetaData cfForReadMetadata = CFMetaData.Builder.create(KEYSPACE1, CF_FOR_READ_TEST)
+        CFMetaData cfForReadMetadata = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_FOR_READ_TEST)
                                                             .addPartitionKey("key", BytesType.instance)
                                                             .addClusteringColumn("col1", AsciiType.instance)
                                                             .addClusteringColumn("col2", AsciiType.instance)
                                                             .addRegularColumn("a", AsciiType.instance)
                                                             .addRegularColumn("b", AsciiType.instance).build();
 
-        CFMetaData cfForCommitMetadata1 = CFMetaData.Builder.create(KEYSPACE1, CF_FOR_COMMIT_TEST)
+        CFMetaData cfForCommitMetadata1 = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_FOR_COMMIT_TEST)
                                                        .addPartitionKey("key", BytesType.instance)
                                                        .addClusteringColumn("name", AsciiType.instance)
                                                        .addRegularColumn("commit1", AsciiType.instance).build();
 
-        CFMetaData cfForCommitMetadata2 = CFMetaData.Builder.create(KEYSPACENOCOMMIT, CF_FOR_COMMIT_TEST)
+        CFMetaData cfForCommitMetadata2 = CFMetaDataFactory.instance.createBuilder(KEYSPACENOCOMMIT, CF_FOR_COMMIT_TEST)
                                                             .addPartitionKey("key", BytesType.instance)
                                                             .addClusteringColumn("name", AsciiType.instance)
                                                             .addRegularColumn("commit2", AsciiType.instance).build();

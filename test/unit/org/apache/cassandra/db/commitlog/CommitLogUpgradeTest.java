@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.rows.Cell;
@@ -89,7 +90,7 @@ public class CommitLogUpgradeTest
     @BeforeClass
     static public void initialize() throws FileNotFoundException, IOException, InterruptedException
     {
-        CFMetaData metadata = CFMetaData.Builder.createDense(KEYSPACE, TABLE, false, false)
+        CFMetaData metadata = CFMetaDataFactory.instance.createDenseBuilder(KEYSPACE, TABLE, false, false)
                                                 .addPartitionKey("key", AsciiType.instance)
                                                 .addClusteringColumn("col", AsciiType.instance)
                                                 .addRegularColumn("val", BytesType.instance)

@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -247,11 +248,11 @@ public class TriggerExecutorTest
 
     private static CFMetaData makeCfMetaData(String ks, String cf, TriggerMetadata trigger)
     {
-        CFMetaData metadata = CFMetaData.Builder.create(ks, cf)
-                .addPartitionKey("pkey", UTF8Type.instance)
-                .addRegularColumn("c1", UTF8Type.instance)
-                .addRegularColumn("c2", UTF8Type.instance)
-                .build();
+        CFMetaData metadata = CFMetaDataFactory.instance.createBuilder(ks, cf)
+                                                        .addPartitionKey("pkey", UTF8Type.instance)
+                                                        .addRegularColumn("c1", UTF8Type.instance)
+                                                        .addRegularColumn("c2", UTF8Type.instance)
+                                                        .build();
 
         try
         {

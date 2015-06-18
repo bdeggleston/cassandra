@@ -33,6 +33,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.IndexType;
 import org.apache.cassandra.config.Schema;
@@ -92,9 +93,9 @@ public class DefsTest
     @Test
     public void testCFMetaDataApply() throws ConfigurationException
     {
-        CFMetaData cfm = CFMetaData.Builder.create(KEYSPACE1, "TestApplyCFM_CF")
-                                           .addPartitionKey("keys", BytesType.instance)
-                                           .addClusteringColumn("col", BytesType.instance).build();
+        CFMetaData cfm = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, "TestApplyCFM_CF")
+                                                   .addPartitionKey("keys", BytesType.instance)
+                                                   .addClusteringColumn("col", BytesType.instance).build();
 
 
         for (int i = 0; i < 5; i++)
@@ -527,10 +528,10 @@ public class DefsTest
 
     private CFMetaData addTestTable(String ks, String cf, String comment)
     {
-        CFMetaData newCFMD = CFMetaData.Builder.create(ks, cf)
-                                               .addPartitionKey("key", UTF8Type.instance)
-                                               .addClusteringColumn("col", UTF8Type.instance)
-                                               .addRegularColumn("val", UTF8Type.instance).build();
+        CFMetaData newCFMD = CFMetaDataFactory.instance.createBuilder(ks, cf)
+                                                       .addPartitionKey("key", UTF8Type.instance)
+                                                       .addClusteringColumn("col", UTF8Type.instance)
+                                                       .addRegularColumn("val", UTF8Type.instance).build();
 
         newCFMD.comment(comment)
                .readRepairChance(0.0);

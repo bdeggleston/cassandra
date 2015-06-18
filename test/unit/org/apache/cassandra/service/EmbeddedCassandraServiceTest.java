@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.schema.KeyspaceParams;
@@ -63,7 +64,7 @@ public class EmbeddedCassandraServiceTest
         setup();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     KeyspaceParams.simple(1),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD, true, false, false)
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD, true, false, false)
                                                       .addPartitionKey("pk", AsciiType.instance)
                                                       .addClusteringColumn("ck", AsciiType.instance)
                                                       .addRegularColumn("val", AsciiType.instance)

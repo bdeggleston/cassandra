@@ -29,6 +29,7 @@ import java.util.Set;
 import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.MaterializedViewDefinition;
 import org.apache.cassandra.config.Schema;
@@ -636,8 +637,7 @@ public class MaterializedView
                                            CFMetaData baseCf,
                                            CFProperties properties)
     {
-        CFMetaData.Builder viewBuilder = CFMetaData.Builder
-                                         .createView(baseCf.ksName, definition.viewName);
+        CFMetaDataFactory.Builder viewBuilder = CFMetaDataFactory.instance.createViewBuilder(baseCf.ksName, definition.viewName);
 
         ColumnDefinition nonPkTarget = null;
 

@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Config.DiskFailurePolicy;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -63,11 +64,11 @@ public class DirectoriesTest
         for (String table : TABLES)
         {
             UUID tableID = CFMetaData.generateLegacyCfId(KS, table);
-            CFM.add(CFMetaData.Builder.create(KS, table)
-                                      .withId(tableID)
-                                      .addPartitionKey("thekey", UTF8Type.instance)
-                                      .addClusteringColumn("thecolumn", UTF8Type.instance)
-                                      .build());
+            CFM.add(CFMetaDataFactory.instance.createBuilder(KS, table)
+                                              .withId(tableID)
+                                              .addPartitionKey("thekey", UTF8Type.instance)
+                                              .addClusteringColumn("thecolumn", UTF8Type.instance)
+                                              .build());
         }
 
         tempDataDir = File.createTempFile("cassandra", "unittest");
@@ -158,7 +159,7 @@ public class DirectoriesTest
     public void testSecondaryIndexDirectories()
     {
         UUID tableID = CFMetaData.generateLegacyCfId(KS, "cf");
-        CFMetaData PARENT_CFM = CFMetaData.Builder.create(KS, "cf")
+        CFMetaData PARENT_CFM = CFMetaDataFactory.instance.createBuilder(KS, "cf")
                                   .withId(tableID)
                                   .addPartitionKey("thekey", UTF8Type.instance)
                                   .addClusteringColumn("col", UTF8Type.instance)

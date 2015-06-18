@@ -28,6 +28,7 @@ import org.junit.*;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -66,14 +67,14 @@ public class DataResolverTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
-        CFMetaData cfMetadata = CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD)
-                                                  .addPartitionKey("key", BytesType.instance)
-                                                  .addClusteringColumn("col1", AsciiType.instance)
-                                                  .addRegularColumn("c1", AsciiType.instance)
-                                                  .addRegularColumn("c2", AsciiType.instance)
-                                                  .addRegularColumn("one", AsciiType.instance)
-                                                  .addRegularColumn("two", AsciiType.instance)
-                                                  .build();
+        CFMetaData cfMetadata = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD)
+                                                          .addPartitionKey("key", BytesType.instance)
+                                                          .addClusteringColumn("col1", AsciiType.instance)
+                                                          .addRegularColumn("c1", AsciiType.instance)
+                                                          .addRegularColumn("c2", AsciiType.instance)
+                                                          .addRegularColumn("one", AsciiType.instance)
+                                                          .addRegularColumn("two", AsciiType.instance)
+                                                          .build();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     KeyspaceParams.simple(1),

@@ -816,7 +816,7 @@ public final class SchemaKeyspace
     {
         RowUpdateBuilder adder = new RowUpdateBuilder(Tables, timestamp, mutation).clustering(table.cfName);
 
-        addTableParamsToSchemaMutation(table.params, adder);
+        CFMetaDataFactory.instance.addTableParamsToSchemaMutation(table.params, adder);
 
         adder.add("id", table.cfId)
              .set("flags", CFMetaData.flagsToStrings(table.flags()))
@@ -836,23 +836,6 @@ public final class SchemaKeyspace
             for (MaterializedViewDefinition materializedView: table.getMaterializedViews())
                 addMaterializedViewToSchemaMutation(table, materializedView, timestamp, mutation);
         }
-    }
-
-    private static void addTableParamsToSchemaMutation(TableParams params, RowUpdateBuilder adder)
-    {
-        adder.add("bloom_filter_fp_chance", params.bloomFilterFpChance)
-             .add("comment", params.comment)
-             .add("dclocal_read_repair_chance", params.dcLocalReadRepairChance)
-             .add("default_time_to_live", params.defaultTimeToLive)
-             .add("gc_grace_seconds", params.gcGraceSeconds)
-             .add("max_index_interval", params.maxIndexInterval)
-             .add("memtable_flush_period_in_ms", params.memtableFlushPeriodInMs)
-             .add("min_index_interval", params.minIndexInterval)
-             .add("read_repair_chance", params.readRepairChance)
-             .add("speculative_retry", params.speculativeRetry.toString())
-             .map("caching", params.caching.asMap())
-             .map("compaction", params.compaction.asMap())
-             .map("compression", params.compression.asMap());
     }
 
     public static Mutation makeUpdateTableMutation(KeyspaceMetadata keyspace,
@@ -1066,7 +1049,7 @@ public final class SchemaKeyspace
                                  isMaterializedView,
                                  columns,
                                  DatabaseDescriptor.getPartitioner())
-                         .params(createTableParamsFromRow(row));
+                         .params(CFMetaDataFactory.instance.createTableParamsFromRow(row));
     }
 
     private static TableParams createTableParamsFromRow(UntypedResultSet.Row row)

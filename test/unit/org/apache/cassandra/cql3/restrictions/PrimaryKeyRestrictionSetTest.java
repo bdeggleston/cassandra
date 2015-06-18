@@ -24,6 +24,7 @@ import com.google.common.collect.Iterables;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.Term.MultiItemTerminal;
@@ -914,7 +915,7 @@ public class PrimaryKeyRestrictionSetTest
         for (int i = 0; i < numberOfClusteringColumns; i++)
             types.add(Int32Type.instance);
 
-        CFMetaData.Builder builder = CFMetaData.Builder.create("keyspace", "test")
+        CFMetaDataFactory.Builder builder = CFMetaDataFactory.instance.createBuilder("keyspace", "test")
                                                        .addPartitionKey("partition_key", Int32Type.instance);
 
         for (int i = 0; i < numberOfClusteringColumns; i++)

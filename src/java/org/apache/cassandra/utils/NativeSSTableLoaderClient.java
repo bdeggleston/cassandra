@@ -22,6 +22,7 @@ import java.util.*;
 
 import com.datastax.driver.core.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;

@@ -30,6 +30,7 @@ import static org.junit.Assert.*;
 import com.googlecode.concurrentlinkedhashmap.Weighers;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -57,7 +58,7 @@ public class CacheProviderTest
     {
         SchemaLoader.prepareServer();
 
-        cfm = CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD1)
+        cfm = CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD1)
                                         .addPartitionKey("pKey", AsciiType.instance)
                                         .addRegularColumn("col1", AsciiType.instance)
                                         .build();

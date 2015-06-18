@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.Slice.Bound;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -43,7 +44,7 @@ public class UnfilteredRowIteratorsMergeTest
 {
     static DecoratedKey partitionKey = Util.dk("key");
     static DeletionTime partitionLevelDeletion = DeletionTime.LIVE;
-    static CFMetaData metadata = CFMetaData.Builder.create("UnfilteredRowIteratorsMergeTest", "Test").
+    static CFMetaData metadata = CFMetaDataFactory.instance.createBuilder("UnfilteredRowIteratorsMergeTest", "Test").
             addPartitionKey("key", AsciiType.instance).
             addClusteringColumn("clustering", Int32Type.instance).
             addRegularColumn("data", Int32Type.instance).
