@@ -32,7 +32,7 @@ public class ColumnDefinitionTest
     @Test
     public void testSerializeDeserialize() throws Exception
     {
-        CFMetaData cfm = CFMetaData.Builder.create("ks", "cf", true, false, false)
+        CFMetaData cfm = CFMetaDataFactory.instance.createBuilder("ks", "cf", true, false, false)
                          .addPartitionKey("pkey", AsciiType.instance)
                          .addClusteringColumn("name", AsciiType.instance)
                          .addRegularColumn("val", AsciiType.instance)

@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DeletionTime;
@@ -69,7 +70,7 @@ public class LegacySSTableTest
     {
         SchemaLoader.prepareServer();
 
-        CFMetaData metadata = CFMetaData.Builder.createDense(KSNAME, CFNAME, false, false)
+        CFMetaData metadata = CFMetaDataFactory.instance.createDenseBuilder(KSNAME, CFNAME, false, false)
                                                 .addPartitionKey("key", BytesType.instance)
                                                 .addClusteringColumn("column", BytesType.instance)
                                                 .addRegularColumn("value", BytesType.instance)

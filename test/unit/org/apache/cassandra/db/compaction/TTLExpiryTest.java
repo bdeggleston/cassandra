@@ -18,7 +18,7 @@
  */
 package org.apache.cassandra.db.compaction;
 
-import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -56,7 +56,7 @@ public class TTLExpiryTest
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     KeyspaceParams.simple(1),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD1)
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD1)
                                                       .addPartitionKey("pKey", AsciiType.instance)
                                                       .addRegularColumn("col1", AsciiType.instance)
                                                       .addRegularColumn("col", AsciiType.instance)

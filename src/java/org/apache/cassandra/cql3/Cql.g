@@ -38,6 +38,8 @@ options {
     import java.util.Set;
 
     import org.apache.cassandra.auth.*;
+    import org.apache.cassandra.config.CFMetaDataFactory;
+    import org.apache.cassandra.db.marshal.CollectionType;
     import org.apache.cassandra.cql3.*;
     import org.apache.cassandra.cql3.statements.*;
     import org.apache.cassandra.cql3.selection.*;
@@ -776,7 +778,7 @@ alterKeyspaceStatement returns [AlterKeyspaceStatement expr]
 alterTableStatement returns [AlterTableStatement expr]
     @init {
         AlterTableStatement.Type type = null;
-        CFPropDefs props = new CFPropDefs();
+        CFPropDefs props = CFMetaDataFactory.instance.newPropDefs();
         Map<ColumnIdentifier.Raw, ColumnIdentifier.Raw> renames = new HashMap<ColumnIdentifier.Raw, ColumnIdentifier.Raw>();
         boolean isStatic = false;
     }

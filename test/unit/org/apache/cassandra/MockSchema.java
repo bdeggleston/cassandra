@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 
 import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -139,11 +140,11 @@ public class MockSchema
 
     private static CFMetaData newCFMetaData(String ksname, String cfname)
     {
-        CFMetaData metadata = CFMetaData.Builder.create(ksname, cfname)
-                                                .addPartitionKey("key", UTF8Type.instance)
-                                                .addClusteringColumn("col", UTF8Type.instance)
-                                                .addRegularColumn("value", UTF8Type.instance)
-                                                .build();
+        CFMetaData metadata = CFMetaDataFactory.instance.createBuilder(ksname, cfname)
+                                                        .addPartitionKey("key", UTF8Type.instance)
+                                                        .addClusteringColumn("col", UTF8Type.instance)
+                                                        .addRegularColumn("value", UTF8Type.instance)
+                                                        .build();
         metadata.caching(CachingOptions.NONE);
         return metadata;
     }

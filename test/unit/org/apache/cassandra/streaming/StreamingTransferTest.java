@@ -36,6 +36,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -80,10 +81,10 @@ public class StreamingTransferTest
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     KeyspaceParams.simple(1),
                                     SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_COUNTER, false, true, true)
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_COUNTER, false, true, true)
                                                       .addPartitionKey("key", BytesType.instance)
                                                       .build(),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_STANDARDINT)
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARDINT)
                                                       .addPartitionKey("key", AsciiType.instance)
                                                       .addClusteringColumn("cols", Int32Type.instance)
                                                       .addRegularColumn("val", BytesType.instance)

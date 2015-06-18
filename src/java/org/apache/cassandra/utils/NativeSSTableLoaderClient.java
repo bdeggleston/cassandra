@@ -22,6 +22,7 @@ import java.util.*;
 
 import com.datastax.driver.core.*;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -149,7 +150,7 @@ public class NativeSSTableLoaderClient extends SSTableLoader.Client
                                                             boolean isSuper,
                                                             boolean isCQLTable)
     {
-        ColumnDefinition.Kind kind = LegacySchemaTables.deserializeKind(row.getString("type"));
+        ColumnDefinition.Kind kind = CFMetaDataFactory.deserializeKind(row.getString("type"));
 
         Integer componentIndex = null;
         if (!row.isNull("component_index"))

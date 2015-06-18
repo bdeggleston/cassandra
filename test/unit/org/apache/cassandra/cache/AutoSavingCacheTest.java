@@ -18,6 +18,7 @@
 package org.apache.cassandra.cache;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -44,10 +45,10 @@ public class AutoSavingCacheTest
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
                                     KeyspaceParams.simple(1),
-                                    CFMetaData.Builder.create(KEYSPACE1, CF_STANDARD1)
-                                                      .addPartitionKey("pKey", AsciiType.instance)
-                                                      .addRegularColumn("col1", AsciiType.instance)
-                                                      .build());
+                                    CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARD1)
+                                                     .addPartitionKey("pKey", AsciiType.instance)
+                                                     .addRegularColumn("col1", AsciiType.instance)
+                                                     .build());
     }
 
     @Test

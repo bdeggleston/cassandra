@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.Operator;
 import org.apache.cassandra.db.*;
@@ -40,7 +41,7 @@ import org.apache.cassandra.db.marshal.*;
  */
 public class CompositesIndexOnCollectionValue extends CompositesIndex
 {
-    public static void addClusteringColumns(CFMetaData.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition columnDef)
+    public static void addClusteringColumns(CFMetaDataFactory.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition columnDef)
     {
         addGenericClusteringColumns(indexMetadata, baseMetadata, columnDef);
 

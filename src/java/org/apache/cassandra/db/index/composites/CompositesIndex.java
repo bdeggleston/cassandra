@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -74,7 +75,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
         throw new AssertionError();
     }
 
-    public static void addIndexClusteringColumns(CFMetaData.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition cfDef)
+    public static void addIndexClusteringColumns(CFMetaDataFactory.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition cfDef)
     {
         if (cfDef.type.isCollection() && cfDef.type.isMultiCell())
         {
@@ -99,7 +100,7 @@ public abstract class CompositesIndex extends AbstractSimplePerColumnSecondaryIn
         }
     }
 
-    protected static void addGenericClusteringColumns(CFMetaData.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition columnDef)
+    protected static void addGenericClusteringColumns(CFMetaDataFactory.Builder indexMetadata, CFMetaData baseMetadata, ColumnDefinition columnDef)
     {
         indexMetadata.addClusteringColumn("partition_key", SecondaryIndex.keyComparator);
         for (ColumnDefinition def : baseMetadata.clusteringColumns())
