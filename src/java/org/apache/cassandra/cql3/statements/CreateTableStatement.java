@@ -188,7 +188,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
     public static class RawStatement extends CFStatement
     {
         private final Map<ColumnIdentifier, CQL3Type.Raw> definitions = new HashMap<>();
-        public final CFPropDefs properties = new CFPropDefs();
+        public final CFPropDefs properties = CFMetaDataFactory.instance.newPropDefs();
 
         private final List<List<ColumnIdentifier>> keyAliases = new ArrayList<List<ColumnIdentifier>>();
         private final List<ColumnIdentifier> columnAliases = new ArrayList<ColumnIdentifier>();

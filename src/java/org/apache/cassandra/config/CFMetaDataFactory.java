@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.cql3.statements.CFPropDefs;
 import org.apache.cassandra.db.PartitionColumns;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.FBUtilities;
@@ -239,5 +240,10 @@ public class CFMetaDataFactory
                               partitionKeyColumns,
                               clusteringColumns,
                               partitionColumns);
+    }
+
+    public CFPropDefs newPropDefs()
+    {
+        return new CFPropDefs();
     }
 }
