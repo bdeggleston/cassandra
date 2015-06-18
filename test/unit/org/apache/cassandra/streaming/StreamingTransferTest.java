@@ -36,6 +36,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -82,14 +83,14 @@ public class StreamingTransferTest
                 SimpleStrategy.class,
                 KSMetaData.optsWithRF(1),
                 SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD),
-                CFMetaData.Builder.create(KEYSPACE1, CF_COUNTER, false, true, true)
-                        .addPartitionKey("key", BytesType.instance)
-                        .build(),
-                CFMetaData.Builder.create(KEYSPACE1, CF_STANDARDINT)
-                        .addPartitionKey("key", AsciiType.instance)
-                        .addClusteringColumn("cols", Int32Type.instance)
-                        .addRegularColumn("val", BytesType.instance)
-                        .build(),
+                CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_COUNTER, false, true, true)
+                                          .addPartitionKey("key", BytesType.instance)
+                                          .build(),
+                CFMetaDataFactory.instance.createBuilder(KEYSPACE1, CF_STANDARDINT)
+                                          .addPartitionKey("key", AsciiType.instance)
+                                          .addClusteringColumn("cols", Int32Type.instance)
+                                          .addRegularColumn("val", BytesType.instance)
+                                          .build(),
                 SchemaLoader.compositeIndexCFMD(KEYSPACE1, CF_INDEX, true));
         SchemaLoader.createKeyspace(KEYSPACE2,
                 SimpleStrategy.class,

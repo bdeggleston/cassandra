@@ -126,9 +126,9 @@ public class CreateTableStatement extends SchemaAlteringStatement
         }
     }
 
-    public CFMetaData.Builder metadataBuilder()
+    public CFMetaDataFactory.Builder metadataBuilder()
     {
-        CFMetaData.Builder builder = CFMetaData.Builder.create(keyspace(), columnFamily(), isDense, isCompound, hasCounters);
+        CFMetaDataFactory.Builder builder = CFMetaDataFactory.instance.createBuilder(keyspace(), columnFamily(), isDense, isCompound, hasCounters);
         for (int i = 0; i < keyAliases.size(); i++)
             builder.addPartitionKey(keyAliases.get(i), keyTypes.get(i));
         for (int i = 0; i < columnAliases.size(); i++)
@@ -188,7 +188,7 @@ public class CreateTableStatement extends SchemaAlteringStatement
     public static class RawStatement extends CFStatement
     {
         private final Map<ColumnIdentifier, CQL3Type.Raw> definitions = new HashMap<>();
-        public final CFPropDefs properties = new CFPropDefs();
+        public final CFPropDefs properties = CFMetaDataFactory.instance.newPropDefs();
 
         private final List<List<ColumnIdentifier>> keyAliases = new ArrayList<List<ColumnIdentifier>>();
         private final List<ColumnIdentifier> columnAliases = new ArrayList<ColumnIdentifier>();

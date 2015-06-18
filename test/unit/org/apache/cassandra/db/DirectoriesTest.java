@@ -32,6 +32,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.CFMetaDataFactory;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Config.DiskFailurePolicy;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -60,11 +61,11 @@ public class DirectoriesTest
         for (String table : TABLES)
         {
             UUID tableID = CFMetaData.generateLegacyCfId(KS, table);
-            CFM.add(CFMetaData.Builder.create(KS, table)
-                                      .withId(tableID)
-                                      .addPartitionKey("thekey", UTF8Type.instance)
-                                      .addClusteringColumn("thecolumn", UTF8Type.instance)
-                                      .build());
+            CFM.add(CFMetaDataFactory.instance.createBuilder(KS, table)
+                                              .withId(tableID)
+                                              .addPartitionKey("thekey", UTF8Type.instance)
+                                              .addClusteringColumn("thecolumn", UTF8Type.instance)
+                                              .build());
         }
 
         tempDataDir = File.createTempFile("cassandra", "unittest");
