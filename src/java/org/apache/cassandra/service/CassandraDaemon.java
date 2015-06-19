@@ -42,6 +42,10 @@ import com.codahale.metrics.MetricRegistryListener;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.NachoAwareCFMetaDataFactory;
+import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.metrics.DefaultNameFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,6 +157,9 @@ public class CassandraDaemon
             WindowsFailedSnapshotTracker.deleteOldSnapshots();
 
         ThreadAwareSecurityManager.install();
+
+        System.setProperty("cassandra.cfmetadatafactory", "org.apache.cassandra.config.NachoAwareCFMetaDataFactory");
+        assert CFMetaDataFactory.instance instanceof NachoAwareCFMetaDataFactory;
 
         logSystemInfo();
 
