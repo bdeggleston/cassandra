@@ -34,6 +34,11 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.io.sstable.Component;
+import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.service.StorageService;
 import org.github.jamm.Unmetered;
 
 import org.apache.cassandra.cache.CachingOptions;
@@ -912,6 +917,36 @@ public class CFMetaData
         {
             throw new RuntimeException(e);
         }
+    }
+
+    public final ColumnFamilyStore createColumnFamilyStore(Keyspace ks, boolean loadSStables)
+    {
+        return createColumnFamilyStore(ks, StorageService.getPartitioner(), loadSStables);
+    }
+
+    public ColumnFamilyStore createColumnFamilyStore(Keyspace ks, IPartitioner partitioner, boolean loadSSTables)
+    {
+        // get the max generation number, to prevent generation conflicts
+        Directories directories = new Directories(this);
+        Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
+        List<Integer> generations = new ArrayList<Integer>();
+        for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
+        {
+            Descriptor desc = entry.getKey();
+            generations.add(desc.generation);
+            if (!desc.isCompatible())
+                throw new RuntimeException(String.format("Incompatible SSTable found. Current version %s is unable to read file: %s. Please run upgradesstables.",
+                                                         desc.getFormat().getLatestVersion(), desc));
+        }
+        Collections.sort(generations);
+        int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
+
+        return newCFS(Keyspace.open(ksName), partitioner, value, directories, loadSSTables);
+    }
+
+    protected ColumnFamilyStore newCFS(Keyspace ks, IPartitioner partitioner, int value, Directories directories, boolean loadSSTables)
+    {
+        return new ColumnFamilyStore(ks, cfName, partitioner, value, this, directories, loadSSTables);
     }
 
     /**

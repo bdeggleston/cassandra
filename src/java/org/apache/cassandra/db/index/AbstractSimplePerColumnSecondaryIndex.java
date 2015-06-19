@@ -52,10 +52,8 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
         columnDef = columnDefs.iterator().next();
 
         CFMetaData indexedCfMetadata = SecondaryIndex.newIndexMetadata(baseCfs.metadata, columnDef);
-        indexCfs = ColumnFamilyStore.createColumnFamilyStore(baseCfs.keyspace,
-                                                             indexedCfMetadata.cfName,
+        indexCfs = indexedCfMetadata.createColumnFamilyStore(baseCfs.keyspace,
                                                              new LocalPartitioner(getIndexKeyComparator()),
-                                                             indexedCfMetadata,
                                                              baseCfs.getTracker().loadsstables);
     }
 
