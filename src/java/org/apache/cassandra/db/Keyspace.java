@@ -262,8 +262,12 @@ public class Keyspace
      */
     public static void clearSnapshot(String snapshotName, String keyspace)
     {
-        List<File> snapshotDirs = Directories.getKSChildDirectories(keyspace);
-        Directories.clearSnapshot(snapshotName, snapshotDirs);
+        Keyspace ks = Keyspace.open(keyspace);
+        for (ColumnFamilyStore cfs: ks.getColumnFamilyStores())
+        {
+            List<File> snapshotDirs =cfs.metadata.newDirectories().getKSChildDirectories(keyspace);
+            Directories.clearSnapshot(snapshotName, snapshotDirs);
+        }
     }
 
     /**

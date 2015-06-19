@@ -927,7 +927,7 @@ public class CFMetaData
     public ColumnFamilyStore createColumnFamilyStore(Keyspace ks, IPartitioner partitioner, boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(this);
+        Directories directories = newDirectories();
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
@@ -942,6 +942,11 @@ public class CFMetaData
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
 
         return newCFS(Keyspace.open(ksName), partitioner, value, directories, loadSSTables);
+    }
+
+    public Directories newDirectories()
+    {
+        return new Directories(this);
     }
 
     protected ColumnFamilyStore newCFS(Keyspace ks, IPartitioner partitioner, int value, Directories directories, boolean loadSSTables)
