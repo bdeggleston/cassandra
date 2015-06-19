@@ -37,6 +37,9 @@ import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.NachoAwareCFMetaDataFactory;
 import org.apache.cassandra.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,6 +125,9 @@ public class CassandraDaemon
      */
     protected void setup()
     {
+        System.setProperty("cassandra.cfmetadatafactory", "org.apache.cassandra.config.NachoAwareCFMetaDataFactory");
+        assert CFMetaDataFactory.instance instanceof NachoAwareCFMetaDataFactory;
+
         logSystemInfo();
 
         try
@@ -322,6 +328,7 @@ public class CassandraDaemon
         InetAddress nativeAddr = DatabaseDescriptor.getRpcAddress();
         int nativePort = DatabaseDescriptor.getNativeTransportPort();
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort);
+
     }
 
     private void logSystemInfo()

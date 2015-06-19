@@ -550,6 +550,9 @@ class FrozenType(cassandra.cqltypes._ParameterizedType):
         subtype, = cls.subtypes
         return subtype.to_binary(val, protocol_version)
 
+from cassandra.metadata import TableMetadata
+TableMetadata.recognized_options = tuple(list(TableMetadata.recognized_options) + ['nacho_strategy'])
+
 class Shell(cmd.Cmd):
     custom_prompt = os.getenv('CQLSH_PROMPT', '')
     if custom_prompt is not '':
