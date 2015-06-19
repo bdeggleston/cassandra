@@ -44,7 +44,6 @@ import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.marshal.TypeParser;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.io.compress.CompressionParameters;
-import org.apache.cassandra.schema.LegacySchemaTables;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
@@ -88,11 +87,6 @@ public class CFMetaDataFactory
     public final Builder createDenseBuilder(String keyspace, String table, boolean isCompound, boolean isCounter)
     {
         return createBuilder(keyspace, table, true, isCompound, isCounter);
-    }
-
-    public final Builder createSuperBuilder(String keyspace, String table, boolean isCounter)
-    {
-        return createBuilder(keyspace, table, false, false, true, isCounter);
     }
 
     public final static class Builder

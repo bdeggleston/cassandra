@@ -410,17 +410,16 @@ public class CFMetaData
      */
     public CFMetaData copy(UUID newCfId)
     {
-        return copyOpts(CFMetaDataFactory.instance.newCFMetaData(ksName,
-                                                                 cfName,
-                                                                 newCfId,
-                                                                 isSuper,
-                                                                 isCounter,
-                                                                 isDense,
-                                                                 isCompound,
-                                                                 copy(partitionKeyColumns),
-                                                                 copy(clusteringColumns),
-                                                                 copy(partitionColumns)),
-                        this);
+        return CFMetaDataFactory.instance.newCFMetaData(ksName,
+                                                        cfName,
+                                                        newCfId,
+                                                        isSuper,
+                                                        isCounter,
+                                                        isDense,
+                                                        isCompound,
+                                                        copy(partitionKeyColumns),
+                                                        copy(clusteringColumns),
+                                                        copy(partitionColumns)).copyOpts(this);
     }
 
     private static List<ColumnDefinition> copy(List<ColumnDefinition> l)
@@ -439,27 +438,26 @@ public class CFMetaData
         return newColumns.build();
     }
 
-    @VisibleForTesting
-    public static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
+    protected CFMetaData copyOpts(CFMetaData that)
     {
-        return newCFMD.comment(oldCFMD.comment)
-                      .readRepairChance(oldCFMD.readRepairChance)
-                      .dcLocalReadRepairChance(oldCFMD.dcLocalReadRepairChance)
-                      .gcGraceSeconds(oldCFMD.gcGraceSeconds)
-                      .minCompactionThreshold(oldCFMD.minCompactionThreshold)
-                      .maxCompactionThreshold(oldCFMD.maxCompactionThreshold)
-                      .compactionStrategyClass(oldCFMD.compactionStrategyClass)
-                      .compactionStrategyOptions(new HashMap<>(oldCFMD.compactionStrategyOptions))
-                      .compressionParameters(oldCFMD.compressionParameters.copy())
-                      .bloomFilterFpChance(oldCFMD.getBloomFilterFpChance())
-                      .caching(oldCFMD.caching)
-                      .defaultTimeToLive(oldCFMD.defaultTimeToLive)
-                      .minIndexInterval(oldCFMD.minIndexInterval)
-                      .maxIndexInterval(oldCFMD.maxIndexInterval)
-                      .speculativeRetry(oldCFMD.speculativeRetry)
-                      .memtableFlushPeriod(oldCFMD.memtableFlushPeriod)
-                      .droppedColumns(new HashMap<>(oldCFMD.droppedColumns))
-                      .triggers(new HashMap<>(oldCFMD.triggers));
+        return comment(that.comment)
+               .readRepairChance(that.readRepairChance)
+               .dcLocalReadRepairChance(that.dcLocalReadRepairChance)
+               .gcGraceSeconds(that.gcGraceSeconds)
+               .minCompactionThreshold(that.minCompactionThreshold)
+               .maxCompactionThreshold(that.maxCompactionThreshold)
+               .compactionStrategyClass(that.compactionStrategyClass)
+               .compactionStrategyOptions(new HashMap<>(that.compactionStrategyOptions))
+               .compressionParameters(that.compressionParameters.copy())
+               .bloomFilterFpChance(that.getBloomFilterFpChance())
+               .caching(that.caching)
+               .defaultTimeToLive(that.defaultTimeToLive)
+               .minIndexInterval(that.minIndexInterval)
+               .maxIndexInterval(that.maxIndexInterval)
+               .speculativeRetry(that.speculativeRetry)
+               .memtableFlushPeriod(that.memtableFlushPeriod)
+               .droppedColumns(new HashMap<>(that.droppedColumns))
+               .triggers(new HashMap<>(that.triggers));
     }
 
     /**
