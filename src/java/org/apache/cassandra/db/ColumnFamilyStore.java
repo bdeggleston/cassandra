@@ -466,35 +466,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         metric.release();
     }
 
-
-    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
-    {
-        return createColumnFamilyStore(keyspace, columnFamily, Schema.instance.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
-    }
-
-    public static synchronized ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace,
-                                                                         String columnFamily,
-                                                                         CFMetaData metadata,
-                                                                         boolean loadSSTables)
-    {
-        // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata);
-        Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
-        List<Integer> generations = new ArrayList<Integer>();
-        for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
-        {
-            Descriptor desc = entry.getKey();
-            generations.add(desc.generation);
-            if (!desc.isCompatible())
-                throw new RuntimeException(String.format("Incompatible SSTable found. Current version %s is unable to read file: %s. Please run upgradesstables.",
-                        desc.getFormat().getLatestVersion(), desc));
-        }
-        Collections.sort(generations);
-        int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
-
-        return new ColumnFamilyStore(keyspace, columnFamily, value, metadata, directories, loadSSTables);
-    }
-
     /**
      * Removes unnecessary files from the cf directory at startup: these include temp files, orphans, zero-length files
      * and compacted sstables. Files that cannot be recognized will be ignored.

@@ -360,9 +360,10 @@ public class Keyspace
             // CFS being created for the first time, either on server startup or new CF being added.
             // We don't worry about races here; startup is safe, and adding multiple idential CFs
             // simultaneously is a "don't do that" scenario.
-            ColumnFamilyStore newCfs = ColumnFamilyStore.createColumnFamilyStore(this, cfName, loadSSTables);
-
+            CFMetaData cfm = Schema.instance.getCFMetaData(cfId);
+            ColumnFamilyStore newCfs = cfm.createColumnFamilyStore(this, loadSSTables);
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, newCfs);
+
             // CFS mbean instantiation will error out before we hit this, but in case that changes...
             if (oldCfs != null)
                 throw new IllegalStateException("added multiple mappings for cf id " + cfId);
