@@ -40,6 +40,9 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistryListener;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.google.common.util.concurrent.Uninterruptibles;
+
+import org.apache.cassandra.config.CFMetaDataFactory;
+import org.apache.cassandra.config.NachoAwareCFMetaDataFactory;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.metrics.DefaultNameFactory;
 import org.slf4j.Logger;
@@ -143,6 +146,9 @@ public class CassandraDaemon
      */
     protected void setup()
     {
+        System.setProperty("cassandra.cfmetadatafactory", "org.apache.cassandra.config.NachoAwareCFMetaDataFactory");
+        assert CFMetaDataFactory.instance instanceof NachoAwareCFMetaDataFactory;
+
         logSystemInfo();
 
         CLibrary.tryMlockall();
@@ -331,6 +337,7 @@ public class CassandraDaemon
         InetAddress nativeAddr = DatabaseDescriptor.getRpcAddress();
         int nativePort = DatabaseDescriptor.getNativeTransportPort();
         nativeServer = new org.apache.cassandra.transport.Server(nativeAddr, nativePort);
+
     }
 
     private void logSystemInfo()
