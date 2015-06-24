@@ -53,13 +53,11 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
         estimatedSSTables = Math.max(1, estimatedTotalKeys / maxSSTableSize);
         File sstableDirectory = cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
         @SuppressWarnings("resource")
-        SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                    estimatedTotalKeys / estimatedSSTables,
-                                                    minRepairedAt,
-                                                    cfs.metadata,
-                                                    cfs.partitioner,
-                                                    new MetadataCollector(allSSTables, cfs.metadata.comparator, level),
-                                                    SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+        SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                       estimatedTotalKeys / estimatedSSTables,
+                                                       minRepairedAt,
+                                                       new MetadataCollector(allSSTables, cfs.metadata.comparator, level),
+                                                       SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
         sstableWriter.switchWriter(writer);
     }
 
@@ -71,13 +69,11 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
         {
             File sstableDirectory = cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
             @SuppressWarnings("resource")
-            SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                                estimatedTotalKeys / estimatedSSTables,
-                                                                minRepairedAt,
-                                                                cfs.metadata,
-                                                                cfs.partitioner,
-                                                                new MetadataCollector(allSSTables, cfs.metadata.comparator, level),
-                                                                SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+            SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                           estimatedTotalKeys / estimatedSSTables,
+                                                           minRepairedAt,
+                                                           new MetadataCollector(allSSTables, cfs.metadata.comparator, level),
+                                                           SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
 
             sstableWriter.switchWriter(writer);
         }

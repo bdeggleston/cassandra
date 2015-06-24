@@ -70,7 +70,7 @@ public class BigTableWriterTest extends AbstractTransactionalTest
 
         private TestableBTW(String file) throws IOException
         {
-            this(file, SSTableWriter.create(file, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS)));
+            this(file, cfs.createSSTableWriter(file, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS)));
         }
 
         private TestableBTW(String file, SSTableWriter sw) throws IOException

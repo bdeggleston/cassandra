@@ -133,7 +133,7 @@ public class StreamReader
             throw new IOException("Insufficient disk space to store " + totalSize + " bytes");
         desc = Descriptor.fromFilename(cfs.getTempSSTablePath(cfs.directories.getLocationForDisk(localDir), format));
 
-        return SSTableWriter.create(desc, estimatedKeys, repairedAt, sstableLevel, header.toHeader(cfs.metadata));
+        return cfs.createSSTableWriter(desc, estimatedKeys, repairedAt, sstableLevel, header.toHeader(cfs.metadata));
     }
 
     protected void drain(InputStream dis, long bytesRead) throws IOException

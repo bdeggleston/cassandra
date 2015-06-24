@@ -30,6 +30,7 @@ import com.google.common.base.Throwables;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.RowStats;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -66,9 +67,9 @@ abstract class AbstractSSTableSimpleWriter implements Closeable
 
     protected SSTableWriter createWriter()
     {
-        return SSTableWriter.create(createDescriptor(directory, metadata.ksName, metadata.cfName, formatType),
-                                    0,
-                                    ActiveRepairService.UNREPAIRED_SSTABLE,
+        ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(metadata.cfId);
+        return cfs.createSSTableWriter(createDescriptor(directory, metadata.ksName, metadata.cfName, formatType),
+                                    0, ActiveRepairService.UNREPAIRED_SSTABLE, 0,
                                     new SerializationHeader(metadata, columns, RowStats.NO_STATS));
     }
 

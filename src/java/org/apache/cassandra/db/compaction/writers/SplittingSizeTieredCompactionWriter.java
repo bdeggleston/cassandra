@@ -86,13 +86,11 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
         long currentPartitionsToWrite = Math.round(estimatedTotalKeys * ratios[currentRatioIndex]);
         currentBytesToWrite = Math.round(totalSize * ratios[currentRatioIndex]);
         @SuppressWarnings("resource")
-        SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                                            currentPartitionsToWrite,
-                                                                            minRepairedAt,
-                                                                            cfs.metadata,
-                                                                            cfs.partitioner,
-                                                                            new MetadataCollector(allSSTables, cfs.metadata.comparator, 0),
-                                                                            SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+        SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                       currentPartitionsToWrite,
+                                                       minRepairedAt,
+                                                       new MetadataCollector(allSSTables, cfs.metadata.comparator, 0),
+                                                       SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
 
         sstableWriter.switchWriter(writer);
         logger.debug("Ratios={}, expectedKeys = {}, totalSize = {}, currentPartitionsToWrite = {}, currentBytesToWrite = {}", ratios, estimatedTotalKeys, totalSize, currentPartitionsToWrite, currentBytesToWrite);
@@ -109,13 +107,11 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
             long currentPartitionsToWrite = Math.round(ratios[currentRatioIndex] * estimatedTotalKeys);
             File sstableDirectory = cfs.directories.getLocationForDisk(getWriteDirectory(Math.round(totalSize * ratios[currentRatioIndex])));
             @SuppressWarnings("resource")
-            SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                                                currentPartitionsToWrite,
-                                                                                minRepairedAt,
-                                                                                cfs.metadata,
-                                                                                cfs.partitioner,
-                                                                                new MetadataCollector(allSSTables, cfs.metadata.comparator, 0),
-                                                                                SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+            SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                           currentPartitionsToWrite,
+                                                           minRepairedAt,
+                                                           new MetadataCollector(allSSTables, cfs.metadata.comparator, 0),
+                                                           SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
             sstableWriter.switchWriter(writer);
             logger.debug("Switching writer, currentPartitionsToWrite = {}", currentPartitionsToWrite);
         }

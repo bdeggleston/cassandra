@@ -39,6 +39,7 @@ import org.apache.cassandra.db.lifecycle.View;
 import org.apache.cassandra.db.lifecycle.Tracker;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.json.simple.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,6 +204,24 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // because the old one still aliases the previous comparator.
         if (data.getView().getCurrentMemtable().initialComparator != metadata.comparator)
             switchMemtable();
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, Long keyCount, Long repairedAt, MetadataCollector metadataCollector, SerializationHeader header)
+    {
+        SSTableWriter.Factory writerFactory = descriptor.getFormat().getWriterFactory();
+        return writerFactory.open(descriptor, keyCount, repairedAt, metadata, partitioner, metadataCollector, header);
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+    {
+        MetadataCollector collector = new MetadataCollector(metadata.comparator).sstableLevel(sstableLevel);
+        return createSSTableWriter(descriptor, keyCount, repairedAt, collector, header);
+    }
+
+    public final SSTableWriter createSSTableWriter(String filename, long keyCount, long repairedAt, SerializationHeader header)
+    {
+        return createSSTableWriter(Descriptor.fromFilename(filename), keyCount, repairedAt, 0, header);
+
     }
 
     void scheduleFlush()

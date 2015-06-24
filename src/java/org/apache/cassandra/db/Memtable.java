@@ -416,13 +416,11 @@ public class Memtable implements Comparable<Memtable>
                                                RowStats stats)
         {
             MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.metadata.comparator).replayPosition(context);
-            return SSTableWriter.create(Descriptor.fromFilename(filename),
-                                        (long)partitions.size(),
-                                        ActiveRepairService.UNREPAIRED_SSTABLE,
-                                        cfs.metadata,
-                                        cfs.partitioner,
-                                        sstableMetadataCollector,
-                                        new SerializationHeader(cfs.metadata, columns, stats));
+            return cfs.createSSTableWriter(Descriptor.fromFilename(filename),
+                                           (long)partitions.size(),
+                                           ActiveRepairService.UNREPAIRED_SSTABLE,
+                                           sstableMetadataCollector,
+                                           new SerializationHeader(cfs.metadata, columns, stats));
         }
     }
 

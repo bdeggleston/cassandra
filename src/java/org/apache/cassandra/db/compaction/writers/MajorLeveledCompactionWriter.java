@@ -64,13 +64,11 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter
             logger.warn("Many sstables involved in compaction, skipping storing ancestor information to avoid running out of memory");
 
         @SuppressWarnings("resource")
-        SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                    keysPerSSTable,
-                                                    minRepairedAt,
-                                                    cfs.metadata,
-                                                    cfs.partitioner,
-                                                    new MetadataCollector(allSSTables, cfs.metadata.comparator, currentLevel, skipAncestors),
-                                                    SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+        SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                       keysPerSSTable,
+                                                       minRepairedAt,
+                                                       new MetadataCollector(allSSTables, cfs.metadata.comparator, currentLevel, skipAncestors),
+                                                       SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
         sstableWriter.switchWriter(writer);
     }
 
@@ -92,13 +90,11 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter
 
             averageEstimatedKeysPerSSTable = Math.round(((double) averageEstimatedKeysPerSSTable * sstablesWritten + partitionsWritten) / (sstablesWritten + 1));
             File sstableDirectory = cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
-            SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
-                                                        averageEstimatedKeysPerSSTable,
-                                                        minRepairedAt,
-                                                        cfs.metadata,
-                                                        cfs.partitioner,
-                                                        new MetadataCollector(allSSTables, cfs.metadata.comparator, currentLevel, skipAncestors),
-                                                        SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
+            SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),
+                                                           averageEstimatedKeysPerSSTable,
+                                                           minRepairedAt,
+                                                           new MetadataCollector(allSSTables, cfs.metadata.comparator, currentLevel, skipAncestors),
+                                                           SerializationHeader.make(cfs.metadata, nonExpiredSSTables));
             sstableWriter.switchWriter(writer);
             partitionsWritten = 0;
             sstablesWritten++;

@@ -80,13 +80,11 @@ public class Upgrader
                 sstableMetadataCollector.addAncestor(i);
         }
         sstableMetadataCollector.sstableLevel(sstable.getSSTableLevel());
-        return SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(directory)),
-                                    estimatedRows,
-                                    repairedAt,
-                                    cfs.metadata,
-                                    cfs.partitioner,
-                                    sstableMetadataCollector,
-                                    SerializationHeader.make(cfs.metadata, Sets.newHashSet(sstable)));
+        return cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getTempSSTablePath(directory)),
+                                       estimatedRows,
+                                       repairedAt,
+                                       sstableMetadataCollector,
+                                       SerializationHeader.make(cfs.metadata, Sets.newHashSet(sstable)));
     }
 
     public void upgrade()

@@ -158,7 +158,7 @@ public class AntiCompactionTest
         File dir = cfs.directories.getDirectoryForNewSSTables();
         String filename = cfs.getTempSSTablePath(dir);
 
-        try (SSTableWriter writer = SSTableWriter.create(filename, 0, 0, new SerializationHeader(cfm, cfm.partitionColumns(), RowStats.NO_STATS)))
+        try (SSTableWriter writer = cfs.createSSTableWriter(filename, 0, 0, new SerializationHeader(cfm, cfm.partitionColumns(), RowStats.NO_STATS)))
         {
             for (int i = 0; i < count; i++)
             {

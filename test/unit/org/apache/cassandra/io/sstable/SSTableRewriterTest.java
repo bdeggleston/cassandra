@@ -913,7 +913,7 @@ public class SSTableRewriterTest extends SchemaLoader
             File dir = cfs.directories.getDirectoryForNewSSTables();
             String filename = cfs.getTempSSTablePath(dir);
 
-            try (SSTableWriter writer = SSTableWriter.create(filename, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS)))
+            try (SSTableWriter writer = cfs.createSSTableWriter(filename, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS)))
             {
                 int end = f == fileCount - 1 ? partitionCount : ((f + 1) * partitionCount) / fileCount;
                 for ( ; i < end ; i++)
@@ -982,7 +982,7 @@ public class SSTableRewriterTest extends SchemaLoader
     public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory)
     {
         String filename = cfs.getTempSSTablePath(directory);
-        return SSTableWriter.create(filename, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS));
+        return cfs.createSSTableWriter(filename, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), RowStats.NO_STATS));
     }
 
     public static ByteBuffer random(int i, int size)

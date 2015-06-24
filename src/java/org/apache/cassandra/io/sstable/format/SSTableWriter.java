@@ -78,51 +78,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         this.rowIndexEntrySerializer = descriptor.version.getSSTableFormat().getIndexSerializer(metadata, descriptor.version, header);
     }
 
-    public static SSTableWriter create(Descriptor descriptor,
-                                       Long keyCount,
-                                       Long repairedAt,
-                                       CFMetaData metadata,
-                                       IPartitioner partitioner,
-                                       MetadataCollector metadataCollector,
-                                       SerializationHeader header)
-    {
-        Factory writerFactory = descriptor.getFormat().getWriterFactory();
-        return writerFactory.open(descriptor, keyCount, repairedAt, metadata, partitioner, metadataCollector, header);
-    }
-
-    public static SSTableWriter create(Descriptor descriptor, long keyCount, long repairedAt, SerializationHeader header)
-    {
-        return create(descriptor, keyCount, repairedAt, 0, header);
-    }
-
-    public static SSTableWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-    {
-        CFMetaData metadata = Schema.instance.getCFMetaData(descriptor);
-        return create(metadata, descriptor, keyCount, repairedAt, sstableLevel, DatabaseDescriptor.getPartitioner(), header);
-    }
-
-    public static SSTableWriter create(CFMetaData metadata,
-                                       Descriptor descriptor,
-                                       long keyCount,
-                                       long repairedAt,
-                                       int sstableLevel,
-                                       IPartitioner partitioner,
-                                       SerializationHeader header)
-    {
-        MetadataCollector collector = new MetadataCollector(metadata.comparator).sstableLevel(sstableLevel);
-        return create(descriptor, keyCount, repairedAt, metadata, partitioner, collector, header);
-    }
-
-    public static SSTableWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-    {
-        return create(Descriptor.fromFilename(filename), keyCount, repairedAt, sstableLevel, header);
-    }
-
-    public static SSTableWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
-    {
-        return create(Descriptor.fromFilename(filename), keyCount, repairedAt, 0, header);
-    }
-
     private static Set<Component> components(CFMetaData metadata)
     {
         Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,

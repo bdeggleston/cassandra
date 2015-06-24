@@ -697,8 +697,13 @@ public class Directories
     // Recursively finds all the sub directories in the KS directory.
     public List<File> getKSChildDirectories(String ksName)
     {
+        return getKSChildDirectories(ksName, paths);
+    }
+
+    public static List<File> getKSChildDirectories(String ksName, DataDirectory[] directories)
+    {
         List<File> result = new ArrayList<>();
-        for (DataDirectory dataDirectory : paths)
+        for (DataDirectory dataDirectory : directories)
         {
             File ksDir = new File(dataDirectory.location, ksName);
             File[] cfDirs = ksDir.listFiles();
