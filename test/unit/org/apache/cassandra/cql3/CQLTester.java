@@ -408,7 +408,7 @@ public abstract class CQLTester
     private static void removeAllSSTables(String ks, List<String> tables)
     {
         // clean up data directory which are stored as data directory/keyspace/data files
-        for (File d : Directories.getKSChildDirectories(ks))
+        for (File d : Directories.getKSChildDirectories(ks, Directories.dataDirectories))
         {
             if (d.exists() && containsAny(d.getName(), tables))
                 FileUtils.deleteRecursive(d);

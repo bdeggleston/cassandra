@@ -52,7 +52,7 @@ public class StartupChecksTest
     {
         for (ColumnFamilyStore cfs : Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStores())
             cfs.clearUnsafe();
-        for (File dataDir : Directories.getKSChildDirectories(SystemKeyspace.NAME))
+        for (File dataDir : Directories.getKSChildDirectories(SystemKeyspace.NAME, Directories.dataDirectories))
             FileUtils.deleteRecursive(dataDir);
 
         File dataDir = new File(DatabaseDescriptor.getAllDataFileLocations()[0]);

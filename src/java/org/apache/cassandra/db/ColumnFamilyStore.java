@@ -34,6 +34,12 @@ import com.google.common.base.*;
 import com.google.common.base.Throwables;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
+
+import org.apache.cassandra.db.lifecycle.*;
+import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.metrics.TableMetrics;
+import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
+import org.json.simple.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,19 +54,16 @@ import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.view.MaterializedViewManager;
-import org.apache.cassandra.db.lifecycle.*;
 import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.format.*;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.metrics.TableMetrics.Sampler;
-import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.schema.*;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.service.StorageService;
@@ -68,7 +71,6 @@ import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.TopKSampler.SamplerResult;
 import org.apache.cassandra.utils.concurrent.*;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
-import org.json.simple.*;
 
 
 import static org.apache.cassandra.utils.Throwables.maybeFail;
@@ -199,6 +201,24 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         // because the old one still aliases the previous comparator.
         if (data.getView().getCurrentMemtable().initialComparator != metadata.comparator)
             switchMemtable();
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, Long keyCount, Long repairedAt, MetadataCollector metadataCollector, SerializationHeader header, LifecycleTransaction txn)
+    {
+        SSTableWriter.Factory writerFactory = descriptor.getFormat().getWriterFactory();
+        return writerFactory.open(descriptor, keyCount, repairedAt, metadata, metadataCollector, header, txn);
+    }
+
+    public SSTableWriter createSSTableWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
+    {
+        MetadataCollector collector = new MetadataCollector(metadata.comparator).sstableLevel(sstableLevel);
+        return createSSTableWriter(descriptor, keyCount, repairedAt, collector, header, txn);
+    }
+
+    public final SSTableWriter createSSTableWriter(String filename, long keyCount, long repairedAt, SerializationHeader header, LifecycleTransaction txn)
+    {
+        return createSSTableWriter(Descriptor.fromFilename(filename), keyCount, repairedAt, 0, header, txn);
+
     }
 
     void scheduleFlush()

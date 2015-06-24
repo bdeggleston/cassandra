@@ -431,14 +431,12 @@ public class Memtable implements Comparable<Memtable>
             // (although we may want to modify this behaviour in future, to encapsulate full flush behaviour in LifecycleTransaction)
             LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.FLUSH, cfs.metadata);
             MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.metadata.comparator).replayPosition(context);
-            return new SSTableTxnWriter(txn,
-                                        SSTableWriter.create(Descriptor.fromFilename(filename),
-                                                             (long)partitions.size(),
-                                                             ActiveRepairService.UNREPAIRED_SSTABLE,
-                                                             cfs.metadata,
-                                                             sstableMetadataCollector,
-                                                             new SerializationHeader(cfs.metadata, columns, stats),
-                                                             txn));
+            return new SSTableTxnWriter(txn, cfs.createSSTableWriter(Descriptor.fromFilename(filename),
+                                                                     (long)partitions.size(),
+                                                                     ActiveRepairService.UNREPAIRED_SSTABLE,
+                                                                     sstableMetadataCollector,
+                                                                     new SerializationHeader(cfs.metadata, columns, stats),
+                                                                     txn));
         }
     }
 

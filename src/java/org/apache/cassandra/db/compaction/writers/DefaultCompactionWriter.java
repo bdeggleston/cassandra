@@ -48,13 +48,12 @@ public class DefaultCompactionWriter extends CompactionAwareWriter
         long expectedWriteSize = cfs.getExpectedCompactedFileSize(nonExpiredSSTables, txn.opType());
         File sstableDirectory = cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
         @SuppressWarnings("resource")
-        SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),
-                                                    estimatedTotalKeys,
-                                                    minRepairedAt,
-                                                    cfs.metadata,
-                                                    new MetadataCollector(txn.originals(), cfs.metadata.comparator, 0),
-                                                    SerializationHeader.make(cfs.metadata, nonExpiredSSTables),
-                                                    txn);
+        SSTableWriter writer = cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),
+                                                       estimatedTotalKeys,
+                                                       minRepairedAt,
+                                                       new MetadataCollector(txn.originals(), cfs.metadata.comparator, 0),
+                                                       SerializationHeader.make(cfs.metadata, nonExpiredSSTables),
+                                                       txn);
         sstableWriter.switchWriter(writer);
     }
 

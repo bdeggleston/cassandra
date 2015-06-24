@@ -956,13 +956,12 @@ public class CompactionManager implements CompactionManagerMBean
     {
         FileUtils.createDirectory(compactionFileLocation);
 
-        return SSTableWriter.create(cfs.metadata,
-                                    Descriptor.fromFilename(cfs.getSSTablePath(compactionFileLocation)),
-                                    expectedBloomFilterSize,
-                                    repairedAt,
-                                    sstable.getSSTableLevel(),
-                                    sstable.header,
-                                    txn);
+        return cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getSSTablePath(compactionFileLocation)),
+                                       expectedBloomFilterSize,
+                                       repairedAt,
+                                       sstable.getSSTableLevel(),
+                                       sstable.header,
+                                       txn);
     }
 
     public static SSTableWriter createWriterForAntiCompaction(ColumnFamilyStore cfs,
@@ -988,13 +987,12 @@ public class CompactionManager implements CompactionManagerMBean
                 break;
             }
         }
-        return SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(compactionFileLocation)),
-                                    (long) expectedBloomFilterSize,
-                                    repairedAt,
-                                    cfs.metadata,
-                                    new MetadataCollector(sstables, cfs.metadata.comparator, minLevel),
-                                    SerializationHeader.make(cfs.metadata, sstables),
-                                    txn);
+        return cfs.createSSTableWriter(Descriptor.fromFilename(cfs.getSSTablePath(compactionFileLocation)),
+                                       (long) expectedBloomFilterSize,
+                                       repairedAt,
+                                       new MetadataCollector(sstables, cfs.metadata.comparator, minLevel),
+                                       SerializationHeader.make(cfs.metadata, sstables),
+                                       txn);
     }
 
 

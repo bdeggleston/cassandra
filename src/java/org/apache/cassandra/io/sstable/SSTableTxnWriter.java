@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.io.sstable;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.OperationType;
@@ -84,7 +86,8 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
     public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
     {
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
-        SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        ColumnFamilyStore cfs = Keyspace.open(descriptor.ksname).getColumnFamilyStore(descriptor.cfname);
+        SSTableWriter writer = cfs.createSSTableWriter(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 

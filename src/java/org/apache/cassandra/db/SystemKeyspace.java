@@ -1274,7 +1274,7 @@ public final class SystemKeyspace
             // the current version is. If we couldn't read a previous version from system.local we check for
             // the existence of the legacy system.Versions table. We don't actually attempt to read a version
             // from there, but it informs us that this isn't a completely new node.
-            for (File dataDirectory : Directories.getKSChildDirectories(SystemKeyspace.NAME))
+            for (File dataDirectory : Directories.getKSChildDirectories(SystemKeyspace.NAME, Directories.dataDirectories))
             {
                 if (dataDirectory.getName().equals("Versions") && dataDirectory.listFiles().length > 0)
                 {

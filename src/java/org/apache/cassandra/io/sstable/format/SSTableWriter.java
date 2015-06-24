@@ -83,47 +83,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         this.rowIndexEntrySerializer = descriptor.version.getSSTableFormat().getIndexSerializer(metadata, descriptor.version, header);
     }
 
-    public static SSTableWriter create(Descriptor descriptor,
-                                       Long keyCount,
-                                       Long repairedAt,
-                                       CFMetaData metadata,
-                                       MetadataCollector metadataCollector,
-                                       SerializationHeader header,
-                                       LifecycleTransaction txn)
-    {
-        Factory writerFactory = descriptor.getFormat().getWriterFactory();
-        return writerFactory.open(descriptor, keyCount, repairedAt, metadata, metadataCollector, header, txn);
-    }
-
-    public static SSTableWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
-    {
-        CFMetaData metadata = Schema.instance.getCFMetaData(descriptor);
-        return create(metadata, descriptor, keyCount, repairedAt, sstableLevel, header, txn);
-    }
-
-    public static SSTableWriter create(CFMetaData metadata,
-                                       Descriptor descriptor,
-                                       long keyCount,
-                                       long repairedAt,
-                                       int sstableLevel,
-                                       SerializationHeader header,
-                                       LifecycleTransaction txn)
-    {
-        MetadataCollector collector = new MetadataCollector(metadata.comparator).sstableLevel(sstableLevel);
-        return create(descriptor, keyCount, repairedAt, metadata, collector, header, txn);
-    }
-
-    public static SSTableWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header,LifecycleTransaction txn)
-    {
-        return create(Descriptor.fromFilename(filename), keyCount, repairedAt, sstableLevel, header, txn);
-    }
-
-    @VisibleForTesting
-    public static SSTableWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header, LifecycleTransaction txn)
-    {
-        return create(Descriptor.fromFilename(filename), keyCount, repairedAt, 0, header, txn);
-    }
-
     private static Set<Component> components(CFMetaData metadata)
     {
         Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
