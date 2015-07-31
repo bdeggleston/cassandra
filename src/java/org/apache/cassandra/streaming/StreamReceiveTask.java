@@ -140,9 +140,9 @@ public class StreamReceiveTask extends StreamTask
                 List<SSTableReader> readers = new ArrayList<>();
                 for (SSTableWriter writer : task.sstables)
                 {
-                    SSTableReader reader = writer.finish(true);
-                    readers.add(reader);
-                    task.txn.update(reader, false);
+                    Collection<SSTableReader> newReaders = writer.finish(true);
+                    readers.addAll(newReaders);
+                    task.txn.update(newReaders, false);
                 }
 
                 task.sstables.clear();

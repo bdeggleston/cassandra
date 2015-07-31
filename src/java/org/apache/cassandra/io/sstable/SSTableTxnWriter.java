@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.io.sstable;
 
+import java.util.Collection;
+
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.RowIndexEntry;
@@ -76,7 +78,7 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         txn.prepareToCommit();
     }
 
-    public SSTableReader finish(boolean openResult)
+    public Collection<SSTableReader> finish(boolean openResult)
     {
         writer.setOpenResult(openResult);
         finish();

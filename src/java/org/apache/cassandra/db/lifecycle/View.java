@@ -298,7 +298,7 @@ public class View
     }
 
     // called after flush: removes memtable from flushingMemtables, and inserts flushed into the live sstable set
-    static Function<View, View> replaceFlushed(final Memtable memtable, final SSTableReader flushed)
+    static Function<View, View> replaceFlushed(final Memtable memtable, final Collection<SSTableReader> flushed)
     {
         return new Function<View, View>()
         {
@@ -307,11 +307,11 @@ public class View
                 List<Memtable> flushingMemtables = copyOf(filter(view.flushingMemtables, not(equalTo(memtable))));
                 assert flushingMemtables.size() == view.flushingMemtables.size() - 1;
 
-                if (flushed == null)
+                if (flushed == null || flushed.isEmpty())
                     return new View(view.liveMemtables, flushingMemtables, view.sstablesMap,
                                     view.compactingMap, view.intervalTree);
 
-                Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, emptySet(), singleton(flushed));
+                Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, emptySet(), flushed);
                 return new View(view.liveMemtables, flushingMemtables, sstableMap, view.compactingMap,
                                 SSTableIntervalTree.build(sstableMap.keySet()));
             }

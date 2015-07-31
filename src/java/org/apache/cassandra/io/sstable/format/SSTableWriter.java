@@ -19,15 +19,14 @@
 package org.apache.cassandra.io.sstable.format;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -64,7 +63,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
     protected abstract class TransactionalProxy extends AbstractTransactional
     {
         // should be set during doPrepare()
-        protected SSTableReader finalReader;
+        protected Collection<SSTableReader> finalReaders;
         protected boolean openResult;
     }
 
@@ -116,8 +115,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional
      * @param iterator the partition to write
      * @return the created index entry if something was written, that is if {@code iterator}
      * wasn't empty, {@code null} otherwise.
-     *
-     * @throws FSWriteError if a write to the dataFile fails
      */
     public abstract RowIndexEntry append(UnfilteredRowIterator iterator);
 
@@ -149,15 +146,15 @@ public abstract class SSTableWriter extends SSTable implements Transactional
     /**
      * Open the resultant SSTableReader before it has been fully written
      */
-    public abstract SSTableReader openEarly();
+    public abstract Collection<SSTableReader> openEarly();
 
     /**
      * Open the resultant SSTableReader once it has been fully written, but before the
      * _set_ of tables that are being written together as one atomic operation are all ready
      */
-    public abstract SSTableReader openFinalEarly();
+    public abstract Collection<SSTableReader> openFinalEarly();
 
-    public SSTableReader finish(long repairedAt, long maxDataAge, boolean openResult)
+    public Collection<SSTableReader> finish(long repairedAt, long maxDataAge, boolean openResult)
     {
         if (repairedAt > 0)
             this.repairedAt = repairedAt;
@@ -165,7 +162,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         return finish(openResult);
     }
 
-    public SSTableReader finish(boolean openResult)
+    public Collection<SSTableReader> finish(boolean openResult)
     {
         setOpenResult(openResult);
         txnProxy.finish();
@@ -176,9 +173,9 @@ public abstract class SSTableWriter extends SSTable implements Transactional
      * Open the resultant SSTableReader once it has been fully written, and all related state
      * is ready to be finalised including other sstables being written involved in the same operation
      */
-    public SSTableReader finished()
+    public Collection<SSTableReader> finished()
     {
-        return txnProxy.finalReader;
+        return txnProxy.finalReaders;
     }
 
     // finalise our state on disk, including renaming

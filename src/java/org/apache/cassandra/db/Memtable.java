@@ -356,8 +356,8 @@ public class Memtable implements Comparable<Memtable>
             Directories.DataDirectory dataDirectory = getWriteDirectory(writeSize);
             File sstableDirectory = cfs.directories.getLocationForDisk(dataDirectory);
             assert sstableDirectory != null : "Flush task is not bound to any disk";
-            SSTableReader sstable = writeSortedContents(context, sstableDirectory);
-            cfs.replaceFlushed(Memtable.this, sstable);
+            Collection<SSTableReader> sstables = writeSortedContents(context, sstableDirectory);
+            cfs.replaceFlushed(Memtable.this, sstables);
         }
 
         protected Directories getDirectories()
@@ -365,11 +365,11 @@ public class Memtable implements Comparable<Memtable>
             return cfs.directories;
         }
 
-        private SSTableReader writeSortedContents(ReplayPosition context, File sstableDirectory)
+        private Collection<SSTableReader> writeSortedContents(ReplayPosition context, File sstableDirectory)
         {
             logger.info("Writing {}", Memtable.this.toString());
 
-            SSTableReader ssTable;
+            Collection<SSTableReader> ssTables;
             try (SSTableTxnWriter writer = createFlushWriter(cfs.getSSTablePath(sstableDirectory), columnsCollector.get(), statsCollector.get()))
             {
                 boolean trackContention = logger.isDebugEnabled();
@@ -406,20 +406,20 @@ public class Memtable implements Comparable<Memtable>
                                               context));
 
                     // sstables should contain non-repaired data.
-                    ssTable = writer.finish(true);
+                    ssTables = writer.finish(true);
                 }
                 else
                 {
                     logger.info("Completed flushing {}; nothing needed to be retained.  Commitlog position was {}",
                                 writer.getFilename(), context);
                     writer.abort();
-                    ssTable = null;
+                    ssTables = null;
                 }
 
                 if (heavilyContendedRowCount > 0)
                     logger.debug(String.format("High update contention in %d/%d partitions of %s ", heavilyContendedRowCount, partitions.size(), Memtable.this.toString()));
 
-                return ssTable;
+                return ssTables;
             }
         }
 

@@ -258,7 +258,10 @@ public class SSTableRewriterTest extends SchemaLoader
                 writer.append(builder.build().unfilteredIterator());
             }
 
-            SSTableReader s = writer.setMaxDataAge(1000).openEarly();
+            Collection<SSTableReader> sstables;
+            sstables = writer.setMaxDataAge(1000).openEarly();
+            assert sstables.size() == 1;
+            SSTableReader s = sstables.iterator().next();
             assert s != null;
             assertFileCounts(dir.list());
             for (int i = 10000; i < 20000; i++)
@@ -268,7 +271,9 @@ public class SSTableRewriterTest extends SchemaLoader
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
                 writer.append(builder.build().unfilteredIterator());
             }
-            SSTableReader s2 = writer.setMaxDataAge(1000).openEarly();
+            sstables = writer.setMaxDataAge(1000).openEarly();
+            assert sstables.size() == 1;
+            SSTableReader s2 = sstables.iterator().next();
             assertTrue(s.last.compareTo(s2.last) < 0);
             assertFileCounts(dir.list());
             s.selfRef().release();
@@ -957,7 +962,7 @@ public class SSTableRewriterTest extends SchemaLoader
 
                     writer.append(builder.build().unfilteredIterator());
                 }
-                result.add(writer.finish(true));
+                result.addAll(writer.finish(true));
             }
         }
         return result;

@@ -175,7 +175,9 @@ public class AntiCompactionTest
                 writer.append(builder.build().unfilteredIterator());
 
             }
-            return writer.finish(true);
+            Collection<SSTableReader> readers = writer.finish(true);
+            assert readers.size() == 1;
+            return readers.iterator().next();
         }
     }
 
