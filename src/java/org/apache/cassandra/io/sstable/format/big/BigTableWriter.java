@@ -18,6 +18,8 @@
 package org.apache.cassandra.io.sstable.format.big;
 
 import java.io.*;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -247,7 +249,7 @@ public class BigTableWriter extends SSTableWriter
     }
 
     @SuppressWarnings("resource")
-    public SSTableReader openEarly()
+    public Collection<SSTableReader> openEarly()
     {
         // find the max (exclusive) readable key
         IndexSummaryBuilder.ReadableBoundary boundary = iwriter.getMaxReadable();
@@ -269,10 +271,10 @@ public class BigTableWriter extends SSTableWriter
         // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
         sstable.first = getMinimalKey(first);
         sstable.last = getMinimalKey(boundary.lastKey);
-        return sstable;
+        return Collections.singleton(sstable);
     }
 
-    public SSTableReader openFinalEarly()
+    public Collection<SSTableReader> openFinalEarly()
     {
         // we must ensure the data is completely flushed to disk
         dataFile.sync();
@@ -281,7 +283,7 @@ public class BigTableWriter extends SSTableWriter
     }
 
     @SuppressWarnings("resource")
-    private SSTableReader openFinal(Descriptor desc, SSTableReader.OpenReason openReason)
+    private Collection<SSTableReader> openFinal(Descriptor desc, SSTableReader.OpenReason openReason)
     {
         if (maxDataAge < 0)
             maxDataAge = System.currentTimeMillis();
@@ -304,7 +306,7 @@ public class BigTableWriter extends SSTableWriter
                                                            header);
         sstable.first = getMinimalKey(first);
         sstable.last = getMinimalKey(last);
-        return sstable;
+        return Collections.singleton(sstable);
     }
 
     protected SSTableWriter.TransactionalProxy txnProxy()
@@ -332,7 +334,7 @@ public class BigTableWriter extends SSTableWriter
             rename(descriptor, components);
 
             if (openResult)
-                finalReader = openFinal(descriptor.asType(Descriptor.Type.FINAL), SSTableReader.OpenReason.NORMAL);
+                finalReaders = openFinal(descriptor.asType(Descriptor.Type.FINAL), SSTableReader.OpenReason.NORMAL);
         }
 
         protected Throwable doCommit(Throwable accumulate)

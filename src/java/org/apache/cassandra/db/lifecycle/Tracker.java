@@ -308,9 +308,9 @@ public class Tracker
         apply(View.markFlushing(memtable));
     }
 
-    public void replaceFlushed(Memtable memtable, SSTableReader sstable)
+    public void replaceFlushed(Memtable memtable, Collection<SSTableReader> sstables)
     {
-        if (sstable == null)
+        if (sstables == null || sstables.isEmpty())
         {
             // sstable may be null if we flushed batchlog and nothing needed to be retained
             // if it's null, we don't care what state the cfstore is in, we just replace it and continue
@@ -318,17 +318,23 @@ public class Tracker
             return;
         }
 
-        sstable.setupDeleteNotification(this);
-        sstable.setupKeyCache();
-        // back up before creating a new Snapshot (which makes the new one eligible for compaction)
-        maybeIncrementallyBackup(sstable);
+        for (SSTableReader sstable: sstables)
+        {
+            sstable.setupDeleteNotification(this);
+            sstable.setupKeyCache();
+            // back up before creating a new Snapshot (which makes the new one eligible for compaction)
+            maybeIncrementallyBackup(sstable);
+        }
 
-        apply(View.replaceFlushed(memtable, sstable));
+        apply(View.replaceFlushed(memtable, sstables));
 
         Throwable fail;
-        fail = updateSizeTracking(emptySet(), singleton(sstable), null);
+        fail = updateSizeTracking(emptySet(), sstables, null);
         // TODO: if we're invalidated, should we notifyadded AND removed, or just skip both?
-        fail = notifyAdded(sstable, fail);
+        for (SSTableReader sstable: sstables)
+        {
+            fail = notifyAdded(sstable, fail);
+        }
 
         if (cfstore != null && !cfstore.isValid())
             dropSSTables();

@@ -61,7 +61,7 @@ public class Scrubber implements Closeable
     private final boolean isOffline;
 
     private SSTableReader newSstable;
-    private SSTableReader newInOrderSstable;
+    private Collection<SSTableReader> newInOrderSstables;
 
     private int goodRows;
     private int badRows;
@@ -281,10 +281,10 @@ public class Scrubber implements Closeable
                 {
                     for (Partition partition : outOfOrder)
                         inOrderWriter.append(partition.unfilteredIterator());
-                    newInOrderSstable = inOrderWriter.finish(-1, sstable.maxDataAge, true);
+                    newInOrderSstables = inOrderWriter.finish(-1, sstable.maxDataAge, true);
                 }
-                transaction.update(newInOrderSstable, false);
-                outputHandler.warn(String.format("%d out of order rows found while scrubbing %s; Those have been written (in order) to a new sstable (%s)", outOfOrder.size(), sstable, newInOrderSstable));
+                transaction.update(newInOrderSstables, false);
+                outputHandler.warn(String.format("%d out of order rows found while scrubbing %s; Those have been written (in order) to a new sstable (%s)", outOfOrder.size(), sstable, newInOrderSstables));
             }
 
             // finish obsoletes the old sstable
@@ -364,9 +364,9 @@ public class Scrubber implements Closeable
         return newSstable;
     }
 
-    public SSTableReader getNewInOrderSSTable()
+    public Collection<SSTableReader> getNewInOrderSSTables()
     {
-        return newInOrderSstable;
+        return newInOrderSstables;
     }
 
     private void throwIfFatal(Throwable th)

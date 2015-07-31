@@ -160,13 +160,16 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
             }
             else
             {
-                SSTableReader reader = writer.setMaxDataAge(maxAge).openEarly();
-                if (reader != null)
+                Collection<SSTableReader> readers = writer.setMaxDataAge(maxAge).openEarly();
+                if (readers != null && !readers.isEmpty())
                 {
-                    transaction.update(reader, false);
-                    currentlyOpenedEarlyAt = writer.getFilePointer();
-                    moveStarts(reader, reader.last);
-                    transaction.checkpoint();
+                    for (SSTableReader reader: readers)
+                    {
+                        transaction.update(reader, false);
+                        currentlyOpenedEarlyAt = writer.getFilePointer();
+                        moveStarts(reader, reader.last);
+                        transaction.checkpoint();
+                    }
                 }
             }
         }
@@ -270,13 +273,16 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
             return;
         }
 
-        SSTableReader reader = null;
+        Collection<SSTableReader> readers = null;
         if (preemptiveOpenInterval != Long.MAX_VALUE)
         {
             // we leave it as a tmp file, but we open it and add it to the Tracker
-            reader = writer.setMaxDataAge(maxAge).openFinalEarly();
-            transaction.update(reader, false);
-            moveStarts(reader, reader.last);
+            readers = writer.setMaxDataAge(maxAge).openFinalEarly();
+            for (SSTableReader reader: readers)
+            {
+                transaction.update(reader, false);
+                moveStarts(reader, reader.last);
+            }
             transaction.checkpoint();
         }
 
@@ -332,9 +338,9 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         {
             assert writer.getFilePointer() > 0;
             writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
-            SSTableReader reader = writer.finished();
-            transaction.update(reader, false);
-            preparedForCommit.add(reader);
+            Collection<SSTableReader> readers = writer.finished();
+            transaction.update(readers, false);
+            preparedForCommit.addAll(readers);
         }
         transaction.checkpoint();
 

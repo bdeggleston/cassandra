@@ -347,8 +347,8 @@ public class Memtable implements Comparable<Memtable>
             Directories.DataDirectory dataDirectory = getWriteDirectory(writeSize);
             File sstableDirectory = cfs.directories.getLocationForDisk(dataDirectory);
             assert sstableDirectory != null : "Flush task is not bound to any disk";
-            SSTableReader sstable = writeSortedContents(context, sstableDirectory);
-            cfs.replaceFlushed(Memtable.this, sstable);
+            Collection<SSTableReader> sstables = writeSortedContents(context, sstableDirectory);
+            cfs.replaceFlushed(Memtable.this, sstables);
         }
 
         protected Directories getDirectories()
@@ -356,11 +356,11 @@ public class Memtable implements Comparable<Memtable>
             return cfs.directories;
         }
 
-        private SSTableReader writeSortedContents(ReplayPosition context, File sstableDirectory)
+        private Collection<SSTableReader> writeSortedContents(ReplayPosition context, File sstableDirectory)
         {
             logger.info("Writing {}", Memtable.this.toString());
 
-            SSTableReader ssTable;
+            Collection<SSTableReader> ssTables;
             // errors when creating the writer that may leave empty temp files.
             try (SSTableWriter writer = createFlushWriter(cfs.getTempSSTablePath(sstableDirectory), columnsCollector.get(), statsCollector.get()))
             {
@@ -393,13 +393,16 @@ public class Memtable implements Comparable<Memtable>
                 if (writer.getFilePointer() > 0)
                 {
                     // temp sstables should contain non-repaired data.
-                    ssTable = writer.finish(true);
-                    logger.info(String.format("Completed flushing %s (%d bytes) for commitlog position %s",
-                                              ssTable.getFilename(), new File(ssTable.getFilename()).length(), context));
+                    ssTables = writer.finish(true);
+                    for (SSTableReader ssTable: ssTables)
+                    {
+                        logger.info(String.format("Completed flushing %s (%d bytes) for commitlog position %s",
+                                                  ssTable.getFilename(), new File(ssTable.getFilename()).length(), context));
+                    }
                 }
                 else
                 {
-                    ssTable = null;
+                    ssTables = null;
                     logger.info("Completed flushing; nothing needed to be retained.  Commitlog position was {}",
                                 context);
                 }
@@ -407,7 +410,7 @@ public class Memtable implements Comparable<Memtable>
                 if (heavilyContendedRowCount > 0)
                     logger.debug(String.format("High update contention in %d/%d partitions of %s ", heavilyContendedRowCount, partitions.size(), Memtable.this.toString()));
 
-                return ssTable;
+                return ssTables;
             }
         }
 
