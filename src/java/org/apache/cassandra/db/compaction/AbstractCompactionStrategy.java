@@ -67,6 +67,7 @@ public abstract class AbstractCompactionStrategy
 
     protected Map<String, String> options;
 
+    protected final CompactionStrategyManager csm;
     protected final ColumnFamilyStore cfs;
     protected float tombstoneThreshold;
     protected long tombstoneCompactionInterval;
@@ -85,10 +86,12 @@ public abstract class AbstractCompactionStrategy
      */
     protected boolean isActive = false;
 
-    protected AbstractCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    protected AbstractCompactionStrategy(CompactionStrategyManager csm, Map<String, String> options)
     {
+        assert csm != null;
+        this.csm = csm;
+        cfs = csm.getCfs();
         assert cfs != null;
-        this.cfs = cfs;
         this.options = ImmutableMap.copyOf(options);
 
         /* checks must be repeated here, as user supplied strategies might not call validateOptions directly */
@@ -180,7 +183,7 @@ public abstract class AbstractCompactionStrategy
 
     public AbstractCompactionTask getCompactionTask(LifecycleTransaction txn, final int gcBefore, long maxSSTableBytes)
     {
-        return new CompactionTask(cfs, txn, gcBefore);
+        return new CompactionTask(csm, txn, gcBefore);
     }
 
     /**
@@ -223,12 +226,12 @@ public abstract class AbstractCompactionStrategy
      * Handle a flushed memtable.
      *
      * @param memtable the flushed memtable
-     * @param sstable the written sstable. can be null if the memtable was clean.
+     * @param sstables the written sstables. can be null or empty if the memtable was clean.
      */
-    public void replaceFlushed(Memtable memtable, SSTableReader sstable)
+    public void replaceFlushed(Memtable memtable, Collection<SSTableReader> sstables)
     {
-        cfs.getTracker().replaceFlushed(memtable, sstable);
-        if (sstable != null)
+        cfs.getTracker().replaceFlushed(memtable, sstables);
+        if (sstables != null && !sstables.isEmpty())
             CompactionManager.instance.submitBackground(cfs);
     }
 

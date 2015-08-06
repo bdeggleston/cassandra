@@ -27,11 +27,13 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Memtable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.SSTableRewriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.notifications.*;
@@ -69,6 +71,26 @@ public class CompactionStrategyManager implements INotificationConsumer
         reload(cfs.metadata);
         params = cfs.metadata.params.compaction;
         enabled = params.isEnabled();
+    }
+
+    public ColumnFamilyStore getCfs()
+    {
+        return cfs;
+    }
+
+    public Directories getDirectories()
+    {
+        return cfs.directories;
+    }
+
+    public SSTableRewriter createSSTableRewriter(LifecycleTransaction transaction, long maxAge, boolean isOffline, boolean shouldOpenEarly, Set<SSTableReader> readers)
+    {
+        return new SSTableRewriter(cfs, transaction, maxAge, isOffline, shouldOpenEarly);
+    }
+
+    public final SSTableRewriter createSSTableRewriter(LifecycleTransaction transaction, long maxAge, boolean isOffline, Set<SSTableReader> readers)
+    {
+        return createSSTableRewriter(transaction, maxAge, isOffline, true, readers);
     }
 
     /**
@@ -181,10 +203,10 @@ public class CompactionStrategyManager implements INotificationConsumer
         startup();
     }
 
-    public void replaceFlushed(Memtable memtable, SSTableReader sstable)
+    public void replaceFlushed(Memtable memtable, Collection<SSTableReader> sstables)
     {
-        cfs.getTracker().replaceFlushed(memtable, sstable);
-        if (sstable != null)
+        cfs.getTracker().replaceFlushed(memtable, sstables);
+        if (sstables != null && !sstables.isEmpty())
             CompactionManager.instance.submitBackground(cfs);
     }
 
@@ -464,15 +486,35 @@ public class CompactionStrategyManager implements INotificationConsumer
         startup();
     }
 
-    private void setStrategy(CompactionParams params)
+    protected void setStrategy(CompactionParams params)
     {
         if (repaired != null)
             repaired.shutdown();
         if (unrepaired != null)
             unrepaired.shutdown();
-        repaired = CFMetaData.createCompactionStrategyInstance(cfs, params);
-        unrepaired = CFMetaData.createCompactionStrategyInstance(cfs, params);
+        setRepaired(CFMetaData.createCompactionStrategyInstance(this, params));
+        setUnrepaired(CFMetaData.createCompactionStrategyInstance(this, params));
         this.params = params;
+    }
+
+    protected AbstractCompactionStrategy getRepaired()
+    {
+        return repaired;
+    }
+
+    protected void setRepaired(AbstractCompactionStrategy repaired)
+    {
+        this.repaired = repaired;
+    }
+
+    protected AbstractCompactionStrategy getUnrepaired()
+    {
+        return unrepaired;
+    }
+
+    protected void setUnrepaired(AbstractCompactionStrategy unrepaired)
+    {
+        this.unrepaired = unrepaired;
     }
 
     public CompactionParams getCompactionParams()

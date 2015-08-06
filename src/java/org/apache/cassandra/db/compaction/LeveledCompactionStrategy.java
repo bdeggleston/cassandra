@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.Range;
@@ -37,7 +36,6 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class LeveledCompactionStrategy extends AbstractCompactionStrategy
 {
@@ -48,9 +46,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
     final LeveledManifest manifest;
     private final int maxSSTableSizeInMB;
 
-    public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public LeveledCompactionStrategy(CompactionStrategyManager csm, Map<String, String> options)
     {
-        super(cfs, options);
+        super(csm, options);
         int configuredMaxSSTableSize = 160;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
         if (options != null)
@@ -118,7 +116,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null)
             {
-                LeveledCompactionTask newTask = new LeveledCompactionTask(cfs, txn, candidate.level, gcBefore, candidate.maxSSTableBytes, false);
+                LeveledCompactionTask newTask = new LeveledCompactionTask(csm, txn, candidate.level, gcBefore, candidate.maxSSTableBytes, false);
                 newTask.setCompactionType(op);
                 return newTask;
             }
@@ -136,7 +134,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
         LifecycleTransaction txn = cfs.getTracker().tryModify(filteredSSTables, OperationType.COMPACTION);
         if (txn == null)
             return null;
-        return Arrays.<AbstractCompactionTask>asList(new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true));
+        return Arrays.<AbstractCompactionTask>asList(new LeveledCompactionTask(csm, txn, 0, gcBefore, getMaxSSTableBytes(), true));
 
     }
 
@@ -159,7 +157,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
             if (level != sstable.getSSTableLevel())
                 level = 0;
         }
-        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false);
+        return new LeveledCompactionTask(csm, txn, level, gcBefore, maxSSTableBytes, false);
     }
 
     /**

@@ -248,6 +248,21 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         txnProxy.abort();
     }
 
+    public long getRepairedAt()
+    {
+        return repairedAt;
+    }
+
+    public long getKeyCount()
+    {
+        return keyCount;
+    }
+
+    public SerializationHeader getHeader()
+    {
+        return header;
+    }
+
     protected Map<MetadataType, MetadataComponent> finalizeMetadata()
     {
         return metadataCollector.finalizeMetadata(getPartitioner().getClass().getCanonicalName(),

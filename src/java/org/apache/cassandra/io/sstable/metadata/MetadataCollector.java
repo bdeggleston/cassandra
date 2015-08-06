@@ -145,6 +145,14 @@ public class MetadataCollector implements PartitionStatisticsCollector
         this(sstables, comparator, level, false);
     }
 
+    private MetadataCollector(MetadataCollector that)
+    {
+        this(that.comparator);
+        this.replayPosition = that.replayPosition;
+        this.ancestors = new HashSet<>(that.ancestors);
+        this.sstableLevel = that.sstableLevel;
+    }
+
     public MetadataCollector addKey(ByteBuffer key)
     {
         long hashed = MurmurHash.hash2_64(key, key.position(), key.remaining(), 0);
@@ -422,5 +430,17 @@ public class MetadataCollector implements PartitionStatisticsCollector
         {
             return isSet ? max : defaultMax;
         }
+    }
+
+    /**
+     * Copies an initialized metadata collector. Rows/keys must not have been added to the collector prior to copying
+     */
+    public MetadataCollector copy()
+    {
+        if (totalRows > 0)
+        {
+            throw new RuntimeException("don't copy used metadata collectors");
+        }
+        return new MetadataCollector(this);
     }
 }

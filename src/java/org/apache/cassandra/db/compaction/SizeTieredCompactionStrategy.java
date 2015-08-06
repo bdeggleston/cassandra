@@ -25,7 +25,6 @@ import com.google.common.collect.Iterables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.SplittingSizeTieredCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -66,9 +65,9 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
     protected volatile int estimatedRemainingTasks;
     private final Set<SSTableReader> sstables = new HashSet<>();
 
-    public SizeTieredCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public SizeTieredCompactionStrategy(CompactionStrategyManager csm, Map<String, String> options)
     {
-        super(cfs, options);
+        super(csm, options);
         this.estimatedRemainingTasks = 0;
         this.sizeTieredOptions = new SizeTieredCompactionStrategyOptions(options);
     }
@@ -184,7 +183,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
 
             LifecycleTransaction transaction = cfs.getTracker().tryModify(hottestBucket, OperationType.COMPACTION);
             if (transaction != null)
-                return new CompactionTask(cfs, transaction, gcBefore);
+                return new CompactionTask(csm, transaction, gcBefore);
         }
     }
 
@@ -198,8 +197,8 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
         if (txn == null)
             return null;
         if (splitOutput)
-            return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(cfs, txn, gcBefore));
-        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, txn, gcBefore));
+            return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(csm, txn, gcBefore));
+        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(csm, txn, gcBefore));
     }
 
     @SuppressWarnings("resource")
@@ -214,7 +213,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             return null;
         }
 
-        return new CompactionTask(cfs, transaction, gcBefore).setUserDefined(true);
+        return new CompactionTask(csm, transaction, gcBefore).setUserDefined(true);
     }
 
     public int getEstimatedRemainingTasks()
@@ -335,17 +334,17 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
 
     private static class SplittingCompactionTask extends CompactionTask
     {
-        public SplittingCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore)
+        public SplittingCompactionTask(CompactionStrategyManager csm, LifecycleTransaction txn, int gcBefore)
         {
-            super(cfs, txn, gcBefore);
+            super(csm, txn, gcBefore);
         }
 
         @Override
-        public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs,
+        public CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm,
                                                               LifecycleTransaction txn,
                                                               Set<SSTableReader> nonExpiredSSTables)
         {
-            return new SplittingSizeTieredCompactionWriter(cfs, txn, nonExpiredSSTables);
+            return new SplittingSizeTieredCompactionWriter(csm, txn, nonExpiredSSTables);
         }
     }
 }

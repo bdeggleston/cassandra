@@ -114,9 +114,9 @@ public class LongCompactionsTest
                     builder.newRow(String.valueOf(i)).add("val", String.valueOf(i));
                 rows.put(key, builder.build());
             }
-            SSTableReader sstable = SSTableUtils.prepare().write(rows);
-            sstables.add(sstable);
-            store.addSSTable(sstable);
+            Collection<SSTableReader> readers = SSTableUtils.prepare().write(rows, store);
+            sstables.addAll(readers);
+            store.addSSTables(readers);
         }
 
         // give garbage collection a bit of time to catch up
@@ -127,7 +127,7 @@ public class LongCompactionsTest
         try (LifecycleTransaction txn = store.getTracker().tryModify(sstables, OperationType.COMPACTION))
         {
             assert txn != null : "Cannot markCompacting all sstables";
-            new CompactionTask(store, txn, gcBefore).execute(null);
+            new CompactionTask(new CompactionStrategyManager(store), txn, gcBefore).execute(null);
         }
         System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",
                                          this.getClass().getName(),
