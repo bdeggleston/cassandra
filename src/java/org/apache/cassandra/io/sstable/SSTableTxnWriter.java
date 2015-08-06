@@ -83,21 +83,21 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         return writer.finished();
     }
 
-//    public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-//    {
-//        LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
-//        SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
-//        return new SSTableTxnWriter(txn, writer);
-//    }
-//
-//    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-//    {
-//        Descriptor desc = Descriptor.fromFilename(filename);
-//        return create(desc, keyCount, repairedAt, sstableLevel, header);
-//    }
-//
-//    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
-//    {
-//        return create(filename, keyCount, repairedAt, 0, header);
-//    }
+    public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+    {
+        LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
+        SSTableMultiWriter writer = SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        return new SSTableTxnWriter(txn, writer);
+    }
+
+    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+    {
+        Descriptor desc = Descriptor.fromFilename(filename);
+        return create(desc, keyCount, repairedAt, sstableLevel, header);
+    }
+
+    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
+    {
+        return create(filename, keyCount, repairedAt, 0, header);
+    }
 }

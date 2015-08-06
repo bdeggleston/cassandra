@@ -46,13 +46,12 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
                                     SerializationHeader header,
                                     LifecycleTransaction txn)
     {
-        this.writer = descriptor.getFormat().getWriterFactory().open(descriptor,
-                                                                     keyCount,
-                                                                     repairedAt,
-                                                                     metadata,
-                                                                     metadataCollector,
-                                                                     header,
-                                                                     txn);
+        this(SSTableWriter.create(descriptor, keyCount, repairedAt, metadata, metadataCollector, header, txn));
+    }
+
+    private SimpleSSTableMultiWriter(SSTableWriter writer)
+    {
+        this.writer = writer;
     }
 
     public boolean append(UnfilteredRowIterator partition)
@@ -110,5 +109,11 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
     public void close() throws Exception
     {
         writer.close();
+    }
+
+    public static SSTableMultiWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
+    {
+        SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        return new SimpleSSTableMultiWriter(writer);
     }
 }

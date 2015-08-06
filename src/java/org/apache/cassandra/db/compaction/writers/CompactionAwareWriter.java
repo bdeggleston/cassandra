@@ -62,12 +62,12 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         this.sstableWriter = new SSTableRewriter(cfs, txn, maxAge, offline).keepOriginals(offline);
     }
 
-//    /**
-//     * Writes a partition in an implementation specific way
-//     * @param partition the partition to append
-//     * @return true if the partition was written, false otherwise
-//     */
-//    public abstract boolean append(UnfilteredRowIterator partition);
+    /**
+     * Writes a partition in an implementation specific way
+     * @param partition the partition to append
+     * @return true if the partition was written, false otherwise
+     */
+    public abstract boolean append(UnfilteredRowIterator partition);
 
     @Override
     protected Throwable doAbort(Throwable accumulate)
