@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.io.sstable;
 
+import java.util.Collection;
+
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.OperationType;
@@ -35,15 +37,15 @@ import org.apache.cassandra.utils.concurrent.Transactional;
 public class SSTableTxnWriter extends Transactional.AbstractTransactional implements Transactional
 {
     private final LifecycleTransaction txn;
-    private final SSTableWriter writer;
+    private final SSTableMultiWriter writer;
 
-    public SSTableTxnWriter(LifecycleTransaction txn, SSTableWriter writer)
+    public SSTableTxnWriter(LifecycleTransaction txn, SSTableMultiWriter writer)
     {
         this.txn = txn;
         this.writer = writer;
     }
 
-    public RowIndexEntry append(UnfilteredRowIterator iterator)
+    public boolean append(UnfilteredRowIterator iterator)
     {
         return writer.append(iterator);
     }
@@ -74,28 +76,28 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         txn.prepareToCommit();
     }
 
-    public SSTableReader finish(boolean openResult)
+    public Collection<SSTableReader> finish(boolean openResult)
     {
         writer.setOpenResult(openResult);
         finish();
         return writer.finished();
     }
 
-    public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-    {
-        LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
-        SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
-        return new SSTableTxnWriter(txn, writer);
-    }
-
-    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
-    {
-        Descriptor desc = Descriptor.fromFilename(filename);
-        return create(desc, keyCount, repairedAt, sstableLevel, header);
-    }
-
-    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
-    {
-        return create(filename, keyCount, repairedAt, 0, header);
-    }
+//    public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+//    {
+//        LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
+//        SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+//        return new SSTableTxnWriter(txn, writer);
+//    }
+//
+//    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+//    {
+//        Descriptor desc = Descriptor.fromFilename(filename);
+//        return create(desc, keyCount, repairedAt, sstableLevel, header);
+//    }
+//
+//    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
+//    {
+//        return create(filename, keyCount, repairedAt, 0, header);
+//    }
 }
