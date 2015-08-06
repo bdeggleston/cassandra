@@ -47,6 +47,8 @@ import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.io.sstable.Component;
+import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.*;
@@ -1182,6 +1184,31 @@ public class CFMetaData
             .append("triggers", triggers)
             .append("materializedViews", materializedViews)
             .toString();
+    }
+
+    public synchronized ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, boolean loadSSTables)
+    {
+        // get the max generation number, to prevent generation conflicts
+        Directories directories = new Directories(this);
+        Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
+        List<Integer> generations = new ArrayList<Integer>();
+        for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
+        {
+            Descriptor desc = entry.getKey();
+            generations.add(desc.generation);
+            if (!desc.isCompatible())
+                throw new RuntimeException(String.format("Incompatible SSTable found. Current version %s is unable to read file: %s. Please run upgradesstables.",
+                                                         desc.getFormat().getLatestVersion(), desc));
+        }
+        Collections.sort(generations);
+        int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
+
+        return newCFS(keyspace, value, directories, loadSSTables);
+    }
+
+    protected ColumnFamilyStore newCFS(Keyspace ks, int generation, Directories directories, boolean loadSSTables)
+    {
+        return new ColumnFamilyStore(ks, cfName, generation, this, directories, loadSSTables);
     }
 
     public static class Builder
