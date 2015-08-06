@@ -223,12 +223,12 @@ public abstract class AbstractCompactionStrategy
      * Handle a flushed memtable.
      *
      * @param memtable the flushed memtable
-     * @param sstable the written sstable. can be null if the memtable was clean.
+     * @param sstables the written sstables. can be null or empty if the memtable was clean.
      */
-    public void replaceFlushed(Memtable memtable, SSTableReader sstable)
+    public void replaceFlushed(Memtable memtable, Collection<SSTableReader> sstables)
     {
-        cfs.getTracker().replaceFlushed(memtable, sstable);
-        if (sstable != null)
+        cfs.getTracker().replaceFlushed(memtable, sstables);
+        if (sstables != null && !sstables.isEmpty())
             CompactionManager.instance.submitBackground(cfs);
     }
 

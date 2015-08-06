@@ -957,7 +957,7 @@ public class SSTableRewriterTest extends SchemaLoader
 
                     writer.append(builder.build().unfilteredIterator());
                 }
-                result.add(writer.finish(true));
+                result.addAll(writer.finish(true));
             }
         }
         return result;
