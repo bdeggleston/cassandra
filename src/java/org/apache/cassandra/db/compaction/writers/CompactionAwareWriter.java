@@ -18,11 +18,12 @@
 
 package org.apache.cassandra.db.compaction.writers;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
+import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.compaction.CompactionTask;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -37,6 +38,7 @@ import org.apache.cassandra.utils.concurrent.Transactional;
  */
 public abstract class CompactionAwareWriter extends Transactional.AbstractTransactional implements Transactional
 {
+    protected final CompactionStrategyManager csm;
     protected final ColumnFamilyStore cfs;
     protected final Set<SSTableReader> nonExpiredSSTables;
     protected final long estimatedTotalKeys;
@@ -46,26 +48,27 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final LifecycleTransaction txn;
     protected final SSTableRewriter sstableWriter;
 
-    public CompactionAwareWriter(ColumnFamilyStore cfs,
+    public CompactionAwareWriter(CompactionStrategyManager csm,
                                  LifecycleTransaction txn,
                                  Set<SSTableReader> nonExpiredSSTables)
     {
-        this(cfs, txn, nonExpiredSSTables, false, false);
+        this(csm, txn, nonExpiredSSTables, false, false);
     }
 
-    public CompactionAwareWriter(ColumnFamilyStore cfs,
+    public CompactionAwareWriter(CompactionStrategyManager csm,
                                  LifecycleTransaction txn,
                                  Set<SSTableReader> nonExpiredSSTables,
                                  boolean offline,
                                  boolean keepOriginals)
     {
-        this.cfs = cfs;
+        this.csm = csm;
+        this.cfs = csm.getCfs();
         this.nonExpiredSSTables = nonExpiredSSTables;
         this.estimatedTotalKeys = SSTableReader.getApproximateKeyCount(nonExpiredSSTables);
         this.maxAge = CompactionTask.getMaxDataAge(nonExpiredSSTables);
         this.minRepairedAt = CompactionTask.getMinRepairedAt(nonExpiredSSTables);
         this.txn = txn;
-        this.sstableWriter = new SSTableRewriter(cfs, txn, maxAge, offline).keepOriginals(keepOriginals);
+        this.sstableWriter = csm.createSSTableRewriter(txn, maxAge, offline).keepOriginals(keepOriginals);
     }
 
     /**
@@ -98,7 +101,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
      * @return all the written sstables sstables
      */
     @Override
-    public List<SSTableReader> finish()
+    public Collection<SSTableReader> finish()
     {
         super.finish();
         return sstableWriter.finished();
@@ -117,7 +120,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
      */
     public Directories getDirectories()
     {
-        return cfs.directories;
+        return csm.getDirectories();
     }
 
     /**

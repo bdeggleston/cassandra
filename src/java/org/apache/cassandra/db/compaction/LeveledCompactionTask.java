@@ -32,22 +32,31 @@ public class LeveledCompactionTask extends CompactionTask
     private final long maxSSTableBytes;
     private final boolean majorCompaction;
 
-    public LeveledCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction)
+    public LeveledCompactionTask(CompactionStrategyManager csm, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction)
     {
-        super(cfs, txn, gcBefore);
+//<<<<<<< HEAD
+        super(csm, txn, gcBefore);
+//=======
+//        super(csm, txn, gcBefore, false);
+//>>>>>>> deb1042... passing CompactionStrategyManager into compaction strategy, and adding
         this.level = level;
         this.maxSSTableBytes = maxSSTableBytes;
         this.majorCompaction = majorCompaction;
     }
 
     @Override
-    public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs,
+    public CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm,
                                                           LifecycleTransaction txn,
                                                           Set<SSTableReader> nonExpiredSSTables)
     {
         if (majorCompaction)
-            return new MajorLeveledCompactionWriter(cfs, txn, nonExpiredSSTables, maxSSTableBytes, false, false);
-        return new MaxSSTableSizeWriter(cfs, txn, nonExpiredSSTables, maxSSTableBytes, getLevel(), false, false);
+//<<<<<<< HEAD
+            return new MajorLeveledCompactionWriter(csm, txn, nonExpiredSSTables, maxSSTableBytes, false, false);
+        return new MaxSSTableSizeWriter(csm, txn, nonExpiredSSTables, maxSSTableBytes, getLevel(), false, false);
+//=======
+//            return new MajorLeveledCompactionWriter(csm, txn, nonExpiredSSTables, maxSSTableBytes, false);
+//        return new MaxSSTableSizeWriter(csm, txn, nonExpiredSSTables, maxSSTableBytes, getLevel(), false);
+//>>>>>>> deb1042... passing CompactionStrategyManager into compaction strategy, and adding
     }
 
     @Override
