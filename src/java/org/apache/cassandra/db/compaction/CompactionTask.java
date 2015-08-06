@@ -154,7 +154,7 @@ public class CompactionTask extends AbstractCompactionTask
         {
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), controller.getFullyExpiredSSTables());
 
-            List<SSTableReader> newSStables;
+            Collection<SSTableReader> newSStables;
 
             long[] mergedRowCounts;
 
