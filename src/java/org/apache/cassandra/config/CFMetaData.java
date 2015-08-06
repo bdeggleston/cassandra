@@ -58,7 +58,7 @@ import org.github.jamm.Unmetered;
  * This class can be tricky to modify. Please read http://wiki.apache.org/cassandra/ConfigurationNotes for how to do so safely.
  */
 @Unmetered
-public final class CFMetaData
+public class CFMetaData
 {
     public enum Flag
     {
@@ -218,18 +218,18 @@ public final class CFMetaData
         return this;
     }
 
-    private CFMetaData(String keyspace,
-                       String name,
-                       UUID cfId,
-                       boolean isSuper,
-                       boolean isCounter,
-                       boolean isDense,
-                       boolean isCompound,
-                       boolean isMaterializedView,
-                       List<ColumnDefinition> partitionKeyColumns,
-                       List<ColumnDefinition> clusteringColumns,
-                       PartitionColumns partitionColumns,
-                       IPartitioner partitioner)
+    CFMetaData(String keyspace,
+               String name,
+               UUID cfId,
+               boolean isSuper,
+               boolean isCounter,
+               boolean isDense,
+               boolean isCompound,
+               boolean isMaterializedView,
+               List<ColumnDefinition> partitionKeyColumns,
+               List<ColumnDefinition> clusteringColumns,
+               PartitionColumns partitionColumns,
+               IPartitioner partitioner)
     {
         this.cfId = cfId;
         this.ksName = keyspace;
@@ -330,18 +330,18 @@ public final class CFMetaData
         Collections.sort(partitions);
         Collections.sort(clusterings);
 
-        return new CFMetaData(ksName,
-                              name,
-                              cfId,
-                              isSuper,
-                              isCounter,
-                              isDense,
-                              isCompound,
-                              isMaterializedView,
-                              partitions,
-                              clusterings,
-                              builder.build(),
-                              partitioner);
+        return CFMetaDataFactory.instance.newCFMetaData(ksName,
+                                                        name,
+                                                        cfId,
+                                                        isSuper,
+                                                        isCounter,
+                                                        isDense,
+                                                        isCompound,
+                                                        isMaterializedView,
+                                                        partitions,
+                                                        clusterings,
+                                                        builder.build(),
+                                                        partitioner);
     }
 
     private static List<AbstractType<?>> extractTypes(List<ColumnDefinition> clusteringColumns)
@@ -431,36 +431,34 @@ public final class CFMetaData
      */
     public CFMetaData copy(UUID newCfId)
     {
-        return copyOpts(new CFMetaData(ksName,
-                                       cfName,
-                                       newCfId,
-                                       isSuper(),
-                                       isCounter(),
-                                       isDense(),
-                                       isCompound(),
-                                       isMaterializedView(),
-                                       copy(partitionKeyColumns),
-                                       copy(clusteringColumns),
-                                       copy(partitionColumns),
-                                       partitioner),
-                        this);
+        return CFMetaDataFactory.instance.newCFMetaData(ksName,
+                                                        cfName,
+                                                        newCfId,
+                                                        isSuper(),
+                                                        isCounter(),
+                                                        isDense(),
+                                                        isCompound(),
+                                                        isMaterializedView(),
+                                                        copy(partitionKeyColumns),
+                                                        copy(clusteringColumns),
+                                                        copy(partitionColumns),
+                                                        partitioner).copyOpts(this);
     }
 
     public CFMetaData copy(IPartitioner partitioner)
     {
-        return copyOpts(new CFMetaData(ksName,
-                                       cfName,
-                                       cfId,
-                                       isSuper,
-                                       isCounter,
-                                       isDense,
-                                       isCompound,
-                                       isMaterializedView,
-                                       copy(partitionKeyColumns),
-                                       copy(clusteringColumns),
-                                       copy(partitionColumns),
-                                       partitioner),
-                        this);
+        return CFMetaDataFactory.instance.newCFMetaData(ksName,
+                                                        cfName,
+                                                        cfId,
+                                                        isSuper,
+                                                        isCounter,
+                                                        isDense,
+                                                        isCompound,
+                                                        isMaterializedView,
+                                                        copy(partitionKeyColumns),
+                                                        copy(clusteringColumns),
+                                                        copy(partitionColumns),
+                                                        partitioner).copyOpts(this);
     }
 
     private static List<ColumnDefinition> copy(List<ColumnDefinition> l)
@@ -480,12 +478,12 @@ public final class CFMetaData
     }
 
     @VisibleForTesting
-    public static CFMetaData copyOpts(CFMetaData newCFMD, CFMetaData oldCFMD)
+    public CFMetaData copyOpts(CFMetaData that)
     {
-        return newCFMD.params(oldCFMD.params)
-                      .droppedColumns(new HashMap<>(oldCFMD.droppedColumns))
-                      .triggers(oldCFMD.triggers)
-                      .materializedViews(oldCFMD.materializedViews);
+        return params(that.params)
+               .droppedColumns(new HashMap<>(that.droppedColumns))
+               .triggers(that.triggers)
+               .materializedViews(that.materializedViews);
     }
 
     /**
@@ -1321,6 +1319,24 @@ public final class CFMetaData
             return usedNames;
         }
 
+        protected CFMetaData build(List<ColumnDefinition> partitionKeyColumns,
+                                   List<ColumnDefinition> clusteringColumns,
+                                   PartitionColumns partitionColumns)
+        {
+            return CFMetaDataFactory.instance.newCFMetaData(keyspace,
+                                                            table,
+                                                            tableId,
+                                                            isSuper,
+                                                            isCounter,
+                                                            isDense,
+                                                            isCompound,
+                                                            isMaterializedView,
+                                                            partitionKeyColumns,
+                                                            clusteringColumns,
+                                                            partitionColumns,
+                                                            partitioner);
+        }
+
         public CFMetaData build()
         {
             if (tableId == null)
@@ -1355,18 +1371,7 @@ public final class CFMetaData
                 builder.add(new ColumnDefinition(keyspace, table, p.left, p.right, null, ColumnDefinition.Kind.STATIC));
             }
 
-            return new CFMetaData(keyspace,
-                                  table,
-                                  tableId,
-                                  isSuper,
-                                  isCounter,
-                                  isDense,
-                                  isCompound,
-                                  isMaterializedView,
-                                  partitions,
-                                  clusterings,
-                                  builder.build(),
-                                  partitioner);
+            return build(partitions, clusterings, builder.build());
         }
     }
 
