@@ -357,10 +357,11 @@ public class Keyspace
 
         if (cfs == null)
         {
+            CFMetaData cfm = Schema.instance.getCFMetaData(cfId);
             // CFS being created for the first time, either on server startup or new CF being added.
             // We don't worry about races here; startup is safe, and adding multiple idential CFs
             // simultaneously is a "don't do that" scenario.
-            ColumnFamilyStore newCfs = ColumnFamilyStore.createColumnFamilyStore(this, cfName, loadSSTables);
+            ColumnFamilyStore newCfs = cfm.createColumnFamilyStore(this, loadSSTables);
 
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(cfId, newCfs);
             // CFS mbean instantiation will error out before we hit this, but in case that changes...

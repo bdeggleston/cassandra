@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.lifecycle.TransactionLogs;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.commons.cli.*;
@@ -152,7 +153,7 @@ public class StandaloneSplitter
             {
                 try (LifecycleTransaction transaction = LifecycleTransaction.offline(OperationType.UNKNOWN, sstable))
                 {
-                    new SSTableSplitter(cfs, transaction, options.sizeInMB).split();
+                    new SSTableSplitter(new CompactionStrategyManager(cfs), transaction, options.sizeInMB).split();
                 }
                 catch (Exception e)
                 {

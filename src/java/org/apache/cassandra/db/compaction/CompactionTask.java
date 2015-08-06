@@ -43,6 +43,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionManager.CompactionExecutorStatsCollector;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.tools.nodetool.CompactionHistory;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.Refs;
@@ -56,14 +57,14 @@ public class CompactionTask extends AbstractCompactionTask
     protected static long totalBytesCompacted = 0;
     private CompactionExecutorStatsCollector collector;
 
-    public CompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore)
+    public CompactionTask(CompactionStrategyManager csm, LifecycleTransaction txn, int gcBefore)
     {
-        this(cfs, txn, gcBefore, false, false);
+        this(csm, txn, gcBefore, false, false);
     }
 
-    public CompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore, boolean offline, boolean keepOriginals)
+    public CompactionTask(CompactionStrategyManager csm, LifecycleTransaction txn, int gcBefore, boolean offline, boolean keepOriginals)
     {
-        super(cfs, txn);
+        super(csm, txn);
         this.gcBefore = gcBefore;
         this.offline = offline;
         this.keepOriginals = keepOriginals;
@@ -154,7 +155,7 @@ public class CompactionTask extends AbstractCompactionTask
         {
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), controller.getFullyExpiredSSTables());
 
-            List<SSTableReader> newSStables;
+            Collection<SSTableReader> newSStables;
 
             long[] mergedRowCounts;
 
@@ -173,7 +174,7 @@ public class CompactionTask extends AbstractCompactionTask
                 if (!controller.cfs.getCompactionStrategyManager().isActive)
                     throw new CompactionInterruptedException(ci.getCompactionInfo());
 
-                try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, transaction, actuallyCompact))
+                try (CompactionAwareWriter writer = getCompactionAwareWriter(csm, transaction, actuallyCompact))
                 {
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext())
@@ -227,11 +228,11 @@ public class CompactionTask extends AbstractCompactionTask
     }
 
     @Override
-    public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs,
+    public CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm,
                                                           LifecycleTransaction transaction,
                                                           Set<SSTableReader> nonExpiredSSTables)
     {
-        return new DefaultCompactionWriter(cfs, transaction, nonExpiredSSTables, offline, keepOriginals);
+        return new DefaultCompactionWriter(csm, transaction, nonExpiredSSTables, offline, keepOriginals);
     }
 
     public static String updateCompactionHistory(String keyspaceName, String columnFamilyName, long[] mergedRowCounts, long startSize, long endSize)

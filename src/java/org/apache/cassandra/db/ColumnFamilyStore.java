@@ -362,7 +362,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             CacheService.instance.keyCache.loadSaved(this);
 
         // compaction strategy should be created after the CFS has been prepared
-        this.compactionStrategyManager = new CompactionStrategyManager(this);
+        this.compactionStrategyManager = createCompactionStrategyManager();
 
         if (maxCompactionThreshold.value() <= 0 || minCompactionThreshold.value() <=0)
         {
@@ -429,6 +429,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         }
     }
 
+    protected CompactionStrategyManager createCompactionStrategyManager()
+    {
+        return new CompactionStrategyManager(this);
+    }
+
+    public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
+    {
+        return SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+    }
+
     /** call when dropping or renaming a CF. Performs mbean housekeeping and invalidates CFS to other operations */
     public void invalidate()
     {
@@ -485,35 +495,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // unregister metrics
         metric.release();
-    }
-
-
-    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, String columnFamily, boolean loadSSTables)
-    {
-        return createColumnFamilyStore(keyspace, columnFamily, Schema.instance.getCFMetaData(keyspace.getName(), columnFamily), loadSSTables);
-    }
-
-    public static synchronized ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace,
-                                                                         String columnFamily,
-                                                                         CFMetaData metadata,
-                                                                         boolean loadSSTables)
-    {
-        // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata);
-        Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
-        List<Integer> generations = new ArrayList<Integer>();
-        for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
-        {
-            Descriptor desc = entry.getKey();
-            generations.add(desc.generation);
-            if (!desc.isCompatible())
-                throw new RuntimeException(String.format("Incompatible SSTable found. Current version %s is unable to read file: %s. Please run upgradesstables.",
-                        desc.getFormat().getLatestVersion(), desc));
-        }
-        Collections.sort(generations);
-        int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
-
-        return new ColumnFamilyStore(keyspace, columnFamily, value, metadata, directories, loadSSTables);
     }
 
     /**
@@ -1350,9 +1331,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         maybeFail(data.dropSSTables(Predicates.in(sstables), compactionType, null));
     }
 
-    void replaceFlushed(Memtable memtable, SSTableReader sstable)
+    void replaceFlushed(Memtable memtable, Collection<SSTableReader> sstables)
     {
-        compactionStrategyManager.replaceFlushed(memtable, sstable);
+        compactionStrategyManager.replaceFlushed(memtable, sstables);
     }
 
     public boolean isValid()
