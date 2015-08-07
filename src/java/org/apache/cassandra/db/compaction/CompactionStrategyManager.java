@@ -27,11 +27,13 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Memtable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.SSTableRewriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.notifications.*;
@@ -61,6 +63,26 @@ public class CompactionStrategyManager implements INotificationConsumer
         reload(cfs.metadata);
         params = cfs.metadata.params.compaction;
         enabled = params.isEnabled();
+    }
+
+    public ColumnFamilyStore getCfs()
+    {
+        return cfs;
+    }
+
+    public Directories getDirectories()
+    {
+        return cfs.directories;
+    }
+
+    public SSTableRewriter createSSTableRewriter(LifecycleTransaction transaction, long maxAge, boolean isOffline, boolean shouldOpenEarly)
+    {
+        return new SSTableRewriter(cfs, transaction, maxAge, isOffline, shouldOpenEarly);
+    }
+
+    public final SSTableRewriter createSSTableRewriter(LifecycleTransaction transaction, long maxAge, boolean isOffline)
+    {
+        return createSSTableRewriter(transaction, maxAge, isOffline, true);
     }
 
     /**
@@ -169,8 +191,8 @@ public class CompactionStrategyManager implements INotificationConsumer
             repaired.shutdown();
         if (unrepaired != null)
             unrepaired.shutdown();
-        repaired = metadata.createCompactionStrategyInstance(cfs);
-        unrepaired = metadata.createCompactionStrategyInstance(cfs);
+        repaired = metadata.createCompactionStrategyInstance(this);
+        unrepaired = metadata.createCompactionStrategyInstance(this);
         params = metadata.params.compaction;
         if (disabledWithJMX || !shouldBeEnabled())
             disable();

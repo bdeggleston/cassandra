@@ -782,13 +782,13 @@ public class CFMetaData
         return strategyClass;
     }
 
-    public AbstractCompactionStrategy createCompactionStrategyInstance(ColumnFamilyStore cfs)
+    public AbstractCompactionStrategy createCompactionStrategyInstance(CompactionStrategyManager csm)
     {
         try
         {
             Constructor<? extends AbstractCompactionStrategy> constructor =
-                params.compaction.klass().getConstructor(ColumnFamilyStore.class, Map.class);
-            return constructor.newInstance(cfs, params.compaction.options());
+                params.compaction.klass().getConstructor(CompactionStrategyManager.class, Map.class);
+            return constructor.newInstance(csm, params.compaction.options());
         }
         catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e)
         {
