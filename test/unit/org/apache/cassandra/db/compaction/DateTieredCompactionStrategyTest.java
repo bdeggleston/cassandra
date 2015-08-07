@@ -319,7 +319,7 @@ public class DateTieredCompactionStrategyTest extends SchemaLoader
         options.put(DateTieredCompactionStrategyOptions.BASE_TIME_KEY, "30");
         options.put(DateTieredCompactionStrategyOptions.TIMESTAMP_RESOLUTION_KEY, "MILLISECONDS");
         options.put(DateTieredCompactionStrategyOptions.MAX_SSTABLE_AGE_KEY, Double.toString((1d / (24 * 60 * 60))));
-        DateTieredCompactionStrategy dtcs = new DateTieredCompactionStrategy(cfs, options);
+        DateTieredCompactionStrategy dtcs = new DateTieredCompactionStrategy(new CompactionHelper(cfs), options);
         for (SSTableReader sstable : cfs.getLiveSSTables())
             dtcs.addSSTable(sstable);
         dtcs.startup();

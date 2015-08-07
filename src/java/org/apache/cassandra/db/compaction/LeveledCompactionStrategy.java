@@ -48,9 +48,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
     final LeveledManifest manifest;
     private final int maxSSTableSizeInMB;
 
-    public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public LeveledCompactionStrategy(CompactionHelper helper, Map<String, String> options)
     {
-        super(cfs, options);
+        super(helper, options);
         int configuredMaxSSTableSize = 160;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
         if (options != null)
@@ -118,7 +118,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null)
             {
-                LeveledCompactionTask newTask = new LeveledCompactionTask(cfs, txn, candidate.level, gcBefore, candidate.maxSSTableBytes, false);
+                LeveledCompactionTask newTask = new LeveledCompactionTask(helper, txn, candidate.level, gcBefore, candidate.maxSSTableBytes, false);
                 newTask.setCompactionType(op);
                 return newTask;
             }
@@ -136,7 +136,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
         LifecycleTransaction txn = cfs.getTracker().tryModify(filteredSSTables, OperationType.COMPACTION);
         if (txn == null)
             return null;
-        return Arrays.<AbstractCompactionTask>asList(new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true));
+        return Arrays.<AbstractCompactionTask>asList(new LeveledCompactionTask(helper, txn, 0, gcBefore, getMaxSSTableBytes(), true));
 
     }
 
@@ -159,7 +159,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
             if (level != sstable.getSSTableLevel())
                 level = 0;
         }
-        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false);
+        return new LeveledCompactionTask(helper, txn, level, gcBefore, maxSSTableBytes, false);
     }
 
     /**

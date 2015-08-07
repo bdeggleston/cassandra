@@ -23,11 +23,13 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.CompactionManager.CompactionExecutorStatsCollector;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.tools.nodetool.CompactionHistory;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 
 public abstract class AbstractCompactionTask extends WrappedRunnable
 {
+    protected final CompactionHelper helper;
     protected final ColumnFamilyStore cfs;
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
@@ -37,9 +39,10 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
      * @param cfs
      * @param transaction the modifying managing the status of the sstables we're replacing
      */
-    public AbstractCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction transaction)
+    public AbstractCompactionTask(CompactionHelper helper, LifecycleTransaction transaction)
     {
-        this.cfs = cfs;
+        this.helper = helper;
+        this.cfs = helper.getCfs();
         this.transaction = transaction;
         this.isUserDefined = false;
         this.compactionType = OperationType.COMPACTION;
@@ -63,7 +66,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
             transaction.close();
         }
     }
-    public abstract CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
+    public abstract CompactionAwareWriter getCompactionAwareWriter(CompactionHelper helper, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
 
     protected abstract int executeInternal(CompactionExecutorStatsCollector collector);
 

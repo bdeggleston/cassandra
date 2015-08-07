@@ -66,9 +66,9 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
     protected volatile int estimatedRemainingTasks;
     private final Set<SSTableReader> sstables = new HashSet<>();
 
-    public SizeTieredCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public SizeTieredCompactionStrategy(CompactionHelper helper, Map<String, String> options)
     {
-        super(cfs, options);
+        super(helper, options);
         this.estimatedRemainingTasks = 0;
         this.sizeTieredOptions = new SizeTieredCompactionStrategyOptions(options);
     }
@@ -184,7 +184,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
 
             LifecycleTransaction transaction = cfs.getTracker().tryModify(hottestBucket, OperationType.COMPACTION);
             if (transaction != null)
-                return new CompactionTask(cfs, transaction, gcBefore, false);
+                return new CompactionTask(helper, transaction, gcBefore, false);
         }
     }
 
@@ -198,8 +198,8 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
         if (txn == null)
             return null;
         if (splitOutput)
-            return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(cfs, txn, gcBefore, false));
-        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, txn, gcBefore, false));
+            return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(helper, txn, gcBefore, false));
+        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(helper, txn, gcBefore, false));
     }
 
     @SuppressWarnings("resource")
@@ -214,7 +214,7 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
             return null;
         }
 
-        return new CompactionTask(cfs, transaction, gcBefore, false).setUserDefined(true);
+        return new CompactionTask(helper, transaction, gcBefore, false).setUserDefined(true);
     }
 
     public int getEstimatedRemainingTasks()
@@ -335,17 +335,17 @@ public class SizeTieredCompactionStrategy extends AbstractCompactionStrategy
 
     private static class SplittingCompactionTask extends CompactionTask
     {
-        public SplittingCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore, boolean offline)
+        public SplittingCompactionTask(CompactionHelper helper, LifecycleTransaction txn, int gcBefore, boolean offline)
         {
-            super(cfs, txn, gcBefore, offline);
+            super(helper, txn, gcBefore, offline);
         }
 
         @Override
-        public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs,
+        public CompactionAwareWriter getCompactionAwareWriter(CompactionHelper helper,
                                                               LifecycleTransaction txn,
                                                               Set<SSTableReader> nonExpiredSSTables)
         {
-            return new SplittingSizeTieredCompactionWriter(cfs, txn, nonExpiredSSTables);
+            return new SplittingSizeTieredCompactionWriter(helper, txn, nonExpiredSSTables);
         }
     }
 }
