@@ -20,9 +20,11 @@ package org.apache.cassandra.io.sstable;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.utils.Throwables;
 import org.apache.cassandra.utils.concurrent.Transactional;
 
 public interface SSTableMultiWriter extends Transactional
@@ -43,4 +45,10 @@ public interface SSTableMultiWriter extends Transactional
 
     String getFilename();
     long getFilePointer();
+    UUID getCfId();
+
+    static void abortOrDie(SSTableMultiWriter writer)
+    {
+        Throwables.maybeFail(writer.abort(null));
+    }
 }

@@ -20,7 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.RowIndexEntry;
@@ -107,6 +107,11 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
     {
         writer.setOpenResult(openResult);
         return this;
+    }
+
+    public UUID getCfId()
+    {
+        return writer.metadata.cfId;
     }
 
     public static SSTableMultiWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
