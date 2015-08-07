@@ -190,8 +190,8 @@ public class CompactionStrategyManager implements INotificationConsumer
             repaired.shutdown();
         if (unrepaired != null)
             unrepaired.shutdown();
-        repaired = metadata.createCompactionStrategyInstance(cfs);
-        unrepaired = metadata.createCompactionStrategyInstance(cfs);
+        repaired = metadata.createCompactionStrategyInstance(this);
+        unrepaired = metadata.createCompactionStrategyInstance(this);
         params = metadata.params.compaction;
         if (disabledWithJMX || !shouldBeEnabled())
             disable();
