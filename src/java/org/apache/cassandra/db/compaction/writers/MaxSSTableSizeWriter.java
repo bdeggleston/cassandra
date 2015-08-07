@@ -20,10 +20,9 @@ package org.apache.cassandra.db.compaction.writers;
 import java.io.File;
 import java.util.Set;
 
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
-import org.apache.cassandra.db.compaction.CompactionHelper;
+import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -41,9 +40,9 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
     private final Set<SSTableReader> allSSTables;
 
     @SuppressWarnings("resource")
-    public MaxSSTableSizeWriter(CompactionHelper helper, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables, long maxSSTableSize, int level, boolean offline)
+    public MaxSSTableSizeWriter(CompactionStrategyManager csm, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables, long maxSSTableSize, int level, boolean offline)
     {
-        super(helper, txn, nonExpiredSSTables, offline);
+        super(csm, txn, nonExpiredSSTables, offline);
         this.allSSTables = txn.originals();
         this.level = level;
         this.maxSSTableSize = maxSSTableSize;
@@ -51,7 +50,7 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
         expectedWriteSize = Math.min(maxSSTableSize, totalSize);
         estimatedTotalKeys = SSTableReader.getApproximateKeyCount(nonExpiredSSTables);
         estimatedSSTables = Math.max(1, estimatedTotalKeys / maxSSTableSize);
-        File sstableDirectory = helper.getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
+        File sstableDirectory = csm.getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
         @SuppressWarnings("resource")
         SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),
                                                     estimatedTotalKeys / estimatedSSTables,
@@ -69,7 +68,7 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
         RowIndexEntry rie = sstableWriter.append(partition);
         if (sstableWriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize)
         {
-            File sstableDirectory = helper.getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
+            File sstableDirectory = csm.getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
             @SuppressWarnings("resource")
             SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),
                                                         estimatedTotalKeys / estimatedSSTables,

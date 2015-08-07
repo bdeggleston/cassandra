@@ -31,9 +31,9 @@ public class SSTableSplitter {
 
     private CompactionInfo.Holder info;
 
-    public SSTableSplitter(CompactionHelper helper, LifecycleTransaction transaction, int sstableSizeInMB)
+    public SSTableSplitter(CompactionStrategyManager csm, LifecycleTransaction transaction, int sstableSizeInMB)
     {
-        this.task = new SplittingCompactionTask(helper, transaction, sstableSizeInMB);
+        this.task = new SplittingCompactionTask(csm, transaction, sstableSizeInMB);
     }
 
     public void split()
@@ -58,9 +58,9 @@ public class SSTableSplitter {
     {
         private final int sstableSizeInMB;
 
-        public SplittingCompactionTask(CompactionHelper helper, LifecycleTransaction transaction, int sstableSizeInMB)
+        public SplittingCompactionTask(CompactionStrategyManager csm, LifecycleTransaction transaction, int sstableSizeInMB)
         {
-            super(helper, transaction, CompactionManager.NO_GC, true);
+            super(csm, transaction, CompactionManager.NO_GC, true);
             this.sstableSizeInMB = sstableSizeInMB;
 
             if (sstableSizeInMB <= 0)
@@ -74,11 +74,11 @@ public class SSTableSplitter {
         }
 
         @Override
-        public CompactionAwareWriter getCompactionAwareWriter(CompactionHelper helper,
+        public CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm,
                                                               LifecycleTransaction txn,
                                                               Set<SSTableReader> nonExpiredSSTables)
         {
-            return new MaxSSTableSizeWriter(helper, txn, nonExpiredSSTables, sstableSizeInMB * 1024L * 1024L, 0, true);
+            return new MaxSSTableSizeWriter(csm, txn, nonExpiredSSTables, sstableSizeInMB * 1024L * 1024L, 0, true);
         }
 
         @Override

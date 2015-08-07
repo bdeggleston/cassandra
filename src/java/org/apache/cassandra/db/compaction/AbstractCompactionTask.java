@@ -29,20 +29,20 @@ import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 
 public abstract class AbstractCompactionTask extends WrappedRunnable
 {
-    protected final CompactionHelper helper;
+    protected final CompactionStrategyManager csm;
     protected final ColumnFamilyStore cfs;
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
     protected OperationType compactionType;
 
     /**
-     * @param cfs
+     * @param csm
      * @param transaction the modifying managing the status of the sstables we're replacing
      */
-    public AbstractCompactionTask(CompactionHelper helper, LifecycleTransaction transaction)
+    public AbstractCompactionTask(CompactionStrategyManager csm, LifecycleTransaction transaction)
     {
-        this.helper = helper;
-        this.cfs = helper.getCfs();
+        this.csm = csm;
+        this.cfs = csm.getCfs();
         this.transaction = transaction;
         this.isUserDefined = false;
         this.compactionType = OperationType.COMPACTION;
@@ -66,7 +66,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
             transaction.close();
         }
     }
-    public abstract CompactionAwareWriter getCompactionAwareWriter(CompactionHelper helper, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
+    public abstract CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
 
     protected abstract int executeInternal(CompactionExecutorStatsCollector collector);
 

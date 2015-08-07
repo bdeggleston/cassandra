@@ -67,7 +67,7 @@ public abstract class AbstractCompactionStrategy
 
     protected Map<String, String> options;
 
-    protected final CompactionHelper helper;
+    protected final CompactionStrategyManager csm;
     protected final ColumnFamilyStore cfs;
     protected float tombstoneThreshold;
     protected long tombstoneCompactionInterval;
@@ -86,11 +86,11 @@ public abstract class AbstractCompactionStrategy
      */
     protected boolean isActive = false;
 
-    protected AbstractCompactionStrategy(CompactionHelper helper, Map<String, String> options)
+    protected AbstractCompactionStrategy(CompactionStrategyManager csm, Map<String, String> options)
     {
-        assert helper != null;
-        this.helper = helper;
-        cfs = helper.getCfs();
+        assert csm != null;
+        this.csm = csm;
+        cfs = csm.getCfs();
         assert cfs != null;
         this.options = ImmutableMap.copyOf(options);
 
@@ -183,7 +183,7 @@ public abstract class AbstractCompactionStrategy
 
     public AbstractCompactionTask getCompactionTask(LifecycleTransaction txn, final int gcBefore, long maxSSTableBytes)
     {
-        return new CompactionTask(helper, txn, gcBefore, false);
+        return new CompactionTask(csm, txn, gcBefore, false);
     }
 
     /**

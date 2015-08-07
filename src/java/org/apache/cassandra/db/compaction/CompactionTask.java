@@ -56,9 +56,9 @@ public class CompactionTask extends AbstractCompactionTask
     protected static long totalBytesCompacted = 0;
     private CompactionExecutorStatsCollector collector;
 
-    public CompactionTask(CompactionHelper helper, LifecycleTransaction txn, int gcBefore, boolean offline)
+    public CompactionTask(CompactionStrategyManager csm, LifecycleTransaction txn, int gcBefore, boolean offline)
     {
-        super(helper, txn);
+        super(csm, txn);
         this.gcBefore = gcBefore;
         this.offline = offline;
     }
@@ -167,7 +167,7 @@ public class CompactionTask extends AbstractCompactionTask
                 if (!controller.cfs.getCompactionStrategyManager().isActive)
                     throw new CompactionInterruptedException(ci.getCompactionInfo());
 
-                try (CompactionAwareWriter writer = getCompactionAwareWriter(helper, transaction, actuallyCompact))
+                try (CompactionAwareWriter writer = getCompactionAwareWriter(csm, transaction, actuallyCompact))
                 {
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext())
@@ -221,11 +221,11 @@ public class CompactionTask extends AbstractCompactionTask
     }
 
     @Override
-    public CompactionAwareWriter getCompactionAwareWriter(CompactionHelper helper,
+    public CompactionAwareWriter getCompactionAwareWriter(CompactionStrategyManager csm,
                                                           LifecycleTransaction transaction,
                                                           Set<SSTableReader> nonExpiredSSTables)
     {
-        return new DefaultCompactionWriter(helper, transaction, nonExpiredSSTables, offline);
+        return new DefaultCompactionWriter(csm, transaction, nonExpiredSSTables, offline);
     }
 
     public static String updateCompactionHistory(String keyspaceName, String columnFamilyName, long[] mergedRowCounts, long startSize, long endSize)
