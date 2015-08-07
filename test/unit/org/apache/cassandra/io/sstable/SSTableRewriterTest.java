@@ -43,6 +43,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.db.SerializationHeader;
+import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.lifecycle.TransactionLogs;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -666,7 +667,7 @@ public class SSTableRewriterTest extends SchemaLoader
         SSTableReader s = writeFile(cfs, 1000);
         try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.UNKNOWN, s))
         {
-            SSTableSplitter splitter = new SSTableSplitter(cfs, txn, 10);
+            SSTableSplitter splitter = new SSTableSplitter(new CompactionStrategyManager(cfs), txn, 10);
             splitter.split();
 
             assertFileCounts(s.descriptor.directory.list());

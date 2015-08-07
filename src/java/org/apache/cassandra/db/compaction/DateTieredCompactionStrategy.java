@@ -25,7 +25,6 @@ import com.google.common.collect.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.exceptions.ConfigurationException;
@@ -43,9 +42,9 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
     protected volatile int estimatedRemainingTasks;
     private final Set<SSTableReader> sstables = new HashSet<>();
 
-    public DateTieredCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options)
+    public DateTieredCompactionStrategy(CompactionStrategyManager csm, Map<String, String> options)
     {
-        super(cfs, options);
+        super(csm, options);
         this.estimatedRemainingTasks = 0;
         this.options = new DateTieredCompactionStrategyOptions(options);
         if (!options.containsKey(AbstractCompactionStrategy.TOMBSTONE_COMPACTION_INTERVAL_OPTION) && !options.containsKey(AbstractCompactionStrategy.TOMBSTONE_THRESHOLD_OPTION))
@@ -71,7 +70,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
 
             LifecycleTransaction modifier = cfs.getTracker().tryModify(latestBucket, OperationType.COMPACTION);
             if (modifier != null)
-                return new CompactionTask(cfs, modifier, gcBefore, false);
+                return new CompactionTask(csm, modifier, gcBefore, false);
         }
     }
 
@@ -372,7 +371,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
         if (modifier == null)
             return null;
 
-        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs, modifier, gcBefore, false));
+        return Arrays.<AbstractCompactionTask>asList(new CompactionTask(csm, modifier, gcBefore, false));
     }
 
     @Override
@@ -388,7 +387,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
             return null;
         }
 
-        return new CompactionTask(cfs, modifier, gcBefore, false).setUserDefined(true);
+        return new CompactionTask(csm, modifier, gcBefore, false).setUserDefined(true);
     }
 
     public int getEstimatedRemainingTasks()
