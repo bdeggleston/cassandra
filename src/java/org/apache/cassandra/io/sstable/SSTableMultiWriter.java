@@ -33,14 +33,14 @@ public interface SSTableMultiWriter extends Transactional
      * @param partition the partition to append
      * @return true if the partition was written, false otherwise
      */
-    public abstract boolean append(UnfilteredRowIterator partition);
+    boolean append(UnfilteredRowIterator partition);
 
-    public Collection<SSTableReader> finish(long repairedAt, long maxDataAge, boolean openResult);
-    public Collection<SSTableReader> finish(boolean openResult);
-    public Collection<SSTableReader> finished();
+    Collection<SSTableReader> finish(long repairedAt, long maxDataAge, boolean openResult);
+    Collection<SSTableReader> finish(boolean openResult);
+    Collection<SSTableReader> finished();
 
-    public void setOpenResult(boolean openResult);
+    SSTableMultiWriter setOpenResult(boolean openResult);
 
-    public String getFilename();
-    public long getFilePointer();
+    String getFilename();
+    long getFilePointer();
 }

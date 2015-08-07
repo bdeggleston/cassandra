@@ -31,9 +31,6 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 
-/**
- * Created by beggleston on 8/5/15.
- */
 public class SimpleSSTableMultiWriter implements SSTableMultiWriter
 {
     private final SSTableWriter writer;
@@ -75,11 +72,6 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
         return Collections.singleton(writer.finished());
     }
 
-    public void setOpenResult(boolean openResult)
-    {
-        writer.setOpenResult(openResult);
-    }
-
     public String getFilename()
     {
         return writer.getFilename();
@@ -109,6 +101,12 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
     public void close() throws Exception
     {
         writer.close();
+    }
+
+    public SSTableMultiWriter setOpenResult(boolean openResult)
+    {
+        writer.setOpenResult(openResult);
+        return this;
     }
 
     public static SSTableMultiWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
