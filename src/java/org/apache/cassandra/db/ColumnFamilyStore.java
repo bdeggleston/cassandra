@@ -413,6 +413,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         return new CompactionStrategyManager(this);
     }
 
+    public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
+    {
+        return SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+    }
+
     /** call when dropping or renaming a CF. Performs mbean housekeeping and invalidates CFS to other operations */
     public void invalidate()
     {
