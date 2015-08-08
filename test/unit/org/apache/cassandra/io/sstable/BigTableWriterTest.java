@@ -64,7 +64,7 @@ public class BigTableWriterTest extends AbstractTransactionalTest
 
         private TestableBTW()
         {
-            this(cfs.getSSTablePath(cfs.directories.getDirectoryForNewSSTables()));
+            this(cfs.getSSTablePath(cfs.getDirectories().getDirectoryForNewSSTables()));
         }
 
         private TestableBTW(String file)

@@ -205,7 +205,7 @@ public class DefsTest
         ColumnFamilyStore store = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         assertNotNull(store);
         store.forceBlockingFlush();
-        assertTrue(store.directories.sstableLister().list().size() > 0);
+        assertTrue(store.getDirectories().sstableLister().list().size() > 0);
 
         MigrationManager.announceColumnFamilyDrop(ks.name, cfm.cfName);
 
@@ -227,7 +227,7 @@ public class DefsTest
 
         // verify that the files are gone.
         Supplier<Object> lambda = () -> {
-            for (File file : store.directories.sstableLister().listFiles())
+            for (File file : store.getDirectories().sstableLister().listFiles())
             {
                 if (file.getPath().endsWith("Data.db") && !new File(file.getPath().replace("Data.db", "Compacted")).exists())
                     return false;
@@ -276,7 +276,7 @@ public class DefsTest
         ColumnFamilyStore cfs = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         assertNotNull(cfs);
         cfs.forceBlockingFlush();
-        assertTrue(!cfs.directories.sstableLister().list().isEmpty());
+        assertTrue(!cfs.getDirectories().sstableLister().list().isEmpty());
 
         MigrationManager.announceKeyspaceDrop(ks.name);
 

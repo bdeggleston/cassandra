@@ -48,7 +48,6 @@ import org.apache.cassandra.dht.*;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SimpleSSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.io.sstable.format.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.DiskAwareRunnable;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -346,7 +345,7 @@ public class Memtable implements Comparable<Memtable>
         {
             long writeSize = getExpectedWriteSize();
             Directories.DataDirectory dataDirectory = getWriteDirectory(writeSize);
-            File sstableDirectory = cfs.directories.getLocationForDisk(dataDirectory);
+            File sstableDirectory = cfs.getDirectories().getLocationForDisk(dataDirectory);
             assert sstableDirectory != null : "Flush task is not bound to any disk";
             Collection<SSTableReader> sstables = writeSortedContents(context, sstableDirectory);
             cfs.replaceFlushed(Memtable.this, sstables);
@@ -354,7 +353,7 @@ public class Memtable implements Comparable<Memtable>
 
         protected Directories getDirectories()
         {
-            return cfs.directories;
+            return cfs.getDirectories();
         }
 
         private Collection<SSTableReader> writeSortedContents(ReplayPosition context, File sstableDirectory)
