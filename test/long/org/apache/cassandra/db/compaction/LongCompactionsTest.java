@@ -114,7 +114,7 @@ public class LongCompactionsTest
                     builder.newRow(String.valueOf(i)).add("val", String.valueOf(i));
                 rows.put(key, builder.build());
             }
-            Collection<SSTableReader> readers = SSTableUtils.prepare().write(rows);
+            Collection<SSTableReader> readers = SSTableUtils.prepare().write(rows, store);
             sstables.addAll(readers);
             store.addSSTables(readers);
         }

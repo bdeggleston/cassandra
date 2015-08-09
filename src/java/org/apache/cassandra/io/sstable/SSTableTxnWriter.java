@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.util.Collection;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SerializationHeader;
@@ -83,22 +84,27 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         return writer.finished();
     }
 
-    public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+    public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
     {
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
-        ColumnFamilyStore cfs = Keyspace.open(descriptor.ksname).getColumnFamilyStore(descriptor.cfname);
         SSTableMultiWriter writer = cfs.createSSTableMultiWriter(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
-    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
+    public static SSTableTxnWriter create(CFMetaData cfm, Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
     {
-        Descriptor desc = Descriptor.fromFilename(filename);
-        return create(desc, keyCount, repairedAt, sstableLevel, header);
+        ColumnFamilyStore cfs = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+        return create(cfs, descriptor, keyCount, repairedAt, sstableLevel, header);
     }
 
-    public static SSTableTxnWriter create(String filename, long keyCount, long repairedAt, SerializationHeader header)
+    public static SSTableTxnWriter create(ColumnFamilyStore cfs, String filename, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
     {
-        return create(filename, keyCount, repairedAt, 0, header);
+        Descriptor desc = Descriptor.fromFilename(filename);
+        return create(cfs, desc, keyCount, repairedAt, sstableLevel, header);
+    }
+
+    public static SSTableTxnWriter create(ColumnFamilyStore cfs, String filename, long keyCount, long repairedAt, SerializationHeader header)
+    {
+        return create(cfs, filename, keyCount, repairedAt, 0, header);
     }
 }

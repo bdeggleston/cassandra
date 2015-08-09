@@ -64,12 +64,12 @@ public class BigTableWriterTest extends AbstractTransactionalTest
 
         private TestableBTW()
         {
-            this(cfs.getSSTablePath(cfs.directories.getDirectoryForNewSSTables()));
+            this(cfs, cfs.getSSTablePath(cfs.directories.getDirectoryForNewSSTables()));
         }
 
-        private TestableBTW(String file)
+        private TestableBTW(ColumnFamilyStore store, String file)
         {
-            this(file, SSTableTxnWriter.create(file, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), EncodingStats.NO_STATS)));
+            this(file, SSTableTxnWriter.create(store, file, 0, 0, new SerializationHeader(cfs.metadata, cfs.metadata.partitionColumns(), EncodingStats.NO_STATS)));
         }
 
         private TestableBTW(String file, SSTableTxnWriter sw)
