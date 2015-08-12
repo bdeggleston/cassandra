@@ -28,14 +28,19 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Memtable;
+import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.sstable.SSTableMultiWriter;
+import org.apache.cassandra.io.sstable.SimpleSSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.notifications.*;
 import org.apache.cassandra.schema.CompactionParams;
+import org.apache.cassandra.service.ActiveRepairService;
 
 /**
  * Manages the compaction strategies.
@@ -483,5 +488,17 @@ public class CompactionStrategyManager implements INotificationConsumer
     public boolean onlyPurgeRepairedTombstones()
     {
         return Boolean.parseBoolean(params.options().get(AbstractCompactionStrategy.ONLY_PURGE_REPAIRED_TOMBSTONES));
+    }
+
+    public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
+    {
+        if (repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)
+        {
+            return unrepaired.createSSTableMultiWriter(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        }
+        else
+        {
+            return repaired.createSSTableMultiWriter(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        }
     }
 }

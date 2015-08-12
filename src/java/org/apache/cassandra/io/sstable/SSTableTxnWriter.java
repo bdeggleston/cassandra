@@ -20,13 +20,13 @@ package org.apache.cassandra.io.sstable;
 
 import java.util.Collection;
 
-import org.apache.cassandra.db.RowIndexEntry;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.io.sstable.format.SSTableWriter;
 import org.apache.cassandra.utils.concurrent.Transactional;
 
 /**
@@ -86,7 +86,8 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
     public static SSTableTxnWriter create(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header)
     {
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE, descriptor.directory);
-        SSTableMultiWriter writer = SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+        ColumnFamilyStore cfs = Keyspace.open(descriptor.ksname).getColumnFamilyStore(descriptor.cfname);
+        SSTableMultiWriter writer = cfs.createSSTableMultiWriter(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
