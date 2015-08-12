@@ -164,7 +164,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private volatile DefaultInteger maxCompactionThreshold;
     private final CompactionStrategyManager compactionStrategyManager;
 
-    public final Directories directories;
+    private volatile Directories directories;
 
     public final TableMetrics metric;
     public volatile long sampleLatencyNanos;
@@ -330,6 +330,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                               boolean loadSSTables,
                               boolean registerBookkeeping)
     {
+        assert directories != null;
         assert metadata != null : "null metadata for " + keyspace + ":" + columnFamilyName;
 
         this.keyspace = keyspace;
@@ -427,6 +428,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             mbeanName = null;
             oldMBeanName= null;
         }
+    }
+
+    public Directories getDirectories()
+    {
+        return directories;
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
@@ -647,7 +653,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             currentDescriptors.add(sstable.descriptor);
         Set<SSTableReader> newSSTables = new HashSet<>();
 
-        Directories.SSTableLister lister = directories.sstableLister().skipTemporary(true);
+        Directories.SSTableLister lister = getDirectories().sstableLister().skipTemporary(true);
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
         {
             Descriptor descriptor = entry.getKey();
@@ -1560,7 +1566,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     private void writeSnapshotManifest(final JSONArray filesJSONArr, final String snapshotName)
     {
-        final File manifestFile = directories.getSnapshotManifestFile(snapshotName);
+        final File manifestFile = getDirectories().getSnapshotManifestFile(snapshotName);
 
         try
         {
@@ -1582,7 +1588,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     private void createEphemeralSnapshotMarkerFile(final String snapshot)
     {
-        final File ephemeralSnapshotMarker = directories.getNewEphemeralSnapshotMarkerFile(snapshot);
+        final File ephemeralSnapshotMarker = getDirectories().getNewEphemeralSnapshotMarkerFile(snapshot);
 
         try
         {
@@ -1615,7 +1621,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         Map<Integer, SSTableReader> active = new HashMap<>();
         for (SSTableReader sstable : getSSTables(SSTableSet.CANONICAL))
             active.put(sstable.descriptor.generation, sstable);
-        Map<Descriptor, Set<Component>> snapshots = directories.sstableLister().snapshots(tag).list();
+        Map<Descriptor, Set<Component>> snapshots = getDirectories().sstableLister().snapshots(tag).list();
         Refs<SSTableReader> refs = new Refs<>();
         try
         {
@@ -1672,12 +1678,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public boolean snapshotExists(String snapshotName)
     {
-        return directories.snapshotExists(snapshotName);
+        return getDirectories().snapshotExists(snapshotName);
     }
 
     public long getSnapshotCreationTime(String snapshotName)
     {
-        return directories.snapshotCreationTime(snapshotName);
+        return getDirectories().snapshotCreationTime(snapshotName);
     }
 
     /**
@@ -1688,7 +1694,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public void clearSnapshot(String snapshotName)
     {
-        List<File> snapshotDirs = directories.getCFDirectories();
+        List<File> snapshotDirs = getDirectories().getCFDirectories();
         Directories.clearSnapshot(snapshotName, snapshotDirs);
     }
     /**
@@ -1698,7 +1704,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public Map<String, Pair<Long,Long>> getSnapshotDetails()
     {
-        return directories.getSnapshotDetails();
+        return getDirectories().getSnapshotDetails();
     }
 
     /**
@@ -2231,7 +2237,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public long trueSnapshotsSize()
     {
-        return directories.trueSnapshotsSize();
+        return getDirectories().trueSnapshotsSize();
     }
 
     @VisibleForTesting

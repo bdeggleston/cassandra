@@ -75,7 +75,7 @@ public class SSTableLevelResetter
             Keyspace keyspace = Keyspace.openWithoutSSTables(keyspaceName);
             ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(columnfamily);
             boolean foundSSTable = false;
-            for (Map.Entry<Descriptor, Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet())
+            for (Map.Entry<Descriptor, Set<Component>> sstable : cfs.getDirectories().sstableLister().list().entrySet())
             {
                 if (sstable.getValue().contains(Component.STATS))
                 {

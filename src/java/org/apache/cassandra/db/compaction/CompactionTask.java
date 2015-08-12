@@ -171,7 +171,7 @@ public class CompactionTask extends AbstractCompactionTask
                 if (!controller.cfs.getCompactionStrategyManager().isActive)
                     throw new CompactionInterruptedException(ci.getCompactionInfo());
 
-                try (ICompactionAwareWriter writer = getCompactionAwareWriter(cfs, cfs.directories, transaction, actuallyCompact))
+                try (ICompactionAwareWriter writer = getCompactionAwareWriter(cfs, cfs.getDirectories(), transaction, actuallyCompact))
                 {
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext())
@@ -253,7 +253,7 @@ public class CompactionTask extends AbstractCompactionTask
 
     protected Directories getDirectories()
     {
-        return cfs.directories;
+        return cfs.getDirectories();
     }
 
     public static long getMinRepairedAt(Set<SSTableReader> actuallyCompact)

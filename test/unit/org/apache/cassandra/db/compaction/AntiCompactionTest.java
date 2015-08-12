@@ -163,7 +163,7 @@ public class AntiCompactionTest
 
     private SSTableReader writeFile(ColumnFamilyStore cfs, int count)
     {
-        File dir = cfs.directories.getDirectoryForNewSSTables();
+        File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         String filename = cfs.getSSTablePath(dir);
 
         try (SSTableTxnWriter writer = SSTableTxnWriter.create(filename, 0, 0, new SerializationHeader(cfm, cfm.partitionColumns(), EncodingStats.NO_STATS)))
