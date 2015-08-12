@@ -37,7 +37,7 @@ import org.apache.cassandra.utils.concurrent.Transactional;
  * Class that abstracts away the actual writing of files to make it possible to use CompactionTask for more
  * use cases.
  */
-public abstract class CompactionAwareWriter extends Transactional.AbstractTransactional implements Transactional
+public abstract class CompactionAwareWriter extends Transactional.AbstractTransactional implements ICompactionAwareWriter
 {
     protected final ColumnFamilyStore cfs;
     protected final Directories directories;
@@ -73,13 +73,6 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         this.txn = txn;
         this.sstableWriter = new SSTableRewriter(cfs, txn, maxAge, offline).keepOriginals(keepOriginals);
     }
-
-    /**
-     * Writes a partition in an implementation specific way
-     * @param partition the partition to append
-     * @return true if the partition was written, false otherwise
-     */
-    public abstract boolean append(UnfilteredRowIterator partition);
 
     @Override
     protected Throwable doAbort(Throwable accumulate)
