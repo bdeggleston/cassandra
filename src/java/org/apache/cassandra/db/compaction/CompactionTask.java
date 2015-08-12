@@ -29,6 +29,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
@@ -51,8 +52,8 @@ public class CompactionTask extends AbstractCompactionTask
 {
     protected static final Logger logger = LoggerFactory.getLogger(CompactionTask.class);
     protected final int gcBefore;
-    private final boolean offline;
-    private final boolean keepOriginals;
+    protected final boolean offline;
+    protected final boolean keepOriginals;
     protected static long totalBytesCompacted = 0;
     private CompactionExecutorStatsCollector collector;
 
@@ -252,6 +253,11 @@ public class CompactionTask extends AbstractCompactionTask
         return mergeSummary.toString();
     }
 
+    protected Directories getDirectories()
+    {
+        return cfs.directories;
+    }
+
     public static long getMinRepairedAt(Set<SSTableReader> actuallyCompact)
     {
         long minRepairedAt= Long.MAX_VALUE;
@@ -264,7 +270,7 @@ public class CompactionTask extends AbstractCompactionTask
 
     protected void checkAvailableDiskSpace(long estimatedSSTables, long expectedWriteSize)
     {
-        while (!cfs.directories.hasAvailableDiskSpace(estimatedSSTables, expectedWriteSize))
+        while (!getDirectories().hasAvailableDiskSpace(estimatedSSTables, expectedWriteSize))
         {
             if (!reduceScopeForLimitedSpace())
                 throw new RuntimeException(String.format("Not enough space for compaction, estimated sstables = %d, expected write size = %d", estimatedSSTables, expectedWriteSize));
