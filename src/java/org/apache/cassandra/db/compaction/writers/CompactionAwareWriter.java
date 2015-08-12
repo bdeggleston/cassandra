@@ -40,6 +40,7 @@ import org.apache.cassandra.utils.concurrent.Transactional;
 public abstract class CompactionAwareWriter extends Transactional.AbstractTransactional implements Transactional
 {
     protected final ColumnFamilyStore cfs;
+    protected final Directories directories;
     protected final Set<SSTableReader> nonExpiredSSTables;
     protected final long estimatedTotalKeys;
     protected final long maxAge;
@@ -49,19 +50,22 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final SSTableRewriter sstableWriter;
 
     public CompactionAwareWriter(ColumnFamilyStore cfs,
+                                 Directories directories,
                                  LifecycleTransaction txn,
                                  Set<SSTableReader> nonExpiredSSTables)
     {
-        this(cfs, txn, nonExpiredSSTables, false, false);
+        this(cfs, directories, txn, nonExpiredSSTables, false, false);
     }
 
     public CompactionAwareWriter(ColumnFamilyStore cfs,
+                                 Directories directories,
                                  LifecycleTransaction txn,
                                  Set<SSTableReader> nonExpiredSSTables,
                                  boolean offline,
                                  boolean keepOriginals)
     {
         this.cfs = cfs;
+        this.directories = directories;
         this.nonExpiredSSTables = nonExpiredSSTables;
         this.estimatedTotalKeys = SSTableReader.getApproximateKeyCount(nonExpiredSSTables);
         this.maxAge = CompactionTask.getMaxDataAge(nonExpiredSSTables);
@@ -119,7 +123,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
      */
     public Directories getDirectories()
     {
-        return cfs.directories;
+        return directories;
     }
 
     /**

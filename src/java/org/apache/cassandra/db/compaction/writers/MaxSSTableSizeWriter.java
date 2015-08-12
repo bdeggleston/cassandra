@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.Set;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -40,16 +41,18 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
     private final Set<SSTableReader> allSSTables;
 
     public MaxSSTableSizeWriter(ColumnFamilyStore cfs,
+                                Directories directories,
                                 LifecycleTransaction txn,
                                 Set<SSTableReader> nonExpiredSSTables,
                                 long maxSSTableSize,
                                 int level)
     {
-        this(cfs, txn, nonExpiredSSTables, maxSSTableSize, level, false, false);
+        this(cfs, directories, txn, nonExpiredSSTables, maxSSTableSize, level, false, false);
     }
 
     @SuppressWarnings("resource")
     public MaxSSTableSizeWriter(ColumnFamilyStore cfs,
+                                Directories directories,
                                 LifecycleTransaction txn,
                                 Set<SSTableReader> nonExpiredSSTables,
                                 long maxSSTableSize,
@@ -57,7 +60,7 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter
                                 boolean offline,
                                 boolean keepOriginals)
     {
-        super(cfs, txn, nonExpiredSSTables, offline, keepOriginals);
+        super(cfs, directories, txn, nonExpiredSSTables, offline, keepOriginals);
         this.allSSTables = txn.originals();
         this.level = level;
         this.maxSSTableSize = maxSSTableSize;
