@@ -54,12 +54,46 @@ import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.github.jamm.Unmetered;
 
+import static java.lang.String.format;
+
 /**
  * This class can be tricky to modify. Please read http://wiki.apache.org/cassandra/ConfigurationNotes for how to do so safely.
  */
 @Unmetered
 public final class CFMetaData
 {
+    public Directories getDirectories()
+    {
+        Class<? extends AbstractCompactionStrategy> klass = params.compaction.klass();
+        try
+        {
+            return (Directories) klass.getMethod("getDirectories", CFMetaData.class).invoke(this);
+        }
+        catch (NoSuchMethodException e)
+        {
+            return AbstractCompactionStrategy.getDirectories(this);
+        }
+        catch (InvocationTargetException e)
+        {
+            if (e.getTargetException() instanceof ConfigurationException)
+                throw (ConfigurationException) e.getTargetException();
+
+            Throwable cause = e.getCause() == null
+                              ? e
+                              : e.getCause();
+
+            throw new ConfigurationException(format("%s.getDirectories() threw an error: %s %s",
+                                                    klass.getName(),
+                                                    cause.getClass().getName(),
+                                                    cause.getMessage()),
+                                             e);
+        }
+        catch (IllegalAccessException e)
+        {
+            throw new ConfigurationException("Cannot access method getDirectories in " + klass.getName(), e);
+        }
+    }
+
     public enum Flag
     {
         SUPER, COUNTER, DENSE, COMPOUND, VIEW

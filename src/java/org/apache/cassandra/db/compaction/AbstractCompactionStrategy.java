@@ -25,6 +25,8 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.RateLimiter;
 
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -501,5 +503,10 @@ public abstract class AbstractCompactionStrategy
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
     {
         return SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
+    }
+
+    public static Directories getDirectories(CFMetaData metadata)
+    {
+        return new Directories(metadata);
     }
 }

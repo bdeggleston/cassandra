@@ -507,7 +507,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                                                                          boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = new Directories(metadata);
+        Directories directories = metadata.getDirectories();
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())
