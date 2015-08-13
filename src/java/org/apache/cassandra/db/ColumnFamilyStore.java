@@ -75,6 +75,15 @@ import static org.apache.cassandra.utils.Throwables.maybeFail;
 
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
+    private static volatile Directories.DataDirectory[] initialDirectories = Directories.dataDirectories;
+
+    public static void setInitialDirectories(Directories.DataDirectory[] directories)
+    {
+        assert directories != null;
+        assert directories.length > 0;
+        initialDirectories = directories;
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
     private static final ExecutorService flushExecutor = new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.getFlushWriters(),
@@ -189,6 +198,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 cfs.maxCompactionThreshold = new DefaultInteger(metadata.params.compaction.maxCompactionThreshold());
 
         compactionStrategyManager.maybeReload(metadata);
+        directories = compactionStrategyManager.getDirectories();
 
         scheduleFlush();
 
@@ -364,6 +374,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // compaction strategy should be created after the CFS has been prepared
         this.compactionStrategyManager = new CompactionStrategyManager(this);
+        this.directories = this.compactionStrategyManager.getDirectories();
 
         if (maxCompactionThreshold.value() <= 0 || minCompactionThreshold.value() <=0)
         {
@@ -513,7 +524,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                                                                          boolean loadSSTables)
     {
         // get the max generation number, to prevent generation conflicts
-        Directories directories = metadata.getDirectories();
+        Directories directories = new Directories(metadata, initialDirectories);
         Directories.SSTableLister lister = directories.sstableLister().includeBackups(true);
         List<Integer> generations = new ArrayList<Integer>();
         for (Map.Entry<Descriptor, Set<Component>> entry : lister.list().entrySet())

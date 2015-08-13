@@ -119,6 +119,11 @@ public abstract class AbstractCompactionStrategy
         }
     }
 
+    public Directories getDirectories()
+    {
+        return new Directories(cfs.metadata);
+    }
+
     /**
      * For internal, temporary suspension of background compactions so that we can do exceptional
      * things like truncate or major compaction
@@ -503,10 +508,5 @@ public abstract class AbstractCompactionStrategy
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt, int sstableLevel, SerializationHeader header, LifecycleTransaction txn)
     {
         return SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, sstableLevel, header, txn);
-    }
-
-    public static Directories getDirectories(CFMetaData metadata)
-    {
-        return new Directories(metadata);
     }
 }

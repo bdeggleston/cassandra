@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Memtable;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -240,6 +241,11 @@ public class CompactionStrategyManager implements INotificationConsumer
         return repaired.shouldDefragment();
     }
 
+    public Directories getDirectories()
+    {
+        assert repaired.getClass().equals(unrepaired.getClass());
+        return repaired.getDirectories();
+    }
 
     public synchronized void handleNotification(INotification notification, Object sender)
     {
