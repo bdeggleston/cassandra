@@ -52,7 +52,7 @@ public class DefaultCompactionWriter extends CompactionAwareWriter
         super(cfs, directories, txn, nonExpiredSSTables, offline, keepOriginals);
         logger.debug("Expected bloom filter size : {}", estimatedTotalKeys);
         long expectedWriteSize = cfs.getExpectedCompactedFileSize(nonExpiredSSTables, txn.opType());
-        File sstableDirectory = cfs.getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
+        File sstableDirectory = getDirectories().getLocationForDisk(getWriteDirectory(expectedWriteSize));
         @SuppressWarnings("resource")
         SSTableWriter writer = SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),
                                                     estimatedTotalKeys,
