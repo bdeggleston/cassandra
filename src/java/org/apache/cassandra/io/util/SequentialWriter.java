@@ -64,6 +64,47 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
     private final TransactionalProxy txnProxy = txnProxy();
     protected Descriptor descriptor;
 
+    private static class UntransactionalOutputStreamWrapper extends OutputStream
+    {
+        private final SequentialWriter writer;
+
+        public UntransactionalOutputStreamWrapper(SequentialWriter writer)
+        {
+            this.writer = writer;
+        }
+
+        @Override
+        public void write(int b) throws IOException
+        {
+            writer.write(b);
+        }
+
+        @Override
+        public void write(byte[] b) throws IOException
+        {
+            writer.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException
+        {
+            writer.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException
+        {
+            writer.flush();
+        }
+
+        @Override
+        public void close() throws IOException
+        {
+            writer.finish();
+            writer.close();
+        }
+    }
+
     // due to lack of multiple-inheritance, we proxy our transactional implementation
     protected class TransactionalProxy extends AbstractTransactional
     {
@@ -147,6 +188,18 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
 
         this.trickleFsync = DatabaseDescriptor.getTrickleFsync();
         this.trickleFsyncByteInterval = DatabaseDescriptor.getTrickleFsyncIntervalInKb() * 1024;
+    }
+
+    /**
+     * Wraps a SequentialWriter in an OutputStream.
+     *
+     * Note that semantics of the close() method for the returned wrapper are not the same
+     * as the wrapped SequentialWriter. The wrapper'c close method calls finish() and close()
+     * on the SequentialWriter under the hood
+     */
+    public static OutputStream createUntransactionalOutputStreamWrapper(SequentialWriter writer)
+    {
+        return new UntransactionalOutputStreamWrapper(writer);
     }
 
     /**
