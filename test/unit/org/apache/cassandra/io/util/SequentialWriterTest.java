@@ -128,7 +128,7 @@ public class SequentialWriterTest extends AbstractTransactionalTest
         File tempFile = new File(Files.createTempDir(), "test.txt");
         Assert.assertFalse("temp file shouldn't exist yet", tempFile.exists());
 
-        try (DataOutputStream os = new DataOutputStream(SequentialWriter.createUntransactionalOutputStreamWrapper(SequentialWriter.open(tempFile))))
+        try (DataOutputStream os = new DataOutputStream(SequentialWriter.open(tempFile).finishOnClose()))
         {
             os.writeUTF("123");
         }

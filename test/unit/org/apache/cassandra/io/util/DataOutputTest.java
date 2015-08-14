@@ -179,7 +179,7 @@ public class DataOutputTest
     {
         File file = FileUtils.createTempFile("dataoutput", "test");
         final SequentialWriter writer = new SequentialWriter(file, 32, BufferType.ON_HEAP);
-        DataOutputStreamPlus write = new WrappedDataOutputStreamPlus(SequentialWriter.createUntransactionalOutputStreamWrapper(writer));
+        DataOutputStreamPlus write = new WrappedDataOutputStreamPlus(writer.finishOnClose());
         DataInput canon = testWrite(write);
         write.flush();
         writer.finish();
