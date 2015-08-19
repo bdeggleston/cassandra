@@ -48,8 +48,7 @@ import static org.apache.cassandra.utils.Throwables.merge;
  *
  * Since Transactional implementations will abort any changes they've made if calls to prepareToCommit() and commit()
  * aren't made prior to calling close(), the semantics of its close() method differ significantly from
- * most AutoCloseable implementations. Generally, Transactional implementation should not also implement other
- * AutoCloseable interfaces where close() means "we're done here, clean up".
+ * most AutoCloseable implementations.
  */
 public interface Transactional extends AutoCloseable
 {

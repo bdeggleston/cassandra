@@ -275,7 +275,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
                         try
                         {
                             sequentialWriter = streamFactory.getOutputWriter(cacheFilePaths.left, cacheFilePaths.right);
-                            writer = new WrappedDataOutputStreamPlus(sequentialWriter);
+                            writer = new WrappedDataOutputStreamPlus(sequentialWriter.finishOnClose());
                         }
                         catch (FileNotFoundException e)
                         {

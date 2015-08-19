@@ -42,7 +42,7 @@ import org.apache.cassandra.utils.SyncUtil;
  * Adds buffering, mark, and fsyncing to OutputStream.  We always fsync on close; we may also
  * fsync incrementally if Config.trickle_fsync is enabled.
  */
-public class SequentialWriter implements WritableByteChannel, Transactional
+public class SequentialWriter extends OutputStream implements WritableByteChannel, Transactional
 {
     // isDirty - true if this.buffer contains any un-synced bytes
     protected boolean isDirty = false, syncNeeded = false;
@@ -72,48 +72,8 @@ public class SequentialWriter implements WritableByteChannel, Transactional
     protected Runnable runPostFlush;
 
     private final TransactionalProxy txnProxy = txnProxy();
+    private boolean finishOnClose;
     protected Descriptor descriptor;
-
-    private static class UntransactionalOutputStreamWrapper extends OutputStream
-    {
-        private final SequentialWriter writer;
-
-        public UntransactionalOutputStreamWrapper(SequentialWriter writer)
-        {
-            this.writer = writer;
-        }
-
-        @Override
-        public void write(int b) throws IOException
-        {
-            writer.write(b);
-        }
-
-        @Override
-        public void write(byte[] b) throws IOException
-        {
-            writer.write(b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException
-        {
-            writer.write(b, off, len);
-        }
-
-        @Override
-        public void flush() throws IOException
-        {
-            writer.flush();
-        }
-
-        @Override
-        public void close() throws IOException
-        {
-            writer.finish();
-            writer.close();
-        }
-    }
 
     // due to lack of multiple-inheritance, we proxy our transactional implementation
     protected class TransactionalProxy extends AbstractTransactional
@@ -184,19 +144,7 @@ public class SequentialWriter implements WritableByteChannel, Transactional
         this.trickleFsyncByteInterval = DatabaseDescriptor.getTrickleFsyncIntervalInKb() * 1024;
 
         directoryFD = CLibrary.tryOpenDirectory(file.getParent());
-        stream = new WrappedDataOutputStreamPlus(createUntransactionalOutputStreamWrapper(this), this);
-    }
-
-    /**
-     * Wraps a SequentialWriter in an OutputStream.
-     *
-     * Note that semantics of the close() method for the returned wrapper are not the same
-     * as the wrapped SequentialWriter. The wrapper'c close method calls finish() and close()
-     * on the SequentialWriter under the hood
-     */
-    public static OutputStream createUntransactionalOutputStreamWrapper(SequentialWriter writer)
-    {
-        return new UntransactionalOutputStreamWrapper(writer);
+        stream = new WrappedDataOutputStreamPlus(this, this);
     }
 
     /**
@@ -218,6 +166,12 @@ public class SequentialWriter implements WritableByteChannel, Transactional
                                                   MetadataCollector sstableMetadataCollector)
     {
         return new CompressedSequentialWriter(new File(dataFilePath), offsetsPath, parameters, sstableMetadataCollector);
+    }
+
+    public SequentialWriter finishOnClose()
+    {
+        finishOnClose = true;
+        return this;
     }
 
     public void write(int value) throws ClosedChannelException
@@ -329,6 +283,7 @@ public class SequentialWriter implements WritableByteChannel, Transactional
      *
      * Currently, for implementation reasons, this also invalidates the buffer.
      */
+    @Override
     public void flush()
     {
         flushInternal();
@@ -524,7 +479,10 @@ public class SequentialWriter implements WritableByteChannel, Transactional
     @Override
     public final void close()
     {
-        txnProxy.close();
+        if (finishOnClose)
+            txnProxy.finish();
+        else
+            txnProxy.close();
     }
 
     public final void finish()
