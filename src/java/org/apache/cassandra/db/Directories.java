@@ -487,6 +487,24 @@ public class Directories
         {
             return location.getUsableSpace();
         }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            DataDirectory that = (DataDirectory) o;
+
+            return location.equals(that.location);
+
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return location.hashCode();
+        }
     }
 
     static final class DataDirectoryCandidate implements Comparable<DataDirectoryCandidate>

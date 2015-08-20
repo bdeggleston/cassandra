@@ -76,13 +76,31 @@ import static org.apache.cassandra.utils.Throwables.maybeFail;
 
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
+    // the directories used to load sstables on cfs instantiation
     private static volatile Directories.DataDirectory[] initialDirectories = Directories.dataDirectories;
 
-    public static void setInitialDirectories(Directories.DataDirectory[] directories)
+    /**
+     * a hook to add additional directories to initialDirectories.
+     * Any additional directories should be added prior to ColumnFamilyStore instantiation on startup
+     */
+    public static synchronized void addInitialDirectories(Directories.DataDirectory[] newDirectories)
     {
-        assert directories != null;
-        assert directories.length > 0;
-        initialDirectories = directories;
+        assert newDirectories != null;
+
+        Set<Directories.DataDirectory> existing = Sets.newHashSet(initialDirectories);
+
+        List<Directories.DataDirectory> replacementList = Lists.newArrayList(initialDirectories);
+        for (Directories.DataDirectory directory: newDirectories)
+        {
+            if (!existing.contains(directory))
+            {
+                replacementList.add(directory);
+            }
+        }
+
+        Directories.DataDirectory[] replacementArray = new Directories.DataDirectory[replacementList.size()];
+        replacementList.toArray(replacementArray);
+        initialDirectories = replacementArray;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
