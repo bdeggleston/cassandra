@@ -1007,7 +1007,7 @@ public abstract class ReadCommand implements ReadQuery
             {
                 // pre-3.0 nodes normally expect pages to include the last cell from the previous page, but they handle it
                 // missing without any problems, so we can safely always set "inclusive" to false in the data range
-                dataRange = dataRange.forPaging(keyRange, metadata.comparator, startBound.getAsClustering(metadata), false);
+                dataRange = dataRange.forPaging(keyRange, metadata.comparator, startBound.getAsClustering(metadata), keyRange.inclusiveLeft());
             }
             return new PartitionRangeReadCommand(false, 0, true, metadata, nowInSec, selection, rowFilter, limits, dataRange);
         }
