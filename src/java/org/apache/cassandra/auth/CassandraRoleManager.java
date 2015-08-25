@@ -73,6 +73,7 @@ public class CassandraRoleManager implements IRoleManager
 
     static final String DEFAULT_SUPERUSER_NAME = "cassandra";
     static final String DEFAULT_SUPERUSER_PASSWORD = "cassandra";
+    private static final boolean SETUP_DEFAULT = !Boolean.getBoolean("cassandra.disable_default_role_setup");
 
     // Transform a row in the AuthKeyspace.ROLES to a Role instance
     private static final Function<UntypedResultSet.Row, Role> ROW_TO_ROLE = new Function<UntypedResultSet.Row, Role>()
@@ -157,7 +158,7 @@ public class CassandraRoleManager implements IRoleManager
                 }
             });
         }
-        else
+        else if (SETUP_DEFAULT)
         {
             scheduleSetupTask(new Runnable()
             {
