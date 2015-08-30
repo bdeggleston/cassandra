@@ -245,6 +245,7 @@ public class ColumnFilter
         private final CFMetaData metadata;
         private PartitionColumns.Builder selection;
         private List<ColumnSubselection> subSelections;
+        private boolean fetchAllEnabled = true;
 
         public Builder(CFMetaData metadata)
         {
@@ -286,9 +287,34 @@ public class ColumnFilter
             return addSubSelection(ColumnSubselection.element(c, elt));
         }
 
+        private boolean canFetchAll(PartitionColumns partitionColumns)
+        {
+            if (metadata == null)
+                return false;
+            if (partitionColumns == null)
+                return true;
+
+            for (ColumnDefinition cd: metadata.allColumns())
+            {
+                if (cd.kind == ColumnDefinition.Kind.REGULAR || cd.kind == ColumnDefinition.Kind.STATIC)
+                {
+                    if (!partitionColumns.contains(cd))
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        public Builder maybeDisableFetchAll()
+        {
+            if (!canFetchAll(selection != null ? selection.build() : null))
+                fetchAllEnabled = false;
+            return this;
+        }
+
         public ColumnFilter build()
         {
-            boolean isFetchAll = metadata != null;
+            boolean isFetchAll = metadata != null && fetchAllEnabled;
             assert isFetchAll || selection != null;
 
             SortedSetMultimap<ColumnIdentifier, ColumnSubselection> s = null;
