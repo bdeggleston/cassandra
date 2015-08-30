@@ -1296,7 +1296,7 @@ public abstract class ReadCommand implements ReadQuery
             PartitionColumns columns = selectsStatics
                                      ? metadata.partitionColumns()
                                      : metadata.partitionColumns().withoutStatics();
-            ColumnFilter columnFilter = new ColumnFilter.Builder(metadata).addAll(columns).build();
+            ColumnFilter columnFilter = new ColumnFilter.Builder(metadata).addAll(columns).maybeDisableFetchAll().build();
 
             boolean isDistinct = compositesToGroup == -2 || (count == 1 && selectsStatics);
             DataLimits limits;
