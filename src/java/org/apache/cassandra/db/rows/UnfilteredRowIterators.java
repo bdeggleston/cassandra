@@ -92,12 +92,12 @@ public abstract class UnfilteredRowIterators
 
     public static UnfilteredRowIterator emptyIterator(final CFMetaData cfm, final DecoratedKey partitionKey, final boolean isReverseOrder)
     {
-        return noRowsIterator(cfm, partitionKey, Rows.EMPTY_STATIC_ROW, DeletionTime.LIVE, isReverseOrder);
+        return noRowsIterator(cfm, partitionKey, Columns.NONE, Rows.EMPTY_STATIC_ROW, DeletionTime.LIVE, isReverseOrder);
     }
     /**
      * Returns an empty atom iterator for a given partition.
      */
-    public static UnfilteredRowIterator noRowsIterator(final CFMetaData cfm, final DecoratedKey partitionKey, final Row staticRow, final DeletionTime partitionDeletion, final boolean isReverseOrder)
+    public static UnfilteredRowIterator noRowsIterator(final CFMetaData cfm, final DecoratedKey partitionKey, final Columns statics, final Row staticRow, final DeletionTime partitionDeletion, final boolean isReverseOrder)
     {
         PartitionColumns columns = staticRow == null ? PartitionColumns.NONE
                                                      : new PartitionColumns(staticRow.columns(), Columns.NONE);
