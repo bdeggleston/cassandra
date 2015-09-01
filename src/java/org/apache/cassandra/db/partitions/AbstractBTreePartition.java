@@ -183,7 +183,8 @@ public abstract class AbstractBTreePartition implements Partition, Iterable<Row>
         if (slices.size() == 0)
         {
             DeletionTime partitionDeletion = current.deletionInfo.getPartitionDeletion();
-            return UnfilteredRowIterators.noRowsIterator(metadata, partitionKey, staticRow, partitionDeletion, reversed);
+            return UnfilteredRowIterators.noRowsIterator(metadata, partitionKey, selection.fetchedColumns().statics,
+                                                         staticRow, partitionDeletion, reversed);
         }
 
         return slices.size() == 1
