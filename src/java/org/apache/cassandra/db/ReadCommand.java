@@ -863,7 +863,7 @@ public abstract class ReadCommand implements ReadQuery
             PartitionColumns columns = filter.selects(Clustering.STATIC_CLUSTERING)
                                      ? metadata.partitionColumns()
                                      : metadata.partitionColumns().withoutStatics();
-            return ColumnFilter.allColumnsBuilder(metadata).addAll(columns).build();
+            return ColumnFilter.selectionBuilder().addAll(columns).build();
         }
     }
 
@@ -1208,7 +1208,7 @@ public abstract class ReadCommand implements ReadQuery
             // fully specified.  We need to handle those cases differently in 3.0.
             NavigableSet<Clustering> clusterings = new TreeSet<>(metadata.comparator);
 
-            ColumnFilter.Builder selectionBuilder = ColumnFilter.allColumnsBuilder(metadata);
+            ColumnFilter.Builder selectionBuilder = ColumnFilter.selectionBuilder();
             for (int i = 0; i < numCellNames; i++)
             {
                 ByteBuffer buffer = ByteBufferUtil.readWithShortLength(in);
