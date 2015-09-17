@@ -205,15 +205,17 @@ public abstract class LegacyLayout
                 boundKind = Slice.Bound.Kind.INCL_END_BOUND;
         }
 
+        boolean isStatic = metadata.isCompound() && CompositeType.isStaticName(bound);
         ByteBuffer[] prefixValues = new ByteBuffer[prefix.size()];
         for (int i = 0; i < prefix.size(); i++)
             prefixValues[i] = prefix.get(i).value;
-        Slice.Bound sb = Slice.Bound.create(boundKind, prefixValues);
+
+        Slice.Bound sb = Slice.Bound.create(boundKind, isStatic ? Clustering.STATIC_CLUSTERING.getRawValues() : prefixValues);
 
         ColumnDefinition collectionName = components.size() == metadata.comparator.size() + 1
                                         ? metadata.getColumnDefinition(components.get(metadata.comparator.size()).value)
                                         : null;
-        return new LegacyBound(sb, metadata.isCompound() && CompositeType.isStaticName(bound), collectionName);
+        return new LegacyBound(sb, isStatic, collectionName);
     }
 
     public static ByteBuffer encodeBound(CFMetaData metadata, Slice.Bound bound, boolean isStart)
