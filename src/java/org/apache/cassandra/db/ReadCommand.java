@@ -1058,8 +1058,6 @@ public abstract class ReadCommand implements ReadQuery
             DataLimits limits;
             if (isDistinct)
                 limits = DataLimits.distinctLimits(maxResults);
-            else if (compositesToGroup == -1)
-                limits = DataLimits.thriftLimits(1, perPartitionLimit); // we only use paging w/ thrift for get_count(), so partition limit must be 1
             else
                 limits = DataLimits.cqlLimits(maxResults);
 
