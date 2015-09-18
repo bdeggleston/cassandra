@@ -47,12 +47,27 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
     // reversed), so we keep that too for simplicity.
     private final NavigableSet<Clustering> clusteringsInQueryOrder;
 
+    // fixes an edge case when converting a names filter to a slice filter for the purpose of serializing to
+    // a legacy read command. See https://issues.apache.org/jira/browse/CASSANDRA-10354?focusedCommentId=14876668&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-14876668
+    private final boolean allNamesConsumed;
+
     public ClusteringIndexNamesFilter(NavigableSet<Clustering> clusterings, boolean reversed)
+    {
+        this(clusterings, reversed, false);
+    }
+
+    private ClusteringIndexNamesFilter(NavigableSet<Clustering> clusterings, boolean reversed, boolean allNamesConsumed)
     {
         super(reversed);
         assert !clusterings.contains(Clustering.STATIC_CLUSTERING);
         this.clusterings = clusterings;
         this.clusteringsInQueryOrder = reversed ? clusterings.descendingSet() : clusterings;
+        this.allNamesConsumed = allNamesConsumed;
+    }
+
+    public boolean areAllNamesConsumed()
+    {
+        return allNamesConsumed;
     }
 
     /**
@@ -84,7 +99,7 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
                                                   clusterings.headSet(lastReturned, inclusive) :
                                                   clusterings.tailSet(lastReturned, inclusive);
 
-        return new ClusteringIndexNamesFilter(newClusterings, reversed);
+        return new ClusteringIndexNamesFilter(newClusterings, reversed, !clusterings.isEmpty() && newClusterings.isEmpty());
     }
 
     public boolean isFullyCoveredBy(CachedPartition partition)
