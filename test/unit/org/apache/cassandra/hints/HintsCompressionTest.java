@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -41,7 +40,6 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.io.compress.LZ4Compressor;
-import org.apache.cassandra.schema.CompressionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -100,7 +98,6 @@ public class HintsCompressionTest
         try (HintsWriter writer = HintsWriter.create(dir, descriptor))
         {
             assert writer instanceof CompressedHintsWriter;
-
 
             ByteBuffer writeBuffer = ByteBuffer.allocate(bufferSize);
             try (HintsWriter.Session session = writer.newSession(writeBuffer))

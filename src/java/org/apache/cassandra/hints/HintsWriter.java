@@ -98,7 +98,6 @@ class HintsWriter implements AutoCloseable
         {
             return new HintsWriter(directory, descriptor, file, channel, fd, crc);
         }
-
     }
 
     HintsDescriptor descriptor()
