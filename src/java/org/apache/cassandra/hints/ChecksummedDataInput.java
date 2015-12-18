@@ -67,6 +67,11 @@ public class ChecksummedDataInput extends RandomAccessReader.RandomAccessReaderW
         return new Builder(new ChannelProxy(file)).build();
     }
 
+    protected void releaseBuffer()
+    {
+        super.releaseBuffer();
+    }
+
     public void resetCrc()
     {
         crc.reset();

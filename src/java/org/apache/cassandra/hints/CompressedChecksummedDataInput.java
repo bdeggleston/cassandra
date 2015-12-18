@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.compress.ICompressor;
 import org.apache.cassandra.io.util.ChannelProxy;
+import org.apache.cassandra.utils.memory.BufferPool;
 
 public final class CompressedChecksummedDataInput extends ChecksummedDataInput
 {
@@ -63,7 +64,11 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
         if (compressedBuffer == null || compressedSize > compressedBuffer.capacity())
         {
             int bufferSize = compressedSize + (compressedSize / 20);  // allocate +5% to cover variability in compressed size
-            compressedBuffer = compressor.preferredBufferType().allocate(bufferSize);
+            if (compressedBuffer != null)
+            {
+                BufferPool.put(compressedBuffer);
+            }
+            compressedBuffer = allocateBuffer(bufferSize, compressor.preferredBufferType());
         }
 
         compressedBuffer.clear();
@@ -76,7 +81,8 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
         if (buffer.capacity() < uncompressedSize)
         {
             int bufferSize = uncompressedSize + (uncompressedSize / 20);
-            buffer = ByteBuffer.allocate(bufferSize);
+            BufferPool.put(buffer);
+            buffer = allocateBuffer(bufferSize, compressor.preferredBufferType());
         }
 
         buffer.clear();
@@ -89,6 +95,16 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
         catch (IOException e)
         {
             throw new FSReadError(e, getPath());
+        }
+    }
+
+    protected void releaseBuffer()
+    {
+        super.releaseBuffer();
+        if (compressedBuffer != null)
+        {
+            BufferPool.put(compressedBuffer);
+            compressedBuffer = null;
         }
     }
 
@@ -105,6 +121,7 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
         public Builder(ChannelProxy channel)
         {
             super(channel);
+            bufferType = null;
         }
 
         public CompressedChecksummedDataInput build()
@@ -117,6 +134,7 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
         public Builder withCompressor(ICompressor compressor)
         {
             this.compressor = compressor;
+            bufferType = compressor.preferredBufferType();
             return this;
         }
 
@@ -125,14 +143,15 @@ public final class CompressedChecksummedDataInput extends ChecksummedDataInput
             this.position = position;
             return this;
         }
-
-
     }
 
     public static final CompressedChecksummedDataInput upgradeInput(ChecksummedDataInput input, ICompressor compressor)
     {
-        Builder builder = new Builder(input.getChannel());
-        builder.withPosition(input.getPosition());
+        long position = input.getPosition();
+        input.close();
+
+        Builder builder = new Builder(new ChannelProxy(input.getPath()));
+        builder.withPosition(position);
         builder.withCompressor(compressor);
         return builder.build();
     }
