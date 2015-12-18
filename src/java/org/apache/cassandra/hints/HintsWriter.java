@@ -54,7 +54,6 @@ class HintsWriter implements AutoCloseable
     private final CRC32 globalCRC;
 
     private volatile long lastSyncPosition = 0L;
-    private volatile int bufferWrites = 0;
 
     protected HintsWriter(File directory, HintsDescriptor descriptor, File file, FileChannel channel, int fd, CRC32 globalCRC)
     {
@@ -155,13 +154,6 @@ class HintsWriter implements AutoCloseable
     {
         updateChecksum(globalCRC, bb);
         channel.write(bb);
-        bufferWrites++;
-    }
-
-    @VisibleForTesting
-    int getBufferWrites()
-    {
-        return bufferWrites;
     }
 
     /**

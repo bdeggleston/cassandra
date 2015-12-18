@@ -87,7 +87,7 @@ public class HintsCompressionTest
     public void multiFlushAndDeserializeTest() throws Exception
     {
         int hintNum = 0;
-        int bufferSize = 256<<10;
+        int bufferSize = HintsWriteExecutor.WRITE_BUFFER_SIZE;
         List<Hint> hints = new LinkedList<>();
 
         UUID hostId = UUIDGen.getTimeUUID();
@@ -110,7 +110,6 @@ public class HintsCompressionTest
                     hintNum++;
                 }
             }
-            assert writer.getBufferWrites() >= 3 : Integer.toString(writer.getBufferWrites());
         }
 
         try (HintsReader reader = HintsReader.open(new File(dir, descriptor.fileName())))
