@@ -39,7 +39,10 @@ import org.apache.cassandra.config.ParameterizedClass;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.RowUpdateBuilder;
+import org.apache.cassandra.io.compress.DeflateCompressor;
+import org.apache.cassandra.io.compress.ICompressor;
 import org.apache.cassandra.io.compress.LZ4Compressor;
+import org.apache.cassandra.io.compress.SnappyCompressor;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -73,18 +76,17 @@ public class HintsCompressionTest
         SchemaLoader.createKeyspace(KEYSPACE, KeyspaceParams.simple(1), SchemaLoader.standardCFMD(KEYSPACE, TABLE));
     }
 
-    private ImmutableMap<String, Object> params()
+    private ImmutableMap<String, Object> params(Class<? extends ICompressor> compressorClass)
     {
         ImmutableMap<String, Object> compressionParams = ImmutableMap.<String, Object>builder()
-                                                                     .put(ParameterizedClass.CLASS_NAME, LZ4Compressor.class.getSimpleName())
+                                                                     .put(ParameterizedClass.CLASS_NAME, compressorClass.getSimpleName())
                                                                      .build();
         return ImmutableMap.<String, Object>builder()
                            .put(HintsDescriptor.COMPRESSION, compressionParams)
                            .build();
     }
 
-    @Test
-    public void multiFlushAndDeserializeTest() throws Exception
+    public void multiFlushAndDeserializeTest(Class<? extends ICompressor> compressorClass) throws Exception
     {
         int hintNum = 0;
         int bufferSize = HintsWriteExecutor.WRITE_BUFFER_SIZE;
@@ -93,13 +95,13 @@ public class HintsCompressionTest
         UUID hostId = UUIDGen.getTimeUUID();
         long ts = System.currentTimeMillis();
 
-        HintsDescriptor descriptor = new HintsDescriptor(hostId, ts, params());
+        HintsDescriptor descriptor = new HintsDescriptor(hostId, ts, params(compressorClass));
         File dir = Files.createTempDir();
         try (HintsWriter writer = HintsWriter.create(dir, descriptor))
         {
             assert writer instanceof CompressedHintsWriter;
 
-            ByteBuffer writeBuffer = ByteBuffer.allocate(bufferSize);
+            ByteBuffer writeBuffer = ByteBuffer.allocateDirect(bufferSize);
             try (HintsWriter.Session session = writer.newSession(writeBuffer))
             {
                 while (session.getBytesWritten() < bufferSize * 3)
@@ -133,5 +135,23 @@ public class HintsCompressionTest
                 hintNum++;
             }
         }
+    }
+
+    @Test
+    public void lz4Compressor() throws Exception
+    {
+        multiFlushAndDeserializeTest(LZ4Compressor.class);
+    }
+
+    @Test
+    public void snappyCompressor() throws Exception
+    {
+        multiFlushAndDeserializeTest(SnappyCompressor.class);
+    }
+
+    @Test
+    public void deflateCompressor() throws Exception
+    {
+        multiFlushAndDeserializeTest(DeflateCompressor.class);
     }
 }
