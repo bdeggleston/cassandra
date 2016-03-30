@@ -359,6 +359,12 @@ public class BigTableWriter extends SSTableWriter
         return dataFile.getOnDiskFilePointer();
     }
 
+    public void flush()
+    {
+        dataFile.sync();
+        iwriter.indexFile.sync();
+    }
+
     /**
      * Encapsulates writing the index and filter for an SSTable. The state of this object is not valid until it has been closed.
      */

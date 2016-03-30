@@ -21,6 +21,8 @@ package org.apache.cassandra.db.compaction.writers;
 import java.util.Collection;
 import java.util.Set;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
@@ -156,5 +158,11 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
             throw new RuntimeException("Insufficient disk space to write " + expectedWriteSize + " bytes");
 
         return directory;
+    }
+
+    @VisibleForTesting
+    public SSTableRewriter getRewriter()
+    {
+        return sstableWriter;
     }
 }
