@@ -116,14 +116,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         initialDirectories = replacementArray;
     }
 
-    public static synchronized Directories.DataDirectory[] getInitialDirectories()
+    public static Directories.DataDirectory[] getInitialDirectories()
     {
-        Directories.DataDirectory[] copy = new Directories.DataDirectory[initialDirectories.length];
-        for (int i=0; i<initialDirectories.length; i++)
-        {
-            copy[i] = initialDirectories[i];
-        }
-        return copy;
+        Directories.DataDirectory[] src = initialDirectories;
+        return Arrays.copyOf(src, src.length);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
