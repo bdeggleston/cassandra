@@ -107,6 +107,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
     public static final ActiveRepairService instance = new ActiveRepairService(FailureDetector.instance, Gossiper.instance);
 
     public static final long UNREPAIRED_SSTABLE = 0;
+    public static final UUID NO_PENDING_REPAIR = null;
 
     /**
      * A map of active coordinator session.
@@ -452,7 +453,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
             {
                 Refs<SSTableReader> sstables = prs.getActiveRepairedSSTableRefsForAntiCompaction(columnFamilyStoreEntry.getKey(), parentRepairSession);
                 ColumnFamilyStore cfs = columnFamilyStoreEntry.getValue();
-                futures.add(CompactionManager.instance.submitAntiCompaction(cfs, successfulRanges, sstables, prs.repairedAt, parentRepairSession));
+                futures.add(CompactionManager.instance.submitAntiCompaction(cfs, successfulRanges, sstables, prs.repairedAt, NO_PENDING_REPAIR, parentRepairSession));
             }
         }
 
@@ -467,6 +468,11 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
         }, MoreExecutors.directExecutor());
 
         return allAntiCompactionResults;
+    }
+
+    public void doPendingAntiCompaction(UUID parentRepairSession, Collection<Range<Token>> ranges)
+    {
+        // TODO: this
     }
 
     public void handleMessage(InetAddress endpoint, RepairMessage message)
