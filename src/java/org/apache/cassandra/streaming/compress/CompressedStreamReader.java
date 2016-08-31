@@ -90,7 +90,7 @@ public class CompressedStreamReader extends StreamReader
         SSTableMultiWriter writer = null;
         try
         {
-            writer = createWriter(cfs, totalSize, repairedAt, format);
+            writer = createWriter(cfs, totalSize, repairedAt, pendingRepair, format);
             int sectionIdx = 0;
             for (Pair<Long, Long> section : sections)
             {

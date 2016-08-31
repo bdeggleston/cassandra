@@ -28,7 +28,8 @@ import java.util.List;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.service.ActiveRepairService;
+
+import static org.apache.cassandra.service.ActiveRepairService.*;
 
 /**
  * Set repairedAt status on a given set of sstables.
@@ -89,11 +90,11 @@ public class SSTableRepairedAtSetter
                 if (setIsRepaired)
                 {
                     FileTime f = Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
-                    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor, f.toMillis());
+                    descriptor.getMetadataSerializer().mutateRepaired(descriptor, f.toMillis(), NO_PENDING_REPAIR);
                 }
                 else
                 {
-                    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor, ActiveRepairService.UNREPAIRED_SSTABLE);
+                    descriptor.getMetadataSerializer().mutateRepaired(descriptor, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR);
                 }
             }
             else
