@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.dht.Bounds;
@@ -78,7 +79,12 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                                                              prepareMessage.isIncremental,
                                                                              prepareMessage.timestamp,
                                                                              prepareMessage.isGlobal);
-                    MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
+                    MessageOut msgOut = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
+                    if (DatabaseDescriptor.isConsistentRepairEnabled())
+                    {
+                        msgOut = msgOut.withParameter(PrepareMessage.CONSISTENT_REPAIR_SUPPORTED, new byte[] {1});
+                    }
+                    MessagingService.instance().sendReply(msgOut, id, message.from);
                     break;
 
                 case SNAPSHOT:
