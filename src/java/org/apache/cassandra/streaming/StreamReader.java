@@ -60,7 +60,6 @@ public class StreamReader
     protected final StreamSession session;
     protected final Version inputVersion;
     protected final long repairedAt;
-    protected final UUID pendingRepair;
     protected final SSTableFormat.Type format;
     protected final int sstableLevel;
     protected final SerializationHeader.Component header;
@@ -74,7 +73,6 @@ public class StreamReader
         this.sections = header.sections;
         this.inputVersion = header.version;
         this.repairedAt = header.repairedAt;
-        this.pendingRepair = null;  // FIXME
         this.format = header.format;
         this.sstableLevel = header.sstableLevel;
         this.header = header.header;
@@ -98,16 +96,16 @@ public class StreamReader
             throw new IOException("CF " + tableId + " was dropped during streaming");
         }
 
-        logger.debug("[Stream #{}] Start receiving file #{} from {}, repairedAt = {}, size = {}, ks = '{}', table = '{}'.",
+        logger.debug("[Stream #{}] Start receiving file #{} from {}, repairedAt = {}, size = {}, ks = '{}', table = '{}', pendingRepair = '{}'.",
                      session.planId(), fileSeqNum, session.peer, repairedAt, totalSize, cfs.keyspace.getName(),
-                     cfs.getTableName());
+                     cfs.getTableName(), session.getPendingRepair());
 
         TrackedInputStream in = new TrackedInputStream(new LZFInputStream(Channels.newInputStream(channel)));
         StreamDeserializer deserializer = new StreamDeserializer(cfs.metadata(), in, inputVersion, getHeader(cfs.metadata()));
         SSTableMultiWriter writer = null;
         try
         {
-            writer = createWriter(cfs, totalSize, repairedAt, pendingRepair, format);
+            writer = createWriter(cfs, totalSize, repairedAt, session.getPendingRepair(), format);
             while (in.getBytesRead() < totalSize)
             {
                 writePartition(deserializer, writer);
