@@ -19,6 +19,7 @@ package org.apache.cassandra.repair;
 
 import java.net.InetAddress;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,11 +47,13 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
     private static final Logger logger = LoggerFactory.getLogger(LocalSyncTask.class);
 
     private final long repairedAt;
+    private final UUID pendingRepair;
 
-    public LocalSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, long repairedAt)
+    public LocalSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, long repairedAt, UUID pendingRepair)
     {
         super(desc, r1, r2);
         this.repairedAt = repairedAt;
+        this.pendingRepair = pendingRepair;
     }
 
     /**
@@ -73,7 +76,7 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
             isIncremental = prs.isIncremental;
         }
         Tracing.traceRepair(message);
-        new StreamPlan("Repair", repairedAt, 1, false, isIncremental).listeners(this)
+        new StreamPlan("Repair", repairedAt, 1, false, isIncremental, pendingRepair).listeners(this)
                                             .flushBeforeTransfer(true)
                                             // request ranges from the remote node
                                             .requestRanges(dst, preferred, desc.keyspace, differences, desc.columnFamily)
