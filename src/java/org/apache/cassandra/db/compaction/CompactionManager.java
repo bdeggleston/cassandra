@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -30,6 +29,7 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.TabularData;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
 import org.slf4j.Logger;
@@ -1361,8 +1361,11 @@ public class CompactionManager implements CompactionManagerMBean
             }
             else
             {
-                // flush first so everyone is validating data that is as similar as possible
-                StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
+                if (!validator.isConsistent)
+                {
+                    // flush first so everyone is validating data that is as similar as possible
+                    StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
+                }
                 sstables = getSSTablesToValidate(cfs, validator);
                 if (sstables == null)
                     return; // this means the parent repair session was removed - the repair session failed on another node and we removed it
@@ -1452,7 +1455,8 @@ public class CompactionManager implements CompactionManagerMBean
         return tree;
     }
 
-    private synchronized Refs<SSTableReader> getSSTablesToValidate(ColumnFamilyStore cfs, Validator validator)
+    @VisibleForTesting
+    synchronized Refs<SSTableReader> getSSTablesToValidate(ColumnFamilyStore cfs, Validator validator)
     {
         Refs<SSTableReader> sstables;
 
@@ -1462,9 +1466,20 @@ public class CompactionManager implements CompactionManagerMBean
         Set<SSTableReader> sstablesToValidate = new HashSet<>();
         if (prs.isGlobal)
             prs.markSSTablesRepairing(cfs.metadata.id, validator.desc.parentSessionId);
-        // note that we always grab all existing sstables for this - if we were to just grab the ones that
-        // were marked as repairing, we would miss any ranges that were compacted away and this would cause us to overstream
-        try (ColumnFamilyStore.RefViewFragment sstableCandidates = cfs.selectAndReference(View.select(SSTableSet.CANONICAL, (s) -> !prs.isIncremental || !s.isRepaired())))
+
+        Predicate<SSTableReader> predicate;
+        if (validator.isConsistent)
+        {
+            predicate = s -> validator.desc.parentSessionId.equals(s.getSSTableMetadata().pendingRepair);
+        }
+        else
+        {
+            // note that we always grab all existing sstables for this - if we were to just grab the ones that
+            // were marked as repairing, we would miss any ranges that were compacted away and this would cause us to overstream
+            predicate = (s) -> !prs.isIncremental || !s.isRepaired();
+        }
+
+        try (ColumnFamilyStore.RefViewFragment sstableCandidates = cfs.selectAndReference(View.select(SSTableSet.CANONICAL, predicate)))
         {
             for (SSTableReader sstable : sstableCandidates.sstables)
             {
@@ -1699,7 +1714,7 @@ public class CompactionManager implements CompactionManagerMBean
         }
 
         @Override
-        public Predicate<Long> getPurgeEvaluator(DecoratedKey key)
+        public java.util.function.Predicate<Long> getPurgeEvaluator(DecoratedKey key)
         {
             /*
              * The main reason we always purge is that including gcable tombstone would mean that the
