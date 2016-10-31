@@ -336,6 +336,7 @@ public class CassandraDaemon
 
 
         SystemKeyspace.finishStartup();
+        ActiveRepairService.instance.start();
 
         // start server internals
         StorageService.instance.registerDaemon(this);
