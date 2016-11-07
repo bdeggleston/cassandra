@@ -264,7 +264,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
 
     public synchronized UUID prepareForRepair(UUID parentRepairSession, InetAddress coordinator, Set<InetAddress> endpoints, RepairOption options, List<ColumnFamilyStore> columnFamilyStores)
     {
-        long timestamp = Clock.instance.currentTimeMillis();
+        long timestamp = options.isForcedRepair() ? ActiveRepairService.UNREPAIRED_SSTABLE : Clock.instance.currentTimeMillis();
         registerParentRepairSession(parentRepairSession, coordinator, columnFamilyStores, options.getRanges(), options.isIncremental(), timestamp, options.isGlobal());
         final CountDownLatch prepareLatch = new CountDownLatch(endpoints.size());
         final AtomicBoolean status = new AtomicBoolean(true);
@@ -362,8 +362,15 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
      * @param neighbors Repair participants (not including self)
      * @param successfulRanges Ranges that repaired successfully
      */
-    public synchronized ListenableFuture finishParentSession(UUID parentSession, Set<InetAddress> neighbors, Collection<Range<Token>> successfulRanges)
+    public synchronized ListenableFuture finishParentSession(UUID parentSession, Set<InetAddress> neighbors, Collection<Range<Token>> successfulRanges, boolean isForced)
     {
+        if (isForced)
+        {
+            // don't run any anti-compactions if this was a forced repair
+            logger.debug("skipping anti-compactions for forced repair {}", parentSession);
+            return Futures.immediateFuture(null);
+        }
+
         List<ListenableFuture<?>> tasks = new ArrayList<>(neighbors.size() + 1);
         for (InetAddress neighbor : neighbors)
         {

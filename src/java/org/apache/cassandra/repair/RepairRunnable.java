@@ -303,17 +303,13 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                         {
                             successfulRanges.addAll(sessionResult.ranges);
                         }
-                        else
-                        {
-                            logger.debug("Skipping anticompaction for {}", results);
-                        }
                     }
                     else
                     {
                         hasFailure.compareAndSet(false, true);
                     }
                 }
-                return ActiveRepairService.instance.finishParentSession(parentSession, allNeighbors, successfulRanges);
+                return ActiveRepairService.instance.finishParentSession(parentSession, allNeighbors, successfulRanges, options.isForcedRepair());
             }
         });
         Futures.addCallback(anticompactionResult, new FutureCallback<Object>()
