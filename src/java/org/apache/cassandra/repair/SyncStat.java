@@ -19,8 +19,7 @@ package org.apache.cassandra.repair;
 
 import java.util.List;
 
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.MerkleTree;
 
 /**
  * Statistics about synchronizing two replica
@@ -28,11 +27,21 @@ import org.apache.cassandra.dht.Token;
 public class SyncStat
 {
     public final NodePair nodes;
-    public final List<Range<Token>> differences;
+    public final List<MerkleTree.TreeDifference> differences;
 
-    public SyncStat(NodePair nodes, List<Range<Token>> differences)
+    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences)
     {
         this.nodes = nodes;
         this.differences = differences;
+    }
+
+    long bytes()
+    {
+        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalSize).sum();
+    }
+
+    long rows()
+    {
+        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalRows).sum();
     }
 }

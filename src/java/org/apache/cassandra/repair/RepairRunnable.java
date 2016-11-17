@@ -328,6 +328,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                String... cfnames)
     {
 
+        logger.debug("Starting preview repair for {}", parentSession);
         // Set up RepairJob executor for this repair command.
         ListeningExecutorService executor = createExecutor();
 
@@ -337,45 +338,70 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         {
             public void onSuccess(List<RepairSessionResult> results)
             {
-                Map<Pair<String, String>, List<SyncStat>> differences = new HashMap<>();
-                for (RepairSessionResult sessionResult: results)
+                try
                 {
-                    for (RepairResult result: sessionResult.repairJobResults)
+                    Map<Pair<String, String>, List<SyncStat>> differences = new HashMap<>();
+                    for (RepairSessionResult sessionResult: results)
                     {
-                        Pair<String, String> cf = Pair.create(result.desc.keyspace, result.desc.columnFamily);
-                        if (!differences.containsKey(cf))
+                        for (RepairResult result: sessionResult.repairJobResults)
                         {
-                            differences.put(cf, new ArrayList<>());
-                        }
-                        differences.get(cf).addAll(result.stats);
-                    }
-                }
-                if (differences.isEmpty())
-                {
-                    fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress,
-                                                             "Previewed data was in sync"));
-                }
-                else
-                {
-                    for (Map.Entry<Pair<String, String>, List<SyncStat>> entry: differences.entrySet())
-                    {
-                        Pair<String, String> cf = entry.getKey();
-                        List<SyncStat> stats = entry.getValue();
-                        notifyClient(cf.left + '.' + cf.right);
-                        for (SyncStat stat: stats)
-                        {
-                            notifyClient(String.format("    %s -> %s: %s ranges", stat.nodes.endpoint1, stat.nodes.endpoint2, stat.differences.size()));
+                            Pair<String, String> cf = Pair.create(result.desc.keyspace, result.desc.columnFamily);
+                            if (!differences.containsKey(cf))
+                            {
+                                differences.put(cf, new ArrayList<>());
+                            }
+                            differences.get(cf).addAll(result.stats);
                         }
                     }
-                }
-                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.SUCCESS, progress.get(), totalProgress,
-                                                         "Repair preview completed successfully"));
-                complete();
-            }
+                    if (differences.isEmpty())
+                    {
+                        fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress,
+                                                                 "Previewed data was in sync"));
+                    }
+                    else
+                    {
+                        int totalRanges = 0;
+                        long totalRows = 0;
+                        long totalBytes = 0;
+                        StringBuilder output = new StringBuilder();
+                        for (Map.Entry<Pair<String, String>, List<SyncStat>> entry: differences.entrySet())
+                        {
+                            int tableRanges = 0;
+                            long tableRows = 0;
+                            long tableBytes = 0;
+                            Pair<String, String> cf = entry.getKey();
+                            List<SyncStat> stats = entry.getValue();
+                            StringBuilder tableSummary = new StringBuilder();
+                            for (SyncStat stat: stats)
+                            {
+                                tableRanges += stat.differences.size();
+                                tableRows += stat.rows();
+                                tableBytes += stat.bytes();
 
-            private void notifyClient(String msg)
-            {
-                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress, msg));
+                                String msg = String.format("    %s -> %s: %s ranges with %s partitions (%s bytes)", stat.nodes.endpoint1, stat.nodes.endpoint2, stat.differences.size(), stat.rows(), stat.bytes());
+                                tableSummary.append(msg + '\n');
+                                logger.debug(msg);
+                            }
+
+                            String header = String.format("%s.%s - %s ranges, %s partitions, %s bytes\n", cf.left, cf.right, tableRanges, tableRows, tableBytes);
+                            output.append(header).append(tableSummary.toString());
+                            totalRanges += tableRanges;
+                            totalRows += tableRows;
+                            totalBytes += tableBytes;
+                        }
+                        String message =  String.format("Preview complete\nTotal estimated streaming: %s ranges, %s partitions, %s bytes\n", totalRanges, totalRows, totalBytes);
+                        fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress, message + output.toString()));
+                    }
+
+                    fireProgressEvent(tag, new ProgressEvent(ProgressEventType.SUCCESS, progress.get(), totalProgress,
+                                                             "Repair preview completed successfully"));
+                    complete();
+                }
+                catch (Throwable t)
+                {
+                    logger.error("Error completing preview repair", t);
+                    onFailure(t);
+                }
             }
 
             public void onFailure(Throwable t)
@@ -386,6 +412,8 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
             private void complete()
             {
+                logger.debug("Preview repair {} completed", parentSession);
+
                 String duration = DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime,
                                                                           true, true);
                 String message = String.format("Repair preview #%d finished in %s", cmd, duration);

@@ -149,7 +149,7 @@ public class MerkleTree implements Serializable
         this.maxsize = maxsize;
 
         size = 1;
-        root = new Leaf(null);
+        root = new Leaf();
     }
 
 
@@ -224,12 +224,12 @@ public class MerkleTree implements Serializable
      * @param rtree Second tree.
      * @return A list of the largest contiguous ranges where the given trees disagree.
      */
-    public static List<TreeRange> difference(MerkleTree ltree, MerkleTree rtree)
+    public static List<TreeDifference> difference(MerkleTree ltree, MerkleTree rtree)
     {
         if (!ltree.fullRange.equals(rtree.fullRange))
             throw new IllegalArgumentException("Difference only make sense on tree covering the same range (but " + ltree.fullRange + " != " + rtree.fullRange + ")");
 
-        List<TreeRange> diff = new ArrayList<>();
+        List<TreeDifference> diff = new ArrayList<>();
         TreeDifference active = new TreeDifference(ltree.fullRange.left, ltree.fullRange.right, (byte)0);
 
         Hashable lnode = ltree.find(active);
@@ -255,7 +255,7 @@ public class MerkleTree implements Serializable
      * Takes two trees and a range for which they have hashes, but are inconsistent.
      * @return FULLY_INCONSISTENT if active is inconsistent, PARTIALLY_INCONSISTENT if only a subrange is inconsistent.
      */
-    static int differenceHelper(MerkleTree ltree, MerkleTree rtree, List<TreeRange> diff, TreeRange active)
+    static int differenceHelper(MerkleTree ltree, MerkleTree rtree, List<TreeDifference> diff, TreeRange active)
     {
         if (active.depth == Byte.MAX_VALUE)
             return CONSISTENT;
@@ -600,6 +600,11 @@ public class MerkleTree implements Serializable
             super(null, left, right, depth, null);
         }
 
+        public long totalSize()
+        {
+            return sizeOnLeft + sizeOnRight;
+        }
+
         public long totalRows()
         {
             return rowsOnLeft + rowsOnRight;
@@ -889,9 +894,9 @@ public class MerkleTree implements Serializable
             super(null);
         }
 
-        public Leaf(byte[] hash)
+        public Leaf(byte[] hash, long sizeOfRange, long rowsInRange)
         {
-            super(hash);
+            super(hash, sizeOfRange, rowsInRange);
         }
 
         public void toString(StringBuilder buff, int maxdepth)
@@ -917,6 +922,8 @@ public class MerkleTree implements Serializable
                 {
                     out.writeByte(leaf.hash.length);
                     out.write(leaf.hash);
+                    out.writeLong(leaf.sizeOfRange);
+                    out.writeLong(leaf.rowsInRange);
                 }
             }
 
@@ -924,16 +931,26 @@ public class MerkleTree implements Serializable
             {
                 int hashLen = in.readByte();
                 byte[] hash = hashLen < 0 ? null : new byte[hashLen];
-                if (hash != null)
+                if (hash == null)
+                {
+                    return new Leaf();
+                }
+                else
+                {
                     in.readFully(hash);
-                return new Leaf(hash);
+                    return new Leaf(hash, in.readLong(), in.readLong());
+                }
             }
 
             public long serializedSize(Leaf leaf, int version)
             {
                 long size = 1;
                 if (leaf.hash != null)
+                {
                     size += leaf.hash().length;
+                    size += TypeSizes.sizeof(leaf.sizeOfRange);
+                    size += TypeSizes.sizeof(leaf.rowsInRange);
+                }
                 return size;
             }
         }
@@ -977,7 +994,14 @@ public class MerkleTree implements Serializable
 
         protected Hashable(byte[] hash)
         {
+            this(hash, 0, 0);
+        }
+
+        protected Hashable(byte[] hash, long sizeOfRange, long rowsInRange)
+        {
             this.hash = hash;
+            this.sizeOfRange = sizeOfRange;
+            this.rowsInRange = rowsInRange;
         }
 
         public byte[] hash()

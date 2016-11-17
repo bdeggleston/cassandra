@@ -114,7 +114,6 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
             validations = sendValidationRequest(allEndpoints);
         }
 
-        // TODO: do something else for dry run below
         // When all validations complete, submit sync tasks
         ListenableFuture<List<SyncStat>> syncResults = Futures.transform(validations, new AsyncFunction<List<TreeResponse>, List<SyncStat>>()
         {
@@ -159,8 +158,11 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
         {
             public void onSuccess(List<SyncStat> stats)
             {
-                logger.info("[repair #{}] {} is fully synced", session.getId(), desc.columnFamily);
-                SystemDistributedKeyspace.successfulRepairJob(session.getId(), desc.keyspace, desc.columnFamily);
+                if (!preview)
+                {
+                    logger.info("[repair #{}] {} is fully synced", session.getId(), desc.columnFamily);
+                    SystemDistributedKeyspace.successfulRepairJob(session.getId(), desc.keyspace, desc.columnFamily);
+                }
                 set(new RepairResult(desc, stats));
             }
 
@@ -169,8 +171,11 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
              */
             public void onFailure(Throwable t)
             {
-                logger.warn("[repair #{}] {} sync failed", session.getId(), desc.columnFamily);
-                SystemDistributedKeyspace.failedRepairJob(session.getId(), desc.keyspace, desc.columnFamily, t);
+                if (!preview)
+                {
+                    logger.warn("[repair #{}] {} sync failed", session.getId(), desc.columnFamily);
+                    SystemDistributedKeyspace.failedRepairJob(session.getId(), desc.keyspace, desc.columnFamily, t);
+                }
                 setException(t);
             }
         }, taskExecutor);

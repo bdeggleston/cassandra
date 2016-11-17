@@ -23,11 +23,9 @@ import com.google.common.util.concurrent.AbstractFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.MerkleTree;
 import org.apache.cassandra.utils.MerkleTrees;
-import org.apache.cassandra.utils.Pair;
 
 /**
  * SyncTask will calculate the difference of MerkleTree between two nodes
@@ -56,7 +54,7 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
     public void run()
     {
         // compare trees, and collect differences
-        List<Range<Token>> differences = MerkleTrees.difference(r1.trees, r2.trees);
+        List<MerkleTree.TreeDifference> differences = MerkleTrees.difference(r1.trees, r2.trees);
 
         stat = new SyncStat(new NodePair(r1.endpoint, r2.endpoint), differences);
 
@@ -81,5 +79,6 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
         return stat;
     }
 
-    protected abstract void startSync(List<Range<Token>> differences);
+    protected abstract void startSync(List<MerkleTree.TreeDifference> differences);
+
 }

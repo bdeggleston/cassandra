@@ -389,6 +389,7 @@ public class RepairOption
         options.put(TRACE_KEY, Boolean.toString(trace));
         options.put(RANGES_KEY, Joiner.on(",").join(ranges));
         options.put(PULL_REPAIR_KEY, Boolean.toString(pullRepair));
+        options.put(PREVIEW, previewKind.toString());
         return options;
     }
 }
