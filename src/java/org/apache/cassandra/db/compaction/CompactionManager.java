@@ -1469,7 +1469,12 @@ public class CompactionManager implements CompactionManagerMBean
         Set<SSTableReader> sstablesToValidate = new HashSet<>();
 
         com.google.common.base.Predicate<SSTableReader> predicate;
-        if (validator.isConsistent)
+        if (prs.isPreview())
+        {
+            predicate = prs.getPreviewPredicate();
+
+        }
+        else if (validator.isConsistent)
         {
             predicate = s -> validator.desc.parentSessionId.equals(s.getSSTableMetadata().pendingRepair);
         }

@@ -92,6 +92,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     public final Set<InetAddress> endpoints;
     public final long repairedAt;
     public final boolean isConsistent;
+    public final boolean preview;
 
     private final AtomicBoolean isFailed = new AtomicBoolean(false);
 
@@ -127,6 +128,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
                          long repairedAt,
                          boolean isConsistent,
                          boolean pullRepair,
+                         boolean preview,
                          String... cfnames)
     {
         assert cfnames.length > 0 : "Repairing no column families seems pointless, doesn't it";
@@ -140,6 +142,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         this.endpoints = endpoints;
         this.repairedAt = repairedAt;
         this.isConsistent = isConsistent;
+        this.preview = preview;
         this.pullRepair = pullRepair;
     }
 
@@ -259,7 +262,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         List<ListenableFuture<RepairResult>> jobs = new ArrayList<>(cfnames.length);
         for (String cfname : cfnames)
         {
-            RepairJob job = new RepairJob(this, cfname, isConsistent);
+            RepairJob job = new RepairJob(this, cfname, isConsistent, preview);
             executor.execute(job);
             jobs.add(job);
         }

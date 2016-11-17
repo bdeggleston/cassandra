@@ -15,24 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.repair;
 
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 
 /**
- * Statistics about synchronizing two replica
+ * Doesn't perform any syncing, only collects data about ranges that need to be repaired
  */
-public class SyncStat
+public class NoopSyncTask extends SyncTask
 {
-    public final NodePair nodes;
-    public final List<Range<Token>> differences;
+    private static final Logger logger = LoggerFactory.getLogger(NoopSyncTask.class);
 
-    public SyncStat(NodePair nodes, List<Range<Token>> differences)
+    public NoopSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2)
     {
-        this.nodes = nodes;
-        this.differences = differences;
+        super(desc, r1, r2);
+    }
+
+    protected void startSync(List<Range<Token>> differences)
+    {
+        // noop, sync stat will be retrieved later
+        set(stat);
     }
 }

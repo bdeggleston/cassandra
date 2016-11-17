@@ -15,24 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.repair;
 
-import java.util.List;
-
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
-
-/**
- * Statistics about synchronizing two replica
- */
-public class SyncStat
+public enum PreviewKind
 {
-    public final NodePair nodes;
-    public final List<Range<Token>> differences;
+    NONE(0), UNREPAIRED(1), FULL(2), REPAIRED(3);
 
-    public SyncStat(NodePair nodes, List<Range<Token>> differences)
+    private final int serializationVal;
+
+    PreviewKind(int serializationVal)
     {
-        this.nodes = nodes;
-        this.differences = differences;
+        assert ordinal() == serializationVal;
+        this.serializationVal = serializationVal;
+    }
+
+    public int getSerializationVal()
+    {
+        return serializationVal;
+    }
+
+    public static PreviewKind deserialize(int serializationVal)
+    {
+        return values()[serializationVal];
     }
 }

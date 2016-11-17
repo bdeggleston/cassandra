@@ -218,7 +218,11 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             cfnames[i] = columnFamilyStores.get(i).name;
         }
 
-        SystemDistributedKeyspace.startParentRepair(parentSession, keyspace, cfnames, options);
+        if (!options.isPreview())
+        {
+            SystemDistributedKeyspace.startParentRepair(parentSession, keyspace, cfnames, options);
+        }
+
         long repairedAt;
         try
         {
@@ -233,7 +237,11 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             return;
         }
 
-        if (options.isIncremental())
+        if (options.isPreview())
+        {
+            previewRepair(parentSession, repairedAt, startTime, traceState, allNeighbors, commonRanges, cfnames);
+        }
+        else if (options.isIncremental())
         {
             consistentRepair(parentSession, repairedAt, startTime, traceState, allNeighbors, commonRanges, cfnames);
         }
@@ -311,6 +319,82 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         Futures.addCallback(repairResult, new RepairCompleteCallback(parentSession, ranges, startTime, traceState, hasFailure, executor));
     }
 
+    private void previewRepair(UUID parentSession,
+                               long repairedAt,
+                               long startTime,
+                               TraceState traceState,
+                               Set<InetAddress> allNeighbors,
+                               List<Pair<Set<InetAddress>, ? extends Collection<Range<Token>>>> commonRanges,
+                               String... cfnames)
+    {
+
+        // Set up RepairJob executor for this repair command.
+        ListeningExecutorService executor = createExecutor();
+
+        final ListenableFuture<List<RepairSessionResult>> allSessions = submitRepairSessions(parentSession, repairedAt, false, executor, commonRanges, cfnames);
+
+        Futures.addCallback(allSessions, new FutureCallback<List<RepairSessionResult>>()
+        {
+            public void onSuccess(List<RepairSessionResult> results)
+            {
+                Map<Pair<String, String>, List<SyncStat>> differences = new HashMap<>();
+                for (RepairSessionResult sessionResult: results)
+                {
+                    for (RepairResult result: sessionResult.repairJobResults)
+                    {
+                        Pair<String, String> cf = Pair.create(result.desc.keyspace, result.desc.columnFamily);
+                        if (!differences.containsKey(cf))
+                        {
+                            differences.put(cf, new ArrayList<>());
+                        }
+                        differences.get(cf).addAll(result.stats);
+                    }
+                }
+                if (differences.isEmpty())
+                {
+                    fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress,
+                                                             "Previewed data was in sync"));
+                }
+                else
+                {
+                    for (Map.Entry<Pair<String, String>, List<SyncStat>> entry: differences.entrySet())
+                    {
+                        Pair<String, String> cf = entry.getKey();
+                        List<SyncStat> stats = entry.getValue();
+                        notifyClient(cf.left + '.' + cf.right);
+                        for (SyncStat stat: stats)
+                        {
+                            notifyClient(String.format("    %s -> %s: %s ranges", stat.nodes.endpoint1, stat.nodes.endpoint2, stat.differences.size()));
+                        }
+                    }
+                }
+                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.SUCCESS, progress.get(), totalProgress,
+                                                         "Repair preview completed successfully"));
+                complete();
+            }
+
+            private void notifyClient(String msg)
+            {
+                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress, msg));
+            }
+
+            public void onFailure(Throwable t)
+            {
+                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.ERROR, progress.get(), totalProgress, t.getMessage()));
+                complete();
+            }
+
+            private void complete()
+            {
+                String duration = DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime,
+                                                                          true, true);
+                String message = String.format("Repair preview #%d finished in %s", cmd, duration);
+                fireProgressEvent(tag, new ProgressEvent(ProgressEventType.COMPLETE, progress.get(), totalProgress, message));
+                executor.shutdownNow();
+            }
+        });
+    }
+
     private ListenableFuture<List<RepairSessionResult>> submitRepairSessions(UUID parentSession,
                                                                              long repairedAt,
                                                                              boolean isConsistent,
@@ -329,6 +413,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                                                                      repairedAt,
                                                                                      isConsistent,
                                                                                      options.isPullRepair(),
+                                                                                     options.isPreview(),
                                                                                      executor,
                                                                                      cfnames);
             if (session == null)

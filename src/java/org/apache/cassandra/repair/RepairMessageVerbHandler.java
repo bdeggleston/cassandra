@@ -79,7 +79,8 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                                                              prepareMessage.ranges,
                                                                              prepareMessage.isIncremental,
                                                                              prepareMessage.timestamp,
-                                                                             prepareMessage.isGlobal);
+                                                                             prepareMessage.isGlobal,
+                                                                             prepareMessage.previewKind);
                     MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                     break;
 
