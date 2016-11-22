@@ -180,6 +180,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         return pendingRepairs.get(sessionID);
     }
 
+    @VisibleForTesting
     Set<UUID> pendingRepairs()
     {
         return pendingRepairs.getSessions();
@@ -550,7 +551,6 @@ public class CompactionStrategyManager implements INotificationConsumer
         repaired = CFMetaData.createCompactionStrategyInstance(cfs, params);
         unrepaired = CFMetaData.createCompactionStrategyInstance(cfs, params);
         pendingRepairs.setParams(params);
-        pendingRepairs.clear();
         this.params = params;
     }
 

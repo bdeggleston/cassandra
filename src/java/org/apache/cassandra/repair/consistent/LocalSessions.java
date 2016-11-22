@@ -113,21 +113,10 @@ public class LocalSessions
     public static final int CLEANUP_INTERVAL = Integer.getInteger("cassandra.repair_cleanup_interval_seconds",
                                                                   Ints.checkedCast(TimeUnit.MINUTES.toSeconds(10)));
 
-    private final String keyspace;
-    private final String table;
+    private final String keyspace = SystemKeyspace.NAME;
+    private final String table = SystemKeyspace.REPAIRS;
     private boolean started = false;
     private volatile ImmutableMap<UUID, LocalSession> sessions = ImmutableMap.of();
-
-    public LocalSessions()
-    {
-        this(SystemKeyspace.NAME, SystemKeyspace.REPAIRS);
-    }
-
-    public LocalSessions(String keyspace, String table)
-    {
-        this.keyspace = keyspace;
-        this.table = table;
-    }
 
     @VisibleForTesting
     int getNumSessions()
@@ -224,7 +213,7 @@ public class LocalSessions
     {
         logger.debug("Running LocalSessions.cleanup");
         Set<LocalSession> currentSessions = new HashSet<>(sessions.values());
-        for (LocalSession session: currentSessions)
+        for (LocalSession session : currentSessions)
         {
             synchronized (session)
             {
@@ -601,7 +590,7 @@ public class LocalSessions
     public void sendStatusRequest(LocalSession session)
     {
         StatusRequest request = new StatusRequest(session.sessionID);
-        for (InetAddress participant: session.participants)
+        for (InetAddress participant : session.participants)
         {
             if (!getBroadcastAddress().equals(participant) && isAlive(participant))
             {
