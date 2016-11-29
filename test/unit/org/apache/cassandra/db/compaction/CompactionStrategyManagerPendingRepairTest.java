@@ -209,7 +209,7 @@ public class CompactionStrategyManagerPendingRepairTest extends AbstractPendingR
 
         AbstractCompactionTask compactionTask = csm.getNextBackgroundTask(FBUtilities.nowInSeconds());
         Assert.assertNotNull(compactionTask);
-        Assert.assertSame(PendingRepairManager.CleanupCompactionTask.class, compactionTask.getClass());
+        Assert.assertSame(PendingRepairManager.RepairFinishedCompactionTask.class, compactionTask.getClass());
 
         // run the compaction
         compactionTask.execute(null);
@@ -246,7 +246,7 @@ public class CompactionStrategyManagerPendingRepairTest extends AbstractPendingR
 
         AbstractCompactionTask compactionTask = csm.getNextBackgroundTask(FBUtilities.nowInSeconds());
         Assert.assertNotNull(compactionTask);
-        Assert.assertSame(PendingRepairManager.CleanupCompactionTask.class, compactionTask.getClass());
+        Assert.assertSame(PendingRepairManager.RepairFinishedCompactionTask.class, compactionTask.getClass());
 
         // run the compaction
         compactionTask.execute(null);

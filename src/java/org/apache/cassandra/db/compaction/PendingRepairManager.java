@@ -170,9 +170,16 @@ class PendingRepairManager
             Set<SSTableReader> groupAdded = entry.getValue().right;
 
             if (!groupRemoved.isEmpty())
+            {
                 strategy.replaceSSTables(groupRemoved, groupAdded);
+            }
             else
-                strategy.addSSTables(groupAdded);
+            {
+                for (SSTableReader sstable: groupAdded)
+                {
+                    strategy.addSSTable(sstable);
+                }
+            }
         }
     }
 
@@ -235,12 +242,12 @@ class PendingRepairManager
         return tasks;
     }
 
-    private CleanupCompactionTask getCleanupCompactionTask(UUID sessionID)
+    private RepairFinishedCompactionTask getRepairFinishedCompactionTask(UUID sessionID)
     {
         Set<SSTableReader> sstables = get(sessionID).getSSTables();
         long repairedAt = ActiveRepairService.instance.consistent.local.getFinalSessionRepairedAt(sessionID);
         LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.COMPACTION);
-        return txn == null ? null : new CleanupCompactionTask(cfs, txn, sessionID, repairedAt);
+        return txn == null ? null : new RepairFinishedCompactionTask(cfs, txn, sessionID, repairedAt);
     }
 
     synchronized AbstractCompactionTask getNextBackgroundTask(int gcBefore)
@@ -262,7 +269,7 @@ class PendingRepairManager
         UUID sessionID = sessions.get(0);
         if (needsCleanup(sessionID))
         {
-            return getCleanupCompactionTask(sessionID);
+            return getRepairFinishedCompactionTask(sessionID);
         }
         else
         {
@@ -280,7 +287,7 @@ class PendingRepairManager
         {
             if (needsCleanup(entry.getKey()))
             {
-                maximalTasks.add(getCleanupCompactionTask(entry.getKey()));
+                maximalTasks.add(getRepairFinishedCompactionTask(entry.getKey()));
             }
             else
             {
@@ -346,12 +353,20 @@ class PendingRepairManager
         return scanners;
     }
 
-    class CleanupCompactionTask extends AbstractCompactionTask
+    public boolean hasStrategy(AbstractCompactionStrategy strategy)
+    {
+        return strategies.values().contains(strategy);
+    }
+
+    /**
+     * promotes/demotes sstables involved in a consistent repair that has been finalized, or failed
+     */
+    class RepairFinishedCompactionTask extends AbstractCompactionTask
     {
         private final UUID sessionID;
         private final long repairedAt;
 
-        CleanupCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction transaction, UUID sessionID, long repairedAt)
+        RepairFinishedCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction transaction, UUID sessionID, long repairedAt)
         {
             super(cfs, transaction);
             this.sessionID = sessionID;
