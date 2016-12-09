@@ -96,6 +96,16 @@ public class CompactionStrategyManager implements INotificationConsumer
 
         maybeReload(cfs.metadata);
 
+        // first try to promote/demote sstables from completed repairs
+        if (pendingRepairs.getNumPendingRepairFinishedTasks() > 0)
+        {
+            AbstractCompactionTask task = pendingRepairs.getNextRepairFinishedTask();
+            if (task != null)
+            {
+                return task;
+            }
+        }
+
         // sort compaction task suppliers by remaining tasks descending
         ArrayList<Pair<Integer, Supplier<AbstractCompactionTask>>> sortedSuppliers = new ArrayList<>(3);
         sortedSuppliers.add(Pair.create(repaired.getEstimatedRemainingTasks(), () -> repaired.getNextBackgroundTask(gcBefore)));
