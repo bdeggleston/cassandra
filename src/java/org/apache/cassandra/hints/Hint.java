@@ -18,13 +18,20 @@
 package org.apache.cassandra.hints;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
+import com.google.common.primitives.Ints;
+
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.vint.VIntCoding;
 
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 import static org.apache.cassandra.db.TypeSizes.sizeofUnsignedVInt;
@@ -131,9 +138,72 @@ public final class Hint
 
         public Hint deserialize(DataInputPlus in, int version) throws IOException
         {
+            Hint hint = deserializeIfLive(in, version, -1, -1, true);
+            assert hint != null;
+            return hint;
+        }
+
+        /**
+         * Will short-circuit Mutation deserialization if the hint is definitely dead. If a Hint instance is
+         * returned, there is a chance it's alive, if gcgs on one of the table involved got reduced between
+         * hint creation and deserialization, but this does not impact correctness.
+         *
+         * @return null if the hint is definitely dead, a Hint instance if it's likely alive
+         */
+        @Nullable
+        Hint deserializeIfLive(DataInputPlus in, int version, long timestamp, long size, boolean force) throws IOException
+        {
             long creationTime = in.readLong();
             int gcgs = (int) in.readUnsignedVInt();
-            return new Hint(Mutation.serializer.deserialize(in, version), creationTime, gcgs);
+            int bytesRead = sizeof(creationTime) + sizeofUnsignedVInt(gcgs);
+            if (force || isLive(timestamp, creationTime, maxHintTTL, gcgs))
+            {
+                return new Hint(Mutation.serializer.deserialize(in, version), creationTime, gcgs);
+            }
+            else
+            {
+                in.skipBytesFully(Ints.checkedCast(size) - bytesRead);
+                return null;
+            }
+        }
+
+        /**
+         * Will short-circuit ByteBuffer allocation if the hint is definitely dead. If a ByteBuffer instance is
+         * returned, there is a chance it's alive, if gcgs on one of the table involved got reduced between
+         * hint creation and deserialization, but this does not impact correctness.
+         *
+         * @return null if the hint is definitely dead, a ByteBuffer instance if it's likely alive
+         */
+        @Nullable
+        ByteBuffer readBufferIfLive(DataInputPlus in, int version, long timestamp, int size) throws IOException
+        {
+            int maxHeaderSize = Math.min(sizeof(Long.MAX_VALUE) + VIntCoding.MAX_SIZE, size);
+            byte[] header = new byte[maxHeaderSize];
+            in.readFully(header);
+            int remaining = size - header.length;
+
+            try(DataInputBuffer input = new DataInputBuffer(ByteBuffer.wrap(header), false))
+            {
+                long creationTime = input.readLong();
+                int gcgs = (int) input.readUnsignedVInt();
+                if (!isLive(timestamp, creationTime, maxHintTTL, gcgs))
+                {
+                    if (remaining > 0)
+                    {
+                        in.skipBytesFully(size - maxHeaderSize);
+                    }
+                    return null;
+                }
+            }
+
+            byte[] bytes = new byte[size];
+            System.arraycopy(header, 0, bytes, 0, header.length);
+            if (remaining > 0)
+            {
+                in.readFully(bytes, header.length, size - header.length);
+            }
+
+            return ByteBuffer.wrap(bytes);
         }
     }
 }

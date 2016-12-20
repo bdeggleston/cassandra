@@ -32,9 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.UnknownColumnFamilyException;
 import org.apache.cassandra.io.FSReadError;
-import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.utils.AbstractIterator;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CLibrary;
 
 /**
@@ -163,6 +161,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
     final class HintsIterator extends AbstractIterator<Hint>
     {
         private final long offset;
+        private final long timestamp = System.currentTimeMillis();
 
         HintsIterator(long offset)
         {
@@ -209,8 +208,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
             if (!input.checkCrc())
                 throw new IOException("Digest mismatch exception");
 
-            Hint hint = readHint(size);
-            return hintIsLive(hint) ? hint : null;
+            return readHint(size);
         }
 
         private Hint readHint(int size) throws IOException
@@ -222,7 +220,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
             Hint hint;
             try
             {
-                hint = Hint.serializer.deserialize(input, descriptor.messagingVersion());
+                hint = Hint.serializer.deserializeIfLive(input, descriptor.messagingVersion(), timestamp, size, false);
                 input.checkLimit(0);
             }
             catch (UnknownColumnFamilyException e)
@@ -254,6 +252,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
     final class BuffersIterator extends AbstractIterator<ByteBuffer>
     {
         private final long offset;
+        private final long timestamp = System.currentTimeMillis();
 
         BuffersIterator(long offset)
         {
@@ -300,8 +299,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
             if (!input.checkCrc())
                 throw new IOException("Digest mismatch exception");
 
-            ByteBuffer buffer = readBuffer(size);
-            return hintIsLive(buffer) ? buffer : null;
+            return readBuffer(size);
         }
 
         private ByteBuffer readBuffer(int size) throws IOException
@@ -310,7 +308,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
                 rateLimiter.acquire(size);
             input.limit(size);
 
-            ByteBuffer buffer = ByteBufferUtil.read(input, size);
+            ByteBuffer buffer = Hint.serializer.readBufferIfLive(input, descriptor.messagingVersion(), timestamp, size);
             if (input.checkCrc())
                 return buffer;
 
@@ -320,21 +318,6 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
                         input.getPosition() - size - 4,
                         descriptor.fileName());
             return null;
-        }
-    }
-
-    static boolean hintIsLive(Hint hint)
-    {
-        return hint != null && hint.isLive();
-    }
-
-    static boolean hintIsLive(ByteBuffer bb) throws IOException
-    {
-        try(DataInputBuffer input = new DataInputBuffer(bb, true))
-        {
-            long creationTime = input.readLong();
-            int gcgs = (int) input.readUnsignedVInt();
-            return Hint.isLive(System.currentTimeMillis(), creationTime, Hint.maxHintTTL, gcgs);
         }
     }
 }
