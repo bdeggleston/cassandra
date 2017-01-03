@@ -220,7 +220,7 @@ class HintsReader implements AutoCloseable, Iterable<HintsReader.Page>
             Hint hint;
             try
             {
-                hint = Hint.serializer.deserializeIfLive(input, descriptor.messagingVersion(), timestamp, size, false);
+                hint = Hint.serializer.deserializeIfLive(input, descriptor.messagingVersion(), timestamp, size);
                 input.checkLimit(0);
             }
             catch (UnknownColumnFamilyException e)

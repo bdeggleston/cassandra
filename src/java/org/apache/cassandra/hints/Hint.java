@@ -138,9 +138,9 @@ public final class Hint
 
         public Hint deserialize(DataInputPlus in, int version) throws IOException
         {
-            Hint hint = deserializeIfLive(in, version, -1, -1, true);
-            assert hint != null;
-            return hint;
+            long creationTime = in.readLong();
+            int gcgs = (int) in.readUnsignedVInt();
+            return new Hint(Mutation.serializer.deserialize(in, version), creationTime, gcgs);
         }
 
         /**
@@ -151,12 +151,12 @@ public final class Hint
          * @return null if the hint is definitely dead, a Hint instance if it's likely alive
          */
         @Nullable
-        Hint deserializeIfLive(DataInputPlus in, int version, long timestamp, long size, boolean force) throws IOException
+        Hint deserializeIfLive(DataInputPlus in, int version, long timestamp, long size) throws IOException
         {
             long creationTime = in.readLong();
             int gcgs = (int) in.readUnsignedVInt();
             int bytesRead = sizeof(creationTime) + sizeofUnsignedVInt(gcgs);
-            if (force || isLive(timestamp, creationTime, maxHintTTL, gcgs))
+            if (isLive(timestamp, creationTime, maxHintTTL, gcgs))
             {
                 return new Hint(Mutation.serializer.deserialize(in, version), creationTime, gcgs);
             }
