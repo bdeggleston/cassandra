@@ -209,7 +209,7 @@ class PendingRepairManager
 
     private int getEstimatedRemainingTasks(UUID sessionID, AbstractCompactionStrategy strategy)
     {
-        if (needsCleanup(sessionID))
+        if (canCleanup(sessionID))
         {
             return 0;
         }
@@ -255,7 +255,7 @@ class PendingRepairManager
         int count = 0;
         for (UUID sessionID: strategies.keySet())
         {
-            if (needsCleanup(sessionID))
+            if (canCleanup(sessionID))
             {
                 count++;
             }
@@ -267,7 +267,7 @@ class PendingRepairManager
     {
         for (UUID sessionID: strategies.keySet())
         {
-            if (needsCleanup(sessionID))
+            if (canCleanup(sessionID))
             {
                 return getRepairFinishedCompactionTask(sessionID);
             }
@@ -284,7 +284,7 @@ class PendingRepairManager
         ArrayList<UUID> sessions = new ArrayList<>(strategies.size());
         for (Map.Entry<UUID, AbstractCompactionStrategy> entry: strategies.entrySet())
         {
-            if (needsCleanup(entry.getKey()))
+            if (canCleanup(entry.getKey()))
             {
                 continue;
             }
@@ -307,7 +307,7 @@ class PendingRepairManager
         List<AbstractCompactionTask> maximalTasks = new ArrayList<>(strategies.size());
         for (Map.Entry<UUID, AbstractCompactionStrategy> entry: strategies.entrySet())
         {
-            if (needsCleanup(entry.getKey()))
+            if (canCleanup(entry.getKey()))
             {
                 maximalTasks.add(getRepairFinishedCompactionTask(entry.getKey()));
             }
@@ -331,7 +331,7 @@ class PendingRepairManager
         return strategies.keySet();
     }
 
-    boolean needsCleanup(UUID sessionID)
+    boolean canCleanup(UUID sessionID)
     {
         return !ActiveRepairService.instance.consistent.local.isSessionInProgress(sessionID);
     }
