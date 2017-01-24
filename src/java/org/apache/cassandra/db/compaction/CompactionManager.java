@@ -507,7 +507,7 @@ public class CompactionManager implements CompactionManagerMBean
         ListenableFutureTask<?> task = ListenableFutureTask.create(runnable, null);
         try
         {
-            executor.submitIfRunning(task, "pending anticompaction");
+            executor.submit(task);
             return task;
         }
         finally
