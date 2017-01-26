@@ -102,8 +102,6 @@ public class DatabaseDescriptor
     private static Comparator<InetAddress> localComparator;
     private static boolean hasLoggedConfig;
 
-    private static boolean consistentRepairEnabled = !Boolean.getBoolean("cassandra.disable_consistent_repair");
-
     public static void forceStaticInitialization() {}
     static
     {
@@ -1999,13 +1997,4 @@ public class DatabaseDescriptor
         return conf.gc_warn_threshold_in_ms;
     }
 
-    public static boolean isConsistentRepairEnabled()
-    {
-        return consistentRepairEnabled;
-    }
-
-    public static void setConsistentRepairEnabled(boolean consistentRepairEnabled)
-    {
-        DatabaseDescriptor.consistentRepairEnabled = consistentRepairEnabled;
-    }
 }

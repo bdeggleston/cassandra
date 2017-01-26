@@ -36,8 +36,6 @@ public class PrepareMessage extends RepairMessage
 {
     public final static MessageSerializer serializer = new PrepareMessageSerializer();
 
-    public static final String CONSISTENT_REPAIR_SUPPORTED = "CRP";
-
     public final List<UUID> cfIds;
     public final Collection<Range<Token>> ranges;
 

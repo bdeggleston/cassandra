@@ -81,10 +81,6 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                                                              prepareMessage.timestamp,
                                                                              prepareMessage.isGlobal);
                     MessageOut msgOut = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
-                    if (DatabaseDescriptor.isConsistentRepairEnabled())
-                    {
-                        msgOut = msgOut.withParameter(PrepareMessage.CONSISTENT_REPAIR_SUPPORTED, new byte[] {1});
-                    }
                     MessagingService.instance().sendReply(msgOut, id, message.from);
                     break;
 
