@@ -76,6 +76,7 @@ import org.apache.cassandra.repair.messages.StatusRequest;
 import org.apache.cassandra.repair.messages.StatusResponse;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 
 import static org.apache.cassandra.repair.consistent.ConsistentSession.State.*;
@@ -147,6 +148,12 @@ public class LocalSessions
     protected boolean isAlive(InetAddress address)
     {
         return FailureDetector.instance.isAlive(address);
+    }
+
+    @VisibleForTesting
+    protected boolean isNodeInitialized()
+    {
+        return StorageService.instance.isInitialized();
     }
 
     public List<Map<String, String>> sessionInfo(boolean all)
@@ -232,6 +239,11 @@ public class LocalSessions
     public void cleanup()
     {
         logger.debug("Running LocalSessions.cleanup");
+        if (!isNodeInitialized())
+        {
+            logger.debug("node not initialized, aborting local session cleanup");
+            return;
+        }
         Set<LocalSession> currentSessions = new HashSet<>(sessions.values());
         for (LocalSession session : currentSessions)
         {

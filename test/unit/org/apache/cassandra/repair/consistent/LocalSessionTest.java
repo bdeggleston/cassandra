@@ -167,6 +167,11 @@ public class LocalSessionTest extends ConsistentSessionTest
         {
             return true;
         }
+
+        protected boolean isNodeInitialized()
+        {
+            return true;
+        }
     }
 
     private static TableMetadata cfm;
@@ -802,7 +807,7 @@ public class LocalSessionTest extends ConsistentSessionTest
     @Test
     public void cleanupFail() throws Exception
     {
-        LocalSessions sessions = new LocalSessions();
+        LocalSessions sessions = new InstrumentedLocalSessions();
         sessions.start();
 
         int time = FBUtilities.nowInSeconds() - LocalSessions.AUTO_FAIL_TIMEOUT - 1;
@@ -825,7 +830,7 @@ public class LocalSessionTest extends ConsistentSessionTest
     @Test
     public void cleanupDelete() throws Exception
     {
-        LocalSessions sessions = new LocalSessions();
+        LocalSessions sessions = new InstrumentedLocalSessions();
         sessions.start();
 
         int time = FBUtilities.nowInSeconds() - LocalSessions.AUTO_FAIL_TIMEOUT - 1;
