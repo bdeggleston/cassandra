@@ -29,8 +29,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -47,7 +48,7 @@ public class AbstractPendingRepairTest extends ConsistentSessionTest
 {
     protected String ks;
     protected final String tbl = "tbl";
-    protected CFMetaData cfm;
+    protected TableMetadata cfm;
     protected ColumnFamilyStore cfs;
     protected CompactionStrategyManager csm;
     protected static ActiveRepairService ARS;
@@ -80,9 +81,9 @@ public class AbstractPendingRepairTest extends ConsistentSessionTest
     public void setup()
     {
         ks = "ks_" + System.currentTimeMillis();
-        cfm = CFMetaData.compile(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks);
+        cfm = CreateTableStatement.parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks).build();
         SchemaLoader.createKeyspace(ks, KeyspaceParams.simple(1), cfm);
-        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.cfId);
+        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
         csm = cfs.getCompactionStrategyManager();
         nextSSTableKey = 0;
     }

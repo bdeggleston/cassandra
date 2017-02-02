@@ -24,12 +24,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import javax.annotation.Nullable;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
@@ -145,7 +143,7 @@ public class PendingAntiCompaction
                 {
                     if (result != null)
                     {
-                        logger.info("Releasing acquired sstables for {}.{}", result.cfs.metadata.ksName, result.cfs.metadata.cfName);
+                        logger.info("Releasing acquired sstables for {}.{}", result.cfs.metadata.keyspace, result.cfs.metadata.name);
                         result.abort();
                     }
                 }

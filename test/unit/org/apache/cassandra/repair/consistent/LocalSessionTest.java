@@ -40,9 +40,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.config.SchemaConstants;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
@@ -72,7 +73,7 @@ public class LocalSessionTest extends ConsistentSessionTest
         builder.withState(PREPARING);
         builder.withSessionID(UUIDGen.getTimeUUID());
         builder.withCoordinator(COORDINATOR);
-        builder.withCfIds(Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()));
+        builder.withUUIDTableIds(Sets.newHashSet(UUIDGen.getTimeUUID(), UUIDGen.getTimeUUID()));
         builder.withRepairedAt(System.currentTimeMillis());
         builder.withRanges(Sets.newHashSet(RANGE1, RANGE2, RANGE3));
         builder.withParticipants(Sets.newHashSet(PARTICIPANT1, PARTICIPANT2, PARTICIPANT3));
@@ -168,16 +169,16 @@ public class LocalSessionTest extends ConsistentSessionTest
         }
     }
 
-    private static CFMetaData cfm;
+    private static TableMetadata cfm;
     private static ColumnFamilyStore cfs;
 
     @BeforeClass
     public static void setupClass()
     {
         SchemaLoader.prepareServer();
-        cfm = CFMetaData.compile("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "localsessiontest");
+        cfm = CreateTableStatement.parse("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "localsessiontest").build();
         SchemaLoader.createKeyspace("localsessiontest", KeyspaceParams.simple(1), cfm);
-        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.cfId);
+        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
     }
 
     @Before
@@ -199,8 +200,8 @@ public class LocalSessionTest extends ConsistentSessionTest
         assertValidationFailure(b -> b.withState(null));
         assertValidationFailure(b -> b.withSessionID(null));
         assertValidationFailure(b -> b.withCoordinator(null));
-        assertValidationFailure(b -> b.withCfIds(null));
-        assertValidationFailure(b -> b.withCfIds(new HashSet<>()));
+        assertValidationFailure(b -> b.withTableIds(null));
+        assertValidationFailure(b -> b.withTableIds(new HashSet<>()));
         assertValidationFailure(b -> b.withRepairedAt(0));
         assertValidationFailure(b -> b.withRepairedAt(-1));
         assertValidationFailure(b -> b.withRanges(null));

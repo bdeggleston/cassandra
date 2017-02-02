@@ -52,7 +52,7 @@ public class CoordinatorSessions
         builder.withSessionID(sessionId);
         builder.withCoordinator(prs.coordinator);
 
-        builder.withCfIds(prs.getCfIds());
+        builder.withTableIds(prs.getTableIds());
         builder.withRepairedAt(prs.repairedAt);
         builder.withRanges(prs.getRanges());
         builder.withParticipants(participants);

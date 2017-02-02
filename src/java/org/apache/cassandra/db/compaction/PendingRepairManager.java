@@ -35,7 +35,6 @@ import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
@@ -98,8 +97,8 @@ class PendingRepairManager
 
                 if (strategy == null)
                 {
-                    logger.debug("Creating {}.{} compaction strategy for pending repair: {}", cfs.metadata.ksName, cfs.metadata.cfName, id);
-                    strategy = CFMetaData.createCompactionStrategyInstance(cfs, params);
+                    logger.debug("Creating {}.{} compaction strategy for pending repair: {}", cfs.metadata.keyspace, cfs.metadata.name, id);
+                    strategy = cfs.createCompactionStrategyInstance(params);
                     strategies = mapBuilder().putAll(strategies).put(id, strategy).build();
                 }
             }
@@ -118,7 +117,7 @@ class PendingRepairManager
         if (!strategies.containsKey(sessionID))
             return;
 
-        logger.debug("Removing compaction strategy for pending repair {} on  {}.{}", sessionID, cfs.metadata.ksName, cfs.metadata.cfName);
+        logger.debug("Removing compaction strategy for pending repair {} on  {}.{}", sessionID, cfs.metadata.keyspace, cfs.metadata.name);
         strategies = ImmutableMap.copyOf(Maps.filterKeys(strategies, k -> !k.equals(sessionID)));
     }
 

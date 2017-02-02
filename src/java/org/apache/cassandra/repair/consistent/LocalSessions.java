@@ -38,6 +38,7 @@ import javax.annotation.Nullable;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
@@ -49,7 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.SchemaConstants;
+import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.SystemKeyspace;
@@ -73,6 +74,7 @@ import org.apache.cassandra.repair.messages.PrepareConsistentResponse;
 import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.repair.messages.StatusRequest;
 import org.apache.cassandra.repair.messages.StatusResponse;
+import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -113,6 +115,16 @@ public class LocalSessions
      */
     public static final int CLEANUP_INTERVAL = Integer.getInteger("cassandra.repair_cleanup_interval_seconds",
                                                                   Ints.checkedCast(TimeUnit.MINUTES.toSeconds(10)));
+
+    private static Set<TableId> uuidToTableId(Set<UUID> src)
+    {
+        return ImmutableSet.copyOf(Iterables.transform(src, TableId::fromUUID));
+    }
+
+    private static Set<UUID> tableIdToUuid(Set<TableId> src)
+    {
+        return ImmutableSet.copyOf(Iterables.transform(src, TableId::asUUID));
+    }
 
     private final String keyspace = SchemaConstants.SYSTEM_KEYSPACE_NAME;
     private final String table = SystemKeyspace.REPAIRS;
@@ -316,7 +328,7 @@ public class LocalSessions
                                        session.coordinator,
                                        session.participants,
                                        serializeRanges(session.ranges),
-                                       session.cfIds);
+                                       tableIdToUuid(session.tableIds));
     }
 
     private static int dateToSeconds(Date d)
@@ -330,7 +342,7 @@ public class LocalSessions
         builder.withState(ConsistentSession.State.valueOf(row.getInt("state")));
         builder.withSessionID(row.getUUID("parent_id"));
         builder.withCoordinator(row.getInetAddress("coordinator"));
-        builder.withCfIds(row.getSet("cfids", UUIDType.instance));
+        builder.withTableIds(uuidToTableId(row.getSet("cfids", UUIDType.instance)));
         builder.withRepairedAt(row.getTimestamp("repaired_at").getTime());
         builder.withRanges(deserializeRanges(row.getSet("ranges", BytesType.instance)));
         builder.withParticipants(row.getSet("participants", InetAddressType.instance));
@@ -407,7 +419,7 @@ public class LocalSessions
         builder.withSessionID(sessionId);
         builder.withCoordinator(prs.coordinator);
 
-        builder.withCfIds(prs.getCfIds());
+        builder.withTableIds(prs.getTableIds());
         builder.withRepairedAt(prs.repairedAt);
         builder.withRanges(prs.getRanges());
         builder.withParticipants(peers);

@@ -29,8 +29,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.repair.messages.FailSession;
 import org.apache.cassandra.repair.messages.FinalizePromise;
@@ -41,7 +42,7 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class CoordinatorSessionsTest extends ConsistentSessionTest
 {
-    private static CFMetaData cfm;
+    private static TableMetadata cfm;
     private static ColumnFamilyStore cfs;
 
     // to check CoordinatorSessions is passing the messages to the coordinator session correctly
@@ -102,9 +103,9 @@ public class CoordinatorSessionsTest extends ConsistentSessionTest
     public static void setupClass()
     {
         SchemaLoader.prepareServer();
-        cfm = CFMetaData.compile("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "coordinatorsessiontest");
+        cfm = CreateTableStatement.parse("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "coordinatorsessiontest").build();
         SchemaLoader.createKeyspace("coordinatorsessiontest", KeyspaceParams.simple(1), cfm);
-        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.cfId);
+        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
     }
 
     private static UUID registerSession()
@@ -122,7 +123,7 @@ public class CoordinatorSessionsTest extends ConsistentSessionTest
         Assert.assertEquals(ConsistentSession.State.PREPARING, session.getState());
         Assert.assertEquals(sessionID, session.sessionID);
         Assert.assertEquals(COORDINATOR, session.coordinator);
-        Assert.assertEquals(Sets.newHashSet(cfm.cfId), session.cfIds);
+        Assert.assertEquals(Sets.newHashSet(cfm.id), session.tableIds);
 
         ActiveRepairService.ParentRepairSession prs = ActiveRepairService.instance.getParentRepairSession(sessionID);
         Assert.assertEquals(prs.repairedAt, session.repairedAt);

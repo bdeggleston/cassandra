@@ -84,7 +84,7 @@ public class LocalSession extends ConsistentSession
                "state=" + getState() +
                ", sessionID=" + sessionID +
                ", coordinator=" + coordinator +
-               ", cfIds=" + cfIds +
+               ", tableIds=" + tableIds +
                ", repairedAt=" + repairedAt +
                ", ranges=" + ranges +
                ", participants=" + participants +

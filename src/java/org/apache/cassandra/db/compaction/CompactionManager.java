@@ -607,13 +607,16 @@ public class CompactionManager implements CompactionManagerMBean
         }
     }
 
-    public ListenableFuture<?> submitPendingAntiCompaction(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, Refs<SSTableReader> sstables, LifecycleTransaction txn, UUID pendingRepair)
+    /**
+     * Splits the given token ranges of the given sstables into a pending repair silo
+     */
+    public ListenableFuture<?> submitPendingAntiCompaction(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, Refs<SSTableReader> sstables, LifecycleTransaction txn, UUID sessionId)
     {
         Runnable runnable = new WrappedRunnable()
         {
             protected void runMayThrow() throws Exception
             {
-                performAnticompaction(cfs, ranges, sstables, txn, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair);
+                performAnticompaction(cfs, ranges, sstables, txn, ActiveRepairService.UNREPAIRED_SSTABLE, sessionId, sessionId);
             }
         };
 

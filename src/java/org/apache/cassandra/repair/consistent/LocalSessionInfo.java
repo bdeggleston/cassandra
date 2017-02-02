@@ -21,13 +21,13 @@ package org.apache.cassandra.repair.consistent;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.schema.TableMetadata;
 
 /**
  * helper for JMX management functions
@@ -45,10 +45,10 @@ public class LocalSessionInfo
 
     private LocalSessionInfo() {}
 
-    private static String tableString(UUID cfid)
+    private static String tableString(TableId id)
     {
-        Pair<String, String> cf = Schema.instance.getCF(cfid);
-        return cf != null ? cf.left + '.' + cf.right : "<null>";
+        TableMetadata meta = Schema.instance.getTableMetadata(id);
+        return meta != null ? meta.keyspace + '.' + meta.name : "<null>";
     }
 
     static Map<String, String> sessionToMap(LocalSession session)
@@ -60,7 +60,7 @@ public class LocalSessionInfo
         m.put(LAST_UPDATE, Integer.toString(session.getLastUpdate()));
         m.put(COORDINATOR, session.coordinator.toString());
         m.put(PARTICIPANTS, Joiner.on(',').join(Iterables.transform(session.participants, InetAddress::toString)));
-        m.put(TABLES, Joiner.on(',').join(Iterables.transform(session.cfIds, LocalSessionInfo::tableString)));
+        m.put(TABLES, Joiner.on(',').join(Iterables.transform(session.tableIds, LocalSessionInfo::tableString)));
 
         return m;
     }

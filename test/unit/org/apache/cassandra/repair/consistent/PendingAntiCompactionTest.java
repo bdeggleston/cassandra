@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -42,13 +41,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
+import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.compaction.OperationType;
-import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -56,7 +55,6 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.concurrent.Transactional;
 
@@ -73,7 +71,7 @@ public class PendingAntiCompactionTest
 
     private String ks;
     private final String tbl = "tbl";
-    private CFMetaData cfm;
+    private TableMetadata cfm;
     private ColumnFamilyStore cfs;
 
     @BeforeClass
@@ -86,9 +84,9 @@ public class PendingAntiCompactionTest
     public void setup()
     {
         ks = "ks_" + System.currentTimeMillis();
-        cfm = CFMetaData.compile(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks);
+        cfm = CreateTableStatement.parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks).build();
         SchemaLoader.createKeyspace(ks, KeyspaceParams.simple(1), cfm);
-        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.cfId);
+        cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
     }
 
     private void makeSSTables(int num)
@@ -110,11 +108,11 @@ public class PendingAntiCompactionTest
             super(parentRepairSession, ranges);
         }
 
-        Set<UUID> submittedCompactions = new HashSet<>();
+        Set<TableId> submittedCompactions = new HashSet<>();
 
         ListenableFuture<?> submitPendingAntiCompaction(PendingAntiCompaction.AcquireResult result)
         {
-            submittedCompactions.add(result.cfs.metadata.cfId);
+            submittedCompactions.add(result.cfs.metadata.id);
             result.abort();  // prevent ref leak complaints
             return ListenableFutureTask.create(() -> {}, null);
         }
@@ -274,7 +272,7 @@ public class PendingAntiCompactionTest
         cb.apply(Lists.newArrayList(result));
 
         Assert.assertEquals(1, cb.submittedCompactions.size());
-        Assert.assertTrue(cb.submittedCompactions.contains(cfm.cfId));
+        Assert.assertTrue(cb.submittedCompactions.contains(cfm.id));
     }
 
     /**
@@ -315,7 +313,7 @@ public class PendingAntiCompactionTest
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         Assert.assertNotNull(result);
 
-        ColumnFamilyStore cfs2 = Schema.instance.getColumnFamilyStoreIncludingIndexes(Pair.create("system", "peers"));
+        ColumnFamilyStore cfs2 = Schema.instance.getColumnFamilyStoreInstance(Schema.instance.getTableMetadata("system", "peers").id);
         PendingAntiCompaction.AcquireResult fakeResult = new PendingAntiCompaction.AcquireResult(cfs2, null, null);
 
         InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(UUIDGen.getTimeUUID(), FULL_RANGE);
@@ -323,7 +321,7 @@ public class PendingAntiCompactionTest
         cb.apply(Lists.newArrayList(result, fakeResult));
 
         Assert.assertEquals(1, cb.submittedCompactions.size());
-        Assert.assertTrue(cb.submittedCompactions.contains(cfm.cfId));
-        Assert.assertFalse(cb.submittedCompactions.contains(cfs2.metadata.cfId));
+        Assert.assertTrue(cb.submittedCompactions.contains(cfm.id));
+        Assert.assertFalse(cb.submittedCompactions.contains(cfs2.metadata.id));
     }
 }

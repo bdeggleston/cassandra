@@ -29,6 +29,7 @@ import java.util.concurrent.Executor;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -44,6 +45,7 @@ import org.apache.cassandra.repair.messages.RepairOption;
 import org.apache.cassandra.repair.messages.StatusRequest;
 import org.apache.cassandra.repair.messages.StatusResponse;
 import org.apache.cassandra.repair.messages.ValidationRequest;
+import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.tools.nodetool.RepairAdmin;
 
@@ -185,7 +187,7 @@ public abstract class ConsistentSession
     private volatile State state;
     public final UUID sessionID;
     public final InetAddress coordinator;
-    public final ImmutableSet<UUID> cfIds;
+    public final ImmutableSet<TableId> tableIds;
     public final long repairedAt;
     public final ImmutableSet<Range<Token>> ranges;
     public final ImmutableSet<InetAddress> participants;
@@ -196,7 +198,7 @@ public abstract class ConsistentSession
         this.state = builder.state;
         this.sessionID = builder.sessionID;
         this.coordinator = builder.coordinator;
-        this.cfIds = ImmutableSet.copyOf(builder.cfIds);
+        this.tableIds = ImmutableSet.copyOf(builder.ids);
         this.repairedAt = builder.repairedAt;
         this.ranges = ImmutableSet.copyOf(builder.ranges);
         this.participants = ImmutableSet.copyOf(builder.participants);
@@ -223,7 +225,7 @@ public abstract class ConsistentSession
         if (state != that.state) return false;
         if (!sessionID.equals(that.sessionID)) return false;
         if (!coordinator.equals(that.coordinator)) return false;
-        if (!cfIds.equals(that.cfIds)) return false;
+        if (!tableIds.equals(that.tableIds)) return false;
         if (!ranges.equals(that.ranges)) return false;
         return participants.equals(that.participants);
     }
@@ -233,7 +235,7 @@ public abstract class ConsistentSession
         int result = state.hashCode();
         result = 31 * result + sessionID.hashCode();
         result = 31 * result + coordinator.hashCode();
-        result = 31 * result + cfIds.hashCode();
+        result = 31 * result + tableIds.hashCode();
         result = 31 * result + (int) (repairedAt ^ (repairedAt >>> 32));
         result = 31 * result + ranges.hashCode();
         result = 31 * result + participants.hashCode();
@@ -246,7 +248,7 @@ public abstract class ConsistentSession
                "state=" + state +
                ", sessionID=" + sessionID +
                ", coordinator=" + coordinator +
-               ", cfIds=" + cfIds +
+               ", tableIds=" + tableIds +
                ", repairedAt=" + repairedAt +
                ", ranges=" + ranges +
                ", participants=" + participants +
@@ -258,7 +260,7 @@ public abstract class ConsistentSession
         private State state;
         private UUID sessionID;
         private InetAddress coordinator;
-        private Set<UUID> cfIds;
+        private Set<TableId> ids;
         private long repairedAt;
         private Collection<Range<Token>> ranges;
         private Set<InetAddress> participants;
@@ -278,9 +280,14 @@ public abstract class ConsistentSession
             this.coordinator = coordinator;
         }
 
-        void withCfIds(Set<UUID> cfIds)
+        void withUUIDTableIds(Iterable<UUID> ids)
         {
-            this.cfIds = cfIds;
+            this.ids = ImmutableSet.copyOf(Iterables.transform(ids, TableId::fromUUID));
+        }
+
+        void withTableIds(Set<TableId> ids)
+        {
+            this.ids = ids;
         }
 
         void withRepairedAt(long repairedAt)
@@ -303,8 +310,8 @@ public abstract class ConsistentSession
             Preconditions.checkArgument(state != null);
             Preconditions.checkArgument(sessionID != null);
             Preconditions.checkArgument(coordinator != null);
-            Preconditions.checkArgument(cfIds != null);
-            Preconditions.checkArgument(!cfIds.isEmpty());
+            Preconditions.checkArgument(ids != null);
+            Preconditions.checkArgument(!ids.isEmpty());
             Preconditions.checkArgument(repairedAt > 0);
             Preconditions.checkArgument(ranges != null);
             Preconditions.checkArgument(!ranges.isEmpty());
