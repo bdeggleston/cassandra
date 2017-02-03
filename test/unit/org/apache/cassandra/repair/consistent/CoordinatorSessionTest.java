@@ -47,7 +47,7 @@ import org.apache.cassandra.utils.UUIDGen;
 
 import static org.apache.cassandra.repair.consistent.ConsistentSession.State.*;
 
-public class CoordinatorSessionTest extends ConsistentSessionTest
+public class CoordinatorSessionTest extends AbstractConsistentSessionTest
 {
 
     static CoordinatorSession.Builder createBuilder()

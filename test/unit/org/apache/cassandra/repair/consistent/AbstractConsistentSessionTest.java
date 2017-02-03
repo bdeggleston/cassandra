@@ -27,6 +27,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.junit.Ignore;
+
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.dht.Range;
@@ -35,7 +37,8 @@ import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
-public class ConsistentSessionTest
+@Ignore
+public abstract class AbstractConsistentSessionTest
 {
     protected static final InetAddress COORDINATOR;
     protected static final InetAddress PARTICIPANT1;

@@ -40,7 +40,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.UUIDGen;
 
-public class CoordinatorSessionsTest extends ConsistentSessionTest
+public class CoordinatorSessionsTest extends AbstractConsistentSessionTest
 {
     private static TableMetadata cfm;
     private static ColumnFamilyStore cfs;

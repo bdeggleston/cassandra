@@ -64,7 +64,7 @@ import org.apache.cassandra.utils.UUIDGen;
 
 import static org.apache.cassandra.repair.consistent.ConsistentSession.State.*;
 
-public class LocalSessionTest extends ConsistentSessionTest
+public class LocalSessionTest extends AbstractConsistentSessionTest
 {
 
     static LocalSession.Builder createBuilder()
