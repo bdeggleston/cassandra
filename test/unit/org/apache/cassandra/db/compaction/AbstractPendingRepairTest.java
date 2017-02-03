@@ -27,6 +27,7 @@ import java.util.UUID;
 import com.google.common.collect.Iterables;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.cql3.statements.CreateTableStatement;
@@ -44,6 +45,7 @@ import org.apache.cassandra.repair.consistent.LocalSessionAccessor;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.ActiveRepairService;
 
+@Ignore
 public class AbstractPendingRepairTest extends ConsistentSessionTest
 {
     protected String ks;

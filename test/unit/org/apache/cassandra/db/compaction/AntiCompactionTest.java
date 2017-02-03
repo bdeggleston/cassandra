@@ -288,7 +288,7 @@ public class AntiCompactionTest
         assertEquals(nonRepairedKeys, 60);
     }
 
-    private void shouldMutate(long repairedAt, UUID parentRepair) throws InterruptedException, IOException
+    private void shouldMutate(long repairedAt, UUID pendingRepair) throws InterruptedException, IOException
     {
         ColumnFamilyStore store = prepareColumnFamilyStore();
         Collection<SSTableReader> sstables = getUnrepairedSSTables(store);
@@ -300,12 +300,12 @@ public class AntiCompactionTest
         try (LifecycleTransaction txn = store.getTracker().tryModify(sstables, OperationType.ANTICOMPACTION);
              Refs<SSTableReader> refs = Refs.ref(sstables))
         {
-            CompactionManager.instance.performAnticompaction(store, ranges, refs, txn, 1, parentRepairSession, parentRepairSession);
+            CompactionManager.instance.performAnticompaction(store, ranges, refs, txn, repairedAt, pendingRepair, parentRepairSession);
         }
 
         assertThat(store.getLiveSSTables().size(), is(1));
         assertThat(Iterables.get(store.getLiveSSTables(), 0).isRepaired(), is(repairedAt != UNREPAIRED_SSTABLE));
-        assertThat(Iterables.get(store.getLiveSSTables(), 0).isPendingRepair(), is(parentRepair != NO_PENDING_REPAIR));
+        assertThat(Iterables.get(store.getLiveSSTables(), 0).isPendingRepair(), is(pendingRepair != NO_PENDING_REPAIR));
         assertThat(Iterables.get(store.getLiveSSTables(), 0).selfRef().globalCount(), is(1));
         assertThat(store.getTracker().getCompacting().size(), is(0));
     }

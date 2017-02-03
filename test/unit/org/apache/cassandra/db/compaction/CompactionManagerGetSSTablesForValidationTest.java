@@ -59,7 +59,7 @@ public class CompactionManagerGetSSTablesForValidationTest
     private ColumnFamilyStore cfs;
     private static InetAddress coordinator;
 
-    private static final Token MT = DatabaseDescriptor.getPartitioner().getMinimumToken();
+    private static Token MT;
 
     private SSTableReader repaired;
     private SSTableReader unrepaired;
@@ -73,6 +73,7 @@ public class CompactionManagerGetSSTablesForValidationTest
     {
         SchemaLoader.prepareServer();
         coordinator = InetAddress.getByName("10.0.0.1");
+        MT = DatabaseDescriptor.getPartitioner().getMinimumToken();
     }
 
     @Before
@@ -104,7 +105,7 @@ public class CompactionManagerGetSSTablesForValidationTest
                                                                  Lists.newArrayList(cfs),
                                                                  Sets.newHashSet(range),
                                                                  incremental,
-                                                                 System.currentTimeMillis(),
+                                                                 incremental ? System.currentTimeMillis() : ActiveRepairService.UNREPAIRED_SSTABLE,
                                                                  true);
         desc = new RepairJobDesc(sessionID, UUIDGen.getTimeUUID(), ks, tbl, Collections.singleton(range));
     }

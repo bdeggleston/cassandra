@@ -321,6 +321,10 @@ public class CompactionTask extends AbstractCompactionTask
 
     public static UUID getPendingRepair(Set<SSTableReader> sstables)
     {
+        if (sstables.isEmpty())
+        {
+            return ActiveRepairService.NO_PENDING_REPAIR;
+        }
         Set<UUID> ids = new HashSet<>();
         for (SSTableReader sstable: sstables)
             ids.add(sstable.getSSTableMetadata().pendingRepair);
