@@ -1077,7 +1077,9 @@ public class CompactionStrategyManager implements INotificationConsumer
         try
         {
             // to avoid creating a compaction strategy for the wrong pending repair manager, we get the index based on where the sstable is to be written
-            int index = locations.length > 1 ? getCompactionStrategyIndex(getDirectories(), descriptor) : 0;
+            int index = cfs.getPartitioner().splitter().isPresent()
+                        ? getCompactionStrategyIndex(getDirectories(), descriptor)
+                        : 0;
             if (pendingRepair != ActiveRepairService.NO_PENDING_REPAIR)
                 return pendingRepairs.get(index).getOrCreate(pendingRepair).createSSTableMultiWriter(descriptor, keyCount, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, collector, header, indexes, txn);
             else if (repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)
