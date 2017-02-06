@@ -384,7 +384,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             String message = String.format("Repair session %s for range %s failed with error %s",
                                            session.getId(), session.getRanges().toString(), t.getMessage());
             logger.error(message, t);
-            fireProgressEvent(tag, new ProgressEvent(ProgressEventType.PROGRESS,
+            fireProgressEvent(tag, new ProgressEvent(ProgressEventType.ERROR,
                                                      progress.incrementAndGet(),
                                                      totalProgress,
                                                      message));
