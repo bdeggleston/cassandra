@@ -79,7 +79,8 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                                                                              prepareMessage.ranges,
                                                                              prepareMessage.isIncremental,
                                                                              prepareMessage.timestamp,
-                                                                             prepareMessage.isGlobal);
+                                                                             prepareMessage.isGlobal,
+                                                                             prepareMessage.previewKind);
                     MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE), id, message.from);
                     break;
 
@@ -135,7 +136,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                     // forwarded sync request
                     SyncRequest request = (SyncRequest) message.payload;
                     logger.debug("Syncing {}", request);
-                    StreamingRepairTask task = new StreamingRepairTask(desc, request, isConsistent(desc.parentSessionId) ? desc.parentSessionId : null);
+                    StreamingRepairTask task = new StreamingRepairTask(desc, request, isConsistent(desc.parentSessionId) ? desc.parentSessionId : null, request.previewKind);
                     task.run();
                     break;
 

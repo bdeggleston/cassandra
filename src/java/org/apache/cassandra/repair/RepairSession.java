@@ -34,6 +34,8 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.*;
+import org.apache.cassandra.streaming.PreviewKind;
+import org.apache.cassandra.streaming.SessionSummary;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MerkleTrees;
@@ -91,6 +93,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     public final Collection<Range<Token>> ranges;
     public final Set<InetAddress> endpoints;
     public final boolean isConsistent;
+    public final PreviewKind previewKind;
 
     private final AtomicBoolean isFailed = new AtomicBoolean(false);
 
@@ -125,6 +128,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
                          Set<InetAddress> endpoints,
                          boolean isConsistent,
                          boolean pullRepair,
+                         PreviewKind previewKind,
                          String... cfnames)
     {
         assert cfnames.length > 0 : "Repairing no column families seems pointless, doesn't it";
@@ -137,6 +141,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         this.ranges = ranges;
         this.endpoints = endpoints;
         this.isConsistent = isConsistent;
+        this.previewKind = previewKind;
         this.pullRepair = pullRepair;
     }
 
@@ -189,7 +194,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      * @param nodes nodes that completed sync
      * @param success true if sync succeeded
      */
-    public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
+    public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success, List<SessionSummary> summaries)
     {
         RemoteSyncTask task = syncingTasks.get(Pair.create(desc, nodes));
         if (task == null)
@@ -199,7 +204,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         }
 
         logger.debug("[repair #{}] Repair completed between {} and {} on {}", getId(), nodes.endpoint1, nodes.endpoint2, desc.columnFamily);
-        task.syncComplete(success);
+        task.syncComplete(success, summaries);
     }
 
     private String repairedNodes()
@@ -256,7 +261,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         List<ListenableFuture<RepairResult>> jobs = new ArrayList<>(cfnames.length);
         for (String cfname : cfnames)
         {
-            RepairJob job = new RepairJob(this, cfname, isConsistent);
+            RepairJob job = new RepairJob(this, cfname, isConsistent, previewKind);
             executor.execute(job);
             jobs.add(job);
         }
