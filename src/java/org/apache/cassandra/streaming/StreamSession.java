@@ -166,6 +166,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final boolean isIncremental;
     private ScheduledFuture<?> keepAliveFuture = null;
     private final UUID pendingRepair;
+    private final boolean isPreview;
 
     public static enum State
     {
@@ -182,12 +183,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     /**
      * Create new streaming session with the peer.
-     *
-     * @param peer Address of streaming peer
+     *  @param peer Address of streaming peer
      * @param connecting Actual connecting address
      * @param factory is used for establishing connection
+     * @param isPreview
      */
-    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, boolean isIncremental, UUID pendingRepair)
+    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, boolean isIncremental, UUID pendingRepair, boolean isPreview)
     {
         this.peer = peer;
         this.connecting = connecting;
@@ -195,11 +196,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         this.factory = factory;
         this.handler = new ConnectionHandler(this, isKeepAliveSupported()?
                                                    (int)TimeUnit.SECONDS.toMillis(2 * DatabaseDescriptor.getStreamingKeepAlivePeriod()) :
-                                                   DatabaseDescriptor.getStreamingSocketTimeout());
+                                                   DatabaseDescriptor.getStreamingSocketTimeout(), isPreview);
         this.metrics = StreamingMetrics.get(connecting);
         this.keepSSTableLevel = keepSSTableLevel;
         this.isIncremental = isIncremental;
         this.pendingRepair = pendingRepair;
+        this.isPreview = isPreview;
     }
 
     public UUID planId()
@@ -230,6 +232,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     public UUID getPendingRepair()
     {
         return pendingRepair;
+    }
+
+    public boolean isPreview()
+    {
+        return isPreview;
     }
 
     public LifecycleTransaction getTransaction(TableId tableId)
@@ -636,6 +643,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             handler.sendMessage(prepare);
         }
 
+        if (isPreview)
+        {
+            completePreview();
+            return;
+        }
+
         // if there are files to stream
         if (!maybeCompleted())
             startStreamingFiles();
@@ -666,6 +679,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      */
     public void receive(IncomingFileMessage message)
     {
+        if (isPreview)
+        {
+            throw new RuntimeException("Cannot receive files for preview session");
+        }
+
         long headerSize = message.header.size();
         StreamingMetrics.totalIncomingBytes.inc(headerSize);
         metrics.incomingBytes.inc(headerSize);
@@ -769,6 +787,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         closeSession(State.FAILED);
     }
 
+    private void completePreview()
+    {
+        state(State.WAIT_COMPLETE);
+        closeSession(State.COMPLETE);
+    }
+
     private boolean maybeCompleted()
     {
         boolean completed = receivers.isEmpty() && transfers.isEmpty();
@@ -819,6 +843,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         streamResult.handleSessionPrepared(this);
 
         state(State.STREAMING);
+
         for (StreamTransferTask task : transfers.values())
         {
             Collection<OutgoingFileMessage> messages = task.getFileMessages();
