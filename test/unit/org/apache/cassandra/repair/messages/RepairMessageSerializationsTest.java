@@ -43,6 +43,7 @@ import org.apache.cassandra.io.util.DataOutputBufferFixed;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.NodePair;
+import org.apache.cassandra.repair.PreviewKind;
 import org.apache.cassandra.repair.RepairJobDesc;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.StorageService;
@@ -162,7 +163,8 @@ public class RepairMessageSerializationsTest
     public void prepareMessage() throws IOException
     {
         PrepareMessage msg = new PrepareMessage(UUID.randomUUID(), new ArrayList<TableId>() {{add(TableId.generate());}},
-                                                buildTokenRanges(), true, 100000L, false);
+                                                buildTokenRanges(), true, 100000L, false,
+                                                PreviewKind.NONE);
         serializeRoundTrip(msg, PrepareMessage.serializer);
     }
 

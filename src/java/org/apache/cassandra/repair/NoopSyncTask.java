@@ -15,33 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.repair;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.utils.MerkleTree;
 
 /**
- * Statistics about synchronizing two replica
+ * Doesn't perform any syncing, only collects data about ranges that need to be repaired
  */
-public class SyncStat
+public class NoopSyncTask extends SyncTask
 {
-    public final NodePair nodes;
-    public final List<MerkleTree.TreeDifference> differences;
+    private static final Logger logger = LoggerFactory.getLogger(NoopSyncTask.class);
 
-    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences)
+    public NoopSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2)
     {
-        this.nodes = nodes;
-        this.differences = differences;
+        super(desc, r1, r2);
     }
 
-    long bytes()
+    @Override
+    protected void startSync(List<MerkleTree.TreeDifference> differences)
     {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalSize).sum();
-    }
-
-    long rows()
-    {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalRows).sum();
+        // noop, sync stat will be retrieved later
+        set(stat);
     }
 }

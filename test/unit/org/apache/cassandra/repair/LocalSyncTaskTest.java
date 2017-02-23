@@ -79,7 +79,7 @@ public class LocalSyncTaskTest extends SchemaLoader
         LocalSyncTask task = new LocalSyncTask(desc, r1, r2, ActiveRepairService.UNREPAIRED_SSTABLE, null, false);
         task.run();
 
-        assertEquals(0, task.get().numberOfDifferences);
+        assertEquals(0, task.get().differences.size());
     }
 
     @Test
@@ -92,7 +92,8 @@ public class LocalSyncTaskTest extends SchemaLoader
 
         ActiveRepairService.instance.registerParentRepairSession(parentRepairSession,  FBUtilities.getBroadcastAddress(),
                                                                  Arrays.asList(cfs), Arrays.asList(range), false,
-                                                                 ActiveRepairService.UNREPAIRED_SSTABLE, false);
+                                                                 ActiveRepairService.UNREPAIRED_SSTABLE, false,
+                                                                 PreviewKind.NONE);
 
         RepairJobDesc desc = new RepairJobDesc(parentRepairSession, UUID.randomUUID(), KEYSPACE1, "Standard1", Arrays.asList(range));
 
@@ -117,7 +118,7 @@ public class LocalSyncTaskTest extends SchemaLoader
         task.run();
 
         // ensure that the changed range was recorded
-        assertEquals("Wrong differing ranges", interesting.size(), task.getCurrentStat().numberOfDifferences);
+        assertEquals("Wrong differing ranges", interesting.size(), task.getCurrentStat().differences.size());
     }
 
     private MerkleTrees createInitialTree(RepairJobDesc desc)

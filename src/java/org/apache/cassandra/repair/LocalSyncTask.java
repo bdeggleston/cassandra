@@ -25,8 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.ProgressInfo;
 import org.apache.cassandra.streaming.StreamEvent;
@@ -36,6 +34,8 @@ import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.MerkleTree;
+import org.apache.cassandra.utils.MerkleTrees;
 
 /**
  * LocalSyncTask performs streaming between local(coordinator) node and remote replica.
@@ -63,7 +63,8 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
      * Starts sending/receiving our list of differences to/from the remote endpoint: creates a callback
      * that will be called out of band once the streams complete.
      */
-    protected void startSync(List<Range<Token>> differences)
+    @Override
+    protected void startSync(List<MerkleTree.TreeDifference> differences)
     {
         InetAddress local = FBUtilities.getBroadcastAddress();
         // We can take anyone of the node as source or destination, however if one is localhost, we put at source to avoid a forwarding
@@ -82,11 +83,11 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
         StreamPlan plan = new StreamPlan("Repair", repairedAt, 1, false, isIncremental, false, pendingRepair).listeners(this)
                                             .flushBeforeTransfer(true)
                                             // request ranges from the remote node
-                                            .requestRanges(dst, preferred, desc.keyspace, differences, desc.columnFamily);
+                                            .requestRanges(dst, preferred, desc.keyspace, MerkleTrees.treesToRanges(differences), desc.columnFamily);
         if (!pullRepair)
         {
             // send ranges to the remote node if we are not performing a pull repair
-            plan.transferRanges(dst, preferred, desc.keyspace, differences, desc.columnFamily);
+            plan.transferRanges(dst, preferred, desc.keyspace, MerkleTrees.treesToRanges(differences), desc.columnFamily);
         }
 
         plan.execute();

@@ -15,33 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.repair;
 
-import java.util.List;
-
-import org.apache.cassandra.utils.MerkleTree;
-
-/**
- * Statistics about synchronizing two replica
- */
-public class SyncStat
+public enum PreviewKind
 {
-    public final NodePair nodes;
-    public final List<MerkleTree.TreeDifference> differences;
+    NONE(0), UNREPAIRED(1), FULL(2), REPAIRED(3);
 
-    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences)
+    private final int serializationVal;
+
+    PreviewKind(int serializationVal)
     {
-        this.nodes = nodes;
-        this.differences = differences;
+        assert ordinal() == serializationVal;
+        this.serializationVal = serializationVal;
     }
 
-    long bytes()
+    public int getSerializationVal()
     {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalSize).sum();
+        return serializationVal;
     }
 
-    long rows()
+    public static PreviewKind deserialize(int serializationVal)
     {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalRows).sum();
+        return values()[serializationVal];
     }
 }
