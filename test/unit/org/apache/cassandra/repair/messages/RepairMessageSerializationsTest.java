@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.google.common.collect.Lists;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -47,7 +48,10 @@ import org.apache.cassandra.repair.PreviewKind;
 import org.apache.cassandra.repair.RepairJobDesc;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.streaming.SessionSummary;
+import org.apache.cassandra.streaming.StreamSummary;
 import org.apache.cassandra.utils.MerkleTrees;
+import org.apache.cassandra.utils.UUIDGen;
 
 public class RepairMessageSerializationsTest
 {
@@ -155,7 +159,12 @@ public class RepairMessageSerializationsTest
     {
         InetAddress src = InetAddress.getByName("127.0.0.2");
         InetAddress dst = InetAddress.getByName("127.0.0.3");
-        SyncComplete msg = new SyncComplete(buildRepairJobDesc(), new NodePair(src, dst), true);
+        List<SessionSummary> summaries = new ArrayList<>();
+        summaries.add(new SessionSummary(src, dst,
+                                         Lists.newArrayList(new StreamSummary(TableId.fromUUID(UUIDGen.getTimeUUID()), 5, 100)),
+                                         Lists.newArrayList(new StreamSummary(TableId.fromUUID(UUIDGen.getTimeUUID()), 500, 10))
+        ));
+        SyncComplete msg = new SyncComplete(buildRepairJobDesc(), new NodePair(src, dst), true, summaries);
         serializeRoundTrip(msg, SyncComplete.serializer);
     }
 
