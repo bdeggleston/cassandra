@@ -34,6 +34,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.*;
+import org.apache.cassandra.streaming.SessionSummary;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MerkleTrees;
@@ -195,7 +196,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      * @param nodes nodes that completed sync
      * @param success true if sync succeeded
      */
-    public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
+    public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success, List<SessionSummary> summaries)
     {
         RemoteSyncTask task = syncingTasks.get(Pair.create(desc, nodes));
         if (task == null)
@@ -205,7 +206,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         }
 
         logger.debug("[repair #{}] Repair completed between {} and {} on {}", getId(), nodes.endpoint1, nodes.endpoint2, desc.columnFamily);
-        task.syncComplete(success);
+        task.syncComplete(success, summaries);
     }
 
     private String repairedNodes()

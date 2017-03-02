@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.exceptions.RepairException;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.messages.SyncRequest;
+import org.apache.cassandra.streaming.SessionSummary;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MerkleTree;
@@ -57,11 +58,11 @@ public class RemoteSyncTask extends SyncTask
         MessagingService.instance().sendOneWay(request.createMessage(), request.src);
     }
 
-    public void syncComplete(boolean success)
+    public void syncComplete(boolean success, List<SessionSummary> summaries)
     {
         if (success)
         {
-            set(stat);
+            set(stat.withSummaries(summaries));
         }
         else
         {

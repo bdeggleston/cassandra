@@ -130,11 +130,7 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
                     {
                         TreeResponse r2 = trees.get(j);
                         SyncTask task;
-                        if (preview)
-                        {
-                            task = new NoopSyncTask(desc, r1, r2);
-                        }
-                        else if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
+                        if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
                         {
                             task = new LocalSyncTask(desc, r1, r2, repairedAt, isConsistent ? desc.parentSessionId : null, session.pullRepair, session.preview);
                         }

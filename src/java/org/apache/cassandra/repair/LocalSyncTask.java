@@ -124,7 +124,7 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
         String message = String.format("Sync complete using session %s between %s and %s on %s", desc.sessionId, r1.endpoint, r2.endpoint, desc.columnFamily);
         logger.info("[repair #{}] {}", desc.sessionId, message);
         Tracing.traceRepair(message);
-        set(stat);
+        set(stat.withSummaries(result.createSummaries()));
     }
 
     public void onFailure(Throwable t)

@@ -19,6 +19,7 @@ package org.apache.cassandra.repair;
 
 import java.util.List;
 
+import org.apache.cassandra.streaming.SessionSummary;
 import org.apache.cassandra.utils.MerkleTree;
 
 /**
@@ -27,12 +28,24 @@ import org.apache.cassandra.utils.MerkleTree;
 public class SyncStat
 {
     public final NodePair nodes;
-    public final List<MerkleTree.TreeDifference> differences;
+    public final List<MerkleTree.TreeDifference> differences; // TODO: revert to Range<Token>
+    public final List<SessionSummary> summaries;
 
     public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences)
     {
+        this(nodes, differences, null);
+    }
+
+    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences, List<SessionSummary> summaries)
+    {
         this.nodes = nodes;
         this.differences = differences;
+        this.summaries = summaries;
+    }
+
+    public SyncStat withSummaries(List<SessionSummary> summaries)
+    {
+        return new SyncStat(nodes, differences, summaries);
     }
 
     long bytes()

@@ -453,7 +453,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
             case SYNC_COMPLETE:
                 // one of replica is synced.
                 SyncComplete sync = (SyncComplete) message;
-                session.syncComplete(desc, sync.nodes, sync.success);
+                session.syncComplete(desc, sync.nodes, sync.success, sync.summaries);
                 break;
             default:
                 break;
