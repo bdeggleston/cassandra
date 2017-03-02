@@ -136,11 +136,11 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
                         }
                         else if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
                         {
-                            task = new LocalSyncTask(desc, r1, r2, repairedAt, isConsistent ? desc.parentSessionId : null, session.pullRepair);
+                            task = new LocalSyncTask(desc, r1, r2, repairedAt, isConsistent ? desc.parentSessionId : null, session.pullRepair, session.preview);
                         }
                         else
                         {
-                            task = new RemoteSyncTask(desc, r1, r2);
+                            task = new RemoteSyncTask(desc, r1, r2, session.preview);
                             // RemoteSyncTask expects SyncComplete message sent back.
                             // Register task to RepairSession to receive response.
                             session.waitForSync(Pair.create(desc, new NodePair(r1.endpoint, r2.endpoint)), (RemoteSyncTask) task);

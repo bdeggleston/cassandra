@@ -41,16 +41,16 @@ public class RemoteSyncTask extends SyncTask
 {
     private static final Logger logger = LoggerFactory.getLogger(RemoteSyncTask.class);
 
-    public RemoteSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2)
+    public RemoteSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, boolean isPreview)
     {
-        super(desc, r1, r2);
+        super(desc, r1, r2, isPreview);
     }
 
     @Override
     protected void startSync(List<MerkleTree.TreeDifference> differences)
     {
         InetAddress local = FBUtilities.getBroadcastAddress();
-        SyncRequest request = new SyncRequest(desc, local, r1.endpoint, r2.endpoint, MerkleTrees.treesToRanges(differences));
+        SyncRequest request = new SyncRequest(desc, local, r1.endpoint, r2.endpoint, MerkleTrees.treesToRanges(differences), isPreview);
         String message = String.format("Forwarding streaming repair of %d ranges to %s (to be streamed with %s)", request.ranges.size(), request.src, request.dst);
         logger.info("[repair #{}] {}", desc.sessionId, message);
         Tracing.traceRepair(message);

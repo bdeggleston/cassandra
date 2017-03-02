@@ -164,6 +164,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private final boolean isIncremental;
     private ScheduledFuture<?> keepAliveFuture = null;
     private final UUID pendingRepair;
+    private final boolean isPreview;
 
     public static enum State
     {
@@ -180,12 +181,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     /**
      * Create new streaming session with the peer.
-     *
-     * @param peer Address of streaming peer
+     *  @param peer Address of streaming peer
      * @param connecting Actual connecting address
      * @param factory is used for establishing connection
+     * @param isPreview
      */
-    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, boolean isIncremental, UUID pendingRepair)
+    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, boolean isIncremental, UUID pendingRepair, boolean isPreview)
     {
         this.peer = peer;
         this.connecting = connecting;
@@ -198,6 +199,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         this.keepSSTableLevel = keepSSTableLevel;
         this.isIncremental = isIncremental;
         this.pendingRepair = pendingRepair;
+        this.isPreview = isPreview;
     }
 
     public UUID planId()
@@ -228,6 +230,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     public UUID getPendingRepair()
     {
         return pendingRepair;
+    }
+
+    public boolean isPreview()
+    {
+        return isPreview;
     }
 
     public LifecycleTransaction getTransaction(TableId tableId)

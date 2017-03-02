@@ -34,7 +34,7 @@ public class NoopSyncTask extends SyncTask
 
     public NoopSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2)
     {
-        super(desc, r1, r2);
+        super(desc, r1, r2, true);
     }
 
     @Override

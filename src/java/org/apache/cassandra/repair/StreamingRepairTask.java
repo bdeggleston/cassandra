@@ -46,13 +46,15 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     private final SyncRequest request;
     private final long repairedAt;
     private final boolean isConsistent;
+    private final boolean isPreview;
 
-    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, long repairedAt, boolean isConsistent)
+    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, long repairedAt, boolean isConsistent, boolean isPreview)
     {
         this.desc = desc;
         this.request = request;
         this.repairedAt = repairedAt;
         this.isConsistent = isConsistent;
+        this.isPreview = isPreview;
     }
 
     public void run()
@@ -72,7 +74,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     @VisibleForTesting
     StreamPlan createStreamPlan(InetAddress dest, InetAddress preferred, boolean isIncremental)
     {
-        return new StreamPlan("Repair", repairedAt, 1, false, isIncremental, false, isConsistent ? desc.parentSessionId : null)
+        return new StreamPlan("Repair", repairedAt, 1, false, isIncremental, false, isConsistent ? desc.parentSessionId : null, isPreview)
                .listeners(this)
                .flushBeforeTransfer(!isIncremental) // sstables are isolated at the beginning of an incremental repair session, so flushing isn't neccessary
                .requestRanges(dest, preferred, desc.keyspace, request.ranges, desc.columnFamily) // request ranges from the remote node
