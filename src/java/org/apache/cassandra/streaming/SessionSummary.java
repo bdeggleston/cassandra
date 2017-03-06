@@ -109,8 +109,9 @@ public class SessionSummary
                 receivingSummaries.add(StreamSummary.serializer.deserialize(in, version));
             }
 
+            int numSent = in.readInt();
             List<StreamSummary> sendingSummaries = new ArrayList<>(numRcvd);
-            for (int i=0; i<numRcvd; i++)
+            for (int i=0; i<numSent; i++)
             {
                 sendingSummaries.add(StreamSummary.serializer.deserialize(in, version));
             }
