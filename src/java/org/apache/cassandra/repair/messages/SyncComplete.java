@@ -99,6 +99,7 @@ public class SyncComplete extends RepairMessage
         {
             RepairJobDesc desc = RepairJobDesc.serializer.deserialize(in, version);
             NodePair nodes = NodePair.serializer.deserialize(in, version);
+            boolean success = in.readBoolean();
 
             int numSummaries = in.readInt();
             List<SessionSummary> summaries = new ArrayList<>(numSummaries);
@@ -107,7 +108,7 @@ public class SyncComplete extends RepairMessage
                 summaries.add(SessionSummary.serializer.deserialize(in, version));
             }
 
-            return new SyncComplete(desc, nodes, in.readBoolean(), summaries);
+            return new SyncComplete(desc, nodes, success, summaries);
         }
 
         public long serializedSize(SyncComplete message, int version)
