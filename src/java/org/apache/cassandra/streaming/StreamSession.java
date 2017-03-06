@@ -632,6 +632,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             handler.sendMessage(prepare);
         }
 
+        if (isPreview)
+        {
+            completePreview();
+            return;
+        }
+
         // if there are files to stream
         if (!maybeCompleted())
             startStreamingFiles();
@@ -770,15 +776,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         closeSession(State.FAILED);
     }
 
-    private void forceComplete()
+    private void completePreview()
     {
-        receivers.clear();
-        transfers.clear();
-        boolean completed = maybeCompleted();
-        if (!completed)
-        {
-            throw new RuntimeException("Could not force session completion");
-        }
+        state(State.WAIT_COMPLETE);
+        closeSession(State.COMPLETE);
     }
 
     private boolean maybeCompleted()
@@ -829,12 +830,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     private void startStreamingFiles()
     {
         streamResult.handleSessionPrepared(this);
-
-        if (isPreview)
-        {
-            forceComplete();
-            return;
-        }
 
         state(State.STREAMING);
 
