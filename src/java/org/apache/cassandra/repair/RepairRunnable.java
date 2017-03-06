@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.JMXConfigurableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.repair.consistent.SyncStatSummary;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -340,57 +341,18 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             {
                 try
                 {
-                    Map<Pair<String, String>, List<SyncStat>> differences = new HashMap<>();
-                    for (RepairSessionResult sessionResult: results)
-                    {
-                        for (RepairResult result: sessionResult.repairJobResults)
-                        {
-                            Pair<String, String> cf = Pair.create(result.desc.keyspace, result.desc.columnFamily);
-                            if (!differences.containsKey(cf))
-                            {
-                                differences.put(cf, new ArrayList<>());
-                            }
-                            differences.get(cf).addAll(result.stats);
-                        }
-                    }
-                    if (differences.isEmpty())
+                    SyncStatSummary summary = new SyncStatSummary(true);
+                    summary.consumeSessionResults(results);
+
+                    if (summary.isEmpty())
                     {
                         fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress,
                                                                  "Previewed data was in sync"));
                     }
                     else
                     {
-                        int totalRanges = 0;
-                        long totalRows = 0;
-                        long totalBytes = 0;
-                        StringBuilder output = new StringBuilder();
-                        for (Map.Entry<Pair<String, String>, List<SyncStat>> entry: differences.entrySet())
-                        {
-                            int tableRanges = 0;
-                            long tableRows = 0;
-                            long tableBytes = 0;
-                            Pair<String, String> cf = entry.getKey();
-                            List<SyncStat> stats = entry.getValue();
-                            StringBuilder tableSummary = new StringBuilder();
-                            for (SyncStat stat: stats)
-                            {
-                                tableRanges += stat.differences.size();
-                                tableRows += stat.rows();
-                                tableBytes += stat.bytes();
-
-                                String msg = String.format("    %s -> %s: %s ranges with %s partitions (%s bytes)", stat.nodes.endpoint1, stat.nodes.endpoint2, stat.differences.size(), stat.rows(), stat.bytes());
-                                tableSummary.append(msg + '\n');
-                                logger.debug(msg);
-                            }
-
-                            String header = String.format("%s.%s - %s ranges, %s partitions, %s bytes\n", cf.left, cf.right, tableRanges, tableRows, tableBytes);
-                            output.append(header).append(tableSummary.toString());
-                            totalRanges += tableRanges;
-                            totalRows += tableRows;
-                            totalBytes += tableBytes;
-                        }
-                        String message =  String.format("Preview complete\nTotal estimated streaming: %s ranges, %s partitions, %s bytes\n", totalRanges, totalRows, totalBytes);
-                        fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress, message + output.toString()));
+                        String message =  "Preview complete\n" + summary.toString();
+                        fireProgressEvent(tag, new ProgressEvent(ProgressEventType.NOTIFICATION, progress.get(), totalProgress, message));
                     }
 
                     fireProgressEvent(tag, new ProgressEvent(ProgressEventType.SUCCESS, progress.get(), totalProgress,
