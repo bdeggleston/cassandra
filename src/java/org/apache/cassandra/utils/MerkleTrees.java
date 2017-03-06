@@ -368,13 +368,6 @@ public class MerkleTrees implements Iterable<Map.Entry<Range<Token>, MerkleTree>
         }
     }
 
-    public static List<Range<Token>> treesToRanges(List<MerkleTree.TreeDifference> treeRanges)
-    {
-        List<Range<Token>> ranges = new ArrayList<>(treeRanges.size());
-        treeRanges.forEach(ranges::add);
-        return ranges;
-    }
-
     /**
      * Get the differences between the two sets of MerkleTrees.
      *
@@ -382,9 +375,9 @@ public class MerkleTrees implements Iterable<Map.Entry<Range<Token>, MerkleTree>
      * @param rtree
      * @return
      */
-    public static List<MerkleTree.TreeDifference> difference(MerkleTrees ltree, MerkleTrees rtree)
+    public static List<Range<Token>> difference(MerkleTrees ltree, MerkleTrees rtree)
     {
-        List<MerkleTree.TreeDifference> differences = new ArrayList<>();
+        List<Range<Token>> differences = new ArrayList<>();
         for (MerkleTree tree : ltree.merkleTrees.values())
         {
             differences.addAll(MerkleTree.difference(tree, rtree.getMerkleTree(tree.fullRange)));

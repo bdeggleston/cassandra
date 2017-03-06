@@ -437,7 +437,7 @@ public class MerkleTreeTest
         mt.get(partitioner.midpoint(leftmost.left, leftmost.right)).hash("even more arbitrary!".getBytes());
 
         // trees should disagree for (leftmost.left, middle.right]
-        List<MerkleTree.TreeDifference> diffs = MerkleTree.difference(mt, mt2);
+        List<TreeRange> diffs = MerkleTree.difference(mt, mt2);
         assertEquals(diffs + " contains wrong number of differences:", 1, diffs.size());
         assertTrue(diffs.contains(new Range<>(leftmost.left, middle.right)));
     }

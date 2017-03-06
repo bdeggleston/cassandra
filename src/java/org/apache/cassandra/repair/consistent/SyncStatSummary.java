@@ -46,7 +46,7 @@ public class SyncStatSummary
 
         int files = 0;
         long bytes = 0;
-        int ranges = 0;
+        long ranges = 0;
 
         Session(InetAddress src, InetAddress dst)
         {
@@ -60,7 +60,7 @@ public class SyncStatSummary
             bytes += summary.totalSize;
         }
 
-        void consumeSummaries(Collection<StreamSummary> summaries, int numRanges)
+        void consumeSummaries(Collection<StreamSummary> summaries, long numRanges)
         {
             summaries.forEach(this::consumeSummary);
             ranges += numRanges;
@@ -105,8 +105,8 @@ public class SyncStatSummary
         {
             for (SessionSummary summary: stat.summaries)
             {
-                getOrCreate(summary.coordinator, summary.peer).consumeSummaries(summary.sendingSummaries, stat.differences.size());
-                getOrCreate(summary.peer, summary.coordinator).consumeSummaries(summary.receivingSummaries, stat.differences.size());
+                getOrCreate(summary.coordinator, summary.peer).consumeSummaries(summary.sendingSummaries, stat.numberOfDifferences);
+                getOrCreate(summary.peer, summary.coordinator).consumeSummaries(summary.receivingSummaries, stat.numberOfDifferences);
             }
         }
 
@@ -227,9 +227,6 @@ public class SyncStatSummary
             output.append(table.toString()).append('\n');
         }
 
-
-        return "SyncStatSummary{" +
-               "summaries=" + summaries +
-               '}';
+        return output.toString();
     }
 }

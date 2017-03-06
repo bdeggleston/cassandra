@@ -20,7 +20,6 @@ package org.apache.cassandra.repair;
 import java.util.List;
 
 import org.apache.cassandra.streaming.SessionSummary;
-import org.apache.cassandra.utils.MerkleTree;
 
 /**
  * Statistics about synchronizing two replica
@@ -28,33 +27,23 @@ import org.apache.cassandra.utils.MerkleTree;
 public class SyncStat
 {
     public final NodePair nodes;
-    public final List<MerkleTree.TreeDifference> differences; // TODO: revert to Range<Token>
+    public final long numberOfDifferences; // TODO: revert to Range<Token>
     public final List<SessionSummary> summaries;
 
-    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences)
+    public SyncStat(NodePair nodes, long numberOfDifferences)
     {
-        this(nodes, differences, null);
+        this(nodes, numberOfDifferences, null);
     }
 
-    public SyncStat(NodePair nodes, List<MerkleTree.TreeDifference> differences, List<SessionSummary> summaries)
+    public SyncStat(NodePair nodes, long numberOfDifferences, List<SessionSummary> summaries)
     {
         this.nodes = nodes;
-        this.differences = differences;
+        this.numberOfDifferences = numberOfDifferences;
         this.summaries = summaries;
     }
 
     public SyncStat withSummaries(List<SessionSummary> summaries)
     {
-        return new SyncStat(nodes, differences, summaries);
-    }
-
-    long bytes()
-    {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalSize).sum();
-    }
-
-    long rows()
-    {
-        return differences.stream().mapToLong(MerkleTree.TreeDifference::totalRows).sum();
+        return new SyncStat(nodes, numberOfDifferences, summaries);
     }
 }

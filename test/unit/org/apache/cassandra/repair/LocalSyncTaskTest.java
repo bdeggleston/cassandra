@@ -79,7 +79,7 @@ public class LocalSyncTaskTest extends SchemaLoader
         LocalSyncTask task = new LocalSyncTask(desc, r1, r2, ActiveRepairService.UNREPAIRED_SSTABLE, null, false, false);
         task.run();
 
-        assertEquals(0, task.get().differences.size());
+        assertEquals(0, task.get().numberOfDifferences);
     }
 
     @Test
@@ -118,7 +118,7 @@ public class LocalSyncTaskTest extends SchemaLoader
         task.run();
 
         // ensure that the changed range was recorded
-        assertEquals("Wrong differing ranges", interesting.size(), task.getCurrentStat().differences.size());
+        assertEquals("Wrong differing ranges", interesting.size(), task.getCurrentStat().numberOfDifferences);
     }
 
     private MerkleTrees createInitialTree(RepairJobDesc desc)
