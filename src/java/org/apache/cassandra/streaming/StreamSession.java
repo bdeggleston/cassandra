@@ -333,7 +333,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             flushSSTables(stores);
 
         List<Range<Token>> normalizedRanges = Range.normalize(ranges);
-        List<SSTableStreamingSections> sections = getSSTableSectionsForRanges(normalizedRanges, stores, repairedAt, pendingRepair);
+        List<SSTableStreamingSections> sections = getSSTableSectionsForRanges(normalizedRanges, stores, repairedAt, pendingRepair, previewKind);
         try
         {
             addTransferFiles(sections);
@@ -375,7 +375,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     }
 
     @VisibleForTesting
-    public static List<SSTableStreamingSections> getSSTableSectionsForRanges(Collection<Range<Token>> ranges, Collection<ColumnFamilyStore> stores, long overriddenRepairedAt, UUID pendingRepair)
+    public static List<SSTableStreamingSections> getSSTableSectionsForRanges(Collection<Range<Token>> ranges, Collection<ColumnFamilyStore> stores, long overriddenRepairedAt, UUID pendingRepair, PreviewKind previewKind)
     {
         Refs<SSTableReader> refs = new Refs<>();
         try
@@ -389,7 +389,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber
                     Set<SSTableReader> sstables = Sets.newHashSet();
                     SSTableIntervalTree intervalTree = SSTableIntervalTree.build(view.select(SSTableSet.CANONICAL));
                     Predicate<SSTableReader> predicate;
-                    if (pendingRepair == ActiveRepairService.NO_PENDING_REPAIR)
+                    if (previewKind.isPreview())
+                    {
+                        predicate = previewKind.getStreamingPredicate();
+                    }
+                    else if (pendingRepair == ActiveRepairService.NO_PENDING_REPAIR)
                     {
                         predicate = Predicates.alwaysTrue();
                     }
