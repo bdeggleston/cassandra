@@ -1,4 +1,7 @@
 4.0
+ * Remove config option index_interval (CASSANDRA-10671)
+ * Reduce lock contention for collection types and serializers (CASSANDRA-13271)
+ * Make it possible to override MessagingService.Verb ids (CASSANDRA-13283)
  * Avoid synchronized on prepareForRepair in ActiveRepairService (CASSANDRA-9292)
  * Adds the ability to use uncompressed chunks in compressed files (CASSANDRA-10520)
  * Don't flush sstables when streaming for incremental repair (CASSANDRA-13226)
@@ -44,7 +47,13 @@
  * Fix primary index calculation for SASI (CASSANDRA-12910)
  * More fixes to the TokenAllocator (CASSANDRA-12990)
  * NoReplicationTokenAllocator should work with zero replication factor (CASSANDRA-12983)
+ * Address message coalescing regression (CASSANDRA-12676)
 Merged from 3.0:
+ * Improve testing on macOS by eliminating sigar logging (CASSANDRA-13233)
+ * Cqlsh copy-from should error out when csv contains invalid data for collections (CASSANDRA-13071)
+ * Fix "multiple versions of ant detected..." when running ant test (CASSANDRA-13232)
+ * Coalescing strategy sleeps too much (CASSANDRA-13090)
+ * Faster StreamingHistogram (CASSANDRA-13038)
  * Legacy deserializer can create unexpected boundary range tombstones (CASSANDRA-13237)
  * Remove unnecessary assertion from AntiCompactionTest (CASSANDRA-13070)
  * Fix cqlsh COPY for dates before 1900 (CASSANDRA-13185)
@@ -69,6 +78,7 @@ Merged from 2.2:
  * Fix negative mean latency metric (CASSANDRA-12876)
  * Use only one file pointer when creating commitlog segments (CASSANDRA-12539)
 Merged from 2.1:
+ * Remove unused repositories (CASSANDRA-13278)
  * Log stacktrace of uncaught exceptions (CASSANDRA-13108)
  * Use portable stderr for java error in startup (CASSANDRA-13211)
  * Fix Thread Leak in OutboundTcpConnection (CASSANDRA-13204)
@@ -265,7 +275,6 @@ Merged from 3.0:
  * Correct log message for statistics of offheap memtable flush (CASSANDRA-12776)
  * Explicitly set locale for string validation (CASSANDRA-12541,CASSANDRA-12542,CASSANDRA-12543,CASSANDRA-12545)
 Merged from 2.2:
- * Coalescing strategy sleeps too much (CASSANDRA-13090)
  * Fix speculative retry bugs (CASSANDRA-13009)
  * Fix handling of nulls and unsets in IN conditions (CASSANDRA-12981)
  * Fix race causing infinite loop if Thrift server is stopped before it starts listening (CASSANDRA-12856)

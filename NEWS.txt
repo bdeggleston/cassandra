@@ -43,6 +43,7 @@ Upgrading
       full and incremental repairs. For full repairs, data is no longer marked
       repaired. For incremental repairs, anticompaction is run at the beginning
       of the repair, instead of at the end.
+    - Config option index_interval has been removed (it was deprecated since 2.0)
 
 3.11.0
 ======
@@ -51,6 +52,11 @@ Upgrading
 ---------
    - Primary ranges in the system.size_estimates table are now based on the keyspace
      replication settings and adjacent ranges are no longer merged (CASSANDRA-9639).
+   - In 2.1, the default for otc_coalescing_strategy was 'DISABLED'.
+     In 2.2 and 3.0, it was changed to 'TIMEHORIZON', but that value was shown
+     to be a performance regression. The default for 3.11.0 and newer has
+     been reverted to 'DISABLED'. Users upgrading from Cassandra 2.2 or 3.0 should
+     be aware that the default has changed.
 
 3.10
 ====
