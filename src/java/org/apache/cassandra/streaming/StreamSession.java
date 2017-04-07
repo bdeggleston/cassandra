@@ -163,7 +163,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private AtomicBoolean isAborted = new AtomicBoolean(false);
     private final boolean keepSSTableLevel;
-    private final boolean isIncremental;
     private ScheduledFuture<?> keepAliveFuture = null;
     private final UUID pendingRepair;
 
@@ -187,7 +186,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * @param connecting Actual connecting address
      * @param factory is used for establishing connection
      */
-    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, boolean isIncremental, UUID pendingRepair)
+    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index, boolean keepSSTableLevel, UUID pendingRepair)
     {
         this.peer = peer;
         this.connecting = connecting;
@@ -198,7 +197,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
                                                    DatabaseDescriptor.getStreamingSocketTimeout());
         this.metrics = StreamingMetrics.get(connecting);
         this.keepSSTableLevel = keepSSTableLevel;
-        this.isIncremental = isIncremental;
         this.pendingRepair = pendingRepair;
     }
 
@@ -220,11 +218,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     public boolean keepSSTableLevel()
     {
         return keepSSTableLevel;
-    }
-
-    public boolean isIncremental()
-    {
-        return isIncremental;
     }
 
     public UUID getPendingRepair()

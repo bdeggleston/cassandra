@@ -48,20 +48,20 @@ public class StreamPlan
      */
     public StreamPlan(StreamOperation streamOperation)
     {
-        this(streamOperation, ActiveRepairService.UNREPAIRED_SSTABLE, 1, false, false, false, null);
+        this(streamOperation, ActiveRepairService.UNREPAIRED_SSTABLE, 1, false, false, null);
     }
 
     public StreamPlan(StreamOperation streamOperation, boolean keepSSTableLevels, boolean connectSequentially)
     {
-        this(streamOperation, ActiveRepairService.UNREPAIRED_SSTABLE, 1, keepSSTableLevels, false, connectSequentially, null);
+        this(streamOperation, ActiveRepairService.UNREPAIRED_SSTABLE, 1, keepSSTableLevels, connectSequentially, null);
     }
 
     public StreamPlan(StreamOperation streamOperation, long repairedAt, int connectionsPerHost, boolean keepSSTableLevels,
-                      boolean isIncremental, boolean connectSequentially, UUID pendingRepair)
+                      boolean connectSequentially, UUID pendingRepair)
     {
         this.streamOperation = streamOperation;
         this.repairedAt = repairedAt;
-        this.coordinator = new StreamCoordinator(connectionsPerHost, keepSSTableLevels, isIncremental, new DefaultConnectionFactory(),
+        this.coordinator = new StreamCoordinator(connectionsPerHost, keepSSTableLevels, new DefaultConnectionFactory(),
                                                  connectSequentially, pendingRepair);
     }
 
@@ -206,6 +206,12 @@ public class StreamPlan
     public long getRepairedAt()
     {
         return repairedAt;
+    }
+
+
+    public UUID getPendingRepair()
+    {
+        return coordinator.getPendingRepair();
     }
 
     public boolean getFlushBeforeTransfer()
