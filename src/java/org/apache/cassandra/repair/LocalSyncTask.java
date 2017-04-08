@@ -48,15 +48,12 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
 
     private static final Logger logger = LoggerFactory.getLogger(LocalSyncTask.class);
 
-    private final long repairedAt;
     private final UUID pendingRepair;
-
     private final boolean pullRepair;
 
-    public LocalSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, long repairedAt, UUID pendingRepair, boolean pullRepair)
+    public LocalSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, UUID pendingRepair, boolean pullRepair)
     {
         super(desc, r1, r2);
-        this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
         this.pullRepair = pullRepair;
     }
@@ -65,7 +62,7 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
     @VisibleForTesting
     StreamPlan createStreamPlan(InetAddress dst, InetAddress preferred, List<Range<Token>> differences)
     {
-        StreamPlan plan = new StreamPlan(StreamOperation.REPAIR, repairedAt, 1, false, false, pendingRepair)
+        StreamPlan plan = new StreamPlan(StreamOperation.REPAIR, 1, false, false, pendingRepair)
                           .listeners(this)
                           .flushBeforeTransfer(pendingRepair == null)
                           .requestRanges(dst, preferred, desc.keyspace, differences, desc.columnFamily);  // request ranges from the remote node

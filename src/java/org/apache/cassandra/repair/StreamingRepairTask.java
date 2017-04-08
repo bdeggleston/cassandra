@@ -45,14 +45,12 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
 
     private final RepairJobDesc desc;
     private final SyncRequest request;
-    private final long repairedAt;
     private final UUID pendingRepair;
 
-    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, long repairedAt, UUID pendingRepair)
+    public StreamingRepairTask(RepairJobDesc desc, SyncRequest request, UUID pendingRepair)
     {
         this.desc = desc;
         this.request = request;
-        this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
     }
 
@@ -67,7 +65,7 @@ public class StreamingRepairTask implements Runnable, StreamEventHandler
     @VisibleForTesting
     StreamPlan createStreamPlan(InetAddress dest, InetAddress preferred)
     {
-        return new StreamPlan(StreamOperation.REPAIR, repairedAt, 1, false, false, pendingRepair)
+        return new StreamPlan(StreamOperation.REPAIR, 1, false, false, pendingRepair)
                .listeners(this)
                .flushBeforeTransfer(pendingRepair == null) // sstables are isolated at the beginning of an incremental repair session, so flushing isn't neccessary
                .requestRanges(dest, preferred, desc.keyspace, request.ranges, desc.columnFamily) // request ranges from the remote node
