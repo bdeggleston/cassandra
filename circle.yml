@@ -1,17 +1,97 @@
-machine:
-  java:
-    version: 'oraclejdk8'
-
-test:
-  pre:
-    - sudo ifconfig lo:1 127.0.0.2 up
-    - sudo ifconfig lo:2 127.0.0.3 up
-    - sudo ifconfig lo:3 127.0.0.4 up
-    - sudo ifconfig lo:4 127.0.0.5 up
-    - ant build
-
-  override:
-    - ant test
-  post:
-    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
-    - cp ./build/test/output/*.xml $CIRCLE_TEST_REPORTS/junit/
+version: 2
+jobs:
+  build:
+    working_directory: ~/
+    parallelism: 4
+    machine:
+      java:
+        version: 'oraclejdk8'
+    steps:
+      - run:
+          name: Install Dependencies
+          command: |
+            npm install -g junit-merge
+            sudo pip install virtualenv
+            sudo ifconfig -a
+            sudo ifconfig lo:1 127.0.0.2 up
+            sudo ifconfig lo:2 127.0.0.3 up
+            sudo ifconfig lo:3 127.0.0.4 up
+            sudo ifconfig lo:4 127.0.0.5 up
+            sudo ifconfig lo:4 127.0.0.6 up
+            sudo ifconfig lo:4 127.0.0.7 up
+            sudo ifconfig lo:4 127.0.0.8 up
+            sudo ifconfig lo:4 127.0.0.9 up
+            echo git clone --single-branch --depth 1 https://github.com/riptano/cassandra-dtest ~/cassandra-dtest
+            git clone --single-branch --depth 1 https://github.com/riptano/cassandra-dtest ~/cassandra-dtest
+            echo git clone --single-branch --depth 1 --branch $CIRCLE_BRANCH git://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git ~/cassandra
+            git clone --single-branch --depth 1 --branch $CIRCLE_BRANCH git://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git ~/cassandra
+            virtualenv --python=python2 --no-site-packages venv
+            source venv/bin/activate
+            export CASS_DRIVER_NO_EXTENSIONS=true
+            export CASS_DRIVER_NO_CYTHON=true
+            pip install -r ~/cassandra-dtest/requirements.txt
+            pip freeze
+      - run:
+          name: Build Cassandra
+          command: cd ~/cassandra && ant build build-test
+      - run:
+          name: Determine tests to run
+          no_output_timeout: 2h
+          command: |
+            echo `circleci tests glob "$HOME/cassandra/test/unit/**" "$HOME/cassandra-dtest/**/*.py" | grep -v upgrade_tests | grep -v "cassandra-thrift" | grep -v "thrift_bindings" | grep -v "tools" | grep -v "dtest.py" | grep -v "$HOME/cassandra-dtest/bin" | grep -v "plugins" | circleci tests split --split-by=timings --timings-type=filename` > /tmp/tests.txt
+            echo "***processed tests***"
+            cat /tmp/tests.txt | sed -e 's/\s\+/\n/g' > /tmp/processed_tests.txt
+            cat /tmp/processed_tests.txt
+            echo "***python tests***"
+            cat /tmp/processed_tests.txt | grep "\.py$" > /tmp/python_tests.txt
+            cat /tmp/python_tests.txt
+            echo "***final python tests***"
+            cat /tmp/python_tests.txt | tr '\n' ' ' > /tmp/python_tests_final.txt
+            cat /tmp/python_tests_final.txt
+            echo "***java tests***"
+            cat /tmp/processed_tests.txt | grep "\.java$" > /tmp/java_tests.txt
+            cat /tmp/java_tests.txt
+            cat /tmp/java_tests.txt | cut -c 36-1000000 | grep "Test\.java$" > /tmp/java_tests_final.txt
+            echo "***final java tests***"
+            cat /tmp/java_tests_final.txt
+      - run:
+         name: Run unit tests
+         command: |
+            cd ~/cassandra
+            ant testclasslist -Dtest.classlistfile=/tmp/java_tests_final.txt
+#      - run:
+#          name: Run dtests
+#          no_output_timeout: 2h
+#          command: |
+#            source venv/bin/activate
+#            cd ~/cassandra-dtest
+#            mkdir -p /tmp/dtest
+#            export CASSANDRA_DIR=$HOME/cassandra
+#            export PYTHONIOENCODING="utf-8"
+#            export PYTHONUNBUFFERED=true
+#            export CASS_DRIVER_NO_EXTENSIONS=true
+#            export CASS_DRIVER_NO_CYTHON=true
+#            export CCM_MAX_HEAP_SIZE="512M"
+#            export NUM_TOKENS="32"
+#            ./run_dtests.py --vnodes true --nose-options="--verbosity=3 --with-xunit --nocapture --attr=!resource-intensive" `cat /tmp/python_tests_final.txt`| tee -a /tmp/dtest/stdout.txt
+      - run:
+          name: Collect and merge test results
+          command: |
+            mkdir -p /tmp/results/junit
+            junit-merge ~/cassandra/build/test/output/*.xml
+            cp  merged-test-results.xml /tmp/results/junit
+#            junit-merge ~/cassandra/build/test/output/*.xml ~/cassandra-dtest/nosetests.xml
+      - store_test_results:
+          path: /tmp/results
+      - store_artifacts:
+          path: ~/cassandra/build/test/output
+          destination: junitxml
+      - store_artifacts:
+          path: ~/cassandra/build/test/logs
+          destination: logs
+#      - store_artifacts:
+#          path: /tmp/dtest
+#          destination: dtest
+#      - store_artifacts:
+#          path: ~/cassandra-dtest/logs
+#          destination: dtest_logs
