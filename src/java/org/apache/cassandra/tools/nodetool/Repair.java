@@ -74,7 +74,7 @@ public class Repair extends NodeToolCmd
     @Option(title = "full", name = {"-full", "--full"}, description = "Use -full to issue a full repair.")
     private boolean fullRepair = false;
 
-    @Option(title = "preview", name = {"-p", "--preview"}, description = "Determine ranges and amount of data to be streamed, but don't actually perform repair")
+    @Option(title = "preview", name = {"-prv", "--preview"}, description = "Determine ranges and amount of data to be streamed, but don't actually perform repair")
     private boolean preview = false;
 
     @Option(title = "validate", name = {"--vd", "--validate"}, description = "Checks that repaired data is in sync between nodes. Out of sync repaired data indicates a full repair should be run.")
