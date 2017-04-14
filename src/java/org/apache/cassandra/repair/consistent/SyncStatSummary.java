@@ -32,6 +32,7 @@ import org.apache.cassandra.repair.RepairSessionResult;
 import org.apache.cassandra.repair.SyncStat;
 import org.apache.cassandra.streaming.SessionSummary;
 import org.apache.cassandra.streaming.StreamSummary;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
 import static com.google.common.collect.Iterables.filter;
@@ -68,7 +69,7 @@ public class SyncStatSummary
 
         public String toString()
         {
-            return String.format("%s -> %s: %s ranges, %s sstables, %s bytes", src, dst, ranges, files, bytes);
+            return String.format("%s -> %s: %s ranges, %s sstables, %s bytes", src, dst, ranges, files, FBUtilities.prettyPrintMemory(bytes));
         }
     }
 
@@ -137,7 +138,7 @@ public class SyncStatSummary
             }
             StringBuilder output = new StringBuilder();
 
-            output.append(String.format("%s.%s - %s ranges, %s sstables, %s bytes\n", keyspace, table, ranges, files, bytes));
+            output.append(String.format("%s.%s - %s ranges, %s sstables, %s bytes\n", keyspace, table, ranges, files, FBUtilities.prettyPrintMemory(bytes)));
             for (Session session: sessions.values())
             {
                 output.append("    ").append(session.toString()).append('\n');
@@ -214,11 +215,11 @@ public class SyncStatSummary
 
         if (isEstimate)
         {
-            output.append(String.format("Total estimated streaming: %s ranges, %s sstables, %s bytes\n", ranges, files, bytes));
+            output.append(String.format("Total estimated streaming: %s ranges, %s sstables, %s bytes\n", ranges, files, FBUtilities.prettyPrintMemory(bytes)));
         }
         else
         {
-            output.append(String.format("Total streaming: %s ranges, %s sstables, %s bytes\n", ranges, files, bytes));
+            output.append(String.format("Total streaming: %s ranges, %s sstables, %s bytes\n", ranges, files, FBUtilities.prettyPrintMemory(bytes)));
         }
 
         for (Pair<String, String> tableName: tables)

@@ -91,7 +91,7 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
         InetAddress preferred = SystemKeyspace.getPreferredIP(dst);
 
         String message = String.format("Performing streaming repair of %d ranges with %s", differences.size(), dst);
-        logger.info("[repair #{}] {}", desc.sessionId, message);
+        logger.info("{} {}", previewKind.logPrefix(desc.sessionId), message);
         Tracing.traceRepair(message);
 
         createStreamPlan(dst, preferred, differences).execute();
@@ -126,7 +126,7 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
     public void onSuccess(StreamState result)
     {
         String message = String.format("Sync complete using session %s between %s and %s on %s", desc.sessionId, r1.endpoint, r2.endpoint, desc.columnFamily);
-        logger.info("[repair #{}] {}", desc.sessionId, message);
+        logger.info("{} {}", previewKind.logPrefix(desc.sessionId), message);
         Tracing.traceRepair(message);
         set(stat.withSummaries(result.createSummaries()));
     }

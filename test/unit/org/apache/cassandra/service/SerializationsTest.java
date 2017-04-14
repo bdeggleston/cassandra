@@ -123,7 +123,7 @@ public class SerializationsTest extends AbstractSerializationsTester
 
         // empty validation
         mt.addMerkleTree((int) Math.pow(2, 15), FULL_RANGE);
-        Validator v0 = new Validator(DESC, FBUtilities.getBroadcastAddress(),  -1);
+        Validator v0 = new Validator(DESC, FBUtilities.getBroadcastAddress(), -1, PreviewKind.NONE);
         ValidationComplete c0 = new ValidationComplete(DESC, mt);
 
         // validation with a tree
@@ -131,7 +131,7 @@ public class SerializationsTest extends AbstractSerializationsTester
         mt.addMerkleTree(Integer.MAX_VALUE, FULL_RANGE);
         for (int i = 0; i < 10; i++)
             mt.split(p.getRandomToken());
-        Validator v1 = new Validator(DESC, FBUtilities.getBroadcastAddress(), -1);
+        Validator v1 = new Validator(DESC, FBUtilities.getBroadcastAddress(), -1, PreviewKind.NONE);
         ValidationComplete c1 = new ValidationComplete(DESC, mt);
 
         // validation failed

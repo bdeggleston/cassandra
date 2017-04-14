@@ -19,6 +19,8 @@
 package org.apache.cassandra.streaming;
 
 
+import java.util.UUID;
+
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 
@@ -60,4 +62,15 @@ public enum PreviewKind
     {
         return this != NONE;
     }
+
+    public String logPrefix()
+    {
+        return isPreview() ? "preview repair" : "repair";
+    }
+
+    public String logPrefix(UUID sessionId)
+    {
+        return '[' + logPrefix() + " #" + sessionId.toString() + ']';
+    }
+
 }

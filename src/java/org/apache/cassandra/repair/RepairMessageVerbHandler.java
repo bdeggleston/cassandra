@@ -35,6 +35,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.messages.*;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.streaming.PreviewKind;
 
 /**
  * Handles all repair related message.
@@ -48,6 +49,12 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
     private boolean isConsistent(UUID sessionID)
     {
         return ActiveRepairService.instance.consistent.local.isSessionInProgress(sessionID);
+    }
+
+    private PreviewKind previewKind(UUID sessionID)
+    {
+        ActiveRepairService.ParentRepairSession prs = ActiveRepairService.instance.getParentRepairSession(sessionID);
+        return prs != null ? prs.previewKind : PreviewKind.NONE;
     }
 
     public void doVerb(final MessageIn<RepairMessage> message, final int id)
@@ -128,7 +135,8 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
                     }
 
                     ActiveRepairService.instance.consistent.local.maybeSetRepairing(desc.parentSessionId);
-                    Validator validator = new Validator(desc, message.from, validationRequest.gcBefore, isConsistent(desc.parentSessionId));
+                    Validator validator = new Validator(desc, message.from, validationRequest.gcBefore,
+                                                        isConsistent(desc.parentSessionId), previewKind(desc.parentSessionId));
                     CompactionManager.instance.submitValidation(store, validator);
                     break;
 

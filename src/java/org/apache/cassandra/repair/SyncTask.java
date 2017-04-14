@@ -63,7 +63,7 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
         stat = new SyncStat(new NodePair(r1.endpoint, r2.endpoint), differences.size());
 
         // choose a repair method based on the significance of the difference
-        String format = String.format("[repair #%s] Endpoints %s and %s %%s for %s", desc.sessionId, r1.endpoint, r2.endpoint, desc.columnFamily);
+        String format = String.format("%s Endpoints %s and %s %%s for %s", previewKind.logPrefix(desc.sessionId), r1.endpoint, r2.endpoint, desc.columnFamily);
         if (differences.isEmpty())
         {
             logger.info(String.format(format, "are consistent"));

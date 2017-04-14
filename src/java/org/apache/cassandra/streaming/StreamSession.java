@@ -781,8 +781,18 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
     private void completePreview()
     {
-        state(State.WAIT_COMPLETE);
-        closeSession(State.COMPLETE);
+        try
+        {
+            state(State.WAIT_COMPLETE);
+            closeSession(State.COMPLETE);
+        }
+        finally
+        {
+            // aborting the tasks here needs to be the last thing we do so that we
+            // accurately report expected streaming, but don't leak any sstable refs
+            for (StreamTask task : Iterables.concat(receivers.values(), transfers.values()))
+                task.abort();
+        }
     }
 
     private boolean maybeCompleted()
