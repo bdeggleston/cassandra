@@ -137,7 +137,7 @@ public class CompactionManagerGetSSTablesForValidationTest
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), true);
+        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), true, PreviewKind.NONE);
         Set<SSTableReader> sstables = Sets.newHashSet(CompactionManager.instance.getSSTablesToValidate(cfs, validator));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(1, sstables.size());
@@ -152,7 +152,7 @@ public class CompactionManagerGetSSTablesForValidationTest
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), false);
+        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), false, PreviewKind.NONE);
         Set<SSTableReader> sstables = Sets.newHashSet(CompactionManager.instance.getSSTablesToValidate(cfs, validator));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(2, sstables.size());
@@ -168,7 +168,7 @@ public class CompactionManagerGetSSTablesForValidationTest
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), false);
+        Validator validator = new Validator(desc, coordinator, FBUtilities.nowInSeconds(), false, PreviewKind.NONE);
         Set<SSTableReader> sstables = Sets.newHashSet(CompactionManager.instance.getSSTablesToValidate(cfs, validator));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(3, sstables.size());
