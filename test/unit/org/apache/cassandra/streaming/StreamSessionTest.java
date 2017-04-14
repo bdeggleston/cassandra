@@ -98,7 +98,8 @@ public class StreamSessionTest
         List<StreamSession.SSTableStreamingSections> sections = StreamSession.getSSTableSectionsForRanges(ranges,
                                                                                                           Lists.newArrayList(cfs),
                                                                                                           ActiveRepairService.UNREPAIRED_SSTABLE,
-                                                                                                          pendingRepair);
+                                                                                                          pendingRepair,
+                                                                                                          PreviewKind.NONE);
         Set<SSTableReader> sstables = new HashSet<>();
         for (StreamSession.SSTableStreamingSections section: sections)
         {
