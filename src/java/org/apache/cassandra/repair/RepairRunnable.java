@@ -234,7 +234,10 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         }
         catch (Throwable t)
         {
-            SystemDistributedKeyspace.failParentRepair(parentSession, t);
+            if (!options.isPreview())
+            {
+                SystemDistributedKeyspace.failParentRepair(parentSession, t);
+            }
             fireErrorAndComplete(tag, progress.get(), totalProgress, t.getMessage());
             return;
         }
@@ -495,7 +498,10 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
         public void onSuccess(Object result)
         {
-            SystemDistributedKeyspace.successfulParentRepair(parentSession, successfulRanges);
+            if (!options.isPreview())
+            {
+                SystemDistributedKeyspace.successfulParentRepair(parentSession, successfulRanges);
+            }
             if (hasFailure.get())
             {
                 fireProgressEvent(tag, new ProgressEvent(ProgressEventType.ERROR, progress.get(), totalProgress,
@@ -512,7 +518,10 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         public void onFailure(Throwable t)
         {
             fireProgressEvent(tag, new ProgressEvent(ProgressEventType.ERROR, progress.get(), totalProgress, t.getMessage()));
-            SystemDistributedKeyspace.failParentRepair(parentSession, t);
+            if (!options.isPreview())
+            {
+                SystemDistributedKeyspace.failParentRepair(parentSession, t);
+            }
             repairComplete();
         }
 

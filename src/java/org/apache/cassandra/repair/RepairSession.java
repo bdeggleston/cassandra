@@ -235,14 +235,20 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
 
         logger.info("[repair #{}] new session: will sync {} on range {} for {}.{}", getId(), repairedNodes(), ranges, keyspace, Arrays.toString(cfnames));
         Tracing.traceRepair("Syncing range {}", ranges);
-        SystemDistributedKeyspace.startRepairs(getId(), parentRepairSession, keyspace, cfnames, ranges, endpoints);
+        if (!previewKind.isPreview())
+        {
+            SystemDistributedKeyspace.startRepairs(getId(), parentRepairSession, keyspace, cfnames, ranges, endpoints);
+        }
 
         if (endpoints.isEmpty())
         {
             logger.info("[repair #{}] {}", getId(), message = String.format("No neighbors to repair with on range %s: session completed", ranges));
             Tracing.traceRepair(message);
             set(new RepairSessionResult(id, keyspace, ranges, Lists.<RepairResult>newArrayList()));
-            SystemDistributedKeyspace.failRepairs(getId(), keyspace, cfnames, new RuntimeException(message));
+            if (!previewKind.isPreview())
+            {
+                SystemDistributedKeyspace.failRepairs(getId(), keyspace, cfnames, new RuntimeException(message));
+            }
             return;
         }
 
@@ -255,7 +261,10 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
                 logger.error("[repair #{}] {}", getId(), message);
                 Exception e = new IOException(message);
                 setException(e);
-                SystemDistributedKeyspace.failRepairs(getId(), keyspace, cfnames, e);
+                if (!previewKind.isPreview())
+                {
+                    SystemDistributedKeyspace.failRepairs(getId(), keyspace, cfnames, e);
+                }
                 return;
             }
         }
