@@ -129,6 +129,12 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
+    @VisibleForTesting
+    CompactionMetrics getMetrics()
+    {
+        return metrics;
+    }
+
     /**
      * Gets compaction rate limiter.
      * Rate unit is bytes per sec.
