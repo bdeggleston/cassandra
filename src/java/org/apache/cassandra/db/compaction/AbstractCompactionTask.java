@@ -54,7 +54,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
         for (SSTableReader sstable : transaction.originals())
             assert compacting.contains(sstable) : sstable.getFilename() + " is not correctly marked compacting";
 
-        validateSSTables(compacting);
+        validateSSTables(transaction.originals());
     }
 
     /**
