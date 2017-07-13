@@ -413,6 +413,10 @@ class PendingRepairManager
             {
                 // even if we weren't able to rewrite all the sstable metedata, we should still move the ones that were
                 cfs.getTracker().notifySSTableRepairedStatusChanged(transaction.originals());
+
+                // we always abort because mutating metadata isn't guarded by LifecycleTransaction, so this won't roll
+                // anything back. Also, we don't want to obsolete the originals. We're only using it to prevent other
+                // compactions from marking these sstables compacting, and unmarking them when we're done
                 transaction.abort();
                 if (completed)
                 {
