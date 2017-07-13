@@ -598,15 +598,15 @@ public class CompactionManager implements CompactionManagerMBean
             }
         };
 
-        ListenableFutureTask<?> task = ListenableFutureTask.create(runnable, null);
+        ListenableFuture<?> task = null;
         try
         {
-            executor.submitIfRunning(task, "pending anticompaction");
+            task = executor.submitIfRunning(runnable, "pending anticompaction");
             return task;
         }
         finally
         {
-            if (task.isCancelled())
+            if (task == null || task.isCancelled())
             {
                 sstables.release();
                 txn.abort();
