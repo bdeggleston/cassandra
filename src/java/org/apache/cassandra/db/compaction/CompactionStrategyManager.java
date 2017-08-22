@@ -736,10 +736,11 @@ public class CompactionStrategyManager implements INotificationConsumer
      * Delegates the call to the compaction strategies to allow LCS to create a scanner
      * @param sstables
      * @param ranges
+     * @param forValidation
      * @return
      */
     @SuppressWarnings("resource")
-    public AbstractCompactionStrategy.ScannerList maybeGetScanners(Collection<SSTableReader> sstables,  Collection<Range<Token>> ranges)
+    public AbstractCompactionStrategy.ScannerList maybeGetScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges, boolean forValidation)
     {
         assert repaired.size() == unrepaired.size();
         assert repaired.size() == pendingRepairs.size();
@@ -773,17 +774,17 @@ public class CompactionStrategyManager implements INotificationConsumer
             for (int i = 0; i < pendingSSTables.size(); i++)
             {
                 if (!pendingSSTables.get(i).isEmpty())
-                    scanners.addAll(pendingRepairs.get(i).getScanners(pendingSSTables.get(i), ranges));
+                    scanners.addAll(pendingRepairs.get(i).getScanners(pendingSSTables.get(i), ranges, forValidation));
             }
             for (int i = 0; i < repairedSSTables.size(); i++)
             {
                 if (!repairedSSTables.get(i).isEmpty())
-                    scanners.addAll(repaired.get(i).getScanners(repairedSSTables.get(i), ranges).scanners);
+                    scanners.addAll(repaired.get(i).getScanners(repairedSSTables.get(i), ranges, forValidation).scanners);
             }
             for (int i = 0; i < unrepairedSSTables.size(); i++)
             {
                 if (!unrepairedSSTables.get(i).isEmpty())
-                    scanners.addAll(unrepaired.get(i).getScanners(unrepairedSSTables.get(i), ranges).scanners);
+                    scanners.addAll(unrepaired.get(i).getScanners(unrepairedSSTables.get(i), ranges, forValidation).scanners);
             }
         }
         catch (PendingRepairManager.IllegalSSTableArgumentException e)
@@ -799,11 +800,16 @@ public class CompactionStrategyManager implements INotificationConsumer
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables,  Collection<Range<Token>> ranges)
     {
+        return getScanners(sstables, ranges, false);
+    }
+
+    public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables,  Collection<Range<Token>> ranges, boolean forValidation)
+    {
         while (true)
         {
             try
             {
-                return maybeGetScanners(sstables, ranges);
+                return maybeGetScanners(sstables, ranges, forValidation);
             }
             catch (ConcurrentModificationException e)
             {

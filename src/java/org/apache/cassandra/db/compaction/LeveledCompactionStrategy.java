@@ -258,7 +258,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
         return levelFanoutSize;
     }
 
-    public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges)
+    public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges, boolean forValidation)
     {
         Set<SSTableReader>[] sstablesPerLevel = manifest.getSStablesPerLevelSnapshot();
 
@@ -270,10 +270,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
             // so we add it to level -1 and create exclusive scanners for it - see below (#9935)
             if (level >= sstablesPerLevel.length || !sstablesPerLevel[level].contains(sstable))
             {
-                logger.warn("Live sstable {} from level {} is not on corresponding level in the leveled manifest." +
-                            " This is not a problem per se, but may indicate an orphaned sstable due to a failed" +
-                            " compaction not cleaned up properly.",
-                             sstable.getFilename(), level);
+                if (!forValidation)
+                {
+                    logger.warn("Live sstable {} from level {} is not on corresponding level in the leveled manifest." +
+                                " This is not a problem per se, but may indicate an orphaned sstable due to a failed" +
+                                " compaction not cleaned up properly.",
+                                sstable.getFilename(), level);
+                }
                 level = -1;
             }
             byLevel.get(level).add(sstable);

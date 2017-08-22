@@ -363,7 +363,7 @@ class PendingRepairManager
     }
 
     @SuppressWarnings("resource")
-    synchronized Set<ISSTableScanner> getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges)
+    synchronized Set<ISSTableScanner> getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges, boolean forValidation)
     {
         if (sstables.isEmpty())
         {
@@ -383,7 +383,7 @@ class PendingRepairManager
         {
             for (Map.Entry<UUID, Set<SSTableReader>> entry : sessionSSTables.entrySet())
             {
-                scanners.addAll(getOrCreate(entry.getKey()).getScanners(entry.getValue(), ranges).scanners);
+                scanners.addAll(getOrCreate(entry.getKey()).getScanners(entry.getValue(), ranges, forValidation).scanners);
             }
         }
         catch (Throwable t)

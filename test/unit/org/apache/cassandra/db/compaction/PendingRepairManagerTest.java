@@ -271,7 +271,7 @@ public class PendingRepairManagerTest extends AbstractPendingRepairTest
     {
         PendingRepairManager prm = csm.getPendingRepairManagers().get(0);
         SSTableReader sstable = makeSSTable(true);
-        prm.getScanners(Collections.singleton(sstable), Collections.singleton(RANGE1));
+        prm.getScanners(Collections.singleton(sstable), Collections.singleton(RANGE1), false);
     }
 
     /**

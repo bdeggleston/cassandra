@@ -20,7 +20,6 @@ package org.apache.cassandra.db.compaction;
 import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -45,7 +44,6 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.schema.CompactionParams;
-import org.apache.cassandra.utils.JVMStabilityInspector;
 
 /**
  * Pluggable compaction strategy determines how SSTables get merged.
@@ -274,7 +272,7 @@ public abstract class AbstractCompactionStrategy
 
     public ScannerList getScanners(Collection<SSTableReader> sstables, Range<Token> range)
     {
-        return range == null ? getScanners(sstables, (Collection<Range<Token>>)null) : getScanners(sstables, Collections.singleton(range));
+        return range == null ? getScanners(sstables, (Collection<Range<Token>>)null, false) : getScanners(sstables, Collections.singleton(range), false);
     }
     /**
      * Returns a list of KeyScanners given sstables and a range on which to scan.
@@ -283,7 +281,7 @@ public abstract class AbstractCompactionStrategy
      * LeveledCompactionStrategy for instance).
      */
     @SuppressWarnings("resource")
-    public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges)
+    public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges, boolean forValidation)
     {
         ArrayList<ISSTableScanner> scanners = new ArrayList<ISSTableScanner>();
         try
@@ -383,7 +381,7 @@ public abstract class AbstractCompactionStrategy
 
     public ScannerList getScanners(Collection<SSTableReader> toCompact)
     {
-        return getScanners(toCompact, (Collection<Range<Token>>)null);
+        return getScanners(toCompact, (Collection<Range<Token>>)null, false);
     }
 
     /**

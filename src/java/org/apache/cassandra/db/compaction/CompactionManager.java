@@ -1354,7 +1354,7 @@ public class CompactionManager implements CompactionManagerMBean
             MerkleTrees tree = createMerkleTrees(sstables, validator.desc.ranges, cfs);
             long start = System.nanoTime();
             long partitionCount = 0;
-            try (AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager().getScanners(sstables, validator.desc.ranges);
+            try (AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager().getScanners(sstables, validator.desc.ranges, true);
                  ValidationCompactionController controller = new ValidationCompactionController(cfs, getDefaultGcBefore(cfs, validator.nowInSec));
                  CompactionIterator ci = new ValidationCompactionIterator(scanners.scanners, controller, validator.nowInSec, metrics))
             {
