@@ -27,18 +27,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.*;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.junit.internal.runners.statements.Fail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Timer;
 import org.apache.cassandra.concurrent.JMXConfigurableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.repair.consistent.SyncStatSummary;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.db.Keyspace;
@@ -130,15 +138,44 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         recordFailure(message, completionMessage);
     }
 
-    private static class CommonRange
+    @VisibleForTesting
+    static class CommonRange
     {
         public final Set<InetAddress> endpoints;
         public final Collection<Range<Token>> ranges;
 
         public CommonRange(Set<InetAddress> endpoints, Collection<Range<Token>> ranges)
         {
+            Preconditions.checkArgument(endpoints != null && !endpoints.isEmpty());
+            Preconditions.checkArgument(ranges != null && !ranges.isEmpty());
             this.endpoints = endpoints;
             this.ranges = ranges;
+        }
+
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            CommonRange that = (CommonRange) o;
+
+            if (!endpoints.equals(that.endpoints)) return false;
+            return ranges.equals(that.ranges);
+        }
+
+        public int hashCode()
+        {
+            int result = endpoints.hashCode();
+            result = 31 * result + ranges.hashCode();
+            return result;
+        }
+
+        public String toString()
+        {
+            return "CommonRange{" +
+                   "endpoints=" + endpoints +
+                   ", ranges=" + ranges +
+                   '}';
         }
     }
 
@@ -268,7 +305,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         }
         else if (options.isIncremental())
         {
-            incrementalRepair(parentSession, startTime, traceState, allNeighbors, commonRanges, cfnames);
+            incrementalRepair(parentSession, startTime, options.isForcedRepair(), traceState, allNeighbors, commonRanges, cfnames);
         }
         else
         {
@@ -321,25 +358,59 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         Futures.addCallback(repairResult, new RepairCompleteCallback(parentSession, successfulRanges, startTime, traceState, hasFailure, executor));
     }
 
+    /**
+     * removes dead nodes from common ranges, and exludes ranges left without any participants
+     */
+    @VisibleForTesting
+    static List<CommonRange> filterCommonRanges(List<CommonRange> commonRanges, Set<InetAddress> liveEndpoints, boolean force)
+    {
+        if (!force)
+        {
+            return commonRanges;
+        }
+        else
+        {
+            List<CommonRange> filtered = new ArrayList<>(commonRanges.size());
+
+            for (CommonRange commonRange: commonRanges)
+            {
+                Set<InetAddress> endpoints = ImmutableSet.copyOf(Iterables.filter(commonRange.endpoints, liveEndpoints::contains));
+
+                // this node is implicitly a participant in this repair, so a single endpoint is ok here
+                if (!endpoints.isEmpty())
+                {
+                    filtered.add(new CommonRange(endpoints, commonRange.ranges));
+                }
+            }
+            Preconditions.checkState(!filtered.isEmpty(), "Not enough live endpoints for a repair");
+            return filtered;
+        }
+    }
+
     private void incrementalRepair(UUID parentSession,
                                    long startTime,
+                                   boolean forceRepair,
                                    TraceState traceState,
                                    Set<InetAddress> allNeighbors,
                                    List<CommonRange> commonRanges,
                                    String... cfnames)
     {
-        // the local node also needs to be included in the set of
-        // participants, since coordinator sessions aren't persisted
-        Set<InetAddress> allParticipants = new HashSet<>(allNeighbors);
-        allParticipants.add(FBUtilities.getBroadcastAddress());
+        // the local node also needs to be included in the set of participants, since coordinator sessions aren't persisted
+        Predicate<InetAddress> isAlive = FailureDetector.instance::isAlive;
+        Set<InetAddress> allParticipants = ImmutableSet.<InetAddress>builder()
+                                           .addAll(forceRepair ? Iterables.filter(allNeighbors, isAlive) : allNeighbors)
+                                           .add(FBUtilities.getBroadcastAddress())
+                                           .build();
+
+        List<CommonRange> allRanges = filterCommonRanges(commonRanges, allParticipants, forceRepair);
 
         CoordinatorSession coordinatorSession = ActiveRepairService.instance.consistent.coordinated.registerSession(parentSession, allParticipants);
         ListeningExecutorService executor = createExecutor();
         AtomicBoolean hasFailure = new AtomicBoolean(false);
-        ListenableFuture repairResult = coordinatorSession.execute(() -> submitRepairSessions(parentSession, true, executor, commonRanges, cfnames),
+        ListenableFuture repairResult = coordinatorSession.execute(() -> submitRepairSessions(parentSession, true, executor, allRanges, cfnames),
                                                                    hasFailure);
         Collection<Range<Token>> ranges = new HashSet<>();
-        for (Collection<Range<Token>> range : Iterables.transform(commonRanges, cr -> cr.ranges))
+        for (Collection<Range<Token>> range : Iterables.transform(allRanges, cr -> cr.ranges))
         {
             ranges.addAll(range);
         }
@@ -428,8 +499,13 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                                                              String... cfnames)
     {
         List<ListenableFuture<RepairSessionResult>> futures = new ArrayList<>(options.getRanges().size());
+
+        // we do endpoint filtering at the start of an incremental repair,
+        // so repair sessions shouldn't also be checking liveness
+        boolean force = options.isForcedRepair() && !isIncremental;
         for (CommonRange cr : commonRanges)
         {
+            logger.info("Starting RepairSession for {}", cr);
             RepairSession session = ActiveRepairService.instance.submitRepairSession(parentSession,
                                                                                      cr.ranges,
                                                                                      keyspace,
@@ -437,7 +513,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                                                                      cr.endpoints,
                                                                                      isIncremental,
                                                                                      options.isPullRepair(),
-                                                                                     options.isForcedRepair(),
+                                                                                     force,
                                                                                      options.getPreviewKind(),
                                                                                      executor,
                                                                                      cfnames);
