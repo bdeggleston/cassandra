@@ -258,7 +258,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         }
         else if (options.isIncremental())
         {
-            consistentRepair(parentSession, repairedAt, startTime, traceState, allNeighbors, commonRanges, cfnames);
+            incrementalRepair(parentSession, repairedAt, startTime, traceState, allNeighbors, commonRanges, cfnames);
         }
         else
         {
@@ -295,14 +295,10 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                     logger.debug("Repair result: {}", results);
                     if (sessionResult != null)
                     {
-                        // don't promote sstables for sessions we skipped replicas for
+                        // don't record successful repair if we had to skip ranges
                         if (!sessionResult.skippedReplicas)
                         {
                             successfulRanges.addAll(sessionResult.ranges);
-                        }
-                        else
-                        {
-                            logger.debug("Skipping anticompaction for {}", results);
                         }
                     }
                     else
@@ -316,13 +312,13 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         Futures.addCallback(repairResult, new RepairCompleteCallback(parentSession, successfulRanges, startTime, traceState, hasFailure, executor));
     }
 
-    private void consistentRepair(UUID parentSession,
-                                  long repairedAt,
-                                  long startTime,
-                                  TraceState traceState,
-                                  Set<InetAddress> allNeighbors,
-                                  List<Pair<Set<InetAddress>, ? extends Collection<Range<Token>>>> commonRanges,
-                                  String... cfnames)
+    private void incrementalRepair(UUID parentSession,
+                                   long repairedAt,
+                                   long startTime,
+                                   TraceState traceState,
+                                   Set<InetAddress> allNeighbors,
+                                   List<Pair<Set<InetAddress>, ? extends Collection<Range<Token>>>> commonRanges,
+                                   String... cfnames)
     {
         // the local node also needs to be included in the set of
         // participants, since coordinator sessions aren't persisted
@@ -421,7 +417,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
     }
 
     private ListenableFuture<List<RepairSessionResult>> submitRepairSessions(UUID parentSession,
-                                                                             boolean isConsistent,
+                                                                             boolean isIncremental,
                                                                              ListeningExecutorService executor,
                                                                              List<Pair<Set<InetAddress>, ? extends Collection<Range<Token>>>> commonRanges,
                                                                              String... cfnames)
@@ -434,7 +430,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                                                                      keyspace,
                                                                                      options.getParallelism(),
                                                                                      p.left,
-                                                                                     isConsistent,
+                                                                                     isIncremental,
                                                                                      options.isPullRepair(),
                                                                                      options.isForcedRepair(),
                                                                                      options.getPreviewKind(),
