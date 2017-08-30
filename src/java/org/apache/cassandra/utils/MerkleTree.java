@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.PeekingIterator;
 
@@ -37,6 +38,8 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+
+import static org.apache.cassandra.utils.MerkleTree.TreeComparison.*;
 
 /**
  * A MerkleTree implemented as a binary tree.
@@ -67,9 +70,8 @@ public class MerkleTree implements Serializable
 
     public static final byte RECOMMENDED_DEPTH = Byte.MAX_VALUE - 1;
 
-    public static final int CONSISTENT = 0;
-    public static final int FULLY_INCONSISTENT = 1;
-    public static final int PARTIALLY_INCONSISTENT = 2;
+    enum TreeComparison { CONSISTENT, FULLY_INCONSISTENT, PARTIALLY_INCONSISTENT }
+
     private static final byte[] EMPTY_HASH = new byte[0];
 
     public final byte hashdepth;
@@ -234,122 +236,88 @@ public class MerkleTree implements Serializable
         if (!ltree.fullRange.equals(rtree.fullRange))
             throw new IllegalArgumentException("Difference only make sense on tree covering the same range (but " + ltree.fullRange + " != " + rtree.fullRange + ")");
 
-        List<TreeRange> diff = new ArrayList<>();
+        List<TreeRange> differences = new ArrayList<>();
         TreeDifference active = new TreeDifference(ltree.fullRange.left, ltree.fullRange.right, (byte)0);
+
+        if (detectDifferences(ltree, rtree, differences, active) == FULLY_INCONSISTENT)
+        {
+            differences.add(active);
+        }
+        return differences;
+    }
+
+    /**
+     * Compare the given trees, recursing if their hashes are not equal until it finds the smallest contiguous out of
+     * sync ranges. Will return CONSISTENT, PARTIALLY_INCONSISTENT, or FULLY_INCONSISTENT, and will take the following
+     * actions in each case:
+     *
+     * CONSISTENT: the given trees are fully consistent, does nothing
+     * PARTIALLY_INCONSISTENT: some subset of the given trees are inconsistent, the inconsistent ranges have been
+     *  added to partialDifferences list provided.
+     * FULLY_INCONSISTENT: the entire range provided is inconsistent. If this is the root of the tree, or adjacent ranges
+     *  are not also fully inconsistent, the given range should be added to the differences list.
+     */
+    @VisibleForTesting
+    static TreeComparison detectDifferences(MerkleTree ltree, MerkleTree rtree, List<TreeRange> differences, TreeDifference active)
+    {
+        if (active.depth == Byte.MAX_VALUE)
+            return CONSISTENT;
 
         Hashable lnode = ltree.find(active);
         Hashable rnode = rtree.find(active);
         byte[] lhash = lnode.hash();
         byte[] rhash = rnode.hash();
         active.setSize(lnode.sizeOfRange(), rnode.sizeOfRange());
-
-        if (lhash != null && rhash != null && !Arrays.equals(lhash, rhash))
+        if (lhash == null || rhash == null)
         {
-            logger.debug("Digest mismatch detected, traversing trees [{}, {}]", ltree, rtree);
-            if (FULLY_INCONSISTENT == differenceHelper(ltree, rtree, diff, active))
+            return FULLY_INCONSISTENT;
+        }
+        else if (!Arrays.equals(lhash, rhash))
+        {
+            if (lnode.isLeaf() || rnode.isLeaf())
             {
-                logger.debug("Range {} fully inconsistent", active);
-                diff.add(active);
+                logger.debug("Digest mismatch detected among leaf nodes {}, {}", lnode, rnode);
+                return FULLY_INCONSISTENT;
             }
-        }
-        else if (lhash == null || rhash == null)
-            diff.add(active);
-        return diff;
-    }
 
-    /**
-     * TODO: This function could be optimized into a depth first traversal of
-     * the two trees in parallel.
-     *
-     * Takes two trees and a range for which they have hashes, but are inconsistent.
-     * @return FULLY_INCONSISTENT if active is inconsistent, PARTIALLY_INCONSISTENT if only a subrange is inconsistent.
-     */
-    static int differenceHelper(MerkleTree ltree, MerkleTree rtree, List<TreeRange> diff, TreeRange active)
-    {
-        if (active.depth == Byte.MAX_VALUE)
+            Token midpoint = ltree.partitioner().midpoint(active.left, active.right);
+            // sanity check for midpoint calculation, see CASSANDRA-13052
+            if (midpoint.equals(active.left) || midpoint.equals(active.right))
+            {
+                // Unfortunately we can't throw here to abort the validation process, as the code is executed in it's own
+                // thread with the caller waiting for a condition to be signaled after completion and without an option
+                // to indicate an error (2.x only).
+                logger.debug("Invalid midpoint {} for [{},{}], range will be reported inconsistent", midpoint, active.left, active.right);
+                return FULLY_INCONSISTENT;
+            }
+
+            TreeDifference left = new TreeDifference(active.left, midpoint, inc(active.depth));
+            TreeDifference right = new TreeDifference(midpoint, active.right, inc(active.depth));
+
+            TreeComparison lresult = detectDifferences(ltree, rtree, differences, left);
+            TreeComparison rresult = detectDifferences(ltree, rtree, differences, right);
+
+            if (lresult == FULLY_INCONSISTENT && rresult == FULLY_INCONSISTENT)
+            {
+                return FULLY_INCONSISTENT;
+            }
+
+            if (lresult == FULLY_INCONSISTENT)
+            {
+                differences.add(left);
+            }
+
+            if (rresult == FULLY_INCONSISTENT)
+            {
+                differences.add(right);
+            }
+
+            return rresult == CONSISTENT && lresult == CONSISTENT ? CONSISTENT : PARTIALLY_INCONSISTENT;
+        }
+        else
+        {
             return CONSISTENT;
-
-        Token midpoint = ltree.partitioner().midpoint(active.left, active.right);
-        // sanity check for midpoint calculation, see CASSANDRA-13052
-        if (midpoint.equals(active.left) || midpoint.equals(active.right))
-        {
-            // Unfortunately we can't throw here to abort the validation process, as the code is executed in it's own
-            // thread with the caller waiting for a condition to be signaled after completion and without an option
-            // to indicate an error (2.x only).
-            logger.error("Invalid midpoint {} for [{},{}], range will be reported inconsistent", midpoint, active.left, active.right);
-            return FULLY_INCONSISTENT;
         }
-
-        TreeDifference left = new TreeDifference(active.left, midpoint, inc(active.depth));
-        TreeDifference right = new TreeDifference(midpoint, active.right, inc(active.depth));
-        logger.debug("({}) Hashing sub-ranges [{}, {}] for {} divided by midpoint {}", active.depth, left, right, active, midpoint);
-        byte[] lhash, rhash;
-        Hashable lnode, rnode;
-
-        // see if we should recurse left
-        lnode = ltree.find(left);
-        rnode = rtree.find(left);
-        lhash = lnode.hash();
-        rhash = rnode.hash();
-        left.setSize(lnode.sizeOfRange(), rnode.sizeOfRange());
-        left.setRows(lnode.rowsInRange(), rnode.rowsInRange());
-
-        int ldiff = CONSISTENT;
-        boolean lreso = lhash != null && rhash != null;
-        if (lreso && !Arrays.equals(lhash, rhash))
-        {
-            logger.debug("({}) Inconsistent digest on left sub-range {}: [{}, {}]", active.depth, left, lnode, rnode);
-            if (lnode instanceof Leaf) ldiff = FULLY_INCONSISTENT;
-            else ldiff = differenceHelper(ltree, rtree, diff, left);
-        }
-        else if (!lreso)
-        {
-            logger.debug("({}) Left sub-range fully inconsistent {}", active.depth, right);
-            ldiff = FULLY_INCONSISTENT;
-        }
-
-        // see if we should recurse right
-        lnode = ltree.find(right);
-        rnode = rtree.find(right);
-        lhash = lnode.hash();
-        rhash = rnode.hash();
-        right.setSize(lnode.sizeOfRange(), rnode.sizeOfRange());
-        right.setRows(lnode.rowsInRange(), rnode.rowsInRange());
-
-        int rdiff = CONSISTENT;
-        boolean rreso = lhash != null && rhash != null;
-        if (rreso && !Arrays.equals(lhash, rhash))
-        {
-            logger.debug("({}) Inconsistent digest on right sub-range {}: [{}, {}]", active.depth, right, lnode, rnode);
-            if (rnode instanceof Leaf) rdiff = FULLY_INCONSISTENT;
-            else rdiff = differenceHelper(ltree, rtree, diff, right);
-        }
-        else if (!rreso)
-        {
-            logger.debug("({}) Right sub-range fully inconsistent {}", active.depth, right);
-            rdiff = FULLY_INCONSISTENT;
-        }
-
-        if (ldiff == FULLY_INCONSISTENT && rdiff == FULLY_INCONSISTENT)
-        {
-            // both children are fully inconsistent
-            logger.debug("({}) Fully inconsistent range [{}, {}]", active.depth, left, right);
-            return FULLY_INCONSISTENT;
-        }
-        else if (ldiff == FULLY_INCONSISTENT)
-        {
-            logger.debug("({}) Adding left sub-range to diff as fully inconsistent {}", active.depth, left);
-            diff.add(left);
-            return PARTIALLY_INCONSISTENT;
-        }
-        else if (rdiff == FULLY_INCONSISTENT)
-        {
-            logger.debug("({}) Adding right sub-range to diff as fully inconsistent {}", active.depth, right);
-            diff.add(right);
-            return PARTIALLY_INCONSISTENT;
-        }
-        logger.debug("({}) Range {} partially inconstent", active.depth, active);
-        return PARTIALLY_INCONSISTENT;
     }
 
     /**
@@ -827,6 +795,11 @@ public class MerkleTree implements Serializable
             rchild = child;
         }
 
+        boolean isLeaf()
+        {
+            return false;
+        }
+
         Hashable calc()
         {
             if (hash == null)
@@ -930,6 +903,11 @@ public class MerkleTree implements Serializable
         public Leaf(byte[] hash)
         {
             super(hash);
+        }
+
+        boolean isLeaf()
+        {
+            return true;
         }
 
         public void toString(StringBuilder buff, int maxdepth)
@@ -1066,6 +1044,8 @@ public class MerkleTree implements Serializable
             this.sizeOfRange += sizeOfRow;
             this.rowsInRange += 1;
         }
+
+        abstract boolean isLeaf();
 
         /**
          * The primitive with which all hashing should be accomplished: hashes
