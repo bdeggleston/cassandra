@@ -78,6 +78,7 @@ public class DataResolver extends ResponseResolver
         }
     }
 
+    @SuppressWarnings("resource")
     public PartitionIterator resolve()
     {
         // We could get more responses while this method runs, which is ok (we're happy to ignore any response not here
@@ -507,6 +508,7 @@ public class DataResolver extends ResponseResolver
         }
     }
 
+    @SuppressWarnings("resource")
     private UnfilteredPartitionIterator extendWithShortReadProtection(UnfilteredPartitionIterator partitions,
                                                                       InetAddress source,
                                                                       DataLimits.Counter mergedResultCounter)
