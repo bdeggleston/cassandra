@@ -55,6 +55,7 @@ import org.apache.cassandra.io.compress.DeflateCompressor;
 import org.apache.cassandra.io.compress.LZ4Compressor;
 import org.apache.cassandra.io.compress.SnappyCompressor;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.security.EncryptionContext;
@@ -519,9 +520,10 @@ public class CommitLogTest
         return Collections.singletonMap(EncryptionContext.ENCRYPTION_IV, Hex.bytesToHex(buf));
     }
 
-    protected File tmpFile(int version) throws IOException
+    protected File tmpFile(int version)
     {
-        File logFile = File.createTempFile("CommitLog-" + version + "-", ".log");
+        File logFile = FileUtils.createTempFile("CommitLog-" + version + "-", ".log");
+        logFile.deleteOnExit();
         assert logFile.length() == 0;
         return logFile;
     }

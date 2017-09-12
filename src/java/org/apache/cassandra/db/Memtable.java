@@ -64,6 +64,7 @@ public class Memtable implements Comparable<Memtable>
 {
     private static final Logger logger = LoggerFactory.getLogger(Memtable.class);
 
+    @VisibleForTesting
     public static final MemtablePool MEMORY_POOL = createMemtableAllocatorPool();
 
     private static MemtablePool createMemtableAllocatorPool()

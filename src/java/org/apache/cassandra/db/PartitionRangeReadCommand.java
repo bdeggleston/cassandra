@@ -275,6 +275,7 @@ public class PartitionRangeReadCommand extends ReadCommand
     }
 
     @VisibleForTesting
+    @SuppressWarnings("resource")
     public UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs, ReadExecutionController executionController)
     {
         ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));

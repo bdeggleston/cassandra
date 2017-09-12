@@ -59,12 +59,14 @@ public class BigTableReader extends SSTableReader
         super(desc, components, metadata, maxDataAge, sstableMetadata, openReason, header);
     }
 
+    @SuppressWarnings("resource")
     public UnfilteredRowIterator iterator(DecoratedKey key, Slices slices, ColumnFilter selectedColumns, boolean reversed, boolean isForThrift, SSTableReadsListener listener)
     {
         RowIndexEntry rie = getPosition(key, SSTableReader.Operator.EQ, listener);
         return iterator(null, key, rie, slices, selectedColumns, reversed, isForThrift);
     }
 
+    @SuppressWarnings("resource")
     public UnfilteredRowIterator iterator(FileDataInput file, DecoratedKey key, RowIndexEntry indexEntry, Slices slices, ColumnFilter selectedColumns, boolean reversed, boolean isForThrift)
     {
         if (indexEntry == null)
