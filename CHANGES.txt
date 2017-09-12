@@ -1,4 +1,7 @@
 3.0.19
+ * Support building Cassandra with JDK 11 (CASSANDRA-15108)
+ * Fix AbstractBTreePartition locking in java 11 (CASSANDRA-14607)
+ * Add experimental support for Java 11 (CASSANDRA-9608)
  * Skip cells with illegal column names when reading legacy sstables (CASSANDRA-15086)
  * Fix assorted gossip races and add related runtime checks (CASSANDRA-15059)
  * Fix mixed mode partition range scans with limit (CASSANDRA-15072)
