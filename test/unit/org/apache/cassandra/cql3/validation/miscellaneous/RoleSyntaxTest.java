@@ -17,9 +17,13 @@
  */
 package org.apache.cassandra.cql3.validation.miscellaneous;
 
+import com.google.common.collect.Lists;
+import org.junit.Assert;
 import org.junit.Test;
 
 import org.apache.cassandra.cql3.CQLTester;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.GrantPermissionsStatement;
 
 public class RoleSyntaxTest extends CQLTester
 {
@@ -124,6 +128,27 @@ public class RoleSyntaxTest extends CQLTester
         assertValidSyntax("REVOKE SELECT ON KEYSPACE ks FROM 'r1'");
         assertValidSyntax("REVOKE SELECT ON KEYSPACE ks FROM \"r1\"");
         assertValidSyntax("REVOKE SELECT ON KEYSPACE ks FROM $$ r '1' $$");
+    }
+
+    @Test
+    public void grantDcPermissionTest() throws Throwable
+    {
+        assertInvalidSyntax("GRANT CREATE ON ROLE r1 TO r2 IN DC dc1");
+        assertInvalidSyntax("GRANT ALTER ON ROLE r1 TO r2 IN DC dc1");
+        assertInvalidSyntax("GRANT DROP ON ROLE r1 TO r2 IN DC dc1");
+        assertInvalidSyntax("GRANT AUTHORIZE ON ROLE r1 TO r2 IN DC dc1");
+        assertInvalidSyntax("GRANT DESCRIBE ON ROLE r1 TO r2 IN DC dc1");
+
+        assertValidSyntax("GRANT SELECT ON KEYSPACE r1 TO r2 IN DC 'dc1'");
+        assertValidSyntax("GRANT SELECT ON KEYSPACE r1 TO r2 IN DC dc1 OR dc2");
+        assertValidSyntax("GRANT SELECT ON KEYSPACE r1 TO r2 IN DC 'dc1' OR 'dc2'");
+        assertValidSyntax("GRANT SELECT ON KEYSPACE r1 TO r2 IN DC \"dc1\" OR \"dc2\"");
+        assertValidSyntax("GRANT MODIFY ON KEYSPACE r1 TO r2 IN DC 'dc1'");
+
+        GrantPermissionsStatement stmt = (GrantPermissionsStatement) QueryProcessor.parseStatement(
+            "GRANT SELECT ON KEYSPACE r1 TO r2 IN DC 'dc1' OR 'dc2'");
+
+        Assert.assertEquals(Lists.newArrayList("dc1", "dc2"), stmt.datacenters);
     }
 
     @Test

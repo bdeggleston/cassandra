@@ -66,8 +66,15 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      * @throws java.lang.UnsupportedOperationException
      */
-    void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee, Set<String> datacenters)
     throws RequestValidationException, RequestExecutionException;
+
+    default void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    throws RequestValidationException, RequestExecutionException
+    {
+        grant(performer, permissions, resource, grantee, null);
+    }
+
 
     /**
      * Revokes a set of permissions on a resource from a user.

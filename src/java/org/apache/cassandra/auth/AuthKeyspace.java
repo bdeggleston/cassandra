@@ -68,6 +68,7 @@ public final class AuthKeyspace
               + "role text,"
               + "resource text,"
               + "permissions set<text>,"
+              + "datacenters map<text, frozen<set<text>>>,"
               + "PRIMARY KEY(role, resource))");
 
     private static final TableMetadata ResourceRoleIndex =

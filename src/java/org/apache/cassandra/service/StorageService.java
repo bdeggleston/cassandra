@@ -1035,7 +1035,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         doAuthSetup();
     }
 
-    private void doAuthSetup()
+    @VisibleForTesting
+    public void doAuthSetup()
     {
         if (!authSetupCalled.getAndSet(true))
         {
@@ -4570,7 +4571,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap();
 
         Collection<Collection<InetAddress>> endpointsGroupedByDc = new ArrayList<>();
-        // mapping of dc's to nodes, use sorted map so that we get dcs sorted
+        // mapping of dc's to nodes, use sorted map so that we get datacenters sorted
         SortedMap<String, Collection<InetAddress>> sortedDcsToEndpoints = new TreeMap<>();
         sortedDcsToEndpoints.putAll(metadata.getTopology().getDatacenterEndpoints().asMap());
         for (Collection<InetAddress> endpoints : sortedDcsToEndpoints.values())

@@ -146,6 +146,26 @@ options {
         operations.add(Pair.create(key, update));
     }
 
+    public void validateDcPermissions(Set<Permission> permissions, List<String> datacenters)
+    {
+        if (datacenters.isEmpty())
+            return;
+
+        Set<Permission> invalidPerms = new HashSet<>();
+        for (Permission permission: permissions)
+        {
+            if (!permission.dcGranularity)
+            {
+                invalidPerms.add(permission);
+            }
+        }
+
+        if (!invalidPerms.isEmpty())
+        {
+            addRecognitionError("DC level restrictions cannot be applied to " + invalidPerms);
+        }
+    }
+
     public Set<Permission> filterPermissions(Set<Permission> permissions, IResource resource)
     {
         if (resource == null)
@@ -1028,16 +1048,21 @@ truncateStatement returns [TruncateStatement stmt]
     ;
 
 /**
- * GRANT <permission> ON <resource> TO <rolename>
+ * GRANT <permission> ON <resource> TO <rolename> IN DC <dc>[,<dc2>, <dcn>]
  */
 grantPermissionsStatement returns [GrantPermissionsStatement stmt]
+    @init { List<String> datacenters = new ArrayList(); }
     : K_GRANT
           permissionOrAll
       K_ON
           resource
       K_TO
           grantee=userOrRoleName
-      { $stmt = new GrantPermissionsStatement(filterPermissions($permissionOrAll.perms, $resource.res), $resource.res, grantee); }
+      ( K_IN K_DC dcName[datacenters] (K_OR dcName[datacenters])* )?
+      {
+          validateDcPermissions($permissionOrAll.perms, datacenters);
+          $stmt = new GrantPermissionsStatement(filterPermissions($permissionOrAll.perms, $resource.res), $resource.res, grantee, datacenters);
+      }
     ;
 
 /**
@@ -1143,6 +1168,14 @@ functionResource returns [FunctionResource res]
         ')'
       )
       { $res = FunctionResource.functionFromCql($fn.s.keyspace, $fn.s.name, argsTypes); }
+    ;
+
+dcName[List<String> datacenters]
+    : t=IDENT              { $datacenters.add($t.text);}
+    | t=QUOTED_NAME        { $datacenters.add($t.text);}
+    | t=STRING_LITERAL     { $datacenters.add($t.text);}
+    | k=unreserved_keyword { $datacenters.add(k);}
+    | QMARK {addRecognitionError("Bind variables cannot be used for dc names");}
     ;
 
 /**

@@ -57,6 +57,17 @@ public class CassandraAuthorizer implements IAuthorizer
     private static final String RESOURCE = "resource";
     private static final String PERMISSIONS = "permissions";
 
+    private enum Op
+    {
+        ADD("+"), REMOVE("-");
+        private final String symbol;
+
+        Op(String symbol)
+        {
+            this.symbol = symbol;
+        }
+    }
+
     private SelectStatement authorizeRoleStatement;
 
     public CassandraAuthorizer()
@@ -78,17 +89,17 @@ public class CassandraAuthorizer implements IAuthorizer
         return permissions;
     }
 
-    public void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    public void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee, Set<String> datacenters)
     throws RequestValidationException, RequestExecutionException
     {
-        modifyRolePermissions(permissions, resource, grantee, "+");
+        modifyRolePermissions(permissions, resource, grantee, datacenters, Op.ADD);
         addLookupEntry(resource, grantee);
     }
 
     public void revoke(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource revokee)
     throws RequestValidationException, RequestExecutionException
     {
-        modifyRolePermissions(permissions, resource, revokee, "-");
+        modifyRolePermissions(permissions, resource, revokee, Collections.emptySet(), Op.REMOVE);
         removeLookupEntry(resource, revokee);
     }
 
@@ -208,14 +219,30 @@ public class CassandraAuthorizer implements IAuthorizer
     }
 
     // Adds or removes permissions from a role_permissions table (adds if op is "+", removes if op is "-")
-    private void modifyRolePermissions(Set<Permission> permissions, IResource resource, RoleResource role, String op)
+    private void modifyRolePermissions(Set<Permission> permissions, IResource resource, RoleResource role, Set<String> datacenters, Op op)
             throws RequestExecutionException
     {
-        process(String.format("UPDATE %s.%s SET permissions = permissions %s {%s} WHERE role = '%s' AND resource = '%s'",
+        String mapOp;
+
+        Set<Permission> dcPermissions = new HashSet<>();
+        Iterables.filter(permissions, p -> p.dcGranularity).forEach(dcPermissions::add);
+        if (op == Op.ADD)
+        {
+            String dcSet = StringUtils.join(Iterables.transform(datacenters, d -> '\'' + d + '\''), ", ");
+            mapOp = StringUtils.join(Iterables.transform(dcPermissions, p -> String.format("'%s' : {%s}", p, dcSet)), ", ");
+
+        }
+        else
+        {
+            assert op == Op.REMOVE;
+            mapOp = StringUtils.join(Iterables.transform(dcPermissions, p -> '\'' + p.toString() + '\''), ", ");
+        }
+
+        process(String.format("UPDATE %s.%s SET permissions = permissions %s {%s}, datacenters = datacenters %s {%s} WHERE role = '%s' AND resource = '%s'",
                               SchemaConstants.AUTH_KEYSPACE_NAME,
                               AuthKeyspace.ROLE_PERMISSIONS,
-                              op,
-                              "'" + StringUtils.join(permissions, "','") + "'",
+                              op.symbol, "'" + StringUtils.join(permissions, "','") + "'",
+                              op.symbol, mapOp,
                               escape(role.getRoleName()),
                               escape(resource.getName())));
     }
@@ -346,7 +373,7 @@ public class CassandraAuthorizer implements IAuthorizer
         return StringUtils.replace(name, "'", "''");
     }
 
-    private UntypedResultSet process(String query) throws RequestExecutionException
+    protected UntypedResultSet process(String query) throws RequestExecutionException
     {
         return QueryProcessor.process(query, ConsistencyLevel.LOCAL_ONE);
     }

@@ -45,7 +45,8 @@ public class StubAuthorizer implements IAuthorizer
     public void grant(AuthenticatedUser performer,
                       Set<Permission> permissions,
                       IResource resource,
-                      RoleResource grantee) throws RequestValidationException, RequestExecutionException
+                      RoleResource grantee,
+                      Set<String> datacenters) throws RequestValidationException, RequestExecutionException
     {
         Pair<String, IResource> key = Pair.create(grantee.getRoleName(), resource);
         Set<Permission> perms = userPermissions.get(key);
