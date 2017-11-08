@@ -18,7 +18,9 @@
 package org.apache.cassandra.auth;
 
 import java.util.*;
+import java.util.function.Predicate;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -27,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.statements.BatchStatement;
@@ -43,6 +46,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * CassandraAuthorizer is an IAuthorizer implementation that keeps
@@ -68,7 +72,7 @@ public class CassandraAuthorizer implements IAuthorizer
         }
     }
 
-    private SelectStatement authorizeRoleStatement;
+    protected SelectStatement authorizeRoleStatement;
 
     public CassandraAuthorizer()
     {
@@ -198,22 +202,66 @@ public class CassandraAuthorizer implements IAuthorizer
 
     }
 
-    // Add every permission on the resource granted to the role
-    private void addPermissionsForRole(Set<Permission> permissions, IResource resource, RoleResource role)
-    throws RequestExecutionException, RequestValidationException
+    @VisibleForTesting
+    protected String getLocalDC()
+    {
+        return DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+    }
+
+    private Predicate<Permission> getDcPredicate(UntypedResultSet.Row row)
+    {
+        String localDc = getLocalDC();
+        Map<String, Set<String>> datacenters = row.has("datacenters")
+                                               ? row.getMap("datacenters", UTF8Type.instance, SetType.getInstance(UTF8Type.instance, false))
+                                               : Collections.emptyMap();
+
+        if (datacenters.isEmpty())
+        {
+            return p -> true;
+        }
+        else
+        {
+            return permission ->
+            {
+                if (permission.dcGranularity)
+                {
+                    Set<String> dcs = datacenters.get(permission.name());
+                    return dcs == null || dcs.isEmpty() || dcs.contains(localDc);
+                }
+                else
+                {
+                    return true;
+                }
+            };
+        }
+    }
+
+    protected UntypedResultSet authorizeRole(IResource resource, RoleResource role)
     {
         QueryOptions options = QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
                                                              Lists.newArrayList(ByteBufferUtil.bytes(role.getRoleName()),
                                                                                 ByteBufferUtil.bytes(resource.getName())));
 
         ResultMessage.Rows rows = authorizeRoleStatement.execute(QueryState.forInternalCalls(), options, System.nanoTime());
-        UntypedResultSet result = UntypedResultSet.create(rows.result);
+        return UntypedResultSet.create(rows.result);
+    }
+
+    // Add every permission on the resource granted to the role
+    private void addPermissionsForRole(Set<Permission> permissions, IResource resource, RoleResource role)
+    throws RequestExecutionException, RequestValidationException
+    {
+        UntypedResultSet result = authorizeRole(resource, role);
 
         if (!result.isEmpty() && result.one().has(PERMISSIONS))
         {
+            Predicate<Permission> dcPredicate = getDcPredicate(result.one());
             for (String perm : result.one().getSet(PERMISSIONS, UTF8Type.instance))
             {
-                permissions.add(Permission.valueOf(perm));
+                Permission permission = Permission.valueOf(perm);
+                if (dcPredicate.test(permission))
+                {
+                    permissions.add(permission);
+                }
             }
         }
     }
@@ -360,7 +408,7 @@ public class CassandraAuthorizer implements IAuthorizer
 
     private SelectStatement prepare(String entityname, String permissionsTable)
     {
-        String query = String.format("SELECT permissions FROM %s.%s WHERE %s = ? AND resource = ?",
+        String query = String.format("SELECT permissions, datacenters FROM %s.%s WHERE %s = ? AND resource = ?",
                                      SchemaConstants.AUTH_KEYSPACE_NAME,
                                      permissionsTable,
                                      entityname);

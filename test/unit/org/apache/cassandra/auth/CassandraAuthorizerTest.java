@@ -24,6 +24,7 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Before;
@@ -32,12 +33,18 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.transport.messages.ResultMessage;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.auth.AuthKeyspace.RESOURCE_ROLE_INDEX;
 import static org.apache.cassandra.auth.AuthKeyspace.ROLES;
@@ -49,7 +56,7 @@ public class CassandraAuthorizerTest
 {
     private static AuthenticatedUser USER;
     private static RoleResource GRANTEE;
-    private static CassandraAuthorizer AUTHORIZER;
+    private static LocalCassandraAuthorizer AUTHORIZER;
     private static DataResource TABLE;
     private static Set<String> NO_DCS = ImmutableSet.of();
 
@@ -59,17 +66,57 @@ public class CassandraAuthorizerTest
         {
             return QueryProcessor.executeInternal(query);
         }
+
+        private String dc = "DC1";
+
+        protected String getLocalDC()
+        {
+            return dc;
+        }
+
+        public void setLocalDc(String dc)
+        {
+            this.dc = dc;
+        }
+
+        protected UntypedResultSet authorizeRole(IResource resource, RoleResource role)
+        {
+            QueryOptions options = QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
+                                                                 Lists.newArrayList(ByteBufferUtil.bytes(role.getRoleName()),
+                                                                                    ByteBufferUtil.bytes(resource.getName())));
+
+            ResultMessage.Rows rows = authorizeRoleStatement.executeInternal(QueryState.forInternalCalls(), options);
+            return UntypedResultSet.create(rows.result);
+        }
+    }
+
+    private static class LocalCassandraRoleManager extends CassandraRoleManager
+    {
+        protected UntypedResultSet process(String query, ConsistencyLevel consistencyLevel) throws RequestValidationException, RequestExecutionException
+        {
+            return QueryProcessor.executeInternal(query);
+        }
+
+        public Set<RoleResource> getRoles(RoleResource grantee, boolean includeInherited) throws RequestValidationException, RequestExecutionException
+        {
+            return Sets.newHashSet(grantee);
+        }
+
+        public boolean isSuper(RoleResource role)
+        {
+            return false;
+        }
     }
 
     @BeforeClass
     public static void setUpClass() throws Exception
     {
         SchemaLoader.prepareServer();
-        SchemaLoader.setupAuth(new CassandraRoleManager(), new PasswordAuthenticator(), new LocalCassandraAuthorizer());
+        SchemaLoader.setupAuth(new LocalCassandraRoleManager(), new PasswordAuthenticator(), new LocalCassandraAuthorizer());
 
         USER = new AuthenticatedUser("someguy");
         GRANTEE = RoleResource.role("user");
-        AUTHORIZER = (CassandraAuthorizer) DatabaseDescriptor.getAuthorizer();
+        AUTHORIZER = (LocalCassandraAuthorizer) DatabaseDescriptor.getAuthorizer();
         TABLE = DataResource.table("ks", "tbl");
     }
 
@@ -280,5 +327,53 @@ public class CassandraAuthorizerTest
         assertPermissionExists(GRANTEE, TABLE, Permission.SELECT, expectedDcs);
         assertPermissionExists(GRANTEE, TABLE, Permission.MODIFY, expectedDcs);
         assertPermissionDoesntExist(GRANTEE, TABLE, Permission.ALTER);
+    }
+
+    /**
+     * Permissions granted without any dcs specified should always return granted permission
+     */
+    @Test
+    public void authorizeNoDcPermission() throws Exception
+    {
+        AUTHORIZER.setLocalDc("DC1");
+        AUTHORIZER.grant(USER, perms(Permission.SELECT), TABLE, USER.getPrimaryRole(), NO_DCS);
+
+        Assert.assertTrue(AUTHORIZER.authorize(USER, TABLE).contains(Permission.SELECT));
+    }
+
+    /**
+     * Permissions granted with the local dc specified should return the granted permission
+     */
+    @Test
+    public void authorizeDcPermission() throws Exception
+    {
+        AUTHORIZER.setLocalDc("DC1");
+        AUTHORIZER.grant(USER, perms(Permission.SELECT), TABLE, USER.getPrimaryRole(), dcs("DC1"));
+
+        Assert.assertTrue(AUTHORIZER.authorize(USER, TABLE).contains(Permission.SELECT));
+    }
+
+    /**
+     * Permissions granted with dcs other than the local one should not be returned
+     */
+    @Test
+    public void authorizeOtherDcPermission() throws Exception
+    {
+        AUTHORIZER.setLocalDc("DC2");
+        AUTHORIZER.grant(USER, perms(Permission.SELECT), TABLE, USER.getPrimaryRole(), dcs("DC1"));
+
+        Assert.assertFalse(AUTHORIZER.authorize(USER, TABLE).contains(Permission.SELECT));
+    }
+
+    /**
+     * Permissions that don't support dc granularity should never be filtered
+     */
+    @Test
+    public void authorizeNonDcPermission() throws Exception
+    {
+        AUTHORIZER.setLocalDc("DC2");
+        AUTHORIZER.grant(USER, perms(Permission.ALTER), TABLE, USER.getPrimaryRole(), dcs());
+
+        Assert.assertTrue(AUTHORIZER.authorize(USER, TABLE).contains(Permission.ALTER));
     }
 }

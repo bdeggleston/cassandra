@@ -498,7 +498,7 @@ public class CassandraRoleManager implements IRoleManager
      * This shouldn't be used during setup as this will directly return an error if the manager is not setup yet. Setup tasks
      * should use QueryProcessor.process directly.
      */
-    private UntypedResultSet process(String query, ConsistencyLevel consistencyLevel) throws RequestValidationException, RequestExecutionException
+    protected UntypedResultSet process(String query, ConsistencyLevel consistencyLevel) throws RequestValidationException, RequestExecutionException
     {
         if (!isClusterReady)
             throw new InvalidRequestException("Cannot process role related query as the role manager isn't yet setup. "
