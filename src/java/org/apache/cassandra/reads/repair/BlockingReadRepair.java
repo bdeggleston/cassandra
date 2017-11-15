@@ -26,6 +26,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import javax.annotation.Nullable;
+
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 
 import org.slf4j.Logger;
@@ -54,7 +58,6 @@ public class BlockingReadRepair implements IReadRepairStrategy
     private final List<InetAddress> endpoints;
     private final long queryStartNanoTime;
     private final ConsistencyLevel consistency;
-    List<AsyncOneResponse<?>> responses;
 
 
     public BlockingReadRepair(ReadCommand command,
@@ -67,7 +70,6 @@ public class BlockingReadRepair implements IReadRepairStrategy
         this.queryStartNanoTime = queryStartNanoTime;
         this.consistency = consistency;
 
-        responses = new ArrayList<>(endpoints.size());
     }
 
     public void onDigestMismatch(Collection<InetAddress> contacted)
@@ -90,25 +92,49 @@ public class BlockingReadRepair implements IReadRepairStrategy
         return new PartitionIteratorMergeListener(endpoints, command, this);
     }
 
-    protected AsyncOneResponse sendMutation(InetAddress endpoint, Mutation mutation)
+    public class PartitionRepair extends AbstractFuture<Object>
     {
-        // use a separate verb here because we don't want these to be get the white glove hint-
-        // on-timeout behavior that a "real" mutation gets
-        Tracing.trace("Sending read-repair-mutation to {}", endpoint);
-        MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
-        return MessagingService.instance().sendRR(msg, endpoint);
+
+        List<AsyncOneResponse<?>> responses = new ArrayList<>(endpoints.size());
+
+        protected AsyncOneResponse sendMutation(InetAddress endpoint, Mutation mutation)
+        {
+            // use a separate verb here because we don't want these to be get the white glove hint-
+            // on-timeout behavior that a "real" mutation gets
+            Tracing.trace("Sending read-repair-mutation to {}", endpoint);
+            MessageOut<Mutation> msg = mutation.createMessage(MessagingService.Verb.READ_REPAIR);
+            return MessagingService.instance().sendRR(msg, endpoint);
+        }
+
+        public void reportMutation(InetAddress endpoint, Mutation mutation)
+        {
+            responses.add(sendMutation(endpoint, mutation));
+        }
+
+        public void finish()
+        {
+            Futures.addCallback(Futures.allAsList(responses), new FutureCallback<List<Object>>()
+            {
+                public void onSuccess(@Nullable List<Object> result)
+                {
+                    set(result);
+                }
+
+                public void onFailure(Throwable t)
+                {
+                    setException(t);
+                }
+            });
+        }
     }
 
-    public void reportMutation(InetAddress endpoint, Mutation mutation)
-    {
-        responses.add(sendMutation(endpoint, mutation));
-    }
+    private final List<PartitionRepair> repairs = new ArrayList<>();
 
-    public void awaitMutationDelivery(long timeout)
+    void awaitRepairs(long timeout)
     {
         try
         {
-            Futures.allAsList(responses).get(timeout, TimeUnit.MILLISECONDS);
+            Futures.allAsList(repairs).get(timeout, TimeUnit.MILLISECONDS);
         }
         catch (TimeoutException ex)
         {
@@ -126,5 +152,14 @@ public class BlockingReadRepair implements IReadRepairStrategy
         {
             throw new RuntimeException(e);
         }
+
     }
+
+    public PartitionRepair startPartitionRepair()
+    {
+        PartitionRepair repair = new PartitionRepair();
+        repairs.add(repair);
+        return repair;
+    }
+
 }

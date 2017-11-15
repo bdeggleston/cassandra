@@ -23,4 +23,5 @@ package org.apache.cassandra.reads.repair;
  */
 public class HintingReadRepair
 {
+    // TODO: figure out what the creationTime/gcgs implications are
 }

@@ -19,8 +19,10 @@
 package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
+import java.util.List;
 
-import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 
 /**
@@ -33,7 +35,8 @@ public interface IReadRepairStrategy
      */
     UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints);
 
-    void reportMutation(InetAddress endpoint, Mutation mutation);
-
-    void awaitMutationDelivery(long timeout);
+    static IReadRepairStrategy create(ReadCommand command, List<InetAddress> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
+    {
+        return new BlockingReadRepair(command, endpoints, queryStartNanoTime, consistency);
+    }
 }

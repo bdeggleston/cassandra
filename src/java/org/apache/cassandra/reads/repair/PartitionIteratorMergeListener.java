@@ -86,7 +86,7 @@ public class PartitionIteratorMergeListener implements UnfilteredPartitionIterat
 
     public void close()
     {
-        readRepair.awaitMutationDelivery(DatabaseDescriptor.getWriteRpcTimeout());
+        readRepair.awaitRepairs(DatabaseDescriptor.getWriteRpcTimeout());
     }
 }
 

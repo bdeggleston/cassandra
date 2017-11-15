@@ -20,30 +20,16 @@ package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
 
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 
 public class NoopReadRepair implements IReadRepairStrategy
 {
     public static final NoopReadRepair instance = new NoopReadRepair();
 
-    private NoopReadRepair()
-    {
-
-    }
+    private NoopReadRepair() {}
 
     public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints)
     {
         return UnfilteredPartitionIterators.MergeListener.NOOP;
-    }
-
-    public void reportMutation(InetAddress endpoint, Mutation mutation)
-    {
-
-    }
-
-    public void awaitMutationDelivery(long timeout)
-    {
-
     }
 }

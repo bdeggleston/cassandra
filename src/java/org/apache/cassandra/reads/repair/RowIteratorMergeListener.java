@@ -315,12 +315,22 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
     public void close()
     {
+        BlockingReadRepair.PartitionRepair repair = null;
         for (int i = 0; i < repairs.length; i++)
         {
             if (repairs[i] == null)
                 continue;
 
-            readRepair.reportMutation(sources[i], new Mutation(repairs[i]));
+            if (repair == null)
+            {
+                repair = readRepair.startPartitionRepair();
+            }
+            repair.reportMutation(sources[i], new Mutation(repairs[i]));
+        }
+
+        if (repair != null)
+        {
+            repair.finish();
         }
     }
 }
