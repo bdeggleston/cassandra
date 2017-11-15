@@ -43,6 +43,8 @@ import org.apache.cassandra.net.IAsyncCallbackWithFailure;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.reads.repair.BlockingReadRepair;
+import org.apache.cassandra.reads.repair.IReadRepairStrategy;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
@@ -69,10 +71,12 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
 
     private final Keyspace keyspace; // TODO push this into ConsistencyLevel?
 
+    private final IReadRepairStrategy readRepair;
+
     /**
      * Constructor when response count has to be calculated and blocked for.
      */
-    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, ReadCommand command, List<InetAddress> filteredEndpoints, long queryStartNanoTime)
+    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, ReadCommand command, List<InetAddress> filteredEndpoints, long queryStartNanoTime, IReadRepairStrategy readRepair)
     {
         this(resolver,
              consistencyLevel,
@@ -80,10 +84,10 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
              command,
              Keyspace.open(command.metadata().keyspace),
              filteredEndpoints,
-             queryStartNanoTime);
+             queryStartNanoTime, readRepair);
     }
 
-    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, int blockfor, ReadCommand command, Keyspace keyspace, List<InetAddress> endpoints, long queryStartNanoTime)
+    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, int blockfor, ReadCommand command, Keyspace keyspace, List<InetAddress> endpoints, long queryStartNanoTime, IReadRepairStrategy readRepair)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -92,6 +96,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
         this.resolver = resolver;
         this.queryStartNanoTime = queryStartNanoTime;
         this.endpoints = endpoints;
+        this.readRepair = readRepair;
         this.failureReasonByEndpoint = new ConcurrentHashMap<>();
         // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
         assert !(command instanceof PartitionRangeReadCommand) || blockfor >= endpoints.size();
@@ -141,6 +146,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
     {
         awaitResults();
 
+        // TODO: do we need this ternary here? Resolve should 'do the right thing'
         PartitionIterator result = blockfor == 1 ? resolver.getData() : resolver.resolve();
         if (logger.isTraceEnabled())
             logger.trace("Read: {} ms.", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - queryStartNanoTime));
@@ -154,6 +160,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
 
     public void response(MessageIn<ReadResponse> message)
     {
+        // TODO: should the read repair strategy just take care of the background stuff on it's own???
         resolver.preprocess(message);
         int n = waitingFor(message.from)
               ? recievedUpdater.incrementAndGet(this)
@@ -165,6 +172,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
             // the original resolve that get() kicks off as soon as the condition is signaled
             if (blockfor < endpoints.size() && n == endpoints.size())
             {
+                // TODO: what to do about background read repairs here?
                 TraceState traceState = Tracing.instance.get();
                 if (traceState != null)
                     traceState.trace("Initiating read-repair");
@@ -211,6 +219,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
         return true;
     }
 
+    // TODO: move this into read repair strategy
     private class AsyncRepairRunner implements Runnable
     {
         private final TraceState traceState;
@@ -242,7 +251,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
 
                 ReadRepairMetrics.repairedBackground.mark();
 
-                final DataResolver repairResolver = new DataResolver(keyspace, command, consistencyLevel, endpoints.size(), queryStartNanoTime);
+                final DataResolver repairResolver = new DataResolver(keyspace, command, consistencyLevel, endpoints.size(), queryStartNanoTime, readRepair);
                 AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size());
 
                 for (InetAddress endpoint : endpoints)

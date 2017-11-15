@@ -41,6 +41,7 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.reads.repair.BlockingReadRepair;
 import org.apache.cassandra.schema.SpeculativeRetryParam;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
@@ -64,12 +65,14 @@ public abstract class AbstractReadExecutor
     protected final ReadCallback handler;
     protected final TraceState traceState;
     protected final ColumnFamilyStore cfs;
+    protected final BlockingReadRepair readRepair;
 
     AbstractReadExecutor(Keyspace keyspace, ColumnFamilyStore cfs, ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas, long queryStartNanoTime)
     {
         this.command = command;
         this.targetReplicas = targetReplicas;
-        this.handler = new ReadCallback(new DigestResolver(keyspace, command, consistencyLevel, targetReplicas.size()), consistencyLevel, command, targetReplicas, queryStartNanoTime);
+        this.readRepair = new BlockingReadRepair(command, targetReplicas, queryStartNanoTime, consistencyLevel);
+        this.handler = new ReadCallback(new DigestResolver(keyspace, command, consistencyLevel, targetReplicas.size()), consistencyLevel, command, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
 
@@ -408,5 +411,23 @@ public abstract class AbstractReadExecutor
         {
             cfs.metric.speculativeFailedRetries.inc();
         }
+    }
+
+    /**
+     * Wait for the CL to be satisfied by responses
+     */
+    public void awaitResponses()
+    {
+        handler.awaitResults();
+    }
+
+    public void awaitReadRepair()
+    {
+
+    }
+
+    public boolean isFinished()
+    {
+        return false;
     }
 }

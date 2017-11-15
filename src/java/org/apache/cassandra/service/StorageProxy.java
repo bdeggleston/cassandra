@@ -44,6 +44,7 @@ import org.apache.cassandra.batchlog.Batch;
 import org.apache.cassandra.batchlog.BatchlogManager;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
+import org.apache.cassandra.reads.repair.BlockingReadRepair;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
@@ -1768,9 +1769,11 @@ public class StorageProxy implements StorageProxyMBean
         for (int i = 0; i < cmdCount; i++)
             reads[i].maybeTryAdditionalReplicas();
 
+        // TODO: awaitInitialRestults
         for (int i = 0; i < cmdCount; i++)
             reads[i].awaitResultsAndRetryOnDigestMismatch();
 
+        // TODO: maybeAwaitReadRepair
         for (int i = 0; i < cmdCount; i++)
             if (!reads[i].isDone())
                 reads[i].maybeAwaitFullDataRead();
@@ -1794,6 +1797,7 @@ public class StorageProxy implements StorageProxyMBean
 
         private PartitionIterator result;
         private ReadCallback repairHandler;
+        private BlockingReadRepair readRepair;
 
         SinglePartitionReadLifecycle(SinglePartitionReadCommand command, ConsistencyLevel consistency, long queryStartNanoTime)
         {
@@ -1818,10 +1822,17 @@ public class StorageProxy implements StorageProxyMBean
             executor.maybeTryAdditionalReplicas();
         }
 
+        void awaitInitialResults() throws ReadFailureException, ReadTimeoutException
+        {
+            executor.awaitResponses();
+        }
+
         void awaitResultsAndRetryOnDigestMismatch() throws ReadFailureException, ReadTimeoutException
         {
             try
             {
+                // TODO: for the noop RR, this should always return the result
+                // TODO: executor.awaitResponses()
                 result = executor.get();
             }
             catch (DigestMismatchException ex)
@@ -1832,14 +1843,14 @@ public class StorageProxy implements StorageProxyMBean
 
                 // Do a full data read to resolve the correct response (and repair node that need be)
                 Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-                DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, executor.handler.endpoints.size(), queryStartNanoTime);
+                DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, executor.handler.endpoints.size(), queryStartNanoTime, readRepair);
                 repairHandler = new ReadCallback(resolver,
                                                  ConsistencyLevel.ALL,
                                                  executor.getContactedReplicas().size(),
                                                  command,
                                                  keyspace,
                                                  executor.handler.endpoints,
-                                                 queryStartNanoTime);
+                                                 queryStartNanoTime, readRepair);
 
                 for (InetAddress endpoint : executor.getContactedReplicas())
                 {
@@ -2230,12 +2241,13 @@ public class StorageProxy implements StorageProxyMBean
         {
             PartitionRangeReadCommand rangeCommand = command.forSubRange(toQuery.range, isFirst);
 
-            DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredEndpoints.size(), queryStartNanoTime);
+            BlockingReadRepair readRepair = new BlockingReadRepair(command, toQuery.filteredEndpoints, queryStartNanoTime, consistency);
+            DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredEndpoints.size(), queryStartNanoTime, readRepair);
 
             int blockFor = consistency.blockFor(keyspace);
             int minResponses = Math.min(toQuery.filteredEndpoints.size(), blockFor);
             List<InetAddress> minimalEndpoints = toQuery.filteredEndpoints.subList(0, minResponses);
-            ReadCallback handler = new ReadCallback(resolver, consistency, rangeCommand, minimalEndpoints, queryStartNanoTime);
+            ReadCallback handler = new ReadCallback(resolver, consistency, rangeCommand, minimalEndpoints, queryStartNanoTime, readRepair);
 
             handler.assureSufficientLiveNodes();
 
