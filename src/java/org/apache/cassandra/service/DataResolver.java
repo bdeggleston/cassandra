@@ -24,7 +24,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.reads.repair.BlockingReadRepair;
 import org.apache.cassandra.reads.repair.IReadRepairStrategy;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
@@ -37,6 +36,7 @@ import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.ExcludingBounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.net.*;
+import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 
 public class DataResolver extends ResponseResolver
@@ -45,14 +45,12 @@ public class DataResolver extends ResponseResolver
     final List<AsyncOneResponse> repairResults = Collections.synchronizedList(new ArrayList<>());
     private final long queryStartNanoTime;
     private final boolean enforceStrictLiveness;
-    private final IReadRepairStrategy readRepair;
 
     public DataResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, int maxResponseCount, long queryStartNanoTime, IReadRepairStrategy readRepair)
     {
-        super(keyspace, command, consistency, maxResponseCount);
+        super(keyspace, command, consistency, readRepair, maxResponseCount);
         this.queryStartNanoTime = queryStartNanoTime;
         this.enforceStrictLiveness = command.metadata().enforceStrictLiveness();
-        this.readRepair = readRepair;
     }
 
     public PartitionIterator getData()
@@ -64,15 +62,6 @@ public class DataResolver extends ResponseResolver
     public boolean isDataPresent()
     {
         return !responses.isEmpty();
-    }
-
-    public void compareResponses()
-    {
-        // We need to fully consume the results to trigger read repairs if appropriate
-        try (PartitionIterator iterator = resolve())
-        {
-            PartitionIterators.consume(iterator);
-        }
     }
 
     public PartitionIterator resolve()
@@ -104,11 +93,11 @@ public class DataResolver extends ResponseResolver
          */
 
         DataLimits.Counter mergedResultCounter =
-            command.limits().newCounter(command.nowInSec(), true, command.selectsFullPartition(), enforceStrictLiveness);
+        command.limits().newCounter(command.nowInSec(), true, command.selectsFullPartition(), enforceStrictLiveness);
 
         UnfilteredPartitionIterator merged = mergeWithShortReadProtection(iters, sources, mergedResultCounter);
         FilteredPartitions filtered =
-            FilteredPartitions.filter(merged, new Filter(command.nowInSec(), command.metadata().enforceStrictLiveness()));
+        FilteredPartitions.filter(merged, new Filter(command.nowInSec(), command.metadata().enforceStrictLiveness()));
         PartitionIterator counted = Transformation.apply(filtered, mergedResultCounter);
         return Transformation.apply(counted, new EmptyPartitionsDiscarder());
     }
@@ -137,10 +126,10 @@ public class DataResolver extends ResponseResolver
                                                                       DataLimits.Counter mergedResultCounter)
     {
         DataLimits.Counter singleResultCounter =
-            command.limits().newCounter(command.nowInSec(), false, command.selectsFullPartition(), enforceStrictLiveness).onlyCount();
+        command.limits().newCounter(command.nowInSec(), false, command.selectsFullPartition(), enforceStrictLiveness).onlyCount();
 
         ShortReadPartitionsProtection protection =
-            new ShortReadPartitionsProtection(source, singleResultCounter, mergedResultCounter, queryStartNanoTime);
+        new ShortReadPartitionsProtection(source, singleResultCounter, mergedResultCounter, queryStartNanoTime);
 
         /*
          * The order of extention and transformations is important here. Extending with more partitions has to happen
@@ -164,16 +153,30 @@ public class DataResolver extends ResponseResolver
         return partitions;
     }
 
+    public void evaluateAllResponses()
+    {
+        // We need to fully consume the results to trigger read repairs if appropriate
+        try (PartitionIterator iterator = resolve())
+        {
+            PartitionIterators.consume(iterator);
+        }
+    }
+
+    public void evaluateAllResponses(TraceState traceState)
+    {
+        evaluateAllResponses();
+    }
+
     /*
-     * We have a potential short read if the result from a given node contains the requested number of rows
-     * (i.e. it has stopped returning results due to the limit), but some of them haven't
-     * made it into the final post-reconciliation result due to other nodes' row, range, and/or partition tombstones.
-     *
-     * If that is the case, then that node may have more rows that we should fetch, as otherwise we could
-     * ultimately return fewer rows than required. Also, those additional rows may contain tombstones which
-     * which we also need to fetch as they may shadow rows or partitions from other replicas' results, which we would
-     * otherwise return incorrectly.
-     */
+         * We have a potential short read if the result from a given node contains the requested number of rows
+         * (i.e. it has stopped returning results due to the limit), but some of them haven't
+         * made it into the final post-reconciliation result due to other nodes' row, range, and/or partition tombstones.
+         *
+         * If that is the case, then that node may have more rows that we should fetch, as otherwise we could
+         * ultimately return fewer rows than required. Also, those additional rows may contain tombstones which
+         * which we also need to fetch as they may shadow rows or partitions from other replicas' results, which we would
+         * otherwise return incorrectly.
+         */
     private class ShortReadPartitionsProtection extends Transformation<UnfilteredRowIterator> implements MorePartitions<UnfilteredPartitionIterator>
     {
         private final InetAddress source;

@@ -18,12 +18,13 @@
 package org.apache.cassandra.service;
 
 import java.net.InetAddress;
-import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
+import com.google.common.util.concurrent.Futures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,13 +36,12 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.partitions.PartitionIterator;
-import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.reads.repair.BlockingReadRepair;
+import org.apache.cassandra.reads.repair.IReadRepairStrategy;
 import org.apache.cassandra.schema.SpeculativeRetryParam;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
@@ -61,18 +61,22 @@ public abstract class AbstractReadExecutor
     private static final Logger logger = LoggerFactory.getLogger(AbstractReadExecutor.class);
 
     protected final ReadCommand command;
+    protected final ConsistencyLevel consistency;
     protected final List<InetAddress> targetReplicas;
+    protected final DigestResolver digestResolver;
     protected final ReadCallback handler;
     protected final TraceState traceState;
     protected final ColumnFamilyStore cfs;
-    protected final BlockingReadRepair readRepair;
+    protected final IReadRepairStrategy readRepair;
 
-    AbstractReadExecutor(Keyspace keyspace, ColumnFamilyStore cfs, ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas, long queryStartNanoTime)
+    AbstractReadExecutor(Keyspace keyspace, ColumnFamilyStore cfs, ReadCommand command, ConsistencyLevel consistency, List<InetAddress> targetReplicas, long queryStartNanoTime)
     {
         this.command = command;
+        this.consistency = consistency;
         this.targetReplicas = targetReplicas;
-        this.readRepair = new BlockingReadRepair(command, targetReplicas, queryStartNanoTime, consistencyLevel);
-        this.handler = new ReadCallback(new DigestResolver(keyspace, command, consistencyLevel, targetReplicas.size()), consistencyLevel, command, targetReplicas, queryStartNanoTime, readRepair);
+        this.readRepair = IReadRepairStrategy.create(command, targetReplicas, queryStartNanoTime, consistency);
+        this.digestResolver = new DigestResolver(keyspace, command, consistency, readRepair, targetReplicas.size());
+        this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
 
@@ -135,35 +139,12 @@ public abstract class AbstractReadExecutor
      *
      * @return target replicas + the extra replica, *IF* we speculated.
      */
-    public abstract Collection<InetAddress> getContactedReplicas();
+    public abstract List<InetAddress> getContactedReplicas();
 
     /**
      * send the initial set of requests
      */
     public abstract void executeAsync();
-
-    /**
-     * wait for an answer.  Blocks until success or timeout, so it is caller's
-     * responsibility to call maybeTryAdditionalReplicas first.
-     */
-    public PartitionIterator get() throws ReadFailureException, ReadTimeoutException, DigestMismatchException
-    {
-        try
-        {
-            return handler.get();
-        }
-        catch (ReadTimeoutException e)
-        {
-            try
-            {
-                onReadTimeout();
-            }
-            finally
-            {
-                throw e;
-            }
-        }
-    }
 
     private static ReadRepairDecision newReadRepairDecision(TableMetadata metadata)
     {
@@ -293,7 +274,7 @@ public abstract class AbstractReadExecutor
             }
         }
 
-        public Collection<InetAddress> getContactedReplicas()
+        public List<InetAddress> getContactedReplicas()
         {
             return targetReplicas;
         }
@@ -358,7 +339,7 @@ public abstract class AbstractReadExecutor
             }
         }
 
-        public Collection<InetAddress> getContactedReplicas()
+        public List<InetAddress> getContactedReplicas()
         {
             return speculated
                  ? targetReplicas
@@ -392,7 +373,7 @@ public abstract class AbstractReadExecutor
             // no-op
         }
 
-        public Collection<InetAddress> getContactedReplicas()
+        public List<InetAddress> getContactedReplicas()
         {
             return targetReplicas;
         }
@@ -416,18 +397,57 @@ public abstract class AbstractReadExecutor
     /**
      * Wait for the CL to be satisfied by responses
      */
-    public void awaitResponses()
+    public Future<PartitionIterator> awaitResponses() throws ReadTimeoutException
     {
-        handler.awaitResults();
+        try
+        {
+            handler.awaitResults();
+        }
+        catch (ReadTimeoutException e)
+        {
+            try
+            {
+                onReadTimeout();
+            }
+            finally
+            {
+                throw e;
+            }
+        }
+
+        // return immediately, or begin a read repair
+        if (digestResolver.responsesMatch())
+        {
+            return Futures.immediateFuture(digestResolver.getData());
+        }
+        else
+        {
+            Tracing.trace("Digest mismatch: {}");
+            return readRepair.beginForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas());
+        }
     }
 
-    public void awaitReadRepair()
+    public void awaitReadRepair() throws ReadTimeoutException
     {
-
+        try
+        {
+            readRepair.awaitForegroundRepairFinish();
+        }
+        catch (ReadTimeoutException e)
+        {
+            if (Tracing.isTracing())
+                Tracing.trace("Timed out waiting on digest mismatch repair requests");
+            else
+                logger.trace("Timed out waiting on digest mismatch repair requests");
+            // the caught exception here will have CL.ALL from the repair command,
+            // not whatever CL the initial command was at (CASSANDRA-7947)
+            int blockFor = consistency.blockFor(Keyspace.open(command.metadata().keyspace));
+            throw new ReadTimeoutException(consistency, blockFor-1, blockFor, true);
+        }
     }
 
-    public boolean isFinished()
+    public void maybeRepairAdditionalReplicas()
     {
-        return false;
+        // TODO: this
     }
 }

@@ -20,20 +20,31 @@ package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
 import java.util.List;
+import java.util.concurrent.Future;
 
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.ReadCommand;
+import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.service.DigestResolver;
+import org.apache.cassandra.service.ResponseResolver;
+import org.apache.cassandra.tracing.TraceState;
 
-/**
- * Created by blakeeggleston on 11/14/17.
- */
 public interface IReadRepairStrategy
 {
     /**
      * Used by DataResolver to generate corrections as the partition iterator is consumed
      */
     UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints);
+
+    public Future<PartitionIterator> beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints);
+
+    public void awaitForegroundRepairFinish() throws ReadTimeoutException;
+
+    public void maybeBeginBackgroundRepair(ResponseResolver resolver);
+
+    public void backgroundDigestRepair(DigestResolver digestResolver, TraceState traceState);
 
     static IReadRepairStrategy create(ReadCommand command, List<InetAddress> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
     {

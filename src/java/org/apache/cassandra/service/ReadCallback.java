@@ -142,17 +142,6 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
             : new ReadTimeoutException(consistencyLevel, received, blockfor, resolver.isDataPresent());
     }
 
-    public PartitionIterator get() throws ReadFailureException, ReadTimeoutException, DigestMismatchException
-    {
-        awaitResults();
-
-        // TODO: do we need this ternary here? Resolve should 'do the right thing'
-        PartitionIterator result = blockfor == 1 ? resolver.getData() : resolver.resolve();
-        if (logger.isTraceEnabled())
-            logger.trace("Read: {} ms.", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - queryStartNanoTime));
-        return result;
-    }
-
     public int blockFor()
     {
         return blockfor;
@@ -172,11 +161,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
             // the original resolve that get() kicks off as soon as the condition is signaled
             if (blockfor < endpoints.size() && n == endpoints.size())
             {
-                // TODO: what to do about background read repairs here?
-                TraceState traceState = Tracing.instance.get();
-                if (traceState != null)
-                    traceState.trace("Initiating read-repair");
-                StageManager.getStage(Stage.READ_REPAIR).execute(new AsyncRepairRunner(traceState, queryStartNanoTime));
+                readRepair.maybeBeginBackgroundRepair(resolver);
             }
         }
     }
@@ -217,47 +202,6 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
     public boolean isLatencyForSnitch()
     {
         return true;
-    }
-
-    // TODO: move this into read repair strategy
-    private class AsyncRepairRunner implements Runnable
-    {
-        private final TraceState traceState;
-        private final long queryStartNanoTime;
-
-        public AsyncRepairRunner(TraceState traceState, long queryStartNanoTime)
-        {
-            this.traceState = traceState;
-            this.queryStartNanoTime = queryStartNanoTime;
-        }
-
-        public void run()
-        {
-            // If the resolver is a DigestResolver, we need to do a full data read if there is a mismatch.
-            // Otherwise, resolve will send the repairs directly if needs be (and in that case we should never
-            // get a digest mismatch).
-            try
-            {
-                resolver.compareResponses();
-            }
-            catch (DigestMismatchException e)
-            {
-                assert resolver instanceof DigestResolver;
-
-                if (traceState != null)
-                    traceState.trace("Digest mismatch: {}", e.toString());
-                if (logger.isDebugEnabled())
-                    logger.debug("Digest mismatch:", e);
-
-                ReadRepairMetrics.repairedBackground.mark();
-
-                final DataResolver repairResolver = new DataResolver(keyspace, command, consistencyLevel, endpoints.size(), queryStartNanoTime, readRepair);
-                AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size());
-
-                for (InetAddress endpoint : endpoints)
-                    MessagingService.instance().sendRR(command.createMessage(), endpoint, repairHandler);
-            }
-        }
     }
 
     @Override

@@ -20,9 +20,9 @@ package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -31,19 +31,30 @@ import javax.annotation.Nullable;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.SettableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadCommand;
+import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.AsyncOneResponse;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.service.AsyncRepairCallback;
+import org.apache.cassandra.service.DataResolver;
+import org.apache.cassandra.service.DigestResolver;
+import org.apache.cassandra.service.ReadCallback;
+import org.apache.cassandra.service.ResponseResolver;
+import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 
 /**
@@ -59,6 +70,22 @@ public class BlockingReadRepair implements IReadRepairStrategy
     private final long queryStartNanoTime;
     private final ConsistencyLevel consistency;
 
+    private final List<PartitionRepair> repairs = new ArrayList<>();
+
+    private DigestRepair digestRepair = null;
+
+    private static class DigestRepair
+    {
+        private final DataResolver dataResolver;
+        private final ReadCallback readCallback;
+        private final SettableFuture<PartitionIterator> future = SettableFuture.create();
+
+        public DigestRepair(DataResolver dataResolver, ReadCallback readCallback)
+        {
+            this.dataResolver = dataResolver;
+            this.readCallback = readCallback;
+        }
+    }
 
     public BlockingReadRepair(ReadCommand command,
                               List<InetAddress> endpoints,
@@ -69,21 +96,6 @@ public class BlockingReadRepair implements IReadRepairStrategy
         this.endpoints = endpoints;
         this.queryStartNanoTime = queryStartNanoTime;
         this.consistency = consistency;
-
-    }
-
-    public void onDigestMismatch(Collection<InetAddress> contacted)
-    {
-
-    }
-
-    public void doForegroundReadRepair()
-    {
-
-    }
-
-    public void doBackgroundReadRepair()
-    {
 
     }
 
@@ -128,8 +140,6 @@ public class BlockingReadRepair implements IReadRepairStrategy
         }
     }
 
-    private final List<PartitionRepair> repairs = new ArrayList<>();
-
     void awaitRepairs(long timeout)
     {
         try
@@ -162,4 +172,63 @@ public class BlockingReadRepair implements IReadRepairStrategy
         return repair;
     }
 
+    /**
+     * Foreground as in, the in flight read will wait on it's result
+     * @param allEndpoints
+     * @param contactedEndpoints
+     */
+    public Future<PartitionIterator> beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints)
+    {
+        ReadRepairMetrics.repairedBlocking.mark();
+
+        // Do a full data read to resolve the correct response (and repair node that need be)
+        Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
+        DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, allEndpoints.size(), queryStartNanoTime, this);
+        ReadCallback readCallback = new ReadCallback(resolver, ConsistencyLevel.ALL, contactedEndpoints.size(), command,
+                                                     keyspace, allEndpoints, queryStartNanoTime, this);
+
+        digestRepair = new DigestRepair(resolver, readCallback);
+
+        for (InetAddress endpoint : contactedEndpoints)
+        {
+            Tracing.trace("Enqueuing full data read to {}", endpoint);
+            MessagingService.instance().sendRRWithFailure(command.createMessage(), endpoint, readCallback);
+        }
+
+        return digestRepair.future;
+    }
+
+    public void awaitForegroundRepairFinish() throws ReadTimeoutException
+    {
+        if (digestRepair != null)
+        {
+            digestRepair.readCallback.awaitResults();
+            digestRepair.future.set(digestRepair.dataResolver.resolve());
+        }
+    }
+
+    public void maybeBeginBackgroundRepair(ResponseResolver resolver)
+    {
+        TraceState traceState = Tracing.instance.get();
+        if (traceState != null)
+            traceState.trace("Initiating read-repair");
+        StageManager.getStage(Stage.READ_REPAIR).execute(() -> resolver.evaluateAllResponses(traceState));
+    }
+
+    public void backgroundDigestRepair(DigestResolver digestResolver, TraceState traceState)
+    {
+        if (traceState != null)
+            traceState.trace("Digest mismatch");
+        if (logger.isDebugEnabled())
+            logger.debug("Digest mismatch");
+
+        ReadRepairMetrics.repairedBackground.mark();
+
+        Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
+        final DataResolver repairResolver = new DataResolver(keyspace, command, consistency, endpoints.size(), queryStartNanoTime, this);
+        AsyncRepairCallback repairHandler = new AsyncRepairCallback(repairResolver, endpoints.size());
+
+        for (InetAddress endpoint : endpoints)
+            MessagingService.instance().sendRR(command.createMessage(), endpoint, repairHandler);
+    }
 }
