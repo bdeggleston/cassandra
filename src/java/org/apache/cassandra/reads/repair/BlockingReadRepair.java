@@ -22,16 +22,15 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.SettableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,18 +71,19 @@ public class BlockingReadRepair implements IReadRepairStrategy
 
     private final List<PartitionRepair> repairs = new ArrayList<>();
 
-    private DigestRepair digestRepair = null;
+    private volatile DigestRepair digestRepair = null;
 
     private static class DigestRepair
     {
         private final DataResolver dataResolver;
         private final ReadCallback readCallback;
-        private final SettableFuture<PartitionIterator> future = SettableFuture.create();
+        private final Consumer<PartitionIterator> resultConsumer;
 
-        public DigestRepair(DataResolver dataResolver, ReadCallback readCallback)
+        public DigestRepair(DataResolver dataResolver, ReadCallback readCallback, Consumer<PartitionIterator> resultConsumer)
         {
             this.dataResolver = dataResolver;
             this.readCallback = readCallback;
+            this.resultConsumer = resultConsumer;
         }
     }
 
@@ -174,10 +174,8 @@ public class BlockingReadRepair implements IReadRepairStrategy
 
     /**
      * Foreground as in, the in flight read will wait on it's result
-     * @param allEndpoints
-     * @param contactedEndpoints
      */
-    public Future<PartitionIterator> beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints)
+    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
         ReadRepairMetrics.repairedBlocking.mark();
 
@@ -187,15 +185,13 @@ public class BlockingReadRepair implements IReadRepairStrategy
         ReadCallback readCallback = new ReadCallback(resolver, ConsistencyLevel.ALL, contactedEndpoints.size(), command,
                                                      keyspace, allEndpoints, queryStartNanoTime, this);
 
-        digestRepair = new DigestRepair(resolver, readCallback);
+        digestRepair = new DigestRepair(resolver, readCallback, resultConsumer);
 
         for (InetAddress endpoint : contactedEndpoints)
         {
             Tracing.trace("Enqueuing full data read to {}", endpoint);
             MessagingService.instance().sendRRWithFailure(command.createMessage(), endpoint, readCallback);
         }
-
-        return digestRepair.future;
     }
 
     public void awaitForegroundRepairFinish() throws ReadTimeoutException
@@ -203,7 +199,7 @@ public class BlockingReadRepair implements IReadRepairStrategy
         if (digestRepair != null)
         {
             digestRepair.readCallback.awaitResults();
-            digestRepair.future.set(digestRepair.dataResolver.resolve());
+            digestRepair.resultConsumer.accept(digestRepair.dataResolver.resolve());
         }
     }
 

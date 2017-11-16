@@ -19,12 +19,11 @@ package org.apache.cassandra.service;
 
 import java.net.InetAddress;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.Futures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +35,7 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.partitions.PartitionIterator;
+import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
@@ -63,11 +63,13 @@ public abstract class AbstractReadExecutor
     protected final ReadCommand command;
     protected final ConsistencyLevel consistency;
     protected final List<InetAddress> targetReplicas;
+    protected final IReadRepairStrategy readRepair;
     protected final DigestResolver digestResolver;
     protected final ReadCallback handler;
     protected final TraceState traceState;
     protected final ColumnFamilyStore cfs;
-    protected final IReadRepairStrategy readRepair;
+    protected final long queryStartNanoTime;
+    protected volatile PartitionIterator result = null;
 
     AbstractReadExecutor(Keyspace keyspace, ColumnFamilyStore cfs, ReadCommand command, ConsistencyLevel consistency, List<InetAddress> targetReplicas, long queryStartNanoTime)
     {
@@ -79,6 +81,7 @@ public abstract class AbstractReadExecutor
         this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
+        this.queryStartNanoTime = queryStartNanoTime;
 
         // Set the digest version (if we request some digests). This is the smallest version amongst all our target replicas since new nodes
         // knows how to produce older digest but the reverse is not true.
@@ -394,10 +397,16 @@ public abstract class AbstractReadExecutor
         }
     }
 
+    public void setResult(PartitionIterator result)
+    {
+        Preconditions.checkState(this.result == null, "Result can only be set once");
+        this.result = result;
+    }
+
     /**
      * Wait for the CL to be satisfied by responses
      */
-    public Future<PartitionIterator> awaitResponses() throws ReadTimeoutException
+    public void awaitResponses() throws ReadTimeoutException
     {
         try
         {
@@ -418,12 +427,12 @@ public abstract class AbstractReadExecutor
         // return immediately, or begin a read repair
         if (digestResolver.responsesMatch())
         {
-            return Futures.immediateFuture(digestResolver.getData());
+            setResult(digestResolver.getData());
         }
         else
         {
             Tracing.trace("Digest mismatch: {}");
-            return readRepair.beginForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas());
+            readRepair.beginForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas(), this::setResult);
         }
     }
 
@@ -449,5 +458,11 @@ public abstract class AbstractReadExecutor
     public void maybeRepairAdditionalReplicas()
     {
         // TODO: this
+    }
+
+    public PartitionIterator getResult() throws ReadFailureException, ReadTimeoutException
+    {
+        Preconditions.checkState(result != null, "Result must be set first");
+        return result;
     }
 }

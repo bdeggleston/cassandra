@@ -1759,195 +1759,45 @@ public class StorageProxy implements StorageProxyMBean
     {
         int cmdCount = commands.size();
 
-        List<AbstractReadExecutor> reads = new ArrayList<>(commands.size());
-        for (SinglePartitionReadCommand command: commands)
+        AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
+
+        for (int i=0; i<cmdCount; i++)
         {
-            reads.add(AbstractReadExecutor.getReadExecutor(command, consistencyLevel, queryStartNanoTime));
+            reads[i] = AbstractReadExecutor.getReadExecutor(commands.get(i), consistencyLevel, queryStartNanoTime);
         }
 
-        for (AbstractReadExecutor read: reads)
+        for (int i=0; i<cmdCount; i++)
         {
-            read.executeAsync();
+            reads[i].executeAsync();
         }
 
-        for (AbstractReadExecutor read: reads)
+        for (int i=0; i<cmdCount; i++)
         {
-            read.maybeTryAdditionalReplicas();
-        }
-
-        List<Future<PartitionIterator>> futures = new ArrayList<>(commands.size());
-
-        for (AbstractReadExecutor read: reads)
-        {
-            futures.add(read.awaitResponses());
-        }
-
-        for (AbstractReadExecutor read: reads)
-        {
-            read.awaitReadRepair();
-        }
-
-        for (AbstractReadExecutor read: reads)
-        {
-            read.maybeRepairAdditionalReplicas();
-        }
-
-        List<PartitionIterator> results = new ArrayList<>(cmdCount);
-        for (Future<PartitionIterator> future: futures)
-        {
-            try
-            {
-                results.add(future.get());
-            }
-            catch (InterruptedException | ExecutionException e)
-            {
-                // FIXME: may need to extract specific exceptions
-                throw new RuntimeException(e);
-            }
-        }
-
-        return PartitionIterators.concat(results);
-    }
-
-    private static PartitionIterator fetchRowsOld(List<SinglePartitionReadCommand> commands, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
-    throws UnavailableException, ReadFailureException, ReadTimeoutException
-    {
-        int cmdCount = commands.size();
-
-        SinglePartitionReadLifecycle[] reads = new SinglePartitionReadLifecycle[cmdCount];
-        for (int i = 0; i < cmdCount; i++)
-            reads[i] = new SinglePartitionReadLifecycle(commands.get(i), consistencyLevel, queryStartNanoTime);
-
-        for (int i = 0; i < cmdCount; i++)
-            reads[i].doInitialQueries();
-
-        for (int i = 0; i < cmdCount; i++)
             reads[i].maybeTryAdditionalReplicas();
+        }
 
-//        // TODO: awaitInitialRestults
-//        for (int i = 0; i < cmdCount; i++)
-//            reads[i].awaitResultsAndRetryOnDigestMismatch();
-//
-//        // TODO: maybeAwaitReadRepair
-//        for (int i = 0; i < cmdCount; i++)
-//            if (!reads[i].isDone())
-//                reads[i].maybeAwaitFullDataRead();
+        for (int i=0; i<cmdCount; i++)
+        {
+            reads[i].awaitResponses();
+        }
+
+        for (int i=0; i<cmdCount; i++)
+        {
+            reads[i].maybeRepairAdditionalReplicas();
+        }
+
+        for (int i=0; i<cmdCount; i++)
+        {
+            reads[i].awaitReadRepair();
+        }
 
         List<PartitionIterator> results = new ArrayList<>(cmdCount);
-        for (int i = 0; i < cmdCount; i++)
+        for (int i=0; i<cmdCount; i++)
         {
-            assert reads[i].isDone();
             results.add(reads[i].getResult());
         }
 
         return PartitionIterators.concat(results);
-    }
-
-    // TODO: should be able to get rid of this if everything get's properly encapsulated in ReadExecutor/ReadRepair
-    private static class SinglePartitionReadLifecycle
-    {
-        private final SinglePartitionReadCommand command;
-        private final AbstractReadExecutor executor;
-        private final ConsistencyLevel consistency;
-        private final long queryStartNanoTime;
-
-        private PartitionIterator result;
-        private ReadCallback repairHandler;
-
-        SinglePartitionReadLifecycle(SinglePartitionReadCommand command, ConsistencyLevel consistency, long queryStartNanoTime)
-        {
-            this.command = command;
-            this.executor = AbstractReadExecutor.getReadExecutor(command, consistency, queryStartNanoTime);
-            this.consistency = consistency;
-            this.queryStartNanoTime = queryStartNanoTime;
-        }
-
-        boolean isDone()
-        {
-            return result != null;
-        }
-
-        void doInitialQueries()
-        {
-            executor.executeAsync();
-        }
-
-        void maybeTryAdditionalReplicas()
-        {
-            executor.maybeTryAdditionalReplicas();
-        }
-
-        void awaitInitialResults() throws ReadFailureException, ReadTimeoutException
-        {
-            executor.awaitResponses();
-        }
-//
-//        void awaitResultsAndRetryOnDigestMismatch() throws ReadFailureException, ReadTimeoutException
-//        {
-//            try
-//            {
-//                // TODO: for the noop RR, this should always return the result
-//                // TODO: executor.awaitResponses()
-//                result = executor.get();
-//            }
-//            catch (DigestMismatchException ex)
-//            {
-//                Tracing.trace("Digest mismatch: {}", ex.getMessage());
-//
-//                ReadRepairMetrics.repairedBlocking.mark();
-//
-//                // Do a full data read to resolve the correct response (and repair node that need be)
-//                Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-//                DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, executor.handler.endpoints.size(), queryStartNanoTime, executor.readRepair);
-//                repairHandler = new ReadCallback(resolver,
-//                                                 ConsistencyLevel.ALL,
-//                                                 executor.getContactedReplicas().size(),
-//                                                 command,
-//                                                 keyspace,
-//                                                 executor.handler.endpoints,
-//                                                 queryStartNanoTime, executor.readRepair);
-//
-//                for (InetAddress endpoint : executor.getContactedReplicas())
-//                {
-//                    Tracing.trace("Enqueuing full data read to {}", endpoint);
-//                    MessagingService.instance().sendRRWithFailure(command.createMessage(), endpoint, repairHandler);
-//                }
-//            }
-//        }
-
-//        void maybeAwaitFullDataRead() throws ReadTimeoutException
-//        {
-//            // There wasn't a digest mismatch, we're good
-//            if (repairHandler == null)
-//                return;
-//
-//            // Otherwise, get the result from the full-data read and check that it's not a short read
-//            try
-//            {
-//                result = repairHandler.get();
-//            }
-//            catch (DigestMismatchException e)
-//            {
-//                throw new AssertionError(e); // full data requested from each node here, no digests should be sent
-//            }
-//            catch (ReadTimeoutException e)
-//            {
-//                if (Tracing.isTracing())
-//                    Tracing.trace("Timed out waiting on digest mismatch repair requests");
-//                else
-//                    logger.trace("Timed out waiting on digest mismatch repair requests");
-//                // the caught exception here will have CL.ALL from the repair command,
-//                // not whatever CL the initial command was at (CASSANDRA-7947)
-//                int blockFor = consistency.blockFor(Keyspace.open(command.metadata().keyspace));
-//                throw new ReadTimeoutException(consistency, blockFor-1, blockFor, true);
-//            }
-//        }
-
-        PartitionIterator getResult()
-        {
-            assert result != null;
-            return result;
-        }
     }
 
     static class LocalReadRunnable extends DroppableRunnable

@@ -20,7 +20,7 @@ package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.ReadCommand;
@@ -38,7 +38,7 @@ public interface IReadRepairStrategy
      */
     UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints);
 
-    public Future<PartitionIterator> beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints);
+    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer);
 
     public void awaitForegroundRepairFinish() throws ReadTimeoutException;
 

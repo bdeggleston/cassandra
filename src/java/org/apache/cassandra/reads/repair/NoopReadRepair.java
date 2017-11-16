@@ -20,9 +20,7 @@ package org.apache.cassandra.reads.repair;
 
 import java.net.InetAddress;
 import java.util.List;
-import java.util.concurrent.Future;
-
-import com.google.common.util.concurrent.Futures;
+import java.util.function.Consumer;
 
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
@@ -42,9 +40,9 @@ public class NoopReadRepair implements IReadRepairStrategy
         return UnfilteredPartitionIterators.MergeListener.NOOP;
     }
 
-    public Future<PartitionIterator> beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints)
+    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
-        return Futures.immediateFuture(digestResolver.getData());
+        resultConsumer.accept(digestResolver.getData());
     }
 
     public void awaitForegroundRepairFinish() throws ReadTimeoutException
