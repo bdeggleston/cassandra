@@ -59,7 +59,7 @@ public abstract class ResponseResolver
         responses.add(message);
     }
 
-    public Iterable<MessageIn<ReadResponse>> getMessages()
+    public Accumulator<MessageIn<ReadResponse>> getMessages()
     {
         return responses;
     }
