@@ -149,7 +149,6 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
 
     public void response(MessageIn<ReadResponse> message)
     {
-        // TODO: should the read repair strategy just take care of the background stuff on it's own???
         resolver.preprocess(message);
         int n = waitingFor(message.from)
               ? recievedUpdater.incrementAndGet(this)
