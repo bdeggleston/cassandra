@@ -41,7 +41,7 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
-import org.apache.cassandra.reads.repair.IReadRepairStrategy;
+import org.apache.cassandra.reads.repair.ReadRepair;
 import org.apache.cassandra.schema.SpeculativeRetryParam;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
@@ -63,7 +63,7 @@ public abstract class AbstractReadExecutor
     protected final ReadCommand command;
     protected final ConsistencyLevel consistency;
     protected final List<InetAddress> targetReplicas;
-    protected final IReadRepairStrategy readRepair;
+    protected final ReadRepair readRepair;
     protected final DigestResolver digestResolver;
     protected final ReadCallback handler;
     protected final TraceState traceState;
@@ -76,7 +76,7 @@ public abstract class AbstractReadExecutor
         this.command = command;
         this.consistency = consistency;
         this.targetReplicas = targetReplicas;
-        this.readRepair = IReadRepairStrategy.create(command, targetReplicas, queryStartNanoTime, consistency);
+        this.readRepair = ReadRepair.create(command, targetReplicas, queryStartNanoTime, consistency);
         this.digestResolver = new DigestResolver(keyspace, command, consistency, readRepair, targetReplicas.size());
         this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
@@ -432,7 +432,7 @@ public abstract class AbstractReadExecutor
         else
         {
             Tracing.trace("Digest mismatch: {}");
-            readRepair.beginForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas(), this::setResult);
+            readRepair.startForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas(), this::setResult);
         }
     }
 

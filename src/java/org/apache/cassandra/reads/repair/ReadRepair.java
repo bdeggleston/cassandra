@@ -31,22 +31,41 @@ import org.apache.cassandra.service.DigestResolver;
 import org.apache.cassandra.service.ResponseResolver;
 import org.apache.cassandra.tracing.TraceState;
 
-public interface IReadRepairStrategy
+public interface ReadRepair
 {
     /**
      * Used by DataResolver to generate corrections as the partition iterator is consumed
      */
     UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints);
 
-    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer);
+    /**
+     * Called when the digests from the initial read don't match. Reads may block on the
+     * repair started by this method.
+     */
+    public void startForegroundRepair(DigestResolver digestResolver,
+                                      List<InetAddress> allEndpoints,
+                                      List<InetAddress> contactedEndpoints,
+                                      Consumer<PartitionIterator> resultConsumer);
 
+    /**
+     * Wait for any operations started by {@link ReadRepair#startForegroundRepair} to complete
+     * @throws ReadTimeoutException
+     */
     public void awaitForegroundRepairFinish() throws ReadTimeoutException;
 
-    public void maybeBeginBackgroundRepair(ResponseResolver resolver);
+    /**
+     * Called when responses from all replicas have been received. Read will not block on this.
+     * @param resolver
+     */
+    public void maybeStartBackgroundRepair(ResponseResolver resolver);
 
+    /**
+     * If {@link ReadRepair#maybeStartBackgroundRepair} was called with a {@link DigestResolver}, this will
+     * be called to perform a repair if there was a digest mismatch
+     */
     public void backgroundDigestRepair(DigestResolver digestResolver, TraceState traceState);
 
-    static IReadRepairStrategy create(ReadCommand command, List<InetAddress> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
+    static ReadRepair create(ReadCommand command, List<InetAddress> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
     {
         return new BlockingReadRepair(command, endpoints, queryStartNanoTime, consistency);
     }

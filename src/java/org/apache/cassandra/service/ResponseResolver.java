@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.reads.repair.IReadRepairStrategy;
+import org.apache.cassandra.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.utils.concurrent.Accumulator;
 
@@ -33,12 +33,12 @@ public abstract class ResponseResolver
     protected final Keyspace keyspace;
     protected final ReadCommand command;
     protected final ConsistencyLevel consistency;
-    protected final IReadRepairStrategy readRepair;
+    protected final ReadRepair readRepair;
 
     // Accumulator gives us non-blocking thread-safety with optimal algorithmic constraints
     protected final Accumulator<MessageIn<ReadResponse>> responses;
 
-    public ResponseResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, IReadRepairStrategy readRepair, int maxResponseCount)
+    public ResponseResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, ReadRepair readRepair, int maxResponseCount)
     {
         this.keyspace = keyspace;
         this.command = command;

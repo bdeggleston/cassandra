@@ -24,7 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
-import org.apache.cassandra.reads.repair.IReadRepairStrategy;
+import org.apache.cassandra.reads.repair.ReadRepair;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.*;
@@ -46,7 +46,7 @@ public class DataResolver extends ResponseResolver
     private final long queryStartNanoTime;
     private final boolean enforceStrictLiveness;
 
-    public DataResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, int maxResponseCount, long queryStartNanoTime, IReadRepairStrategy readRepair)
+    public DataResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, int maxResponseCount, long queryStartNanoTime, ReadRepair readRepair)
     {
         super(keyspace, command, consistency, readRepair, maxResponseCount);
         this.queryStartNanoTime = queryStartNanoTime;

@@ -24,14 +24,14 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.reads.repair.IReadRepairStrategy;
+import org.apache.cassandra.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.TraceState;
 
 public class DigestResolver extends ResponseResolver
 {
     private volatile ReadResponse dataResponse;
 
-    public DigestResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, IReadRepairStrategy readRepair, int maxResponseCount)
+    public DigestResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, ReadRepair readRepair, int maxResponseCount)
     {
         super(keyspace, command, consistency, readRepair, maxResponseCount);
     }

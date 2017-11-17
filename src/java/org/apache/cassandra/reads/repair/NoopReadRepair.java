@@ -29,7 +29,7 @@ import org.apache.cassandra.service.DigestResolver;
 import org.apache.cassandra.service.ResponseResolver;
 import org.apache.cassandra.tracing.TraceState;
 
-public class NoopReadRepair implements IReadRepairStrategy
+public class NoopReadRepair implements ReadRepair
 {
     public static final NoopReadRepair instance = new NoopReadRepair();
 
@@ -40,7 +40,7 @@ public class NoopReadRepair implements IReadRepairStrategy
         return UnfilteredPartitionIterators.MergeListener.NOOP;
     }
 
-    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
+    public void startForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
         resultConsumer.accept(digestResolver.getData());
     }
@@ -50,7 +50,7 @@ public class NoopReadRepair implements IReadRepairStrategy
 
     }
 
-    public void maybeBeginBackgroundRepair(ResponseResolver resolver)
+    public void maybeStartBackgroundRepair(ResponseResolver resolver)
     {
 
     }

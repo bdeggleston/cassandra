@@ -60,7 +60,7 @@ import org.apache.cassandra.tracing.Tracing;
  * 'Classic' read repair. Doesn't allow the client read to return until
  *  updates have been written to nodes needing correction.
  */
-public class BlockingReadRepair implements IReadRepairStrategy
+public class BlockingReadRepair implements ReadRepair
 {
     private static final Logger logger = LoggerFactory.getLogger(BlockingReadRepair.class);
 
@@ -172,10 +172,7 @@ public class BlockingReadRepair implements IReadRepairStrategy
         return repair;
     }
 
-    /**
-     * Foreground as in, the in flight read will wait on it's result
-     */
-    public void beginForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
+    public void startForegroundRepair(DigestResolver digestResolver, List<InetAddress> allEndpoints, List<InetAddress> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
         ReadRepairMetrics.repairedBlocking.mark();
 
@@ -203,7 +200,7 @@ public class BlockingReadRepair implements IReadRepairStrategy
         }
     }
 
-    public void maybeBeginBackgroundRepair(ResponseResolver resolver)
+    public void maybeStartBackgroundRepair(ResponseResolver resolver)
     {
         TraceState traceState = Tracing.instance.get();
         if (traceState != null)
