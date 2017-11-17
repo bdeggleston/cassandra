@@ -29,23 +29,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.Stage;
-import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.exceptions.RequestFailureReason;
 import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
-import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.IAsyncCallbackWithFailure;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.reads.repair.BlockingReadRepair;
-import org.apache.cassandra.reads.repair.IReadRepairStrategy;
-import org.apache.cassandra.tracing.TraceState;
+import org.apache.cassandra.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.SimpleCondition;
@@ -71,12 +65,12 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
 
     private final Keyspace keyspace; // TODO push this into ConsistencyLevel?
 
-    private final IReadRepairStrategy readRepair;
+    private final ReadRepair readRepair;
 
     /**
      * Constructor when response count has to be calculated and blocked for.
      */
-    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, ReadCommand command, List<InetAddress> filteredEndpoints, long queryStartNanoTime, IReadRepairStrategy readRepair)
+    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, ReadCommand command, List<InetAddress> filteredEndpoints, long queryStartNanoTime, ReadRepair readRepair)
     {
         this(resolver,
              consistencyLevel,
@@ -87,7 +81,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
              queryStartNanoTime, readRepair);
     }
 
-    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, int blockfor, ReadCommand command, Keyspace keyspace, List<InetAddress> endpoints, long queryStartNanoTime, IReadRepairStrategy readRepair)
+    public ReadCallback(ResponseResolver resolver, ConsistencyLevel consistencyLevel, int blockfor, ReadCommand command, Keyspace keyspace, List<InetAddress> endpoints, long queryStartNanoTime, ReadRepair readRepair)
     {
         this.command = command;
         this.keyspace = keyspace;
@@ -160,7 +154,7 @@ public class ReadCallback implements IAsyncCallbackWithFailure<ReadResponse>
             // the original resolve that get() kicks off as soon as the condition is signaled
             if (blockfor < endpoints.size() && n == endpoints.size())
             {
-                readRepair.maybeBeginBackgroundRepair(resolver);
+                readRepair.maybeStartBackgroundRepair(resolver);
             }
         }
     }
