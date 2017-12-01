@@ -36,6 +36,7 @@ import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.NetworkTopologyStrategy;
 import org.apache.cassandra.transport.ProtocolException;
+import org.apache.cassandra.utils.FBUtilities;
 
 public enum ConsistencyLevel
 {
@@ -71,12 +72,12 @@ public enum ConsistencyLevel
         }
     }
 
-    private ConsistencyLevel(int code)
+    ConsistencyLevel(int code)
     {
         this(code, false);
     }
 
-    private ConsistencyLevel(int code, boolean isDCLocal)
+    ConsistencyLevel(int code, boolean isDCLocal)
     {
         this.code = code;
         this.isDCLocal = isDCLocal;
@@ -89,16 +90,21 @@ public enum ConsistencyLevel
         return codeIdx[code];
     }
 
-    private int quorumFor(Keyspace keyspace)
+    public static int quorumFor(Keyspace keyspace)
     {
         return (keyspace.getReplicationStrategy().getReplicationFactor() / 2) + 1;
     }
 
-    private int localQuorumFor(Keyspace keyspace, String dc)
+    public static int localQuorumFor(Keyspace keyspace, String dc)
     {
         return (keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy)
              ? (((NetworkTopologyStrategy) keyspace.getReplicationStrategy()).getReplicationFactor(dc) / 2) + 1
              : quorumFor(keyspace);
+    }
+
+    public static int localQuorumFor(Keyspace keyspace)
+    {
+        return localQuorumFor(keyspace, DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getLocalAddress()));
     }
 
     public int blockFor(Keyspace keyspace)
@@ -145,7 +151,7 @@ public enum ConsistencyLevel
         return isDCLocal;
     }
 
-    public boolean isLocal(InetAddress endpoint)
+    public static boolean isLocal(InetAddress endpoint)
     {
         return DatabaseDescriptor.getLocalDataCenter().equals(DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint));
     }

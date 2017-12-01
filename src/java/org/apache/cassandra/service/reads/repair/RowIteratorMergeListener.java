@@ -20,6 +20,9 @@ package org.apache.cassandra.service.reads.repair;
 
 import java.net.InetAddress;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
@@ -315,22 +318,26 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
     public void close()
     {
-        BlockingReadRepair.PartitionRepair repair = null;
+        Map<InetAddress, Optional<PartitionUpdate>> updates = new HashMap<>(repairs.length);
+        boolean hasRepairs = false;
         for (int i = 0; i < repairs.length; i++)
         {
             if (repairs[i] == null)
-                continue;
-
-            if (repair == null)
             {
-                repair = readRepair.startPartitionRepair();
+                updates.put(sources[i], Optional.empty());
+
             }
-            repair.reportMutation(sources[i], new Mutation(repairs[i]));
+            else
+            {
+                updates.put(sources[i], Optional.of(repairs[i]));
+                hasRepairs = true;
+
+            }
         }
 
-        if (repair != null)
+        if (hasRepairs)
         {
-            repair.finish();
+            readRepair.repairPartition(updates);
         }
     }
 }

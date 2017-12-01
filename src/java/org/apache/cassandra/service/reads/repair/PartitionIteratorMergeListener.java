@@ -35,8 +35,6 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 
 public class PartitionIteratorMergeListener implements UnfilteredPartitionIterators.MergeListener
 {
-    private static final Logger logger = LoggerFactory.getLogger(PartitionIteratorMergeListener.class);
-
     private final InetAddress[] sources;
     private final ReadCommand command;
     private final BlockingReadRepair readRepair;
@@ -86,7 +84,7 @@ public class PartitionIteratorMergeListener implements UnfilteredPartitionIterat
 
     public void close()
     {
-        readRepair.awaitRepairs(DatabaseDescriptor.getWriteRpcTimeout());
+
     }
 }
 

@@ -50,6 +50,21 @@ public class NoopReadRepair implements ReadRepair
 
     }
 
+    public void maybeSendAdditionalDataRequests()
+    {
+
+    }
+
+    public void maybeSendAdditionalRepairs()
+    {
+
+    }
+
+    public void awaitRepairDelivery()
+    {
+
+    }
+
     public void maybeStartBackgroundRepair(ResponseResolver resolver)
     {
 

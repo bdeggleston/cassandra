@@ -436,6 +436,11 @@ public abstract class AbstractReadExecutor
         }
     }
 
+    public void maybeSendAdditionalDataRequests()
+    {
+        readRepair.maybeSendAdditionalDataRequests();
+    }
+
     public void awaitReadRepair() throws ReadTimeoutException
     {
         try
