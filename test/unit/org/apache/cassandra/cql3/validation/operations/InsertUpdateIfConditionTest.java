@@ -19,6 +19,7 @@
 package org.apache.cassandra.cql3.validation.operations;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
@@ -871,6 +872,24 @@ public class InsertUpdateIfConditionTest extends CQLTester
         }
     }
 
+    @Test
+    public void testFrozenWithNullValues() throws Throwable
+    {
+        createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)", "frozen<list<text>>"));
+        execute("INSERT INTO %s (k, m) VALUES (0, null)");
+
+        assertRows(execute("UPDATE %s SET m = ? WHERE k = 0 IF m = ?", Collections.singletonList("test"), Collections.singletonList("comparison")), row(false, null));
+
+        createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)", "frozen<map<text,int>>"));
+        execute("INSERT INTO %s (k, m) VALUES (0, null)");
+
+        assertRows(execute("UPDATE %s SET m = ? WHERE k = 0 IF m = ?", Collections.singletonMap("test", 3), Collections.singletonMap("comparison", 2)), row(false, null));
+
+        createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)", "frozen<set<text>>"));
+        execute("INSERT INTO %s (k, m) VALUES (0, null)");
+
+        assertRows(execute("UPDATE %s SET m = ? WHERE k = 0 IF m = ?", Collections.singleton("test"), Collections.singleton("comparison")), row(false, null));
+    }
     /**
      * Test expanded functionality from CASSANDRA-6839,
      * migrated from cql_tests.py:TestCQL.expanded_map_item_conditional_test()
