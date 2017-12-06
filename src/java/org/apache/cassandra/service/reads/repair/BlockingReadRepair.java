@@ -111,7 +111,7 @@ public class BlockingReadRepair implements ReadRepair
      * If true, we should block on read repair responses to guarantee monotonic reads
      * @return
      */
-    private static boolean isStronglyConsistent(Keyspace keyspace, ConsistencyLevel consistency)
+    private static boolean canSatisfyQuorumFor(Keyspace keyspace, ConsistencyLevel consistency)
     {
         switch (consistency)
         {
@@ -142,7 +142,7 @@ public class BlockingReadRepair implements ReadRepair
 
         this.keyspace = Keyspace.open(command.metadata().keyspace);
         this.cfs = keyspace.getColumnFamilyStore(command.metadata().id);
-        this.stronglyConsistent = isStronglyConsistent(keyspace, consistency);
+        this.stronglyConsistent = canSatisfyQuorumFor(keyspace, consistency);
     }
 
     public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddress[] endpoints)
