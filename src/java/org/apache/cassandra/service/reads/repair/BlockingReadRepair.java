@@ -55,6 +55,7 @@ import org.apache.cassandra.service.reads.ReadCallback;
 import org.apache.cassandra.service.reads.ResponseResolver;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.concurrent.Accumulator;
 
 /**
  * 'Classic' read repair. Doesn't allow the client read to return until
@@ -69,7 +70,7 @@ public class BlockingReadRepair implements ReadRepair, RepairListener
     private final long queryStartNanoTime;
     private final ConsistencyLevel consistency;
 
-    private final List<BlockingPartitionRepair> repairs = new ArrayList<>();
+    private final Accumulator<BlockingPartitionRepair> repairs;
 
     private volatile DigestRepair digestRepair = null;
 
@@ -96,7 +97,7 @@ public class BlockingReadRepair implements ReadRepair, RepairListener
         this.endpoints = endpoints;
         this.queryStartNanoTime = queryStartNanoTime;
         this.consistency = consistency;
-
+        repairs = new Accumulator<>(endpoints.size());
     }
 
     public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddressAndPort[] endpoints)
