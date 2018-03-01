@@ -20,6 +20,8 @@ package org.apache.cassandra.service.reads.repair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -70,7 +72,7 @@ public class BlockingReadRepair implements ReadRepair, RepairListener
     private final long queryStartNanoTime;
     private final ConsistencyLevel consistency;
 
-    private final Accumulator<BlockingPartitionRepair> repairs;
+    private final Queue<BlockingPartitionRepair> repairs = new ConcurrentLinkedQueue<>();
 
     private volatile DigestRepair digestRepair = null;
 
@@ -97,7 +99,6 @@ public class BlockingReadRepair implements ReadRepair, RepairListener
         this.endpoints = endpoints;
         this.queryStartNanoTime = queryStartNanoTime;
         this.consistency = consistency;
-        repairs = new Accumulator<>(endpoints.size());
     }
 
     public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddressAndPort[] endpoints)
