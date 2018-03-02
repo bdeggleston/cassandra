@@ -30,6 +30,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.Keyspace;
@@ -92,6 +93,18 @@ public abstract class AbstractReadExecutor
         for (InetAddressAndPort replica : targetReplicas)
             digestVersion = Math.min(digestVersion, MessagingService.instance().getVersion(replica));
         command.setDigestVersion(digestVersion);
+    }
+
+    private DecoratedKey getKey()
+    {
+        if (command instanceof SinglePartitionReadCommand)
+        {
+            return ((SinglePartitionReadCommand) command).partitionKey();
+        }
+        else
+        {
+            return null;
+        }
     }
 
     protected void makeDataRequests(Iterable<InetAddressAndPort> endpoints)
@@ -432,7 +445,7 @@ public abstract class AbstractReadExecutor
         }
         else
         {
-            Tracing.trace("Digest mismatch for command: {}", command);
+            Tracing.trace("Digest mismatch: Mismatch for key {}", getKey());
             readRepair.startForegroundRepair(digestResolver, handler.endpoints, getContactedReplicas(), this::setResult);
         }
     }
