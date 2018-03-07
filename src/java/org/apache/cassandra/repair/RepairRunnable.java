@@ -404,9 +404,11 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                            .add(FBUtilities.getBroadcastAddressAndPort())
                                            .build();
 
-        List<CommonRange> allRanges = filterCommonRanges(commonRanges, allParticipants, forceRepair);
+        boolean actuallyForce = forceRepair && !allParticipants.containsAll(allNeighbors);
 
-        CoordinatorSession coordinatorSession = ActiveRepairService.instance.consistent.coordinated.registerSession(parentSession, allParticipants);
+        List<CommonRange> allRanges = filterCommonRanges(commonRanges, allParticipants, actuallyForce);
+
+        CoordinatorSession coordinatorSession = ActiveRepairService.instance.consistent.coordinated.registerSession(parentSession, allParticipants, actuallyForce);
         ListeningExecutorService executor = createExecutor();
         AtomicBoolean hasFailure = new AtomicBoolean(false);
         ListenableFuture repairResult = coordinatorSession.execute(() -> submitRepairSessions(parentSession, true, executor, allRanges, cfnames),

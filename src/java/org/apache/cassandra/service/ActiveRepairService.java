@@ -381,9 +381,10 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
      */
     static long getRepairedAt(RepairOption options)
     {
-        // we only want to set repairedAt for incremental repairs including all replicas for a token range. For non-global incremental repairs, forced incremental repairs, and
-        // full repairs, the UNREPAIRED_SSTABLE value will prevent sstables from being promoted to repaired or preserve the repairedAt/pendingRepair values, respectively.
-        if (options.isIncremental() && options.isGlobal() && !options.isForcedRepair())
+        // we only want to set repairedAt for incremental repairs including all replicas for a token range. For non-global incremental repairs, full repairs, the UNREPAIRED_SSTABLE value will prevent
+        // sstables from being promoted to repaired or preserve the repairedAt/pendingRepair values, respectively. For forced repairs, repairedAt time is only set to UNREPAIRED_SSTABLE if we actually
+        // end up skipping replicas
+        if (options.isIncremental() && options.isGlobal())
         {
             return Clock.instance.currentTimeMillis();
         }

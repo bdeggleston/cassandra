@@ -43,7 +43,7 @@ public class CoordinatorSessions
         return new CoordinatorSession(builder);
     }
 
-    public synchronized CoordinatorSession registerSession(UUID sessionId, Set<InetAddressAndPort> participants)
+    public synchronized CoordinatorSession registerSession(UUID sessionId, Set<InetAddressAndPort> participants, boolean isForced)
     {
         Preconditions.checkArgument(!sessions.containsKey(sessionId), "A coordinator already exists for session %s", sessionId);
         ActiveRepairService.ParentRepairSession prs = ActiveRepairService.instance.getParentRepairSession(sessionId);
@@ -53,7 +53,7 @@ public class CoordinatorSessions
         builder.withCoordinator(prs.coordinator);
 
         builder.withTableIds(prs.getTableIds());
-        builder.withRepairedAt(prs.repairedAt);
+        builder.withRepairedAt(isForced ? ActiveRepairService.UNREPAIRED_SSTABLE : prs.repairedAt);
         builder.withRanges(prs.getRanges());
         builder.withParticipants(participants);
         CoordinatorSession session = buildSession(builder);

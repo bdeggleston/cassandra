@@ -348,8 +348,8 @@ public class ActiveRepairServiceTest
         Assert.assertEquals(UNREPAIRED_SSTABLE, getRepairedAt(opts(INCREMENTAL_KEY, b2s(true),
                                                                    DATACENTERS_KEY, "DC2")));
         // forced incremental repair
-        Assert.assertEquals(UNREPAIRED_SSTABLE, getRepairedAt(opts(INCREMENTAL_KEY, b2s(true),
-                                                                   FORCE_REPAIR_KEY, b2s(true))));
+        Assert.assertNotEquals(UNREPAIRED_SSTABLE, getRepairedAt(opts(INCREMENTAL_KEY, b2s(true),
+                                                                      FORCE_REPAIR_KEY, b2s(true))));
 
         // full repair
         Assert.assertEquals(UNREPAIRED_SSTABLE, getRepairedAt(opts(INCREMENTAL_KEY, b2s(false))));
