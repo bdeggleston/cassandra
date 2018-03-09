@@ -191,6 +191,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     private final Tracker data;
 
+    public final StorageHandler storageHandler;
+
     /* The read order, used to track accesses to off-heap memtable storage */
     public final OpOrder readOrdering = new OpOrder();
 
@@ -377,6 +379,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         this.metadata = metadata;
         this.directories = directories;
         name = columnFamilyName;
+        storageHandler = new CassandraStorageHandler(this);
         minCompactionThreshold = new DefaultValue<>(metadata.get().params.compaction.minCompactionThreshold());
         maxCompactionThreshold = new DefaultValue<>(metadata.get().params.compaction.maxCompactionThreshold());
         crcCheckChance = new DefaultValue<>(metadata.get().params.crcCheckChance);
