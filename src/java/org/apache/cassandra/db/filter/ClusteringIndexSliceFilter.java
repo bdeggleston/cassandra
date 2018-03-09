@@ -27,7 +27,6 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.partitions.CachedPartition;
 import org.apache.cassandra.db.partitions.Partition;
 import org.apache.cassandra.db.transform.Transformation;
-import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 
@@ -119,11 +118,11 @@ public class ClusteringIndexSliceFilter extends AbstractClusteringIndexFilter
         return partition.unfilteredIterator(columnFilter, slices, reversed);
     }
 
-    public boolean shouldInclude(SSTableReader sstable)
+    @Override
+    public boolean intersects(ClusteringComparator comparator,
+                              List<ByteBuffer> minClusteringValues,
+                              List<ByteBuffer> maxClusteringValues)
     {
-        List<ByteBuffer> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
-        List<ByteBuffer> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
-
         if (minClusteringValues.isEmpty() || maxClusteringValues.isEmpty())
             return true;
 

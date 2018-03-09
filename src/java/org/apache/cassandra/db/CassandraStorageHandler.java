@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -208,7 +209,11 @@ public class CassandraStorageHandler implements StorageHandler
         if (!readCommand.columnFilter().fetchedColumns().statics.isEmpty())
             return true;
 
-        return readCommand.clusteringIndexFilter().shouldInclude(sstable);
+        List<ByteBuffer> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
+        List<ByteBuffer> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
+        return readCommand.clusteringIndexFilter().intersects(sstable.metadata().comparator,
+                                                              minClusteringValues,
+                                                              maxClusteringValues);
     }
 
     private UnfilteredRowIteratorWithLowerBound makeIterator(ColumnFamilyStore cfs,

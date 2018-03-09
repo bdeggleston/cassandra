@@ -25,7 +25,6 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.transform.Transformation;
-import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -162,12 +161,11 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
         };
     }
 
-    public boolean shouldInclude(SSTableReader sstable)
+    @Override
+    public boolean intersects(ClusteringComparator comparator,
+                              List<ByteBuffer> minClusteringValues,
+                              List<ByteBuffer> maxClusteringValues)
     {
-        ClusteringComparator comparator = sstable.metadata().comparator;
-        List<ByteBuffer> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
-        List<ByteBuffer> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
-
         // If any of the requested clustering is within the bounds covered by the sstable, we need to include the sstable
         for (Clustering clustering : clusterings)
         {

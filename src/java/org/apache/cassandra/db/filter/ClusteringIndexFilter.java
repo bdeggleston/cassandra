@@ -18,6 +18,8 @@
 package org.apache.cassandra.db.filter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.partitions.CachedPartition;
@@ -138,15 +140,11 @@ public interface ClusteringIndexFilter
      * @return a unfiltered row iterator returning those rows (or rather Unfiltered) from {@code partition} that are selected by this filter.
      */
     public UnfilteredRowIterator getUnfilteredRowIterator(ColumnFilter columnFilter, Partition partition);
+    
 
-    /**
-     * Whether the provided sstable may contain data that is selected by this filter (based on the sstable metadata).
-     *
-     * @param sstable the sstable for which we want to test the need for inclusion.
-     *
-     * @return whether {@code sstable} should be included to answer this filter.
-     */
-    public boolean shouldInclude(SSTableReader sstable);
+    public boolean intersects(ClusteringComparator comparator,
+                              List<ByteBuffer> minClusteringValues,
+                              List<ByteBuffer> maxClusteringValues);
 
     public Kind kind();
 
