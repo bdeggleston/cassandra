@@ -941,32 +941,6 @@ public class CompactionManager implements CompactionManagerMBean
         return null;
     }
 
-    /**
-     * Does not mutate data, so is not scheduled.
-     */
-    public Future<?> submitValidation(final ColumnFamilyStore cfStore, final Validator validator)
-    {
-        Callable<Object> callable = new Callable<Object>()
-        {
-            public Object call() throws IOException
-            {
-                try (TableMetrics.TableTimer.Context c = cfStore.metric.validationTime.time())
-                {
-                    doValidationCompaction(cfStore, validator);
-                }
-                catch (Throwable e)
-                {
-                    // we need to inform the remote end of our failure, otherwise it will hang on repair forever
-                    validator.fail();
-                    throw e;
-                }
-                return this;
-            }
-        };
-
-        return cfStore.getRepairManager().submitValidation(callable);
-    }
-
     public Future<?> submitValidation(Callable<Object> validation)
     {
         return validationExecutor.submitIfRunning(validation, "validation");
@@ -1320,91 +1294,6 @@ public class CompactionManager implements CompactionManagerMBean
                                     txn);
     }
 
-    private static MerkleTrees createMerkleTrees(ValidationPartitionIterator validationIterator, Collection<Range<Token>> ranges, ColumnFamilyStore cfs)
-    {
-        MerkleTrees tree = new MerkleTrees(cfs.getPartitioner());
-        long allPartitions = validationIterator.estimatedPartitions();
-        Map<Range<Token>, Long> rangePartitionCounts = validationIterator.getRangePartitionCounts();
-
-        for (Range<Token> range : ranges)
-        {
-            long numPartitions = rangePartitionCounts.get(range);
-            double rangeOwningRatio = allPartitions > 0 ? (double)numPartitions / allPartitions : 0;
-            // determine max tree depth proportional to range size to avoid blowing up memory with multiple tress,
-            // capping at 20 to prevent large tree (CASSANDRA-11390)
-            int maxDepth = rangeOwningRatio > 0 ? (int) Math.floor(20 - Math.log(1 / rangeOwningRatio) / Math.log(2)) : 0;
-            // determine tree depth from number of partitions, capping at max tree depth (CASSANDRA-5263)
-            int depth = numPartitions > 0 ? (int) Math.min(Math.ceil(Math.log(numPartitions) / Math.log(2)), maxDepth) : 0;
-            tree.addMerkleTree((int) Math.pow(2, depth), range);
-        }
-        if (logger.isDebugEnabled())
-        {
-            // MT serialize may take time
-            logger.debug("Created {} merkle trees with merkle trees size {}, {} partitions, {} bytes", tree.ranges().size(), tree.size(), allPartitions, MerkleTrees.serializer.serializedSize(tree, 0));
-        }
-
-        return tree;
-    }
-
-    /**
-     * Performs a readonly "compaction" of all sstables in order to validate complete rows,
-     * but without writing the merge result
-     */
-    @SuppressWarnings("resource")
-    private void doValidationCompaction(ColumnFamilyStore cfs, Validator validator)
-    {
-        // this isn't meant to be race-proof, because it's not -- it won't cause bugs for a CFS to be dropped
-        // mid-validation, or to attempt to validate a droped CFS.  this is just a best effort to avoid useless work,
-        // particularly in the scenario where a validation is submitted before the drop, and there are compactions
-        // started prior to the drop keeping some sstables alive.  Since validationCompaction can run
-        // concurrently with other compactions, it would otherwise go ahead and scan those again.
-        if (!cfs.isValid())
-            return;
-
-        // Create Merkle trees suitable to hold estimated partitions for the given ranges.
-        // We blindly assume that a partition is evenly distributed on all sstables for now.
-        long start = System.nanoTime();
-        long partitionCount = 0;
-        long estimatedTotalBytes = 0;
-        try (ValidationPartitionIterator vi = cfs.getRepairManager().getValidationIterator(validator))
-        {
-            MerkleTrees tree = createMerkleTrees(vi, validator.desc.ranges, cfs);
-            try
-            {
-                // validate the CF as we iterate over it
-                validator.prepare(cfs, tree);
-                while (vi.hasNext())
-                {
-                    try (UnfilteredRowIterator partition = vi.next())
-                    {
-                        validator.add(partition);
-                        partitionCount++;
-                    }
-                }
-                validator.complete();
-            }
-            finally
-            {
-                estimatedTotalBytes = vi.getEstimatedBytes();
-                partitionCount = vi.estimatedPartitions();
-            }
-        }
-        finally
-        {
-            cfs.metric.bytesValidated.update(estimatedTotalBytes);
-            cfs.metric.partitionsValidated.update(partitionCount);
-        }
-        if (logger.isDebugEnabled())
-        {
-            long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-            logger.debug("Validation of {} partitions (~{}) finished in {} msec, for {}",
-                         partitionCount,
-                         FBUtilities.prettyPrintMemory(estimatedTotalBytes),
-                         duration,
-                         validator.desc);
-        }
-    }
-
     /**
      * Splits up an sstable into two new sstables. The first of the new tables will store repaired ranges, the second
      * will store the non-repaired ranges. Once anticompation is completed, the original sstable is marked as compacted
@@ -1604,45 +1493,6 @@ public class CompactionManager implements CompactionManagerMBean
         // 2ndary indexes have ExpiringColumns too, so we need to purge tombstones deleted before now. We do not need to
         // add any GcGrace however since 2ndary indexes are local to a node.
         return cfs.isIndex() ? nowInSec : cfs.gcBefore(nowInSec);
-    }
-
-    private static class ValidationCompactionIterator extends CompactionIterator
-    {
-        public ValidationCompactionIterator(List<ISSTableScanner> scanners, ValidationCompactionController controller, int nowInSec, CompactionMetrics metrics)
-        {
-            super(OperationType.VALIDATION, scanners, controller, nowInSec, UUIDGen.getTimeUUID(), metrics);
-        }
-    }
-
-    /*
-     * Controller for validation compaction that always purges.
-     * Note that we should not call cfs.getOverlappingSSTables on the provided
-     * sstables because those sstables are not guaranteed to be active sstables
-     * (since we can run repair on a snapshot).
-     */
-    private static class ValidationCompactionController extends CompactionController
-    {
-        public ValidationCompactionController(ColumnFamilyStore cfs, int gcBefore)
-        {
-            super(cfs, gcBefore);
-        }
-
-        @Override
-        public LongPredicate getPurgeEvaluator(DecoratedKey key)
-        {
-            /*
-             * The main reason we always purge is that including gcable tombstone would mean that the
-             * repair digest will depends on the scheduling of compaction on the different nodes. This
-             * is still not perfect because gcbefore is currently dependend on the current time at which
-             * the validation compaction start, which while not too bad for normal repair is broken for
-             * repair on snapshots. A better solution would be to agree on a gcbefore that all node would
-             * use, and we'll do that with CASSANDRA-4932.
-             * Note validation compaction includes all sstables, so we don't have the problem of purging
-             * a tombstone that could shadow a column in another sstable, but this is doubly not a concern
-             * since validation compaction is read-only.
-             */
-            return time -> true;
-        }
     }
 
     public ListenableFuture<Long> submitViewBuilder(final ViewBuilderTask task)
