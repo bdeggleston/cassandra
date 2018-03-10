@@ -21,9 +21,18 @@ package org.apache.cassandra.db;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 
+/**
+ * The main query handler for a storage engine implementation
+ */
 public interface StorageHandler
 {
+    /**
+     * Query a single partition from the underlying storage, returns {@link UnfilteredRowIterator}
+     */
     UnfilteredRowIterator querySinglePartition(SinglePartitionReadCommand readCommand);
 
+    /**
+     * Query partition range from the underlying storage, returns {@link UnfilteredPartitionIterator}
+     */
     UnfilteredPartitionIterator queryPartitionRange(PartitionRangeReadCommand readCommand);
 }
