@@ -576,21 +576,6 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
             return previewKind != PreviewKind.NONE;
         }
 
-        public Predicate<SSTableReader> getPreviewPredicate()
-        {
-            switch (previewKind)
-            {
-                case ALL:
-                    return (s) -> true;
-                case REPAIRED:
-                    return (s) -> s.isRepaired();
-                case UNREPAIRED:
-                    return (s) -> !s.isRepaired();
-                default:
-                    throw new RuntimeException("Can't get preview predicate for preview kind " + previewKind);
-            }
-        }
-
         public synchronized void maybeSnapshot(TableId tableId, UUID parentSessionId)
         {
             String snapshotName = parentSessionId.toString();

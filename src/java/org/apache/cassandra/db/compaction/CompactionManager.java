@@ -41,6 +41,7 @@ import org.apache.cassandra.cache.AutoSavingCache;
 import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutor;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.repair.ValidationPartitionIterator;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
@@ -132,8 +133,7 @@ public class CompactionManager implements CompactionManagerMBean
 
     private final RateLimiter compactionRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-    @VisibleForTesting
-    CompactionMetrics getMetrics()
+    public CompactionMetrics getMetrics()
     {
         return metrics;
     }
@@ -964,7 +964,12 @@ public class CompactionManager implements CompactionManagerMBean
             }
         };
 
-        return validationExecutor.submitIfRunning(callable, "validation");
+        return cfStore.getRepairManager().submitValidation(callable);
+    }
+
+    public Future<?> submitValidation(Callable<Object> validation)
+    {
+        return validationExecutor.submitIfRunning(validation, "validation");
     }
 
     /* Used in tests. */
@@ -1315,123 +1320,11 @@ public class CompactionManager implements CompactionManagerMBean
                                     txn);
     }
 
-
-    /**
-     * Performs a readonly "compaction" of all sstables in order to validate complete rows,
-     * but without writing the merge result
-     */
-    @SuppressWarnings("resource")
-    private void doValidationCompaction(ColumnFamilyStore cfs, Validator validator) throws IOException
-    {
-        // this isn't meant to be race-proof, because it's not -- it won't cause bugs for a CFS to be dropped
-        // mid-validation, or to attempt to validate a droped CFS.  this is just a best effort to avoid useless work,
-        // particularly in the scenario where a validation is submitted before the drop, and there are compactions
-        // started prior to the drop keeping some sstables alive.  Since validationCompaction can run
-        // concurrently with other compactions, it would otherwise go ahead and scan those again.
-        if (!cfs.isValid())
-            return;
-
-        Refs<SSTableReader> sstables = null;
-        try
-        {
-            UUID parentRepairSessionId = validator.desc.parentSessionId;
-            String snapshotName;
-            boolean isGlobalSnapshotValidation = cfs.snapshotExists(parentRepairSessionId.toString());
-            if (isGlobalSnapshotValidation)
-                snapshotName = parentRepairSessionId.toString();
-            else
-                snapshotName = validator.desc.sessionId.toString();
-            boolean isSnapshotValidation = cfs.snapshotExists(snapshotName);
-
-            if (isSnapshotValidation)
-            {
-                // If there is a snapshot created for the session then read from there.
-                // note that we populate the parent repair session when creating the snapshot, meaning the sstables in the snapshot are the ones we
-                // are supposed to validate.
-                sstables = cfs.getSnapshotSSTableReaders(snapshotName);
-            }
-            else
-            {
-                if (!validator.isIncremental)
-                {
-                    // flush first so everyone is validating data that is as similar as possible
-                    StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(), cfs.name);
-                }
-                sstables = getSSTablesToValidate(cfs, validator);
-                if (sstables == null)
-                    return; // this means the parent repair session was removed - the repair session failed on another node and we removed it
-            }
-
-            // Create Merkle trees suitable to hold estimated partitions for the given ranges.
-            // We blindly assume that a partition is evenly distributed on all sstables for now.
-            MerkleTrees tree = createMerkleTrees(sstables, validator.desc.ranges, cfs);
-            long start = System.nanoTime();
-            long partitionCount = 0;
-            try (AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager().getScanners(sstables, validator.desc.ranges);
-                 ValidationCompactionController controller = new ValidationCompactionController(cfs, getDefaultGcBefore(cfs, validator.nowInSec));
-                 CompactionIterator ci = new ValidationCompactionIterator(scanners.scanners, controller, validator.nowInSec, metrics))
-            {
-                // validate the CF as we iterate over it
-                validator.prepare(cfs, tree);
-                while (ci.hasNext())
-                {
-                    if (ci.isStopRequested())
-                        throw new CompactionInterruptedException(ci.getCompactionInfo());
-                    try (UnfilteredRowIterator partition = ci.next())
-                    {
-                        validator.add(partition);
-                        partitionCount++;
-                    }
-                }
-                validator.complete();
-            }
-            finally
-            {
-                if (isSnapshotValidation && !isGlobalSnapshotValidation)
-                {
-                    // we can only clear the snapshot if we are not doing a global snapshot validation (we then clear it once anticompaction
-                    // is done).
-                    cfs.clearSnapshot(snapshotName);
-                }
-                cfs.metric.partitionsValidated.update(partitionCount);
-            }
-            long estimatedTotalBytes = 0;
-            for (SSTableReader sstable : sstables)
-            {
-                for (Pair<Long, Long> positionsForRanges : sstable.getPositionsForRanges(validator.desc.ranges))
-                    estimatedTotalBytes += positionsForRanges.right - positionsForRanges.left;
-            }
-            cfs.metric.bytesValidated.update(estimatedTotalBytes);
-            if (logger.isDebugEnabled())
-            {
-                long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-                logger.debug("Validation of {} partitions (~{}) finished in {} msec, for {}",
-                             partitionCount,
-                             FBUtilities.prettyPrintMemory(estimatedTotalBytes),
-                             duration,
-                             validator.desc);
-            }
-        }
-        finally
-        {
-            if (sstables != null)
-                sstables.release();
-        }
-    }
-
-    private static MerkleTrees createMerkleTrees(Iterable<SSTableReader> sstables, Collection<Range<Token>> ranges, ColumnFamilyStore cfs)
+    private static MerkleTrees createMerkleTrees(ValidationPartitionIterator validationIterator, Collection<Range<Token>> ranges, ColumnFamilyStore cfs)
     {
         MerkleTrees tree = new MerkleTrees(cfs.getPartitioner());
-        long allPartitions = 0;
-        Map<Range<Token>, Long> rangePartitionCounts = Maps.newHashMapWithExpectedSize(ranges.size());
-        for (Range<Token> range : ranges)
-        {
-            long numPartitions = 0;
-            for (SSTableReader sstable : sstables)
-                numPartitions += sstable.estimatedKeysForRanges(Collections.singleton(range));
-            rangePartitionCounts.put(range, numPartitions);
-            allPartitions += numPartitions;
-        }
+        long allPartitions = validationIterator.estimatedPartitions();
+        Map<Range<Token>, Long> rangePartitionCounts = validationIterator.getRangePartitionCounts();
 
         for (Range<Token> range : ranges)
         {
@@ -1453,52 +1346,63 @@ public class CompactionManager implements CompactionManagerMBean
         return tree;
     }
 
-    @VisibleForTesting
-    synchronized Refs<SSTableReader> getSSTablesToValidate(ColumnFamilyStore cfs, Validator validator)
+    /**
+     * Performs a readonly "compaction" of all sstables in order to validate complete rows,
+     * but without writing the merge result
+     */
+    @SuppressWarnings("resource")
+    private void doValidationCompaction(ColumnFamilyStore cfs, Validator validator)
     {
-        Refs<SSTableReader> sstables;
+        // this isn't meant to be race-proof, because it's not -- it won't cause bugs for a CFS to be dropped
+        // mid-validation, or to attempt to validate a droped CFS.  this is just a best effort to avoid useless work,
+        // particularly in the scenario where a validation is submitted before the drop, and there are compactions
+        // started prior to the drop keeping some sstables alive.  Since validationCompaction can run
+        // concurrently with other compactions, it would otherwise go ahead and scan those again.
+        if (!cfs.isValid())
+            return;
 
-        ActiveRepairService.ParentRepairSession prs = ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId);
-        if (prs == null)
-            return null;
-        Set<SSTableReader> sstablesToValidate = new HashSet<>();
-
-        com.google.common.base.Predicate<SSTableReader> predicate;
-        if (prs.isPreview())
+        // Create Merkle trees suitable to hold estimated partitions for the given ranges.
+        // We blindly assume that a partition is evenly distributed on all sstables for now.
+        long start = System.nanoTime();
+        long partitionCount = 0;
+        long estimatedTotalBytes = 0;
+        try (ValidationPartitionIterator vi = cfs.getRepairManager().getValidationIterator(validator))
         {
-            predicate = prs.getPreviewPredicate();
-
-        }
-        else if (validator.isIncremental)
-        {
-            predicate = s -> validator.desc.parentSessionId.equals(s.getSSTableMetadata().pendingRepair);
-        }
-        else
-        {
-            // note that we always grab all existing sstables for this - if we were to just grab the ones that
-            // were marked as repairing, we would miss any ranges that were compacted away and this would cause us to overstream
-            predicate = (s) -> !prs.isIncremental || !s.isRepaired();
-        }
-
-        try (ColumnFamilyStore.RefViewFragment sstableCandidates = cfs.selectAndReference(View.select(SSTableSet.CANONICAL, predicate)))
-        {
-            for (SSTableReader sstable : sstableCandidates.sstables)
+            MerkleTrees tree = createMerkleTrees(vi, validator.desc.ranges, cfs);
+            try
             {
-                if (new Bounds<>(sstable.first.getToken(), sstable.last.getToken()).intersects(validator.desc.ranges))
+                // validate the CF as we iterate over it
+                validator.prepare(cfs, tree);
+                while (vi.hasNext())
                 {
-                    sstablesToValidate.add(sstable);
+                    try (UnfilteredRowIterator partition = vi.next())
+                    {
+                        validator.add(partition);
+                        partitionCount++;
+                    }
                 }
+                validator.complete();
             }
-
-            sstables = Refs.tryRef(sstablesToValidate);
-            if (sstables == null)
+            finally
             {
-                logger.error("Could not reference sstables");
-                throw new RuntimeException("Could not reference sstables");
+                estimatedTotalBytes = vi.getEstimatedBytes();
+                partitionCount = vi.estimatedPartitions();
             }
         }
-
-        return sstables;
+        finally
+        {
+            cfs.metric.bytesValidated.update(estimatedTotalBytes);
+            cfs.metric.partitionsValidated.update(partitionCount);
+        }
+        if (logger.isDebugEnabled())
+        {
+            long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+            logger.debug("Validation of {} partitions (~{}) finished in {} msec, for {}",
+                         partitionCount,
+                         FBUtilities.prettyPrintMemory(estimatedTotalBytes),
+                         duration,
+                         validator.desc);
+        }
     }
 
     /**
@@ -1856,7 +1760,8 @@ public class CompactionManager implements CompactionManagerMBean
         }
     }
 
-    private static class ValidationExecutor extends CompactionExecutor
+    // TODO: pull out relevant parts of CompactionExecutor and move to ValidationManager
+    public static class ValidationExecutor extends CompactionExecutor
     {
         public ValidationExecutor()
         {
