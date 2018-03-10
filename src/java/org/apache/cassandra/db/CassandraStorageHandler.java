@@ -36,9 +36,13 @@ import org.apache.cassandra.db.filter.ClusteringIndexNamesFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.lifecycle.View;
+import org.apache.cassandra.db.partitions.CachedPartition;
 import org.apache.cassandra.db.partitions.ImmutableBTreePartition;
 import org.apache.cassandra.db.partitions.Partition;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
+import org.apache.cassandra.db.rows.BaseRowIterator;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Rows;
@@ -421,10 +425,10 @@ public class CassandraStorageHandler implements StorageHandler
             return ImmutableBTreePartition.create(iter, maxRows);
 
         try (UnfilteredRowIterator merged =
-                UnfilteredRowIterators.merge(Arrays.asList(iter, result.unfilteredIterator(readCommand.columnFilter(),
-                                                                                           Slices.ALL,
-                                                                                           filter.isReversed())),
-                                             readCommand.nowInSec()))
+             UnfilteredRowIterators.merge(Arrays.asList(iter, result.unfilteredIterator(readCommand.columnFilter(),
+                                                                                        Slices.ALL,
+                                                                                        filter.isReversed())),
+                                          readCommand.nowInSec()))
         {
             return ImmutableBTreePartition.create(merged, maxRows);
         }
@@ -527,5 +531,108 @@ public class CassandraStorageHandler implements StorageHandler
         {
             return mergedSSTables;
         }
+    }
+
+    @Override
+    public UnfilteredPartitionIterator queryPartitionRange(PartitionRangeReadCommand readCommand)
+    {
+        DataRange dataRange = readCommand.dataRange();
+        TableMetadata metadata = readCommand.metadata();
+        ColumnFilter columnFilter = readCommand.columnFilter();
+
+        ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange.keyRange()));
+        Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(),
+                      dataRange.keyRange().getString(metadata.partitionKeyType));
+
+        // fetch data from current memtable, historical memtables, and SSTables in the correct order.
+        final List<UnfilteredPartitionIterator> iterators = new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
+
+        try
+        {
+            for (Memtable memtable : view.memtables)
+            {
+                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this method
+                Memtable.MemtableUnfilteredPartitionIterator iter = memtable.makePartitionIterator(columnFilter, dataRange);
+                readCommand.updateUnrepairedTombstone(iter.getMinLocalDeletionTime());
+                iterators.add(iter);
+            }
+
+            SSTableReadsListener readCountUpdater = newReadCountUpdater();
+            for (SSTableReader sstable : view.sstables)
+            {
+                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this method
+                UnfilteredPartitionIterator iter = sstable.getScanner(columnFilter, dataRange, readCountUpdater);
+                iterators.add(iter);
+                if (!sstable.isRepaired())
+                    readCommand.updateUnrepairedTombstone(sstable.getMinLocalDeletionTime());
+            }
+            // iterators can be empty for offline tools
+            return iterators.isEmpty() ? EmptyIterators.unfilteredPartition(metadata)
+                                       : checkCacheFilter(UnfilteredPartitionIterators.mergeLazily(iterators, readCommand.nowInSec()), cfs, readCommand);
+        }
+        catch (RuntimeException | Error e)
+        {
+            try
+            {
+                FBUtilities.closeAll(iterators);
+            }
+            catch (Exception suppressed)
+            {
+                e.addSuppressed(suppressed);
+            }
+
+            throw e;
+        }
+    }
+
+    /**
+     * Creates a new {@code SSTableReadsListener} to update the SSTables read counts.
+     * @return a new {@code SSTableReadsListener} to update the SSTables read counts.
+     */
+    private static SSTableReadsListener newReadCountUpdater()
+    {
+        return new SSTableReadsListener()
+        {
+            @Override
+            public void onScanningStarted(SSTableReader sstable)
+            {
+                sstable.incrementReadCount();
+            }
+        };
+    }
+
+    private UnfilteredPartitionIterator checkCacheFilter(UnfilteredPartitionIterator iter,
+                                                         ColumnFamilyStore cfs,
+                                                         PartitionRangeReadCommand readCommand)
+    {
+        class CacheFilter extends Transformation
+        {
+            @Override
+            public BaseRowIterator applyToPartition(BaseRowIterator iter)
+            {
+                // Note that we rely on the fact that until we actually advance 'iter', no really costly operation is actually done
+                // (except for reading the partition key from the index file) due to the call to mergeLazily in queryStorage.
+                DecoratedKey dk = iter.partitionKey();
+
+                // Check if this partition is in the rowCache and if it is, if  it covers our filter
+                CachedPartition cached = cfs.getRawCachedPartition(dk);
+                ClusteringIndexFilter filter = readCommand.dataRange().clusteringIndexFilter(dk);
+
+                if (cached != null && cfs.isFilterFullyCoveredBy(filter,
+                                                                 readCommand.limits(),
+                                                                 cached,
+                                                                 readCommand.nowInSec(),
+                                                                 iter.metadata().enforceStrictLiveness()))
+                {
+                    // We won't use 'iter' so close it now.
+                    iter.close();
+
+                    return filter.getUnfilteredRowIterator(readCommand.columnFilter(), cached);
+                }
+
+                return iter;
+            }
+        }
+        return Transformation.apply(iter, new CacheFilter());
     }
 }

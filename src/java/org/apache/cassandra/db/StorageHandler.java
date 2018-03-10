@@ -18,9 +18,12 @@
 
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 
 public interface StorageHandler
 {
     UnfilteredRowIterator querySinglePartition(SinglePartitionReadCommand readCommand);
+
+    UnfilteredPartitionIterator queryPartitionRange(PartitionRangeReadCommand readCommand);
 }
