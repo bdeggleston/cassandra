@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -47,6 +48,7 @@ import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -549,6 +551,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
      */
     public static class ParentRepairSession
     {
+        private final Keyspace keyspace;
         private final Map<TableId, ColumnFamilyStore> columnFamilyStores = new HashMap<>();
         private final Collection<Range<Token>> ranges;
         public final boolean isIncremental;
@@ -560,10 +563,16 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
         public ParentRepairSession(InetAddressAndPort coordinator, List<ColumnFamilyStore> columnFamilyStores, Collection<Range<Token>> ranges, boolean isIncremental, long repairedAt, boolean isGlobal, PreviewKind previewKind)
         {
             this.coordinator = coordinator;
+            Set<Keyspace> keyspaces = new HashSet<>();
             for (ColumnFamilyStore cfs : columnFamilyStores)
             {
+                keyspaces.add(cfs.keyspace);
                 this.columnFamilyStores.put(cfs.metadata.id, cfs);
             }
+
+            Preconditions.checkArgument(keyspaces.size() == 1, "repair sessions cannot operate on multiple keyspaces");
+            this.keyspace = Iterables.getOnlyElement(keyspaces);
+
             this.ranges = ranges;
             this.repairedAt = repairedAt;
             this.isIncremental = isIncremental;
@@ -597,6 +606,11 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
         public Collection<ColumnFamilyStore> getColumnFamilyStores()
         {
             return ImmutableSet.<ColumnFamilyStore>builder().addAll(columnFamilyStores.values()).build();
+        }
+
+        public Keyspace getKeyspace()
+        {
+            return keyspace;
         }
 
         public Set<TableId> getTableIds()

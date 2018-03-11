@@ -19,10 +19,10 @@
 package org.apache.cassandra.repair.consistent;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,15 +53,14 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.repair.KeyspaceRepairManager;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -81,8 +80,6 @@ import org.apache.cassandra.repair.messages.PrepareConsistentResponse;
 import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.repair.messages.StatusRequest;
 import org.apache.cassandra.repair.messages.StatusResponse;
-import org.apache.cassandra.schema.Schema;
-import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.StorageService;
@@ -547,10 +544,9 @@ public class LocalSessions
     }
 
     @VisibleForTesting
-    ListenableFuture submitPendingAntiCompaction(LocalSession session, ExecutorService executor)
+    ListenableFuture prepareSession(KeyspaceRepairManager repairManager, UUID sessionID, Collection<Range<Token>> ranges, ExecutorService executor)
     {
-        PendingAntiCompaction pac = new PendingAntiCompaction(session.sessionID, session.ranges, executor);
-        return pac.run();
+        return repairManager.prepareIncrementalRepair(sessionID, ranges, executor);
     }
 
     /**
@@ -587,8 +583,10 @@ public class LocalSessions
 
         ExecutorService executor = Executors.newFixedThreadPool(parentSession.getColumnFamilyStores().size());
 
-        ListenableFuture pendingAntiCompaction = submitPendingAntiCompaction(session, executor);
-        Futures.addCallback(pendingAntiCompaction, new FutureCallback()
+        KeyspaceRepairManager repairManager = parentSession.getKeyspace().getRepairManager();
+        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getRanges(), executor);
+
+        Futures.addCallback(repairPreparation, new FutureCallback<Object>()
         {
             public void onSuccess(@Nullable Object result)
             {
@@ -601,18 +599,6 @@ public class LocalSessions
             public void onFailure(Throwable t)
             {
                 logger.error("Prepare phase for incremental repair session {} failed", sessionID, t);
-                if (t instanceof PendingAntiCompaction.SSTableAcquisitionException)
-                {
-                    logger.warn("Prepare phase for incremental repair session {} was unable to " +
-                                "acquire exclusive access to the neccesary sstables. " +
-                                "This is usually caused by running multiple incremental repairs on nodes that share token ranges",
-                                sessionID);
-
-                }
-                else
-                {
-                    logger.error("Prepare phase for incremental repair session {} failed", sessionID, t);
-                }
                 sendMessage(coordinator, new PrepareConsistentResponse(sessionID, getBroadcastAddressAndPort(), false));
                 failSession(sessionID, false);
                 executor.shutdown();

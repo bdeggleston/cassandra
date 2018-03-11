@@ -153,6 +153,10 @@ public class PendingAntiCompaction
                         result.abort();
                     }
                 }
+                logger.warn("Prepare phase for incremental repair session {} was unable to " +
+                            "acquire exclusive access to the neccesary sstables. " +
+                            "This is usually caused by running multiple incremental repairs on nodes that share token ranges",
+                            parentRepairSession);
                 return Futures.immediateFailedFuture(new SSTableAcquisitionException());
             }
             else
