@@ -19,12 +19,19 @@
 package org.apache.cassandra.db.repair;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
+import com.google.common.base.Predicate;
+
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.dht.Bounds;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.repair.TableRepairManager;
 import org.apache.cassandra.repair.ValidationPartitionIterator;
 import org.apache.cassandra.repair.Validator;
@@ -54,5 +61,23 @@ public class CassandraTableRepairManager implements TableRepairManager
     public void incrementalSessionCompleted(UUID sessionID)
     {
         CompactionManager.instance.submitBackground(cfs);
+    }
+
+    @Override
+    public synchronized void snapshot(String name, Collection<Range<Token>> ranges, boolean force)
+    {
+        if (force || !cfs.snapshotExists(name))
+        {
+            cfs.snapshot(name, new Predicate<SSTableReader>()
+            {
+                public boolean apply(SSTableReader sstable)
+                {
+                    return sstable != null &&
+                           !sstable.metadata().isIndex() && // exclude SSTables from 2i
+                           new Bounds<>(sstable.first.getToken(), sstable.last.getToken()).intersects(ranges);
+                }
+            }, true, false); //ephemeral snapshot, if repair fails, it will be cleaned next startup
+        }
+
     }
 }

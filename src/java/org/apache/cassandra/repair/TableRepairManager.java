@@ -19,13 +19,18 @@
 package org.apache.cassandra.repair;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
+
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 
 public interface TableRepairManager
 {
     ValidationPartitionIterator getValidationIterator(Validator validator) throws IOException;
     Future<?> submitValidation(Callable<Object> validation);
     void incrementalSessionCompleted(UUID sessionID);
+    void snapshot(String name, Collection<Range<Token>> ranges, boolean force);
 }
