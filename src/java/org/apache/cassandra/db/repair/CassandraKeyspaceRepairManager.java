@@ -28,7 +28,6 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.repair.KeyspaceRepairManager;
-import org.apache.cassandra.repair.consistent.PendingAntiCompaction;
 
 public class CassandraKeyspaceRepairManager implements KeyspaceRepairManager
 {

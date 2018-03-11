@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.repair.consistent;
+package org.apache.cassandra.db.repair;
 
 import java.util.ArrayList;
 import java.util.Collection;
