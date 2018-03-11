@@ -19,6 +19,7 @@
 package org.apache.cassandra.db.repair;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -47,5 +48,11 @@ public class CassandraTableRepairManager implements TableRepairManager
     public Future<?> submitValidation(Callable<Object> validation)
     {
         return CompactionManager.instance.submitValidation(validation);
+    }
+
+    @Override
+    public void incrementalSessionCompleted(UUID sessionID)
+    {
+        CompactionManager.instance.submitBackground(cfs);
     }
 }
