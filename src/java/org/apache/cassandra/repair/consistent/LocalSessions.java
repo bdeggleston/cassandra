@@ -549,12 +549,11 @@ public class LocalSessions
     }
 
     /**
-     * The PrepareConsistentRequest effectively promotes the parent repair session to a consistent
-     * incremental session, and begins the 'pending anti compaction' which moves all sstable data
-     * that is to be repaired into it's own silo, preventing it from mixing with other data.
+     * The PrepareConsistentRequest promotes the parent repair session to a consistent incremental
+     * session, and isolates the data to be repaired from the rest of the table's data
      *
-     * No response is sent to the repair coordinator until the pending anti compaction has completed
-     * successfully. If the pending anti compaction fails, a failure message is sent to the coordinator,
+     * No response is sent to the repair coordinator until the data preparation / isolation has completed
+     * successfully. If the data preparation fails, a failure message is sent to the coordinator,
      * cancelling the session.
      */
     public void handlePrepareMessage(InetAddressAndPort from, PrepareConsistentRequest request)
