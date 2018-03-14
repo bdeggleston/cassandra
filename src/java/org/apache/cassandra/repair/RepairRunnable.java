@@ -407,7 +407,6 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
                                    String... cfnames)
     {
         // the local node also needs to be included in the set of participants, since coordinator sessions aren't persisted
-        Predicate<InetAddressAndPort> isAlive = FailureDetector.instance::isAlive;
         Set<InetAddressAndPort> allParticipants = ImmutableSet.<InetAddressAndPort>builder()
                                            .addAll(allNeighbors)
                                            .add(FBUtilities.getBroadcastAddressAndPort())

@@ -58,7 +58,7 @@ public class CoordinatorSessions
         builder.withCoordinator(prs.coordinator);
 
         builder.withTableIds(prs.getTableIds());
-        builder.withRepairedAt(isForced ? ActiveRepairService.UNREPAIRED_SSTABLE : prs.repairedAt);
+        builder.withRepairedAt(prs.repairedAt);
         builder.withRanges(prs.getRanges());
         builder.withParticipants(participants);
         CoordinatorSession session = buildSession(builder);
