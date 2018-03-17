@@ -543,9 +543,9 @@ public class LocalSessions
     }
 
     @VisibleForTesting
-    ListenableFuture prepareSession(KeyspaceRepairManager repairManager, UUID sessionID, Collection<Range<Token>> ranges, ExecutorService executor)
+    ListenableFuture prepareSession(KeyspaceRepairManager repairManager, UUID sessionID, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor)
     {
-        return repairManager.prepareIncrementalRepair(sessionID, ranges, executor);
+        return repairManager.prepareIncrementalRepair(sessionID, tables, ranges, executor);
     }
 
     /**
@@ -582,7 +582,7 @@ public class LocalSessions
         ExecutorService executor = Executors.newFixedThreadPool(parentSession.getColumnFamilyStores().size());
 
         KeyspaceRepairManager repairManager = parentSession.getKeyspace().getRepairManager();
-        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getRanges(), executor);
+        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getColumnFamilyStores(), parentSession.getRanges(), executor);
 
         Futures.addCallback(repairPreparation, new FutureCallback<Object>()
         {

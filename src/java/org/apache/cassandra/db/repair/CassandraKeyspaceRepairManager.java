@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -39,9 +40,9 @@ public class CassandraKeyspaceRepairManager implements KeyspaceRepairManager
     }
 
     @Override
-    public ListenableFuture prepareIncrementalRepair(UUID sessionID, Collection<Range<Token>> ranges, ExecutorService executor)
+    public ListenableFuture prepareIncrementalRepair(UUID sessionID, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor)
     {
-        PendingAntiCompaction pac = new PendingAntiCompaction(sessionID, ranges, executor);
+        PendingAntiCompaction pac = new PendingAntiCompaction(sessionID, tables, ranges, executor);
         return pac.run();
     }
 }

@@ -43,7 +43,6 @@ import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.concurrent.Refs;
 
 /**
@@ -177,22 +176,22 @@ public class PendingAntiCompaction
     }
 
     private final UUID prsId;
+    private final Collection<ColumnFamilyStore> tables;
     private final Collection<Range<Token>> ranges;
     private final ExecutorService executor;
 
-    public PendingAntiCompaction(UUID prsId, Collection<Range<Token>> ranges, ExecutorService executor)
+    public PendingAntiCompaction(UUID prsId, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor)
     {
         this.prsId = prsId;
+        this.tables = tables;
         this.ranges = ranges;
         this.executor = executor;
     }
 
     public ListenableFuture run()
     {
-        ActiveRepairService.ParentRepairSession prs = ActiveRepairService.instance.getParentRepairSession(prsId);
-        Collection<ColumnFamilyStore> cfss = prs.getColumnFamilyStores();
-        List<ListenableFutureTask<AcquireResult>> tasks = new ArrayList<>(cfss.size());
-        for (ColumnFamilyStore cfs : cfss)
+        List<ListenableFutureTask<AcquireResult>> tasks = new ArrayList<>(tables.size());
+        for (ColumnFamilyStore cfs : tables)
         {
             cfs.forceBlockingFlush();
             ListenableFutureTask<AcquireResult> task = ListenableFutureTask.create(new AcquisitionCallable(cfs, ranges, prsId));

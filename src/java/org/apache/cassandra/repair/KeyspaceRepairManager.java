@@ -24,10 +24,11 @@ import java.util.concurrent.ExecutorService;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 
 public interface KeyspaceRepairManager
 {
-    ListenableFuture prepareIncrementalRepair(UUID sessionID, Collection<Range<Token>> ranges, ExecutorService executor);
+    ListenableFuture prepareIncrementalRepair(UUID sessionID, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor);
 }
