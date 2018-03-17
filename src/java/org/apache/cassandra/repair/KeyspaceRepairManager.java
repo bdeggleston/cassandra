@@ -28,7 +28,15 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 
+/**
+ * Keyspace level hook for repair.
+ */
 public interface KeyspaceRepairManager
 {
+    /**
+     * Isolate the unrepaired ranges of the given tables, and make referenceable by session id. Until each table has
+     * been notified that the repair session has been completed, the data associated with the given session id must
+     * not be combined with repaired or unrepaired data, or data from other repair sessions.
+     */
     ListenableFuture prepareIncrementalRepair(UUID sessionID, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor);
 }

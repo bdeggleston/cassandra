@@ -27,10 +27,38 @@ import java.util.concurrent.Future;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 
+/**
+ * Table level hook for repair
+ */
 public interface TableRepairManager
 {
-    ValidationPartitionIterator getValidationIterator(Validator validator) throws IOException;
+    /**
+     * Return a validation iterator for the given parameters. If isIncremental is true, the iterator must only include
+     * data previously isolated for repair with the given parentId. nowInSec should determine whether tombstones shouldn
+     * be purged or not.
+     */
+    ValidationPartitionIterator getValidationIterator(Collection<Range<Token>> ranges, UUID parentId, UUID sessionID, boolean isIncremental, int nowInSec) throws IOException;
+
+    /**
+     * Begin execution of the given validation callable. Which thread pool a validation should run in is an implementation detail.
+     */
     Future<?> submitValidation(Callable<Object> validation);
+
+    /**
+     * Called when the given incremental session has completed. Because of race and failure conditions, implementors
+     * should not rely only on receiving calls from this method to determine when a session has ended. Implementors
+     * can determine if a session has finished by calling ActiveRepairService.instance.consistent.local.isSessionInProgress.
+     *
+     * Just because a session has completed doesn't mean it's completed succesfully. So implementors need to consult the
+     * repair service at ActiveRepairService.instance.consistent.local.getFinalSessionRepairedAt to get the repairedAt
+     * time. If the repairedAt time is zero, the data for the given session should be demoted back to unrepaired. Otherwise,
+     * it should be promoted to repaired with the given repaired time.
+     */
     void incrementalSessionCompleted(UUID sessionID);
+
+    /**
+     * For snapshot repairs. A snapshot of the current data for the given ranges should be taken with the given name.
+     * If force is true, a snapshot should be taken even if one already exists with that name.
+     */
     void snapshot(String name, Collection<Range<Token>> ranges, boolean force);
 }

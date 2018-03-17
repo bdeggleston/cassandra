@@ -70,6 +70,12 @@ public class ValidationManager
         return tree;
     }
 
+    private static ValidationPartitionIterator getValidationIterator(TableRepairManager repairManager, Validator validator) throws IOException
+    {
+        RepairJobDesc desc = validator.desc;
+        return repairManager.getValidationIterator(desc.ranges, desc.parentSessionId, desc.sessionId, validator.isIncremental, validator.nowInSec);
+    }
+
     /**
      * Performs a readonly "compaction" of all sstables in order to validate complete rows,
      * but without writing the merge result
@@ -90,7 +96,7 @@ public class ValidationManager
         long start = System.nanoTime();
         long partitionCount = 0;
         long estimatedTotalBytes = 0;
-        try (ValidationPartitionIterator vi = cfs.getRepairManager().getValidationIterator(validator))
+        try (ValidationPartitionIterator vi = getValidationIterator(cfs.getRepairManager(), validator))
         {
             MerkleTrees tree = createMerkleTrees(vi, validator.desc.ranges, cfs);
             try

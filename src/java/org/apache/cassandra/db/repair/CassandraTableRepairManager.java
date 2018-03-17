@@ -46,9 +46,9 @@ public class CassandraTableRepairManager implements TableRepairManager
     }
 
     @Override
-    public ValidationPartitionIterator getValidationIterator(Validator validator) throws IOException
+    public ValidationPartitionIterator getValidationIterator(Collection<Range<Token>> ranges, UUID parentId, UUID sessionID, boolean isIncremental, int nowInSec) throws IOException
     {
-        return new CassandraValidationIterator(cfs, validator);
+        return new CassandraValidationIterator(cfs, ranges, parentId, sessionID, isIncremental, nowInSec);
     }
 
     @Override
