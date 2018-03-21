@@ -469,16 +469,16 @@ public class Keyspace
      *
      * @param mutation       the row to write.  Must not be modified after calling apply, since commitlog append
      *                       may happen concurrently, depending on the CL Executor type.
-     * @param writeCommitLog false to disable commitlog append entirely
+     * @param makeDurable    if true, don't return unless write has been made durable
      * @param updateIndexes  false to disable index updates (used by CollationController "defragmenting")
      * @param isDroppable    true if this should throw WriteTimeoutException if it does not acquire lock within write_request_timeout_in_ms
      */
     public void apply(final Mutation mutation,
-                      final boolean writeCommitLog,
+                      final boolean makeDurable,
                       boolean updateIndexes,
                       boolean isDroppable)
     {
-        applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, false, null);
+        applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
     }
 
     /**
@@ -486,13 +486,13 @@ public class Keyspace
      *
      * @param mutation       the row to write.  Must not be modified after calling apply, since commitlog append
      *                       may happen concurrently, depending on the CL Executor type.
-     * @param writeCommitLog false to disable commitlog append entirely
+     * @param makeDurable    if true, don't return unless write has been made durable
      * @param updateIndexes  false to disable index updates (used by CollationController "defragmenting")
      * @param isDroppable    true if this should throw WriteTimeoutException if it does not acquire lock within write_request_timeout_in_ms
      * @param isDeferrable   true if caller is not waiting for future to complete, so that future may be deferred
      */
     private CompletableFuture<?> applyInternal(final Mutation mutation,
-                                               final boolean writeCommitLog,
+                                               final boolean makeDurable,
                                                boolean updateIndexes,
                                                boolean isDroppable,
                                                boolean isDeferrable,
@@ -554,7 +554,7 @@ public class Keyspace
                             // we will re-apply ourself to the queue and try again later
                             final CompletableFuture<?> mark = future;
                             StageManager.getStage(Stage.MUTATION).execute(() ->
-                                                                          applyInternal(mutation, writeCommitLog, true, isDroppable, true, mark)
+                                                                          applyInternal(mutation, makeDurable, true, isDroppable, true, mark)
                             );
                             return future;
                         }
@@ -598,7 +598,7 @@ public class Keyspace
         {
             // write the mutation to the commitlog and memtables
             CommitLogPosition commitLogPosition = null;
-            if (writeCommitLog)
+            if (makeDurable)
             {
                 Tracing.trace("Appending to commitlog");
                 commitLogPosition = CommitLog.instance.add(mutation);
@@ -619,7 +619,7 @@ public class Keyspace
                     try
                     {
                         Tracing.trace("Creating materialized view mutations from base table replica");
-                        viewManager.forTable(upd.metadata().id).pushViewReplicaUpdates(upd, writeCommitLog, baseComplete);
+                        viewManager.forTable(upd.metadata().id).pushViewReplicaUpdates(upd, makeDurable, baseComplete);
                     }
                     catch (Throwable t)
                     {
