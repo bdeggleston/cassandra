@@ -29,6 +29,7 @@ import com.google.common.collect.Iterables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.CassandraKeyspaceWriteHandler;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.*;
@@ -89,6 +90,7 @@ public class Keyspace
 
     private volatile AbstractReplicationStrategy replicationStrategy;
     public final ViewManager viewManager;
+    private final KeyspaceWriteHandler writeHandler;
     private volatile ReplicationParams replicationParams;
 
     public static final Function<String,Keyspace> keyspaceTransformer = new Function<String, Keyspace>()
@@ -335,6 +337,7 @@ public class Keyspace
             initCf(Schema.instance.getTableMetadataRef(cfm.id), loadSSTables);
         }
         this.viewManager.reload(false);
+        this.writeHandler = new CassandraKeyspaceWriteHandler(this);
     }
 
     private Keyspace(KeyspaceMetadata metadata)
@@ -343,6 +346,7 @@ public class Keyspace
         createReplicationStrategy(metadata);
         this.metric = new KeyspaceMetrics(this);
         this.viewManager = new ViewManager(this);
+        this.writeHandler = new CassandraKeyspaceWriteHandler(this);
     }
 
     public static Keyspace mockKS(KeyspaceMetadata metadata)
@@ -412,6 +416,11 @@ public class Keyspace
         {
             throw new IllegalStateException("CFS is already initialized: " + cfs.name);
         }
+    }
+
+    public KeyspaceWriteHandler getWriteHandler()
+    {
+        return writeHandler;
     }
 
     /**
@@ -594,16 +603,8 @@ public class Keyspace
             }
         }
         int nowInSec = FBUtilities.nowInSeconds();
-        try (OpOrder.Group opGroup = writeOrder.start())
+        try (WriteContext ctx = getWriteHandler().beginWrite(mutation, makeDurable))
         {
-            // write the mutation to the commitlog and memtables
-            CommitLogPosition commitLogPosition = null;
-            if (makeDurable)
-            {
-                Tracing.trace("Appending to commitlog");
-                commitLogPosition = CommitLog.instance.add(mutation);
-            }
-
             for (PartitionUpdate upd : mutation.getPartitionUpdates())
             {
                 ColumnFamilyStore cfs = columnFamilyStores.get(upd.metadata().id);
@@ -630,11 +631,8 @@ public class Keyspace
                     }
                 }
 
-                Tracing.trace("Adding to {} memtable", upd.metadata().name);
-                UpdateTransaction indexTransaction = updateIndexes
-                                                     ? cfs.indexManager.newUpdateTransaction(upd, opGroup, nowInSec)
-                                                     : UpdateTransaction.NO_OP;
-                cfs.apply(upd, indexTransaction, opGroup, commitLogPosition);
+                cfs.getWriteHandler().write(upd, ctx, updateIndexes, nowInSec);
+
                 if (requiresViewUpdate)
                     baseComplete.set(System.currentTimeMillis());
             }

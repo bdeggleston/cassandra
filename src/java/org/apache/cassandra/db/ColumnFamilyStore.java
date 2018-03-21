@@ -215,6 +215,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public volatile long sampleLatencyNanos;
     private final ScheduledFuture<?> latencyCalculator;
 
+    private final CassandraTableWriteHandler writeHandler;
     private final CassandraStreamManager streamManager;
 
     private volatile boolean compactionSpaceCheck = true;
@@ -469,7 +470,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             mbeanName = null;
             oldMBeanName= null;
         }
+        writeHandler = new CassandraTableWriteHandler(this);
         streamManager = new CassandraStreamManager(this);
+    }
+
+    public TableWriteHandler getWriteHandler()
+    {
+        return writeHandler;
     }
 
     public TableStreamManager getStreamManager()
