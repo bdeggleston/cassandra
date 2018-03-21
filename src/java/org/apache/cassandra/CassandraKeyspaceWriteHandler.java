@@ -64,4 +64,34 @@ public class CassandraKeyspaceWriteHandler implements KeyspaceWriteHandler
             throw t;
         }
     }
+
+    private WriteContext createEmptyContext()
+    {
+        OpOrder.Group group = null;
+        try
+        {
+            group = Keyspace.writeOrder.start();
+            return new CassandraWriteContext(group, null);
+        }
+        catch (Throwable t)
+        {
+            if (group != null)
+            {
+                group.close();
+            }
+            throw t;
+        }
+    }
+
+    @Override
+    public WriteContext createContextForIndexing()
+    {
+        return createEmptyContext();
+    }
+
+    @Override
+    public WriteContext createContextForRead()
+    {
+        return createEmptyContext();
+    }
 }

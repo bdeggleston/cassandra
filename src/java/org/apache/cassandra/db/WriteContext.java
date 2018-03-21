@@ -18,6 +18,12 @@
 
 package org.apache.cassandra.db;
 
+/**
+ * Issued by the keyspace write handler and used in the write path (as expected), as well as the read path
+ * and some async index building code. In the read and index paths, the write context is intended to be used
+ * as a marker for ordering operations. Reads can also end up performing writes in some cases, particularly
+ * when correcting secondary indexes.
+ */
 public interface WriteContext extends AutoCloseable
 {
     @Override

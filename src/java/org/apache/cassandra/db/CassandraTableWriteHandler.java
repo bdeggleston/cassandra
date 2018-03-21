@@ -33,13 +33,10 @@ public class CassandraTableWriteHandler implements TableWriteHandler
 
     @Override
     @SuppressWarnings("resource")
-    public void write(PartitionUpdate update, WriteContext context, boolean updateIndexes, int nowInSec)
+    public void write(PartitionUpdate update, WriteContext context, UpdateTransaction updateTransaction)
     {
         CassandraWriteContext ctx = CassandraWriteContext.fromContext(context);
         Tracing.trace("Adding to {} memtable", update.metadata().name);
-        UpdateTransaction indexTransaction = updateIndexes
-                                             ? cfs.indexManager.newUpdateTransaction(update, ctx.getGroup(), nowInSec)
-                                             : UpdateTransaction.NO_OP;
-        cfs.apply(update, indexTransaction, ctx.getGroup(), ctx.getPosition());
+        cfs.apply(update, updateTransaction, ctx.getGroup(), ctx.getPosition());
     }
 }

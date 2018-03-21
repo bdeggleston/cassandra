@@ -33,8 +33,6 @@ import org.apache.cassandra.CassandraKeyspaceWriteHandler;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -631,7 +629,10 @@ public class Keyspace
                     }
                 }
 
-                cfs.getWriteHandler().write(upd, ctx, updateIndexes, nowInSec);
+                UpdateTransaction indexTransaction = updateIndexes
+                                                     ? cfs.indexManager.newUpdateTransaction(upd, ctx, nowInSec)
+                                                     : UpdateTransaction.NO_OP;
+                cfs.getWriteHandler().write(upd, ctx, indexTransaction);
 
                 if (requiresViewUpdate)
                     baseComplete.set(System.currentTimeMillis());
