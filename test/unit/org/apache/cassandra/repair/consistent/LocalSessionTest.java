@@ -136,7 +136,7 @@ public class LocalSessionTest extends AbstractRepairTest
         boolean prepareSessionCalled = false;
 
         @Override
-        ListenableFuture prepareSession(KeyspaceRepairManager repairManager, UUID sessionID, Collection<Range<Token>> ranges, ExecutorService executor)
+        ListenableFuture prepareSession(KeyspaceRepairManager repairManager, UUID sessionID, Collection<ColumnFamilyStore> tables, Collection<Range<Token>> ranges, ExecutorService executor)
         {
             prepareSessionCalled = true;
             if (prepareSessionFuture != null)
@@ -145,7 +145,7 @@ public class LocalSessionTest extends AbstractRepairTest
             }
             else
             {
-                return super.prepareSession(repairManager, sessionID, ranges, executor);
+                return super.prepareSession(repairManager, sessionID, tables, ranges, executor);
             }
         }
 
