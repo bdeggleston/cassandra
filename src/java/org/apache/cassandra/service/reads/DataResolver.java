@@ -17,10 +17,7 @@
  */
 package org.apache.cassandra.service.reads;
 
-import java.net.InetAddress;
 import java.util.*;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
@@ -33,11 +30,6 @@ import org.apache.cassandra.tracing.TraceState;
 
 public class DataResolver extends ResponseResolver
 {
-    private static final boolean DROP_OVERSIZED_READ_REPAIR_MUTATIONS =
-        Boolean.getBoolean("cassandra.drop_oversized_readrepair_mutations");
-
-    @VisibleForTesting
-    final List<AsyncOneResponse> repairResults = Collections.synchronizedList(new ArrayList<>());
     private final long queryStartNanoTime;
     private final boolean enforceStrictLiveness;
 
