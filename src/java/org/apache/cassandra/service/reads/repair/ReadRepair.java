@@ -19,11 +19,14 @@
 package org.apache.cassandra.service.reads.repair;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.partitions.PartitionIterator;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -48,6 +51,9 @@ public interface ReadRepair
                                       List<InetAddressAndPort> contactedEndpoints,
                                       Consumer<PartitionIterator> resultConsumer);
 
+
+    public void maybeSendAdditionalDataRequests();
+
     /**
      * Wait for any operations started by {@link ReadRepair#startForegroundRepair} to complete
      * @throws ReadTimeoutException
@@ -66,8 +72,14 @@ public interface ReadRepair
      */
     public void backgroundDigestRepair(TraceState traceState);
 
-    static ReadRepair create(ReadCommand command, List<InetAddressAndPort> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
+    void repairPartition(DecoratedKey key, Map<InetAddressAndPort, PartitionUpdate> updates, InetAddressAndPort[] destinations);
+
+    public void maybeSendAdditionalRepairs();
+
+    public void awaitRepairs();
+
+    static ReadRepair create(ReadCommand command, List<InetAddressAndPort> endpoints, int blockFor, long queryStartNanoTime, ConsistencyLevel consistency)
     {
-        return new BlockingReadRepair(command, endpoints, queryStartNanoTime, consistency);
+        return new BlockingReadRepair(command, endpoints, blockFor, queryStartNanoTime, consistency);
     }
 }

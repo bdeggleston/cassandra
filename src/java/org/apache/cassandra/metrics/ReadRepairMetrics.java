@@ -31,4 +31,7 @@ public class ReadRepairMetrics
     public static final Meter repairedBlocking = Metrics.meter(factory.createMetricName("RepairedBlocking"));
     public static final Meter repairedBackground = Metrics.meter(factory.createMetricName("RepairedBackground"));
     public static final Meter attempted = Metrics.meter(factory.createMetricName("Attempted"));
+
+    public static final Meter speculatedDataRequest = Metrics.meter(factory.createMetricName("SpeculatedData"));
+    public static final Meter speculatedDataRepair = Metrics.meter(factory.createMetricName("SpeculatedRepair"));
 }

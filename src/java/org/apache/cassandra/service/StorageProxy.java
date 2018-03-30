@@ -78,7 +78,6 @@ import org.apache.cassandra.service.paxos.ProposeCallback;
 import org.apache.cassandra.service.paxos.ProposeVerbHandler;
 import org.apache.cassandra.net.MessagingService.Verb;
 import org.apache.cassandra.tracing.Tracing;
-import org.apache.cassandra.transport.Server;
 import org.apache.cassandra.triggers.TriggerExecutor;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.AbstractIterator;
@@ -1767,6 +1766,34 @@ public class StorageProxy implements StorageProxyMBean
         }
     }
 
+    private static PartitionIterator concatAndBlockOnRepair(List<PartitionIterator> iterators, List<ReadRepair> readRepairs)
+    {
+        PartitionIterator concatenated = PartitionIterators.concat(iterators);
+
+        if (readRepairs.isEmpty())
+            return concatenated;
+
+        return new PartitionIterator()
+        {
+            public void close()
+            {
+                concatenated.close();
+                readRepairs.forEach(ReadRepair::maybeSendAdditionalRepairs);
+                readRepairs.forEach(ReadRepair::awaitRepairs);
+            }
+
+            public boolean hasNext()
+            {
+                return concatenated.hasNext();
+            }
+
+            public RowIterator next()
+            {
+                return concatenated.next();
+            }
+        };
+    }
+
     /**
      * This function executes local and remote reads, and blocks for the results:
      *
@@ -1802,26 +1829,28 @@ public class StorageProxy implements StorageProxyMBean
 
         for (int i=0; i<cmdCount; i++)
         {
-            reads[i].awaitResponses();
+            reads[i].awaitResponsesAndRepairOnDigestMismatch();
         }
 
         for (int i=0; i<cmdCount; i++)
         {
-            reads[i].maybeRepairAdditionalReplicas();
+            reads[i].maybeSendAdditionalDataRequests();
         }
 
         for (int i=0; i<cmdCount; i++)
         {
-            reads[i].awaitReadRepair();
+            reads[i].awaitDataRequests();
         }
 
         List<PartitionIterator> results = new ArrayList<>(cmdCount);
+        List<ReadRepair> repairs = new ArrayList<>(cmdCount);
         for (int i=0; i<cmdCount; i++)
         {
             results.add(reads[i].getResult());
+            repairs.add(reads[i].getReadRepair());
         }
 
-        return PartitionIterators.concat(results);
+        return concatAndBlockOnRepair(results, repairs);
     }
 
     public static class LocalReadRunnable extends DroppableRunnable
@@ -2030,12 +2059,14 @@ public class StorageProxy implements StorageProxyMBean
     {
         private final DataResolver resolver;
         private final ReadCallback handler;
+        private final ReadRepair readRepair;
         private PartitionIterator result;
 
-        private SingleRangeResponse(DataResolver resolver, ReadCallback handler)
+        private SingleRangeResponse(DataResolver resolver, ReadCallback handler, ReadRepair readRepair)
         {
             this.resolver = resolver;
             this.handler = handler;
+            this.readRepair = readRepair;
         }
 
         private void waitForResponse() throws ReadTimeoutException
@@ -2166,10 +2197,10 @@ public class StorageProxy implements StorageProxyMBean
         {
             PartitionRangeReadCommand rangeCommand = command.forSubRange(toQuery.range, isFirst);
 
-            ReadRepair readRepair = ReadRepair.create(command, toQuery.filteredEndpoints, queryStartNanoTime, consistency);
+            int blockFor = consistency.blockFor(keyspace);
+            ReadRepair readRepair = ReadRepair.create(command, toQuery.filteredEndpoints, blockFor, queryStartNanoTime, consistency);
             DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredEndpoints.size(), queryStartNanoTime, readRepair);
 
-            int blockFor = consistency.blockFor(keyspace);
             int minResponses = Math.min(toQuery.filteredEndpoints.size(), blockFor);
             List<InetAddressAndPort> minimalEndpoints = toQuery.filteredEndpoints.subList(0, minResponses);
             ReadCallback handler = new ReadCallback(resolver, consistency, rangeCommand, minimalEndpoints, queryStartNanoTime, readRepair);
@@ -2189,23 +2220,25 @@ public class StorageProxy implements StorageProxyMBean
                 }
             }
 
-            return new SingleRangeResponse(resolver, handler);
+            return new SingleRangeResponse(resolver, handler, readRepair);
         }
 
         private PartitionIterator sendNextRequests()
         {
-            List<PartitionIterator> concurrentQueries = new ArrayList<>(concurrencyFactor);
+            List<PartitionIterator> queries = new ArrayList<>(concurrencyFactor);
+            List<ReadRepair> repairs = new ArrayList<>(concurrencyFactor);
             for (int i = 0; i < concurrencyFactor && ranges.hasNext(); i++)
             {
-                concurrentQueries.add(query(ranges.next(), i == 0));
+                SingleRangeResponse response = query(ranges.next(), i == 0);
+                queries.add(response);
                 ++rangesQueried;
             }
 
-            Tracing.trace("Submitted {} concurrent range requests", concurrentQueries.size());
+            Tracing.trace("Submitted {} concurrent range requests", queries.size());
             // We want to count the results for the sake of updating the concurrency factor (see updateConcurrencyFactor) but we don't want to
             // enforce any particular limit at this point (this could break code than rely on postReconciliationProcessing), hence the DataLimits.NONE.
             counter = DataLimits.NONE.newCounter(command.nowInSec(), true, command.selectsFullPartition(), enforceStrictLiveness);
-            return counter.applyTo(PartitionIterators.concat(concurrentQueries));
+            return counter.applyTo(concatAndBlockOnRepair(queries, repairs));
         }
 
         public void close()

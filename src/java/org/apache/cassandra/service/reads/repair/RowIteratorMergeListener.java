@@ -19,13 +19,15 @@
 package org.apache.cassandra.service.reads.repair;
 
 import java.util.Arrays;
+import java.util.Map;
+
+import com.google.common.collect.Maps;
 
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.LivenessInfo;
-import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.RegularAndStaticColumns;
@@ -64,9 +66,9 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
     // For each source, record if there is an open range to send as repair, and from where.
     private final ClusteringBound[] markerToRepair;
 
-    private final RepairListener repairListener;
+    private final ReadRepair repair;
 
-    public RowIteratorMergeListener(DecoratedKey partitionKey, RegularAndStaticColumns columns, boolean isReversed, InetAddressAndPort[] sources, ReadCommand command, RepairListener repairListener)
+    public RowIteratorMergeListener(DecoratedKey partitionKey, RegularAndStaticColumns columns, boolean isReversed, InetAddressAndPort[] sources, ReadCommand command, ReadRepair repair)
     {
         this.partitionKey = partitionKey;
         this.columns = columns;
@@ -77,7 +79,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
         sourceDeletionTime = new DeletionTime[sources.length];
         markerToRepair = new ClusteringBound[sources.length];
         this.command = command;
-        this.repairListener = repairListener;
+        this.repair = repair;
 
         this.diffListener = new RowDiffListener()
         {
@@ -114,7 +116,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
                 /// no value for the column requested by the user) and so it won't be unexpected by the user that those columns are
                 // not repaired.
                 ColumnMetadata column = cell.column();
-                ColumnFilter filter = RowIteratorMergeListener.this.command.columnFilter();
+                ColumnFilter filter = command.columnFilter();
                 return column.isComplex() ? filter.fetchedCellIsQueried(column, cell.path()) : filter.fetchedColumnIsQueried(column);
             }
         };
@@ -300,22 +302,21 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
     public void close()
     {
-        RepairListener.PartitionRepair repair = null;
+        Map<InetAddressAndPort, PartitionUpdate> updates = null;
         for (int i = 0; i < repairs.length; i++)
         {
             if (repairs[i] == null)
                 continue;
 
-            if (repair == null)
-            {
-                repair = repairListener.startPartitionRepair();
-            }
-            repair.reportMutation(sources[i], new Mutation(repairs[i].build()));
+            if (updates == null)
+                updates = Maps.newHashMapWithExpectedSize(sources.length);
+
+            updates.put(sources[i], repairs[i].build());
         }
 
-        if (repair != null)
+        if (updates != null)
         {
-            repair.finish();
+            repair.repairPartition(partitionKey, updates, sources);
         }
     }
 }

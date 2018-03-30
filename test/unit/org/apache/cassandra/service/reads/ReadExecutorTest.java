@@ -39,7 +39,6 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.service.reads.AbstractReadExecutor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -82,7 +81,7 @@ public class ReadExecutorTest
         executor.maybeTryAdditionalReplicas();
         try
         {
-            executor.awaitResponses();
+            executor.awaitResponsesAndRepairOnDigestMismatch();
             fail();
         }
         catch (ReadTimeoutException e)
@@ -97,7 +96,7 @@ public class ReadExecutorTest
         executor.maybeTryAdditionalReplicas();
         try
         {
-            executor.awaitResponses();
+            executor.awaitResponsesAndRepairOnDigestMismatch();
             fail();
         }
         catch (ReadTimeoutException e)
@@ -135,7 +134,7 @@ public class ReadExecutorTest
 
         try
         {
-            executor.awaitResponses();
+            executor.awaitResponsesAndRepairOnDigestMismatch();
             fail();
         }
         catch (ReadFailureException e)
@@ -164,7 +163,7 @@ public class ReadExecutorTest
         executor.maybeTryAdditionalReplicas();
         try
         {
-            executor.awaitResponses();
+            executor.awaitResponsesAndRepairOnDigestMismatch();
             fail();
         }
         catch (ReadTimeoutException e)

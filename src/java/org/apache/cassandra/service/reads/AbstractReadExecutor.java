@@ -65,6 +65,7 @@ public abstract class AbstractReadExecutor
     protected final ConsistencyLevel consistency;
     protected final List<InetAddressAndPort> targetReplicas;
     protected final ReadRepair readRepair;
+    protected final int blockFor;
     protected final DigestResolver digestResolver;
     protected final ReadCallback handler;
     protected final TraceState traceState;
@@ -77,9 +78,10 @@ public abstract class AbstractReadExecutor
         this.command = command;
         this.consistency = consistency;
         this.targetReplicas = targetReplicas;
-        this.readRepair = ReadRepair.create(command, targetReplicas, queryStartNanoTime, consistency);
+        this.blockFor = consistency.blockFor(keyspace);
+        this.readRepair = ReadRepair.create(command, targetReplicas, blockFor, queryStartNanoTime, consistency);
         this.digestResolver = new DigestResolver(keyspace, command, consistency, readRepair, targetReplicas.size());
-        this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
+        this.handler = new ReadCallback(digestResolver, consistency, blockFor, command, keyspace, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
@@ -96,14 +98,14 @@ public abstract class AbstractReadExecutor
 
     private DecoratedKey getKey()
     {
-        if (command instanceof SinglePartitionReadCommand)
-        {
-            return ((SinglePartitionReadCommand) command).partitionKey();
-        }
-        else
-        {
-            return null;
-        }
+        Preconditions.checkState(command instanceof SinglePartitionReadCommand,
+                                 "Can only get keys for SinglePartitionReadCommand");
+        return ((SinglePartitionReadCommand) command).partitionKey();
+    }
+
+    public ReadRepair getReadRepair()
+    {
+        return readRepair;
     }
 
     protected void makeDataRequests(Iterable<InetAddressAndPort> endpoints)
@@ -419,7 +421,7 @@ public abstract class AbstractReadExecutor
     /**
      * Wait for the CL to be satisfied by responses
      */
-    public void awaitResponses() throws ReadTimeoutException
+    public void awaitResponsesAndRepairOnDigestMismatch() throws ReadTimeoutException
     {
         try
         {
@@ -449,7 +451,7 @@ public abstract class AbstractReadExecutor
         }
     }
 
-    public void awaitReadRepair() throws ReadTimeoutException
+    public void awaitDataRequests() throws ReadTimeoutException
     {
         try
         {
@@ -468,9 +470,17 @@ public abstract class AbstractReadExecutor
         }
     }
 
-    public void maybeRepairAdditionalReplicas()
+    /**
+     * if it looks like we might not receive data requests from everyone in time, send additional requests
+     * to additional replicas not contacted in the initial full data read. If the collection of nodes that
+     * end up responding in time end up agreeing on the data, and we don't consider the response from the
+     * disagreeing replica that triggered the read repair, that's ok, since the disagreeing data would not
+     * have been successfully written and won't be included in the response the the client, preserving the
+     * expectation of monotonic quorum reads
+     */
+    public void maybeSendAdditionalDataRequests()
     {
-        // TODO: this
+        readRepair.maybeSendAdditionalDataRequests();
     }
 
     public PartitionIterator getResult() throws ReadFailureException, ReadTimeoutException

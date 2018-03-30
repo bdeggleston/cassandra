@@ -23,9 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.partitions.PartitionIterator;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -33,7 +35,7 @@ import org.apache.cassandra.service.reads.DigestResolver;
 import org.apache.cassandra.service.reads.ResponseResolver;
 import org.apache.cassandra.tracing.TraceState;
 
-public class TestableReadRepair implements ReadRepair, RepairListener
+public class TestableReadRepair implements ReadRepair
 {
     public final Map<InetAddressAndPort, Mutation> sent = new HashMap<>();
 
@@ -44,21 +46,6 @@ public class TestableReadRepair implements ReadRepair, RepairListener
         this.command = command;
     }
 
-    private class TestablePartitionRepair implements RepairListener.PartitionRepair
-    {
-        @Override
-        public void reportMutation(InetAddressAndPort endpoint, Mutation mutation)
-        {
-            sent.put(endpoint, mutation);
-        }
-
-        @Override
-        public void finish()
-        {
-
-        }
-    }
-
     @Override
     public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddressAndPort[] endpoints)
     {
@@ -67,6 +54,12 @@ public class TestableReadRepair implements ReadRepair, RepairListener
 
     @Override
     public void startForegroundRepair(DigestResolver digestResolver, List<InetAddressAndPort> allEndpoints, List<InetAddressAndPort> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
+    {
+
+    }
+
+    @Override
+    public void maybeSendAdditionalDataRequests()
     {
 
     }
@@ -90,13 +83,19 @@ public class TestableReadRepair implements ReadRepair, RepairListener
     }
 
     @Override
-    public PartitionRepair startPartitionRepair()
+    public void maybeSendAdditionalRepairs()
     {
-        return new TestablePartitionRepair();
+
     }
 
     @Override
-    public void awaitRepairs(long timeoutMillis)
+    public void repairPartition(DecoratedKey key, Map<InetAddressAndPort, PartitionUpdate> updates, InetAddressAndPort[] destinations)
+    {
+
+    }
+
+    @Override
+    public void awaitRepairs()
     {
 
     }
