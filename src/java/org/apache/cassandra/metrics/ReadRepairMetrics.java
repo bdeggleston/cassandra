@@ -34,4 +34,6 @@ public class ReadRepairMetrics
 
     public static final Meter speculatedDataRequest = Metrics.meter(factory.createMetricName("SpeculatedData"));
     public static final Meter speculatedDataRepair = Metrics.meter(factory.createMetricName("SpeculatedRepair"));
+
+    public static void init() {}
 }

@@ -195,15 +195,19 @@ public class BlockingReadRepair implements ReadRepair
         if (!(command instanceof SinglePartitionReadCommand))
             return;
 
-        if (!repair.callback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
+        if (repair.callback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
             return;
-
-        ReadRepairMetrics.speculatedDataRequest.mark();
 
         DecoratedKey key = ((SinglePartitionReadCommand) command).partitionKey();
 
         Set<InetAddressAndPort> contacted = Sets.newHashSet(repair.contactedEndpoints);
         Iterable<InetAddressAndPort> candidates = ReadRepairs.getCandidateEndpoints(keyspace, key, consistency);
+        candidates = Iterables.filter(candidates, e -> !contacted.contains(e));
+
+        if (Iterables.isEmpty(candidates))
+            return;
+
+        ReadRepairMetrics.speculatedDataRequest.mark();
 
         for (InetAddressAndPort endpoint: Iterables.filter(candidates, e -> !contacted.contains(e)))
         {
