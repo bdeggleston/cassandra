@@ -267,7 +267,7 @@ public class ActiveRepairServiceTest
         Collection<Range<Token>> ranges = Collections.singleton(new Range<>(store.getPartitioner().getMinimumToken(), store.getPartitioner().getMinimumToken()));
         ActiveRepairService.instance.registerParentRepairSession(prsId, FBUtilities.getBroadcastAddressAndPort(), Collections.singletonList(store),
                                                                  ranges, true, System.currentTimeMillis(), true, PreviewKind.NONE);
-        store.getRepairManager().snapshot(store.metadata.id.toString(), ranges, false);
+        store.getRepairManager().snapshot(prsId.toString(), ranges, false);
 
         UUID prsId2 = UUID.randomUUID();
         ActiveRepairService.instance.registerParentRepairSession(prsId2, FBUtilities.getBroadcastAddressAndPort(),
@@ -276,7 +276,7 @@ public class ActiveRepairServiceTest
                                                                  true, System.currentTimeMillis(),
                                                                  true, PreviewKind.NONE);
         createSSTables(store, 2);
-        store.getRepairManager().snapshot(store.metadata.id.toString(), ranges, false);
+        store.getRepairManager().snapshot(prsId.toString(), ranges, false);
         try (Refs<SSTableReader> refs = store.getSnapshotSSTableReaders(prsId.toString()))
         {
             assertEquals(original, Sets.newHashSet(refs.iterator()));
