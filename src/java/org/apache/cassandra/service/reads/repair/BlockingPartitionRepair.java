@@ -20,7 +20,6 @@ package org.apache.cassandra.service.reads.repair;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.AbstractFuture;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -38,6 +36,10 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaCollection;
+import org.apache.cassandra.locator.ReplicaSet;
+import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
@@ -51,13 +53,13 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
     private final Keyspace keyspace;
     private final DecoratedKey key;
     private final ConsistencyLevel consistency;
-    private final InetAddressAndPort[] participants;
-    private final Map<InetAddressAndPort, Mutation> pendingRepairs;
+    private final Replica[] participants;
+    private final Map<Replica, Mutation> pendingRepairs;
     private final CountDownLatch latch;
 
     private volatile long mutationsSentTime;
 
-    public BlockingPartitionRepair(Keyspace keyspace, DecoratedKey key, ConsistencyLevel consistency, Map<InetAddressAndPort, Mutation> repairs, int maxBlockFor, InetAddressAndPort[] participants)
+    public BlockingPartitionRepair(Keyspace keyspace, DecoratedKey key, ConsistencyLevel consistency, Map<Replica, Mutation> repairs, int maxBlockFor, Replica[] participants)
     {
         this.keyspace = keyspace;
         this.key = key;
@@ -68,11 +70,11 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
         // here we remove empty repair mutations from the block for total, since
         // we're not sending them mutations
         int blockFor = maxBlockFor;
-        for (InetAddressAndPort participant: participants)
+        for (Replica participant: participants)
         {
             // remote dcs can sometimes get involved in dc-local reads. We want to repair
             // them if they do, but they shouldn't interfere with blocking the client read.
-            if (!repairs.containsKey(participant) && shouldBlockOn(participant))
+            if (!repairs.containsKey(participant) && shouldBlockOn(participant.getEndpoint()))
                 blockFor--;
         }
 
@@ -147,18 +149,19 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
     public void sendInitialRepairs()
     {
         mutationsSentTime = System.nanoTime();
-        for (Map.Entry<InetAddressAndPort, Mutation> entry: pendingRepairs.entrySet())
+        for (Map.Entry<Replica, Mutation> entry: pendingRepairs.entrySet())
         {
-            InetAddressAndPort destination = entry.getKey();
+            Replica destination = entry.getKey();
+            Replicas.checkFull(destination);
             Mutation mutation = entry.getValue();
             TableId tableId = extractUpdate(mutation).metadata().id;
 
             Tracing.trace("Sending read-repair-mutation to {}", destination);
             // use a separate verb here to avoid writing hints on timeouts
-            sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR), destination);
+            sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR), destination.getEndpoint());
             ColumnFamilyStore.metricsFor(tableId).readRepairRequests.mark();
 
-            if (!shouldBlockOn(destination))
+            if (!shouldBlockOn(destination.getEndpoint()))
                 pendingRepairs.remove(destination);
         }
     }
@@ -195,8 +198,8 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
         if (awaitRepairs(timeout, timeoutUnit))
             return;
 
-        Set<InetAddressAndPort> exclude = Sets.newHashSet(participants);
-        Iterable<InetAddressAndPort> candidates = Iterables.filter(getCandidateEndpoints(), e -> !exclude.contains(e));
+        ReplicaSet exclude = new ReplicaSet(participants);
+        Iterable<Replica> candidates = Iterables.filter(getCandidateReplicas(), r -> !exclude.containsReplica(r));
         if (Iterables.isEmpty(candidates))
             return;
 
@@ -210,15 +213,15 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
 
         Mutation[] versionedMutations = new Mutation[msgVersionIdx(MessagingService.current_version) + 1];
 
-        for (InetAddressAndPort endpoint: candidates)
+        for (Replica replica: candidates)
         {
-            int versionIdx = msgVersionIdx(MessagingService.instance().getVersion(endpoint));
+            int versionIdx = msgVersionIdx(MessagingService.instance().getVersion(replica.getEndpoint()));
 
             Mutation mutation = versionedMutations[versionIdx];
 
             if (mutation == null)
             {
-                mutation = BlockingReadRepairs.createRepairMutation(update, consistency, endpoint, true);
+                mutation = BlockingReadRepairs.createRepairMutation(update, consistency, replica, true);
                 versionedMutations[versionIdx] = mutation;
             }
 
@@ -228,15 +231,15 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
                 continue;
             }
 
-            Tracing.trace("Sending speculative read-repair-mutation to {}", endpoint);
-            sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR), endpoint);
+            Tracing.trace("Sending speculative read-repair-mutation to {}", replica);
+            sendRR(mutation.createMessage(MessagingService.Verb.READ_REPAIR), replica.getEndpoint());
         }
     }
 
     @VisibleForTesting
-    protected Iterable<InetAddressAndPort> getCandidateEndpoints()
+    protected ReplicaCollection getCandidateReplicas()
     {
-        return BlockingReadRepairs.getCandidateEndpoints(keyspace, key.getToken(), consistency);
+        return BlockingReadRepairs.getCandidateReplicas(keyspace, key.getToken(), consistency);
     }
 
 }

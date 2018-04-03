@@ -43,7 +43,7 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.RowDiffListener;
 import org.apache.cassandra.db.rows.Rows;
 import org.apache.cassandra.db.rows.UnfilteredRowIterators;
-import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.schema.ColumnMetadata;
 
 public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeListener
@@ -51,7 +51,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
     private final DecoratedKey partitionKey;
     private final RegularAndStaticColumns columns;
     private final boolean isReversed;
-    private final InetAddressAndPort[] sources;
+    private final Replica[] sources;
     private final ReadCommand command;
     private final ConsistencyLevel consistency;
 
@@ -71,7 +71,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
     private final ReadRepair readRepair;
 
-    public RowIteratorMergeListener(DecoratedKey partitionKey, RegularAndStaticColumns columns, boolean isReversed, InetAddressAndPort[] sources, ReadCommand command, ConsistencyLevel consistency, ReadRepair readRepair)
+    public RowIteratorMergeListener(DecoratedKey partitionKey, RegularAndStaticColumns columns, boolean isReversed, Replica[] sources, ReadCommand command, ConsistencyLevel consistency, ReadRepair readRepair)
     {
         this.partitionKey = partitionKey;
         this.columns = columns;
@@ -306,7 +306,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
     public void close()
     {
-        Map<InetAddressAndPort, Mutation> mutations = null;
+        Map<Replica, Mutation> mutations = null;
         for (int i = 0; i < repairs.length; i++)
         {
             if (repairs[i] == null)

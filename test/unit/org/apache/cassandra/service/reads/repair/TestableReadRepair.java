@@ -31,11 +31,13 @@ import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaList;
 import org.apache.cassandra.service.reads.DigestResolver;
 
 public class TestableReadRepair implements ReadRepair
 {
-    public final Map<InetAddressAndPort, Mutation> sent = new HashMap<>();
+    public final Map<Replica, Mutation> sent = new HashMap<>();
 
     private final ReadCommand command;
     private final ConsistencyLevel consistency;
@@ -47,13 +49,13 @@ public class TestableReadRepair implements ReadRepair
     }
 
     @Override
-    public UnfilteredPartitionIterators.MergeListener getMergeListener(InetAddressAndPort[] endpoints)
+    public UnfilteredPartitionIterators.MergeListener getMergeListener(Replica[] endpoints)
     {
         return new PartitionIteratorMergeListener(endpoints, command, consistency, this);
     }
 
     @Override
-    public void startRepair(DigestResolver digestResolver, List<InetAddressAndPort> allEndpoints, List<InetAddressAndPort> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
+    public void startRepair(DigestResolver digestResolver, ReplicaList allReplicas, ReplicaList contactedReplicas, Consumer<PartitionIterator> resultConsumer)
     {
 
     }
@@ -83,7 +85,7 @@ public class TestableReadRepair implements ReadRepair
     }
 
     @Override
-    public void repairPartition(DecoratedKey key, Map<InetAddressAndPort, Mutation> mutations, InetAddressAndPort[] destinations)
+    public void repairPartition(DecoratedKey key, Map<Replica, Mutation> mutations, Replica[] destinations)
     {
         sent.putAll(mutations);
     }

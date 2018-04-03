@@ -35,6 +35,9 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.NetworkTopologyStrategy;
+import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaCollection;
+import org.apache.cassandra.locator.ReplicaList;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageProxy;
@@ -51,19 +54,19 @@ public class BlockingReadRepairs
      * Returns all of the endpoints that are replicas for the given key. If the consistency level is datacenter
      * local, only the endpoints in the local dc will be returned.
      */
-    static Iterable<InetAddressAndPort> getCandidateEndpoints(Keyspace keyspace, Token token, ConsistencyLevel consistency)
+    static ReplicaCollection getCandidateReplicas(Keyspace keyspace, Token token, ConsistencyLevel consistency)
     {
-        List<InetAddressAndPort> endpoints = StorageProxy.getLiveSortedEndpoints(keyspace, token);
+        ReplicaList replicas = StorageProxy.getLiveSortedReplicas(keyspace, token);
         return consistency.isDatacenterLocal() && keyspace.getReplicationStrategy() instanceof NetworkTopologyStrategy
-               ? Iterables.filter(endpoints, ConsistencyLevel::isLocal)
-               : endpoints;
+               ? replicas.filter(ConsistencyLevel::isLocal)
+               : replicas;
     }
 
     /**
      * Create a read repair mutation from the given update, if the mutation is not larger than the maximum
      * mutation size, otherwise return null. Or, if we're configured to be strict, throw an exception.
      */
-    public static Mutation createRepairMutation(PartitionUpdate update, ConsistencyLevel consistency, InetAddressAndPort destination, boolean suppressException)
+    public static Mutation createRepairMutation(PartitionUpdate update, ConsistencyLevel consistency, Replica destination, boolean suppressException)
     {
         if (update == null)
             return null;
@@ -73,7 +76,7 @@ public class BlockingReadRepairs
         Keyspace keyspace = Keyspace.open(mutation.getKeyspaceName());
         TableMetadata metadata = update.metadata();
 
-        int messagingVersion = MessagingService.instance().getVersion(destination);
+        int messagingVersion = MessagingService.instance().getVersion(destination.getEndpoint());
 
         int    mutationSize = (int) Mutation.serializer.serializedSize(mutation, messagingVersion);
         int maxMutationSize = DatabaseDescriptor.getMaxMutationSize();
