@@ -16,13 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra;
+package org.apache.cassandra.db;
 
-import org.apache.cassandra.db.CassandraWriteContext;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.KeyspaceWriteHandler;
-import org.apache.cassandra.db.Mutation;
-import org.apache.cassandra.db.WriteContext;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.exceptions.RequestExecutionException;
