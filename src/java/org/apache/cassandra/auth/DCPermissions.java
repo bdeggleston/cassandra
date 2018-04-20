@@ -33,7 +33,7 @@ public abstract class DCPermissions
 {
     public abstract boolean canAccess(String dc);
     public abstract boolean restrictsAccess();
-    public abstract Set<String> whitelistedDCs();
+    public abstract Set<String> allowedDCs();
     public abstract void validate();
 
     private static class SubsetPermissions extends DCPermissions
@@ -56,7 +56,7 @@ public abstract class DCPermissions
             return true;
         }
 
-        public Set<String> whitelistedDCs()
+        public Set<String> allowedDCs()
         {
             return ImmutableSet.copyOf(subset);
         }
@@ -108,7 +108,7 @@ public abstract class DCPermissions
             return false;
         }
 
-        public Set<String> whitelistedDCs()
+        public Set<String> allowedDCs()
         {
             throw new UnsupportedOperationException();
         }
@@ -136,7 +136,7 @@ public abstract class DCPermissions
             return true;
         }
 
-        public Set<String> whitelistedDCs()
+        public Set<String> allowedDCs()
         {
             throw new UnsupportedOperationException();
         }
