@@ -38,7 +38,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadExecutionController;
-import org.apache.cassandra.db.ReadQuery;
+import org.apache.cassandra.db.ReadGroup;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionInfo;
@@ -85,7 +85,7 @@ public class ViewBuilderTask extends CompactionInfo.Holder implements Callable<L
 
     private void buildKey(DecoratedKey key)
     {
-        ReadQuery selectQuery = view.getReadQuery();
+        ReadGroup selectQuery = view.getReadQuery();
 
         if (!selectQuery.selectsKey(key))
         {

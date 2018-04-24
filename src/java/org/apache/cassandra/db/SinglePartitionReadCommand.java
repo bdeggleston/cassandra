@@ -1054,7 +1054,7 @@ public class SinglePartitionReadCommand extends ReadCommand
     /**
      * Groups multiple single partition read commands.
      */
-    public static class Group implements ReadQuery
+    public static class Group implements ReadGroup
     {
         public final List<SinglePartitionReadCommand> commands;
         private final DataLimits limits;
@@ -1128,11 +1128,11 @@ public class SinglePartitionReadCommand extends ReadCommand
         }
 
         /**
-         * Implementation of {@link ReadQuery#executeLocally(ReadExecutionController)}.
+         * Implementation of {@link ReadGroup#executeLocally(ReadExecutionController)}.
          *
          * @param executionController - the {@code ReadExecutionController} protecting the read.
          * @param sort - whether to sort the inner commands by partition key, required for merging the iterator
-         *               later on. This will be false when called by {@link ReadQuery#executeInternal(ReadExecutionController)}
+         *               later on. This will be false when called by {@link ReadGroup#executeInternal(ReadExecutionController)}
          *               because in this case it is safe to do so as there is no merging involved and we don't want to
          *               change the old behavior which was to not sort by partition.
          *

@@ -61,7 +61,7 @@ public class View
     // also requires the keyspace to be open, so this results in double-initialization problems.
     private final SelectStatement.RawStatement rawSelect;
     private SelectStatement select;
-    private ReadQuery query;
+    private ReadGroup query;
 
     public View(ViewMetadata definition,
                 ColumnFamilyStore baseCfs)
@@ -175,10 +175,10 @@ public class View
     }
 
     /**
-     * Returns the ReadQuery used to filter this view.  Internal users should access the query this way to ensure it
+     * Returns the ReadGroup used to filter this view.  Internal users should access the query this way to ensure it
      * has been prepared.
      */
-    public ReadQuery getReadQuery()
+    public ReadGroup getReadQuery()
     {
         if (query == null)
         {

@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
@@ -353,7 +352,7 @@ public class TableViews extends AbstractCollection<View>
 
         for (View view : views)
         {
-            ReadQuery selectQuery = view.getReadQuery();
+            ReadGroup selectQuery = view.getReadQuery();
             if (!selectQuery.selectsKey(updates.partitionKey()))
                 continue;
 
