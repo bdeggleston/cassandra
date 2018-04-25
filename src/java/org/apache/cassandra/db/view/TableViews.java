@@ -352,7 +352,7 @@ public class TableViews extends AbstractCollection<View>
 
         for (View view : views)
         {
-            ReadGroup selectQuery = view.getReadQuery();
+            QueryGroup selectQuery = view.getReadQuery();
             if (!selectQuery.selectsKey(updates.partitionKey()))
                 continue;
 

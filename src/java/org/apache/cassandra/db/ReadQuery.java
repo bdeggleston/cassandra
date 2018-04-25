@@ -42,8 +42,8 @@ public interface ReadQuery
     public boolean selectsClustering(DecoratedKey key, Clustering clustering);
 
     /**
-     * Checks if this {@code ReadGroup} selects full partitions, that is it has no filtering on clustering or regular columns.
-     * @return {@code true} if this {@code ReadGroup} selects full partitions, {@code false} otherwise.
+     * Checks if this {@code QueryGroup} selects full partitions, that is it has no filtering on clustering or regular columns.
+     * @return {@code true} if this {@code QueryGroup} selects full partitions, {@code false} otherwise.
      */
     public boolean selectsFullPartition();
 }

@@ -221,7 +221,7 @@ public class QueryPagerTest
         }
     }
 
-    private QueryPager maybeRecreate(QueryPager pager, ReadGroup query, boolean testPagingState, ProtocolVersion protocolVersion)
+    private QueryPager maybeRecreate(QueryPager pager, QueryGroup query, boolean testPagingState, ProtocolVersion protocolVersion)
     {
         if (!testPagingState)
             return pager;
@@ -232,7 +232,7 @@ public class QueryPagerTest
 
     private QueryPager maybeRecreate(QueryPager pager, ReadCommand command, boolean testPagingState, ProtocolVersion protocolVersion)
     {
-        return maybeRecreate(pager, ReadGroup.wrap(command), testPagingState, protocolVersion);
+        return maybeRecreate(pager, QueryGroup.wrap(command), testPagingState, protocolVersion);
     }
 
     @Test
@@ -324,7 +324,7 @@ public class QueryPagerTest
 
     public void multiQueryTest(boolean testPagingState, ProtocolVersion protocolVersion) throws Exception
     {
-        ReadGroup command = new SinglePartitionReadCommand.Group(new ArrayList<SinglePartitionReadCommand>()
+        QueryGroup command = new SinglePartitionReadCommand.Group(new ArrayList<SinglePartitionReadCommand>()
         {{
             add(sliceQuery("k1", "c2", "c6", 10));
             add(sliceQuery("k4", "c3", "c5", 10));

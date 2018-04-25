@@ -32,9 +32,9 @@ import org.apache.cassandra.transport.ProtocolVersion;
  * {@link SinglePartitionReadCommand.Group} is also consider as a "read query" but is not a
  * {@code ReadCommand}.
  */
-public interface ReadGroup extends ReadQuery, ReadExecutable
+public interface QueryGroup extends ReadQuery, ReadExecutable
 {
-    ReadGroup EMPTY = new ReadGroup()
+    QueryGroup EMPTY = new QueryGroup()
     {
         public ReadExecutionController executionController()
         {
@@ -86,9 +86,9 @@ public interface ReadGroup extends ReadQuery, ReadExecutable
         }
     };
 
-    public static ReadGroup wrap(ReadCommand command)
+    public static QueryGroup wrap(ReadCommand command)
     {
-        return new ReadGroup()
+        return new QueryGroup()
         {
             @Override
             public ReadExecutionController executionController()

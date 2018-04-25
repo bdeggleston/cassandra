@@ -207,6 +207,7 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery, 
      *
      * @return the limits set on this query.
      */
+    @Override
     public DataLimits limits()
     {
         return limits;
@@ -231,6 +232,11 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery, 
     public int digestVersion()
     {
         return digestVersion;
+    }
+
+    public IndexMetadata index()
+    {
+        return index;
     }
 
     /**
@@ -346,6 +352,7 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery, 
      */
     @SuppressWarnings("resource") // The result iterator is closed upon exceptions (we know it's fine to potentially not close the intermediary
                                   // iterators created inside the try as long as we do close the original resultIterator), or by closing the result.
+    @Override
     public UnfilteredPartitionIterator executeLocally(ReadExecutionController executionController)
     {
         long startTimeNanos = System.nanoTime();
@@ -393,11 +400,13 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery, 
 
     protected abstract void recordLatency(TableMetrics metric, long latencyNanos);
 
+    @Override
     public PartitionIterator executeInternal(ReadExecutionController controller)
     {
         return UnfilteredPartitionIterators.filter(executeLocally(controller), nowInSec());
     }
 
+    @Override
     public ReadExecutionController executionController()
     {
         return ReadExecutionController.forCommand(this);

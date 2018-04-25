@@ -277,7 +277,7 @@ public class ReadCommandTest
 
             cfs.forceBlockingFlush();
 
-            ReadGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
+            QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
             try (ReadExecutionController executionController = query.executionController();
                  UnfilteredPartitionIterator iter = query.executeLocally(executionController);
@@ -447,7 +447,7 @@ public class ReadCommandTest
 
             cfs.forceBlockingFlush();
 
-            ReadGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
+            QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
             try (ReadExecutionController executionController = query.executionController();
                     UnfilteredPartitionIterator iter = query.executeLocally(executionController);
@@ -523,7 +523,7 @@ public class ReadCommandTest
 
             cfs.forceBlockingFlush();
 
-            ReadGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
+            QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
             try (ReadExecutionController executionController = query.executionController();
                     UnfilteredPartitionIterator iter = query.executeLocally(executionController);

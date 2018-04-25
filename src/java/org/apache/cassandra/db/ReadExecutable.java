@@ -20,8 +20,6 @@ package org.apache.cassandra.db;
 
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
-import org.apache.cassandra.exceptions.RequestExecutionException;
-import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.service.pager.QueryPager;
 import org.apache.cassandra.transport.ProtocolVersion;
@@ -35,20 +33,21 @@ public interface ReadExecutable
      * The returned object <b>must</b> be closed on all path and it is thus strongly advised to
      * use it in a try-with-ressource construction.
      *
-     * @return a newly started execution controller for this {@code ReadGroup}.
+     * @return a newly started execution controller for this {@code QueryGroup}.
      */
     public ReadExecutionController executionController();
 
-    /**
-     * Executes the query at the provided consistency level.
-     *
-     * @param consistency the consistency level to achieve for the query.
-     * @param clientState the {@code ClientState} for the query. In practice, this can be null unless
-     * {@code consistency} is a serial consistency.
-     *
-     * @return the result of the query.
-     */
-    public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException;
+    // FIXME: distributed and local logic should be separate
+//    /**
+//     * Executes the query at the provided consistency level.
+//     *
+//     * @param consistency the consistency level to achieve for the query.
+//     * @param clientState the {@code ClientState} for the query. In practice, this can be null unless
+//     * {@code consistency} is a serial consistency.
+//     *
+//     * @return the result of the query.
+//     */
+//    public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException;
 
     /**
      * Execute the query for internal queries (that is, it basically executes the query locally).
@@ -59,7 +58,7 @@ public interface ReadExecutable
     public PartitionIterator executeInternal(ReadExecutionController controller);
 
     /**
-     * Execute the query locally. This is similar to {@link ReadGroup#executeInternal(ReadExecutionController)}
+     * Execute the query locally. This is similar to {@link QueryGroup#executeInternal(ReadExecutionController)}
      * but it returns an unfiltered partition iterator that can be merged later on.
      *
      * @param executionController the {@code ReadExecutionController} protecting the read.
