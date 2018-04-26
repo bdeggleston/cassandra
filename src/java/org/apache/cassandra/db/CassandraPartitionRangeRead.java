@@ -27,13 +27,17 @@ import com.google.common.collect.Iterables;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.lifecycle.View;
 import org.apache.cassandra.db.partitions.CachedPartition;
+import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.BaseRowIterator;
 import org.apache.cassandra.db.transform.Transformation;
+import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.metrics.TableMetrics;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.service.pager.PartitionRangeQueryPager;
 import org.apache.cassandra.service.pager.QueryPager;
@@ -50,6 +54,12 @@ public class CassandraPartitionRangeRead extends AbstractReadExecutable
     {
         super(command);
         this.command = command;
+    }
+
+    @Override
+    public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException
+    {
+        return StorageProxy.getRangeSlice(command, consistency, queryStartNanoTime);
     }
 
     @Override

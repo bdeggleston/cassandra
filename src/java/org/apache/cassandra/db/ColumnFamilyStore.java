@@ -219,6 +219,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public volatile long sampleLatencyNanos;
 
     private final CassandraTableWriteHandler writeHandler;
+    private final CassandraReadHandler readHandler;
     private final CassandraStreamManager streamManager;
 
     private final TableRepairManager repairManager;
@@ -454,6 +455,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             oldMBeanName= null;
         }
         writeHandler = new CassandraTableWriteHandler(this);
+        readHandler = new CassandraReadHandler(this);
         streamManager = new CassandraStreamManager(this);
         repairManager = new CassandraTableRepairManager(this);
     }
@@ -473,6 +475,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public TableWriteHandler getWriteHandler()
     {
         return writeHandler;
+    }
+
+    public CassandraReadHandler getReadHandler()
+    {
+        return readHandler;
     }
 
     public TableStreamManager getStreamManager()
