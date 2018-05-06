@@ -32,28 +32,26 @@ import org.apache.cassandra.transport.ProtocolVersion;
  * {@link SinglePartitionReadCommand.Group} is also consider as a "read query" but is not a
  * {@code ReadCommand}.
  */
-public interface QueryGroup extends ReadQuery, ReadExecutable
+public interface QueryGroup extends ReadQuery, ReadExecutable.Distributed
 {
+
+    public ReadContext getReadContext();
+
     QueryGroup EMPTY = new QueryGroup()
     {
-        public ReadExecutionController executionController()
-        {
-            return ReadExecutionController.empty();
-        }
-
         public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException
         {
             return EmptyIterators.partition();
         }
 
-        public PartitionIterator executeInternal(ReadExecutionController controller)
+        public PartitionIterator executeInternal(ReadContext context)
         {
             return EmptyIterators.partition();
         }
 
-        public UnfilteredPartitionIterator executeLocally(ReadExecutionController executionController)
+        public UnfilteredPartitionIterator executeLocally(ReadContext context)
         {
-            return EmptyIterators.unfilteredPartition(executionController.metadata());
+            return EmptyIterators.unfilteredPartition(context.metadata());
         }
 
         public DataLimits limits()
@@ -62,6 +60,12 @@ public interface QueryGroup extends ReadQuery, ReadExecutable
             // "no particular limit", which makes SelectStatement.execute() take the slightly more complex "paging"
             // path. Not a big deal but it's easy enough to return a limit of 0 rows which avoids this.
             return DataLimits.cqlLimits(0);
+        }
+
+        @Override
+        public ReadContext getReadContext()
+        {
+            return ReadContext.empty();
         }
 
         public QueryPager getPager(PagingState state, ProtocolVersion protocolVersion)
@@ -88,13 +92,9 @@ public interface QueryGroup extends ReadQuery, ReadExecutable
 
     public static QueryGroup wrap(ReadCommand command)
     {
+        ReadHandler handler = command.getCfs().getReadHandler();
         return new QueryGroup()
         {
-            @Override
-            public ReadExecutionController executionController()
-            {
-                return command.executionController();
-            }
 
             @Override
             public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException
@@ -103,15 +103,15 @@ public interface QueryGroup extends ReadQuery, ReadExecutable
             }
 
             @Override
-            public PartitionIterator executeInternal(ReadExecutionController controller)
+            public PartitionIterator executeInternal(ReadContext context)
             {
-                return command.executeInternal(controller);
+                return handler.getReadExecutable(context, command).executeInternal(context);
             }
 
             @Override
-            public UnfilteredPartitionIterator executeLocally(ReadExecutionController executionController)
+            public UnfilteredPartitionIterator executeLocally(ReadContext context)
             {
-                return command.executeLocally(executionController);
+                return handler.executeLocally(context, command);
             }
 
             @Override
@@ -124,6 +124,12 @@ public interface QueryGroup extends ReadQuery, ReadExecutable
             public DataLimits limits()
             {
                 return command.limits();
+            }
+
+            @Override
+            public ReadContext getReadContext()
+            {
+                return handler.contextForCommand(command);
             }
 
             @Override

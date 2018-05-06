@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ClusteringIndexNamesFilter;
@@ -59,9 +60,10 @@ public class CompositesSearcher extends CassandraIndexSearcher
     protected UnfilteredPartitionIterator queryDataFromIndex(final DecoratedKey indexKey,
                                                              final RowIterator indexHits,
                                                              final ReadCommand command,
-                                                             final ReadExecutionController executionController)
+                                                             final ReadContext context)
     {
         assert indexHits.staticRow() == Rows.EMPTY_STATIC_ROW;
+        assert context.getIndexReadContext() != null; // we need the top level read context
 
         return new UnfilteredPartitionIterator()
         {
@@ -164,14 +166,12 @@ public class CompositesSearcher extends CassandraIndexSearcher
                                                                     null);
                     }
 
+                    ReadHandler readHandler = index.baseCfs.getReadHandler();
+
                     @SuppressWarnings("resource") // We close right away if empty, and if it's assign to next it will be called either
                     // by the next caller of next, or through closing this iterator is this come before.
-                    UnfilteredRowIterator dataIter =
-                        filterStaleEntries(dataCmd.queryMemtableAndDisk(index.baseCfs, executionController),
-                                           indexKey.getKey(),
-                                           entries,
-                                           executionController.getWriteContext(),
-                                           command.nowInSec());
+                    UnfilteredRowIterator rowIter = UnfilteredPartitionIterators.getOnlyElement(readHandler.executeDirect(context, dataCmd), dataCmd);
+                    UnfilteredRowIterator dataIter = filterStaleEntries(rowIter, indexKey.getKey(), entries, context.getWriteContext(), command.nowInSec());
 
                     if (dataIter.isEmpty())
                     {

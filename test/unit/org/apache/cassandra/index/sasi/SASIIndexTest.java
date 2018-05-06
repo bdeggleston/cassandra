@@ -1315,7 +1315,7 @@ public class SASIIndexTest
                                              DataRange.allData(store.metadata().partitioner));
         try
         {
-            new QueryPlan(store, command, 0).execute(ReadExecutionController.empty());
+            new QueryPlan(store, command, 0).execute(ReadContext.empty());
             Assert.fail();
         }
         catch (TimeQuotaExceededException e)
@@ -1330,9 +1330,10 @@ public class SASIIndexTest
 
         // to make sure that query doesn't fail in normal conditions
 
-        try (ReadExecutionController controller = command.executionController())
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command))
         {
-            Set<String> rows = getKeys(new QueryPlan(store, command, DatabaseDescriptor.getRangeRpcTimeout()).execute(controller));
+            Set<String> rows = getKeys(new QueryPlan(store, command, DatabaseDescriptor.getRangeRpcTimeout()).execute(context));
             Assert.assertTrue(rows.toString(), Arrays.equals(new String[] { "key1", "key2", "key3", "key4" }, rows.toArray(new String[rows.size()])));
         }
     }
@@ -2417,7 +2418,8 @@ public class SASIIndexTest
                                              DataLimits.cqlLimits(maxResults),
                                              range);
 
-        return command.executeLocally(command.executionController());
+        ReadHandler handler = command.getCfs().getReadHandler();
+        return handler.executeLocally(handler.contextForCommand(command), command);
     }
 
     private static Mutation newMutation(String key, String firstName, String lastName, int age, long timestamp)

@@ -29,6 +29,7 @@ import org.apache.cassandra.transport.ProtocolVersion;
 abstract class AbstractQueryPager implements QueryPager
 {
     protected final ReadCommand command;
+    protected final ReadHandler readHandler;
     protected final DataLimits limits;
     protected final ProtocolVersion protocolVersion;
     private final boolean enforceStrictLiveness;
@@ -46,6 +47,7 @@ abstract class AbstractQueryPager implements QueryPager
     protected AbstractQueryPager(ReadCommand command, ProtocolVersion protocolVersion)
     {
         this.command = command;
+        this.readHandler = command.getCfs().getReadHandler();
         this.protocolVersion = protocolVersion;
         this.limits = command.limits();
         this.enforceStrictLiveness = command.metadata().enforceStrictLiveness();
@@ -54,9 +56,14 @@ abstract class AbstractQueryPager implements QueryPager
         this.remainingInPartition = limits.perPartitionCount();
     }
 
-    public ReadExecutionController executionController()
+    public ReadHandler getReadHandler()
     {
-        return command.executionController();
+        return readHandler;
+    }
+
+    public ReadContext getReadContext()
+    {
+        return readHandler.contextForCommand(command);
     }
 
     public PartitionIterator fetchPage(int pageSize, ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime)
@@ -69,17 +76,17 @@ abstract class AbstractQueryPager implements QueryPager
         return Transformation.apply(nextPageReadCommand(pageSize).execute(consistency, clientState, queryStartNanoTime), pager);
     }
 
-    public PartitionIterator fetchPageInternal(int pageSize, ReadExecutionController executionController)
+    public PartitionIterator fetchPageInternal(int pageSize, ReadContext context)
     {
         if (isExhausted())
             return EmptyIterators.partition();
 
         pageSize = Math.min(pageSize, remaining);
         RowPager pager = new RowPager(limits.forPaging(pageSize), command.nowInSec());
-        return Transformation.apply(nextPageReadCommand(pageSize).executeInternal(executionController), pager);
+        return Transformation.apply(readHandler.executeInternal(context, nextPageReadCommand(pageSize)), pager);
     }
 
-    public UnfilteredPartitionIterator fetchPageUnfiltered(TableMetadata metadata, int pageSize, ReadExecutionController executionController)
+    public UnfilteredPartitionIterator fetchPageUnfiltered(TableMetadata metadata, int pageSize, ReadContext context)
     {
         if (isExhausted())
             return EmptyIterators.unfilteredPartition(metadata);
@@ -87,7 +94,8 @@ abstract class AbstractQueryPager implements QueryPager
         pageSize = Math.min(pageSize, remaining);
         UnfilteredPager pager = new UnfilteredPager(limits.forPaging(pageSize), command.nowInSec());
 
-        return Transformation.apply(nextPageReadCommand(pageSize).executeLocally(executionController), pager);
+
+        return Transformation.apply(readHandler.executeLocally(context, nextPageReadCommand(pageSize)), pager);
     }
 
     private class UnfilteredPager extends Pager<Unfiltered>

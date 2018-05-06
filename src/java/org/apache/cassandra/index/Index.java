@@ -541,9 +541,9 @@ public interface Index
     public interface Searcher
     {
         /**
-         * @param executionController the collection of OpOrder.Groups which the ReadCommand is being performed under.
+         * @param context the context instance that guards the read
          * @return partitions from the base table matching the criteria of the search.
          */
-        public UnfilteredPartitionIterator search(ReadExecutionController executionController);
+        public UnfilteredPartitionIterator search(ReadContext context);
     }
 }

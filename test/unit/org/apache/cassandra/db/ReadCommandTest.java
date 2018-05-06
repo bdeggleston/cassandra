@@ -279,8 +279,8 @@ public class ReadCommandTest
 
             QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
-            try (ReadExecutionController executionController = query.executionController();
-                 UnfilteredPartitionIterator iter = query.executeLocally(executionController);
+            try (ReadContext context = query.getReadContext();
+                 UnfilteredPartitionIterator iter = query.executeLocally(context);
                  DataOutputBuffer buffer = new DataOutputBuffer())
             {
                 UnfilteredPartitionIterators.serializerForIntraNode().serialize(iter,
@@ -449,8 +449,8 @@ public class ReadCommandTest
 
             QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
-            try (ReadExecutionController executionController = query.executionController();
-                    UnfilteredPartitionIterator iter = query.executeLocally(executionController);
+            try (ReadContext context = query.getReadContext();
+                    UnfilteredPartitionIterator iter = query.executeLocally(context);
                     DataOutputBuffer buffer = new DataOutputBuffer())
             {
                 UnfilteredPartitionIterators.serializerForIntraNode().serialize(iter,
@@ -525,8 +525,8 @@ public class ReadCommandTest
 
             QueryGroup query = new SinglePartitionReadCommand.Group(commands, DataLimits.NONE);
 
-            try (ReadExecutionController executionController = query.executionController();
-                    UnfilteredPartitionIterator iter = query.executeLocally(executionController);
+            try (ReadContext context = query.getReadContext();
+                    UnfilteredPartitionIterator iter = query.executeLocally(context);
                     DataOutputBuffer buffer = new DataOutputBuffer())
             {
                 UnfilteredPartitionIterators.serializerForIntraNode().serialize(iter,

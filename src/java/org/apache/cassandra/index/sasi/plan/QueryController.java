@@ -26,11 +26,14 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.PartitionRangeReadCommand;
+import org.apache.cassandra.db.ReadContext;
 import org.apache.cassandra.db.ReadExecutionController;
+import org.apache.cassandra.db.ReadHandler;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.index.sasi.SASIIndex;
@@ -95,7 +98,7 @@ public class QueryController
     }
 
 
-    public UnfilteredRowIterator getPartition(DecoratedKey key, ReadExecutionController executionController)
+    public UnfilteredRowIterator getPartition(DecoratedKey key, ReadContext context)
     {
         if (key == null)
             throw new NullPointerException();
@@ -109,7 +112,8 @@ public class QueryController
                                                                                      key,
                                                                                      command.clusteringIndexFilter(key));
 
-            return partition.queryMemtableAndDisk(cfs, executionController);
+            ReadHandler handler = partition.getCfs().getReadHandler();
+            return UnfilteredPartitionIterators.getOnlyElement(handler.executeDirect(context, partition), partition);
         }
         finally
         {

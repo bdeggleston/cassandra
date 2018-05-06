@@ -46,6 +46,7 @@ import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.partitions.CachedBTreePartition;
 import org.apache.cassandra.db.partitions.CachedPartition;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -413,7 +414,9 @@ public class CacheService implements CacheServiceMBean
                     DecoratedKey key = cfs.decorateKey(buffer);
                     int nowInSec = FBUtilities.nowInSeconds();
                     SinglePartitionReadCommand cmd = SinglePartitionReadCommand.fullPartitionRead(cfs.metadata(), nowInSec, key);
-                    try (ReadExecutionController controller = cmd.executionController(); UnfilteredRowIterator iter = cmd.queryMemtableAndDisk(cfs, controller))
+                    ReadHandler readHandler = cfs.getReadHandler();
+                    try (ReadContext context = readHandler.contextForCommand(cmd);
+                         UnfilteredRowIterator iter = UnfilteredPartitionIterators.getOnlyElement(readHandler.executeDirect(context, cmd), cmd))
                     {
                         CachedPartition toCache = CachedBTreePartition.create(DataLimits.cqlLimits(rowsToCache).filter(iter, nowInSec, true), nowInSec);
                         return Pair.create(new RowCacheKey(cfs.metadata(), key), toCache);

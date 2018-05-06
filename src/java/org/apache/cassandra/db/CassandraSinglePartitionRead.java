@@ -45,6 +45,7 @@ import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.SingletonUnfilteredPartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Rows;
@@ -98,24 +99,15 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
         return oldestUnrepairedTombstone;
     }
 
-    @Override
-    public SinglePartitionPager getPager(PagingState pagingState, ProtocolVersion protocolVersion)
-    {
-        return getPager(command, pagingState, protocolVersion);
-    }
-
     private static SinglePartitionPager getPager(SinglePartitionReadCommand command, PagingState pagingState, ProtocolVersion protocolVersion)
     {
         return new SinglePartitionPager(command, pagingState, protocolVersion);
     }
 
     @SuppressWarnings("resource") // we close the created iterator through closing the result of this method (and SingletonUnfilteredPartitionIterator ctor cannot fail)
-    protected UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs, ReadExecutionController executionController)
+    protected UnfilteredPartitionIterator queryStorage(ReadContext context)
     {
-        UnfilteredRowIterator partition = cfs.isRowCacheEnabled()
-                                          ? getThroughCache(cfs, executionController)
-                                          : queryMemtableAndDisk(cfs, executionController);
-        return new SingletonUnfilteredPartitionIterator(partition);
+        return cfs.isRowCacheEnabled() ? getThroughCache(cfs, context) : executeDirect(context);
     }
 
     /**
@@ -127,7 +119,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
      * If the partition is is not cached, we figure out what filter is "biggest", read
      * that from disk, then filter the result and either cache that or return it.
      */
-    private UnfilteredRowIterator getThroughCache(ColumnFamilyStore cfs, ReadExecutionController executionController)
+    private UnfilteredPartitionIterator getThroughCache(ColumnFamilyStore cfs, ReadContext context)
     {
         assert !cfs.isIndex(); // CASSANDRA-5732
         assert cfs.isRowCacheEnabled() : String.format("Row cache is not enabled on table [%s]", cfs.name);
@@ -145,7 +137,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
                 // Some other read is trying to cache the value, just do a normal non-caching read
                 Tracing.trace("Row cache miss (race)");
                 cfs.metric.rowCacheMiss.inc();
-                return queryMemtableAndDisk(cfs, executionController);
+                return executeDirect(context);
             }
 
             CachedPartition cachedPartition = (CachedPartition)cached;
@@ -155,12 +147,12 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
                 Tracing.trace("Row cache hit");
                 UnfilteredRowIterator unfilteredRowIterator = command.clusteringIndexFilter().getUnfilteredRowIterator(command.columnFilter(), cachedPartition);
                 cfs.metric.updateSSTableIterated(0);
-                return unfilteredRowIterator;
+                return new SingletonUnfilteredPartitionIterator(unfilteredRowIterator);
             }
 
             cfs.metric.rowCacheHitOutOfRange.inc();
             Tracing.trace("Ignoring row cache as cached value could not satisfy query");
-            return queryMemtableAndDisk(cfs, executionController);
+            return executeDirect(context);
         }
 
         cfs.metric.rowCacheMiss.inc();
@@ -195,7 +187,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
                                                                                                      command.partitionKey());
                 CassandraSinglePartitionRead newExecutable = new CassandraSinglePartitionRead(newCommand);
                 @SuppressWarnings("resource") // we close on exception or upon closing the result of this method
-                UnfilteredRowIterator iter = newExecutable.queryMemtableAndDisk(cfs, executionController);
+                UnfilteredRowIterator iter = UnfilteredPartitionIterators.getOnlyElement(newExecutable.executeDirect(context), command);
                 try
                 {
                     // Use a custom iterator instead of DataLimits to avoid stopping the original iterator
@@ -242,9 +234,11 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
                         // Everything is guaranteed to be in 'toCache', we're done with 'iter'
                         assert !iter.hasNext();
                         iter.close();
-                        return cacheIterator;
+                        return new SingletonUnfilteredPartitionIterator(cacheIterator);
                     }
-                    return UnfilteredRowIterators.concat(cacheIterator, command.clusteringIndexFilter().filterNotIndexed(command.columnFilter(), iter));
+                    return new SingletonUnfilteredPartitionIterator(UnfilteredRowIterators.concat(cacheIterator,
+                                                                                                  command.clusteringIndexFilter()
+                                                                                                         .filterNotIndexed(command.columnFilter(), iter)));
                 }
                 catch (RuntimeException | Error e)
                 {
@@ -260,7 +254,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
         }
 
         Tracing.trace("Fetching data but not populating cache as query does not query from the start of the partition");
-        return queryMemtableAndDisk(cfs, executionController);
+        return executeDirect(context);
     }
 
     /**
@@ -269,7 +263,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
      * Please note that this method:
      *   1) does not check the row cache.
      *   2) does not apply the query limit, nor the row filter (and so ignore 2ndary indexes).
-     *      Those are applied in {@link ReadCommand#executeLocally}.
+     *      Those are applied in {@link ReadExecutable#executeLocally}.
      *   3) does not record some of the read metrics (latency, scanned cells histograms) nor
      *      throws TombstoneOverwhelmingException.
      * It is publicly exposed because there is a few places where that is exactly what we want,
@@ -278,15 +272,15 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
      * Also note that one must have created a {@code ReadExecutionController} on the queried table and we require it as
      * a parameter to enforce that fact, even though it's not explicitlly used by the method.
      */
-    public UnfilteredRowIterator queryMemtableAndDisk(ColumnFamilyStore cfs, ReadExecutionController executionController)
+    public UnfilteredPartitionIterator executeDirect(ReadContext context)
     {
-        assert executionController != null && executionController.validForReadOn(cfs);
+        assert context != null && context.validForReadOn(cfs);
         Tracing.trace("Executing single-partition query on {}", cfs.name);
 
-        return queryMemtableAndDiskInternal(cfs);
+        return new SingletonUnfilteredPartitionIterator(queryMemtableAndDiskInternal());
     }
 
-    private UnfilteredRowIterator queryMemtableAndDiskInternal(ColumnFamilyStore cfs)
+    private UnfilteredRowIterator queryMemtableAndDiskInternal()
     {
         /*
          * We have 2 main strategies:

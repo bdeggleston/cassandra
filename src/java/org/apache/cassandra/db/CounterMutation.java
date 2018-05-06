@@ -258,8 +258,9 @@ public class CounterMutation implements IMutation
         ClusteringIndexNamesFilter filter = new ClusteringIndexNamesFilter(names.build(), false);
         SinglePartitionReadCommand cmd = SinglePartitionReadCommand.create(cfs.metadata(), nowInSec, key(), builder.build(), filter);
         PeekingIterator<PartitionUpdate.CounterMark> markIter = Iterators.peekingIterator(marks.iterator());
-        try (ReadExecutionController controller = cmd.executionController();
-             RowIterator partition = UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs, controller), nowInSec))
+        ReadHandler handler = cfs.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             RowIterator partition = UnfilteredRowIterators.filter(UnfilteredPartitionIterators.getOnlyElement(handler.executeDirect(context, cmd), cmd), nowInSec))
         {
             updateForRow(markIter, partition.staticRow(), cfs);
 

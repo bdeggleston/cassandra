@@ -62,18 +62,18 @@ public final class AggregationQueryPager implements QueryPager
     }
 
     @Override
-    public ReadExecutionController executionController()
+    public ReadContext getReadContext()
     {
-        return subPager.executionController();
+        return subPager.getReadContext();
     }
 
     @Override
-    public PartitionIterator fetchPageInternal(int pageSize, ReadExecutionController executionController)
+    public PartitionIterator fetchPageInternal(int pageSize, ReadContext context)
     {
         if (limits.isGroupByLimit())
-            return new GroupByPartitionIterator(pageSize, executionController, System.nanoTime());
+            return new GroupByPartitionIterator(pageSize, context, System.nanoTime());
 
-        return new AggregationPartitionIterator(pageSize, executionController, System.nanoTime());
+        return new AggregationPartitionIterator(pageSize, context, System.nanoTime());
     }
 
     @Override
@@ -116,7 +116,7 @@ public final class AggregationQueryPager implements QueryPager
         private final ClientState clientState;
 
         // For internal queries
-        private final ReadExecutionController executionController;
+        private final ReadContext context;
 
         /**
          * The <code>PartitionIterator</code> over the last page retrieved.
@@ -164,22 +164,22 @@ public final class AggregationQueryPager implements QueryPager
         }
 
         public GroupByPartitionIterator(int pageSize,
-                                        ReadExecutionController executionController,
+                                        ReadContext context,
                                         long queryStartNanoTime)
        {
-           this(pageSize, null, null, executionController, queryStartNanoTime);
+           this(pageSize, null, null, context, queryStartNanoTime);
        }
 
         private GroupByPartitionIterator(int pageSize,
                                          ConsistencyLevel consistency,
                                          ClientState clientState,
-                                         ReadExecutionController executionController,
+                                         ReadContext context,
                                          long queryStartNanoTime)
         {
             this.pageSize = handlePagingOff(pageSize);
             this.consistency = consistency;
             this.clientState = clientState;
-            this.executionController = executionController;
+            this.context = context;
             this.queryStartNanoTime = queryStartNanoTime;
         }
 
@@ -288,7 +288,7 @@ public final class AggregationQueryPager implements QueryPager
         private final PartitionIterator fetchSubPage(int subPageSize)
         {
             return consistency != null ? subPager.fetchPage(subPageSize, consistency, clientState, queryStartNanoTime)
-                                       : subPager.fetchPageInternal(subPageSize, executionController);
+                                       : subPager.fetchPageInternal(subPageSize, context);
         }
 
         public final RowIterator next()
@@ -407,10 +407,10 @@ public final class AggregationQueryPager implements QueryPager
         }
 
         public AggregationPartitionIterator(int pageSize,
-                                            ReadExecutionController executionController,
+                                            ReadContext context,
                                             long queryStartNanoTime)
         {
-            super(pageSize, executionController, queryStartNanoTime);
+            super(pageSize, context, queryStartNanoTime);
         }
 
         @Override

@@ -156,8 +156,9 @@ public class KeyspaceTest extends CQLTester
         ClusteringIndexSliceFilter filter = new ClusteringIndexSliceFilter(slices, reversed);
         SinglePartitionReadCommand command = singlePartitionSlice(cfs, key, filter, limit);
 
-        try (ReadExecutionController executionController = command.executionController();
-             PartitionIterator iterator = command.executeInternal(executionController))
+        ReadHandler handler = command.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             try (RowIterator rowIterator = iterator.next())
             {
@@ -229,8 +230,9 @@ public class KeyspaceTest extends CQLTester
             RegularAndStaticColumns columns = RegularAndStaticColumns.of(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
             ClusteringIndexSliceFilter filter = new ClusteringIndexSliceFilter(Slices.ALL, false);
             SinglePartitionReadCommand command = singlePartitionSlice(cfs, "0", filter, null);
-            try (ReadExecutionController executionController = command.executionController();
-                 PartitionIterator iterator = command.executeInternal(executionController))
+            ReadHandler handler = command.getReadHandler();
+            try (ReadContext context = handler.contextForCommand(command);
+                 PartitionIterator iterator = handler.executeInternal(context, command))
             {
                 try (RowIterator rowIterator = iterator.next())
                 {
@@ -244,8 +246,9 @@ public class KeyspaceTest extends CQLTester
 
     private static void assertRowsInResult(ColumnFamilyStore cfs, SinglePartitionReadCommand command, int ... columnValues)
     {
-        try (ReadExecutionController executionController = command.executionController();
-             PartitionIterator iterator = command.executeInternal(executionController))
+        ReadHandler handler = command.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             if (columnValues.length == 0)
             {

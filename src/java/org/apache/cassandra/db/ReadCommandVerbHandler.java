@@ -42,10 +42,11 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
 
         ReadCommand command = message.payload;
         command.setMonitoringTime(message.constructionTime, message.isCrossNode(), message.getTimeout(), message.getSlowQueryTimeout());
+        ReadHandler readHandler = command.getCfs().getReadHandler();
 
         ReadResponse response;
-        try (ReadExecutionController executionController = command.executionController();
-             UnfilteredPartitionIterator iterator = command.executeLocally(executionController))
+        try (ReadContext context = readHandler.contextForCommand(command);
+             UnfilteredPartitionIterator iterator = readHandler.executeLocally(context, command))
         {
             response = command.createResponse(iterator);
         }

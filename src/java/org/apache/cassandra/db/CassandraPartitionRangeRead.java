@@ -57,25 +57,13 @@ public class CassandraPartitionRangeRead extends AbstractReadExecutable
     }
 
     @Override
-    public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException
-    {
-        return StorageProxy.getRangeSlice(command, consistency, queryStartNanoTime);
-    }
-
-    @Override
-    public QueryPager getPager(PagingState pagingState, ProtocolVersion protocolVersion)
-    {
-        return new PartitionRangeQueryPager(command, pagingState, protocolVersion);
-    }
-
-    @Override
     protected void recordLatency(TableMetrics metric, long latencyNanos)
     {
         metric.rangeLatency.addNano(latencyNanos);
     }
 
     @VisibleForTesting
-    public UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs, ReadExecutionController executionController)
+    public UnfilteredPartitionIterator queryStorage(ReadContext context)
     {
         ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(command.dataRange().keyRange()));
         Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), command.dataRange().keyRange().getString(command.metadata().partitionKeyType));
@@ -119,6 +107,12 @@ public class CassandraPartitionRangeRead extends AbstractReadExecutable
 
             throw e;
         }
+    }
+
+    @Override
+    public UnfilteredPartitionIterator executeDirect(ReadContext context)
+    {
+        return queryStorage(context);
     }
 
     /**

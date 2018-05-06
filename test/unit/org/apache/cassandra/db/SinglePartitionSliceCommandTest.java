@@ -181,7 +181,8 @@ public class SinglePartitionSliceCommandTest
                                                             key,
                                                             clusteringFilter);
 
-        UnfilteredPartitionIterator partitionIterator = cmd.executeLocally(cmd.executionController());
+        ReadHandler handler = cmd.getReadHandler();
+        UnfilteredPartitionIterator partitionIterator = handler.executeLocally(handler.contextForCommand(cmd), cmd);
         assert partitionIterator.hasNext();
         UnfilteredRowIterator partition = partitionIterator.next();
 
@@ -263,7 +264,9 @@ public class SinglePartitionSliceCommandTest
                                                             sliceFilter);
 
         // check raw iterator for static cell
-        try (ReadExecutionController executionController = cmd.executionController(); UnfilteredPartitionIterator pi = cmd.executeLocally(executionController))
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator pi = handler.executeLocally(context, cmd))
         {
             checkForS(pi);
         }
@@ -274,7 +277,8 @@ public class SinglePartitionSliceCommandTest
         ReadResponse dst;
 
         // check (de)serialized iterator for memtable static cell
-        try (ReadExecutionController executionController = cmd.executionController(); UnfilteredPartitionIterator pi = cmd.executeLocally(executionController))
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator pi = handler.executeLocally(context, cmd))
         {
             response = ReadResponse.createDataResponse(pi, cmd);
         }
@@ -290,7 +294,8 @@ public class SinglePartitionSliceCommandTest
 
         // check (de)serialized iterator for sstable static cell
         Schema.instance.getColumnFamilyStoreInstance(metadata.id).forceBlockingFlush();
-        try (ReadExecutionController executionController = cmd.executionController(); UnfilteredPartitionIterator pi = cmd.executeLocally(executionController))
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator pi = handler.executeLocally(context, cmd))
         {
             response = ReadResponse.createDataResponse(pi, cmd);
         }

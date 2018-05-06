@@ -136,11 +136,11 @@ public class TableViews extends AbstractCollection<View>
         if (command == null)
             return;
 
-        ColumnFamilyStore cfs = Keyspace.openAndGetStore(update.metadata());
+        ReadHandler readHandler = command.getCfs().getReadHandler();
         long start = System.nanoTime();
         Collection<Mutation> mutations;
-        try (ReadExecutionController orderGroup = command.executionController();
-             UnfilteredRowIterator existings = UnfilteredPartitionIterators.getOnlyElement(command.executeLocally(orderGroup), command);
+        try (ReadContext context = readHandler.contextForCommand(command);
+             UnfilteredRowIterator existings = UnfilteredPartitionIterators.getOnlyElement(readHandler.executeLocally(context, command), command);
              UnfilteredRowIterator updates = update.unfilteredIterator())
         {
             mutations = Iterators.getOnlyElement(generateViewUpdates(views, updates, existings, nowInSec, false));

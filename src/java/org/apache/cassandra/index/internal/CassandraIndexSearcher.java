@@ -26,6 +26,7 @@ import java.util.NavigableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.*;
@@ -56,14 +57,14 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
 
     @SuppressWarnings("resource") // Both the OpOrder and 'indexIter' are closed on exception, or through the closing of the result
     // of this method.
-    public UnfilteredPartitionIterator search(ReadExecutionController executionController)
+    public UnfilteredPartitionIterator search(ReadContext context)
     {
         // the value of the index expression is the partition key in the index table
         DecoratedKey indexKey = index.getBackingTable().get().decorateKey(expression.getIndexValue());
-        UnfilteredRowIterator indexIter = queryIndex(indexKey, command, executionController);
+        UnfilteredRowIterator indexIter = queryIndex(indexKey, command, context);
         try
         {
-            return queryDataFromIndex(indexKey, UnfilteredRowIterators.filter(indexIter, command.nowInSec()), command, executionController);
+            return queryDataFromIndex(indexKey, UnfilteredRowIterators.filter(indexIter, command.nowInSec()), command, context);
         }
         catch (RuntimeException | Error e)
         {
@@ -72,13 +73,14 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
         }
     }
 
-    private UnfilteredRowIterator queryIndex(DecoratedKey indexKey, ReadCommand command, ReadExecutionController executionController)
+    private UnfilteredRowIterator queryIndex(DecoratedKey indexKey, ReadCommand command, ReadContext context)
     {
         ClusteringIndexFilter filter = makeIndexFilter(command);
         ColumnFamilyStore indexCfs = index.getBackingTable().get();
         TableMetadata indexMetadata = indexCfs.metadata();
-        return SinglePartitionReadCommand.create(indexMetadata, command.nowInSec(), indexKey, ColumnFilter.all(indexMetadata), filter)
-                                         .queryMemtableAndDisk(indexCfs, executionController.indexReadController());
+        ReadHandler readHandler = indexCfs.getReadHandler();
+        SinglePartitionReadCommand searchCommand = SinglePartitionReadCommand.create(indexMetadata, command.nowInSec(), indexKey, ColumnFilter.all(indexMetadata), filter);
+        return UnfilteredPartitionIterators.getOnlyElement(readHandler.executeDirect(context.getIndexReadContext(), searchCommand), searchCommand);
     }
 
     private ClusteringIndexFilter makeIndexFilter(ReadCommand command)
@@ -188,5 +190,5 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
     protected abstract UnfilteredPartitionIterator queryDataFromIndex(DecoratedKey indexKey,
                                                                       RowIterator indexHits,
                                                                       ReadCommand command,
-                                                                      ReadExecutionController executionController);
+                                                                      ReadContext context);
 }

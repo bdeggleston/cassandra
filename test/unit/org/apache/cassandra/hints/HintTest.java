@@ -350,8 +350,9 @@ public class HintTest
     {
         ReadCommand cmd = Util.cmd(cfs(table), key).build();
 
-        try (ReadExecutionController executionController = cmd.executionController();
-             PartitionIterator iterator = cmd.executeInternal(executionController))
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             PartitionIterator iterator = handler.executeInternal(context, cmd))
         {
             assertFalse(iterator.hasNext());
         }

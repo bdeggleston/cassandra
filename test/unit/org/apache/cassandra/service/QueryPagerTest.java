@@ -136,8 +136,8 @@ public class QueryPagerTest
         StringBuilder sb = new StringBuilder();
         List<FilteredPartition> partitionList = new ArrayList<>();
         int rows = 0;
-        try (ReadExecutionController executionController = pager.executionController();
-             PartitionIterator iterator = pager.fetchPageInternal(toQuery, executionController))
+        try (ReadContext context = pager.getReadContext();
+             PartitionIterator iterator = pager.fetchPageInternal(toQuery, context))
         {
             while (iterator.hasNext())
             {
@@ -486,8 +486,8 @@ public class QueryPagerTest
 
         for (int i=0; i<5; i++)
         {
-            try (ReadExecutionController controller = pager.executionController();
-                 PartitionIterator partitions = pager.fetchPageInternal(1, controller))
+            try (ReadContext context = pager.getReadContext();
+                 PartitionIterator partitions = pager.fetchPageInternal(1, context))
             {
                 try (RowIterator partition = partitions.next())
                 {
@@ -507,8 +507,8 @@ public class QueryPagerTest
         }
 
         // After processing the 5 rows there should be no more rows to return
-        try ( ReadExecutionController controller = pager.executionController();
-              PartitionIterator partitions = pager.fetchPageInternal(1, controller))
+        try ( ReadContext context = pager.getReadContext();
+              PartitionIterator partitions = pager.fetchPageInternal(1, context))
         {
             assertFalse(partitions.hasNext());
         }

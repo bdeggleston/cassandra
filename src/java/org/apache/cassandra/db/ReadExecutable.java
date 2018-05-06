@@ -28,54 +28,46 @@ import org.apache.cassandra.transport.ProtocolVersion;
 
 public interface ReadExecutable
 {
-    /**
-     * Starts a new read operation.
-     * <p>
-     * This must be called before {@link executeInternal} and passed to it to protect the read.
-     * The returned object <b>must</b> be closed on all path and it is thus strongly advised to
-     * use it in a try-with-ressource construction.
-     *
-     * @return a newly started execution controller for this {@code QueryGroup}.
-     */
-    public ReadExecutionController executionController();
-
-    // FIXME: distributed and local logic should be separate
-    /**
-     * Executes the query at the provided consistency level.
-     *
-     * @param consistency the consistency level to achieve for the query.
-     * @param clientState the {@code ClientState} for the query. In practice, this can be null unless
-     * {@code consistency} is a serial consistency.
-     *
-     * @return the result of the query.
-     */
-    public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException;
 
     /**
      * Execute the query for internal queries (that is, it basically executes the query locally).
      *
-     * @param controller the {@code ReadExecutionController} protecting the read.
+     * @param context the {@code ReadContext} protecting the read.
      * @return the result of the query.
      */
-    public PartitionIterator executeInternal(ReadExecutionController controller);
+    public PartitionIterator executeInternal(ReadContext context);
 
     /**
-     * Execute the query locally. This is similar to {@link QueryGroup#executeInternal(ReadExecutionController)}
+     * Execute the query locally. This is similar to {@link QueryGroup#executeInternal(ReadContext)}
      * but it returns an unfiltered partition iterator that can be merged later on.
      *
-     * @param executionController the {@code ReadExecutionController} protecting the read.
+     * @param context the {@code ReadContext} protecting the read.
      * @return the result of the read query.
      */
-    public UnfilteredPartitionIterator executeLocally(ReadExecutionController executionController);
+    public UnfilteredPartitionIterator executeLocally(ReadContext context);
 
-    /**
-     * Returns a pager for the query.
-     *
-     * @param pagingState the {@code PagingState} to start from if this is a paging continuation. This can be
-     * {@code null} if this is the start of paging.
-     * @param protocolVersion the protocol version to use for the paging state of that pager.
-     *
-     * @return a pager for the query.
-     */
-    public QueryPager getPager(PagingState pagingState, ProtocolVersion protocolVersion);
+    public interface Local extends ReadExecutable
+    {
+        /**
+         * Directly query the storage without dealing with caches, limits, and most metrics
+         * @param context
+         * @return
+         */
+        public UnfilteredPartitionIterator executeDirect(ReadContext context);
+    }
+
+    public interface Distributed extends ReadExecutable
+    {
+        // FIXME: distributed and local logic should be separate
+        /**
+         * Executes the query at the provided consistency level.
+         *
+         * @param consistency the consistency level to achieve for the query.
+         * @param clientState the {@code ClientState} for the query. In practice, this can be null unless
+         * {@code consistency} is a serial consistency.
+         *
+         * @return the result of the query.
+         */
+        public PartitionIterator execute(ConsistencyLevel consistency, ClientState clientState, long queryStartNanoTime) throws RequestExecutionException;
+    }
 }

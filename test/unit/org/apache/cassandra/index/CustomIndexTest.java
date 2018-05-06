@@ -567,8 +567,9 @@ public class CustomIndexTest extends CQLTester
         assertEquals(0, index.partitionDeletions.size());
 
         ReadCommand cmd = Util.cmd(cfs, 0).build();
-        try (ReadExecutionController executionController = cmd.executionController();
-             UnfilteredPartitionIterator iterator = cmd.executeLocally(executionController))
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, cmd))
         {
             assertTrue(iterator.hasNext());
             cfs.indexManager.deletePartition(iterator.next(), FBUtilities.nowInSeconds());

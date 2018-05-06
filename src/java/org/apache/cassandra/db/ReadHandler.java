@@ -18,8 +18,20 @@
 
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.db.partitions.PartitionIterator;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
+
 public interface ReadHandler
 {
+    /**
+     * Starts a new read operation.
+     * <p>
+     * This must be called before {@link executeInternal} and passed to it to protect the read.
+     * The returned object <b>must</b> be closed on all path and it is thus strongly advised to
+     * use it in a try-with-ressource construction.
+     *
+     * @return a newly started execution controller for this {@code QueryGroup}.
+     */
     ReadContext contextForCommand(ReadCommand command);
 
     ReadContext getContext(ReadContext indexReadCtx, WriteContext writeContext);
@@ -29,6 +41,22 @@ public interface ReadHandler
         return getContext(null, null);
     }
 
-    ReadExecutable getReadExecutable(ReadContext ctx, ReadCommand command);
+    ReadExecutable.Local getReadExecutable(ReadContext ctx, ReadCommand command);
+
+
+    default UnfilteredPartitionIterator executeLocally(ReadContext ctx, ReadCommand command)
+    {
+        return getReadExecutable(ctx, command).executeLocally(ctx);
+    }
+
+    default UnfilteredPartitionIterator executeDirect(ReadContext ctx, ReadCommand command)
+    {
+        return getReadExecutable(ctx, command).executeDirect(ctx);
+    }
+
+    default PartitionIterator executeInternal(ReadContext context, ReadCommand command)
+    {
+        return getReadExecutable(context, command).executeInternal(context);
+    }
 
 }

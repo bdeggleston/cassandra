@@ -45,7 +45,7 @@ import org.apache.cassandra.service.ClientWarn;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
-public abstract class AbstractReadExecutable implements ReadExecutable
+public abstract class AbstractReadExecutable implements ReadExecutable.Local
 {
     private static final int TEST_ITERATION_DELAY_MILLIS = Integer.parseInt(System.getProperty("cassandra.test.read_iteration_delay_ms", "0"));
     private static final Logger logger = LoggerFactory.getLogger(AbstractReadExecutable.class);
@@ -61,31 +61,25 @@ public abstract class AbstractReadExecutable implements ReadExecutable
 
     protected abstract int oldestUnrepairedTombstone();
     protected abstract void recordLatency(TableMetrics metric, long latencyNanos);
-    protected abstract UnfilteredPartitionIterator queryStorage(ColumnFamilyStore cfs, ReadExecutionController executionController);
+    protected abstract UnfilteredPartitionIterator queryStorage(ReadContext context);
 
     @Override
-    public PartitionIterator executeInternal(ReadExecutionController controller)
+    public PartitionIterator executeInternal(ReadContext context)
     {
-        return UnfilteredPartitionIterators.filter(executeLocally(controller), command.nowInSec());
-    }
-
-    @Override
-    public ReadExecutionController executionController()
-    {
-        return ReadExecutionController.forCommand(command);
+        return UnfilteredPartitionIterators.filter(executeLocally(context), command.nowInSec());
     }
 
     /**
      * Executes this command on the local host.
      *
-     * @param executionController the execution controller spanning this command
+     * @param context the execution controller spanning this command
      *
      * @return an iterator over the result of executing this command locally.
      */
     @SuppressWarnings("resource") // The result iterator is closed upon exceptions (we know it's fine to potentially not close the intermediary
     // iterators created inside the try as long as we do close the original resultIterator), or by closing the result.
     @Override
-    public UnfilteredPartitionIterator executeLocally(ReadExecutionController executionController)
+    public UnfilteredPartitionIterator executeLocally(ReadContext context)
     {
         long startTimeNanos = System.nanoTime();
 
@@ -102,8 +96,8 @@ public abstract class AbstractReadExecutable implements ReadExecutable
         }
 
         UnfilteredPartitionIterator resultIterator = searcher == null
-                                                     ? queryStorage(cfs, executionController)
-                                                     : searcher.search(executionController);
+                                                     ? queryStorage(context)
+                                                     : searcher.search(context);
 
         try
         {

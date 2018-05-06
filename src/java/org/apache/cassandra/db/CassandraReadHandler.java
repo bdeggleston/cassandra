@@ -90,7 +90,7 @@ public class CassandraReadHandler implements ReadHandler
     }
 
     @Override
-    public ReadExecutable getReadExecutable(ReadContext ctx, ReadCommand command)
+    public ReadExecutable.Local getReadExecutable(ReadContext ctx, ReadCommand command)
     {
         if (command instanceof SinglePartitionReadCommand)
         {

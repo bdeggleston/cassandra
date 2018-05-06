@@ -19,6 +19,9 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.db.filter.DataLimits;
+import org.apache.cassandra.service.pager.PagingState;
+import org.apache.cassandra.service.pager.QueryPager;
+import org.apache.cassandra.transport.ProtocolVersion;
 
 public interface ReadQuery
 {
@@ -46,4 +49,15 @@ public interface ReadQuery
      * @return {@code true} if this {@code QueryGroup} selects full partitions, {@code false} otherwise.
      */
     public boolean selectsFullPartition();
+
+    /**
+     * Returns a pager for the query.
+     *
+     * @param pagingState the {@code PagingState} to start from if this is a paging continuation. This can be
+     * {@code null} if this is the start of paging.
+     * @param protocolVersion the protocol version to use for the paging state of that pager.
+     *
+     * @return a pager for the query.
+     */
+    public QueryPager getPager(PagingState pagingState, ProtocolVersion protocolVersion);
 }

@@ -319,8 +319,9 @@ public final class SchemaKeyspace
                 continue;
 
             ReadCommand cmd = getReadCommandForTableSchema(table);
-            try (ReadExecutionController executionController = cmd.executionController();
-                 PartitionIterator schema = cmd.executeInternal(executionController))
+            ReadHandler handler = cmd.getCfs().getReadHandler();
+            try (ReadContext context = handler.contextForCommand(cmd);
+                 PartitionIterator schema = handler.executeInternal(context, cmd))
             {
                 while (schema.hasNext())
                 {
@@ -367,8 +368,9 @@ public final class SchemaKeyspace
     private static void convertSchemaToMutations(Map<DecoratedKey, Mutation.PartitionUpdateCollector> mutationMap, String schemaTableName)
     {
         ReadCommand cmd = getReadCommandForTableSchema(schemaTableName);
-        try (ReadExecutionController executionController = cmd.executionController();
-             UnfilteredPartitionIterator iter = cmd.executeLocally(executionController))
+        ReadHandler handler = cmd.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator iter = handler.executeLocally(context, cmd))
         {
             while (iter.hasNext())
             {

@@ -37,8 +37,10 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.ReadContext;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.QueryGroup;
+import org.apache.cassandra.db.ReadHandler;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionInfo;
@@ -100,8 +102,9 @@ public class ViewBuilderTask extends CompactionInfo.Holder implements Callable<L
         // and pretend that there is nothing pre-existing.
         UnfilteredRowIterator empty = UnfilteredRowIterators.noRowsIterator(baseCfs.metadata(), key, Rows.EMPTY_STATIC_ROW, DeletionTime.LIVE, false);
 
-        try (ReadExecutionController orderGroup = command.executionController();
-             UnfilteredRowIterator data = UnfilteredPartitionIterators.getOnlyElement(command.executeLocally(orderGroup), command))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             UnfilteredRowIterator data = UnfilteredPartitionIterators.getOnlyElement(handler.executeLocally(context, command), command))
         {
             Iterator<Collection<Mutation>> mutations = baseCfs.keyspace.viewManager
                                                        .forTable(baseCfs.metadata.id)

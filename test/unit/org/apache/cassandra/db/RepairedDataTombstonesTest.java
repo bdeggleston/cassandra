@@ -176,8 +176,9 @@ public class RepairedDataTombstonesTest extends CQLTester
         Thread.sleep(1000);
         ReadCommand cmd = Util.cmd(getCurrentColumnFamilyStore()).build();
         int partitionsFound = 0;
-        try (ReadExecutionController executionController = cmd.executionController();
-             UnfilteredPartitionIterator iterator = cmd.executeLocally(executionController))
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, cmd))
         {
             while (iterator.hasNext())
             {
@@ -239,10 +240,11 @@ public class RepairedDataTombstonesTest extends CQLTester
     {
         ReadCommand cmd = Util.cmd(getCurrentColumnFamilyStore()).build();
         int foundRows = 0;
-        try (ReadExecutionController executionController = cmd.executionController();
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
              UnfilteredPartitionIterator iterator =
-             includePurgeable ? cmd.queryStorage(getCurrentColumnFamilyStore(), executionController) :
-                                cmd.executeLocally(executionController))
+             includePurgeable ? handler.executeDirect(context, cmd) :
+                                handler.executeLocally(context, cmd))
         {
             while (iterator.hasNext())
             {
@@ -281,10 +283,11 @@ public class RepairedDataTombstonesTest extends CQLTester
     {
         ReadCommand cmd = Util.cmd(getCurrentColumnFamilyStore(), Util.dk(ByteBufferUtil.bytes(key))).build();
         int foundRows = 0;
-        try (ReadExecutionController executionController = cmd.executionController();
+        ReadHandler handler = cmd.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(cmd);
              UnfilteredPartitionIterator iterator =
-             includePurgeable ? cmd.queryStorage(getCurrentColumnFamilyStore(), executionController) :
-                                cmd.executeLocally(executionController))
+             includePurgeable ? handler.executeDirect(context, cmd) :
+                                handler.executeLocally(context, cmd))
         {
             while (iterator.hasNext())
             {

@@ -297,9 +297,9 @@ public class SelectStatement implements CQLStatement
             this.pager = pager;
         }
 
-        public static Pager forInternalQuery(QueryPager pager, ReadExecutionController executionController)
+        public static Pager forInternalQuery(QueryPager pager, ReadContext context)
         {
-            return new InternalPager(pager, executionController);
+            return new InternalPager(pager, context);
         }
 
         public static Pager forDistributedQuery(QueryPager pager, ConsistencyLevel consistency, ClientState clientState)
@@ -339,17 +339,17 @@ public class SelectStatement implements CQLStatement
 
         public static class InternalPager extends Pager
         {
-            private final ReadExecutionController executionController;
+            private final ReadContext context;
 
-            private InternalPager(QueryPager pager, ReadExecutionController executionController)
+            private InternalPager(QueryPager pager, ReadContext context)
             {
                 super(pager);
-                this.executionController = executionController;
+                this.context = context;
             }
 
             public PartitionIterator fetchPage(int pageSize, long queryStartNanoTime)
             {
-                return pager.fetchPageInternal(pageSize, executionController);
+                return pager.fetchPageInternal(pageSize, context);
             }
         }
     }
@@ -424,11 +424,11 @@ public class SelectStatement implements CQLStatement
         Selectors selectors = selection.newSelectors(options);
         QueryGroup query = getQuery(options, selectors.getColumnFilter(), nowInSec, userLimit, userPerPartitionLimit, pageSize);
 
-        try (ReadExecutionController executionController = query.executionController())
+        try (ReadContext context = query.getReadContext())
         {
             if (aggregationSpec == null && (pageSize <= 0 || (query.limits().count() <= pageSize)))
             {
-                try (PartitionIterator data = query.executeInternal(executionController))
+                try (PartitionIterator data = query.executeInternal(context))
                 {
                     return processResults(data, options, selectors, nowInSec, userLimit);
                 }
@@ -436,7 +436,7 @@ public class SelectStatement implements CQLStatement
 
             QueryPager pager = getPager(query, options);
 
-            return execute(Pager.forInternalQuery(pager, executionController),
+            return execute(Pager.forInternalQuery(pager, context),
                            options,
                            selectors,
                            pageSize,

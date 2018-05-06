@@ -47,7 +47,9 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.ReadCommand;
+import org.apache.cassandra.db.ReadContext;
 import org.apache.cassandra.db.ReadExecutionController;
+import org.apache.cassandra.db.ReadHandler;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.db.marshal.Int32Type;
@@ -645,8 +647,9 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
         {
             List<UnfilteredRowIterator> unfilteredRowIterators = new LinkedList<>();
 
-            try (ReadExecutionController executionController = cmd.executionController();
-                 UnfilteredPartitionIterator iterator = cmd.executeLocally(executionController))
+            ReadHandler handler = cmd.getReadHandler();
+            try (ReadContext context = handler.contextForCommand(cmd);
+                 UnfilteredPartitionIterator iterator = handler.executeLocally(context, cmd))
             {
                 assertTrue(iterator.hasNext());
                 Iterator<UnfilteredRowIterator> throttled = ThrottledUnfilteredIterator.throttle(iterator, batchSize);

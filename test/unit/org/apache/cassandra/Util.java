@@ -286,8 +286,9 @@ public class Util
 
     public static void assertEmptyUnfiltered(ReadCommand command)
     {
-        try (ReadExecutionController executionController = command.executionController();
-             UnfilteredPartitionIterator iterator = command.executeLocally(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, command))
         {
             if (iterator.hasNext())
             {
@@ -301,8 +302,9 @@ public class Util
 
     public static void assertEmpty(ReadCommand command)
     {
-        try (ReadExecutionController executionController = command.executionController();
-             PartitionIterator iterator = command.executeInternal(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             if (iterator.hasNext())
             {
@@ -316,9 +318,10 @@ public class Util
 
     public static List<ImmutableBTreePartition> getAllUnfiltered(ReadCommand command)
     {
+        ReadHandler handler = command.getCfs().getReadHandler();
         List<ImmutableBTreePartition> results = new ArrayList<>();
-        try (ReadExecutionController executionController = command.executionController();
-             UnfilteredPartitionIterator iterator = command.executeLocally(executionController))
+        try (ReadContext context = handler.contextForCommand(command);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, command))
         {
             while (iterator.hasNext())
             {
@@ -333,9 +336,10 @@ public class Util
 
     public static List<FilteredPartition> getAll(ReadCommand command)
     {
+        ReadHandler handler = command.getCfs().getReadHandler();
         List<FilteredPartition> results = new ArrayList<>();
-        try (ReadExecutionController executionController = command.executionController();
-             PartitionIterator iterator = command.executeInternal(executionController))
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             while (iterator.hasNext())
             {
@@ -348,10 +352,11 @@ public class Util
         return results;
     }
 
-    public static Row getOnlyRowUnfiltered(ReadCommand cmd)
+    public static Row getOnlyRowUnfiltered(ReadCommand command)
     {
-        try (ReadExecutionController executionController = cmd.executionController();
-             UnfilteredPartitionIterator iterator = cmd.executeLocally(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, command))
         {
             assert iterator.hasNext() : "Expecting one row in one partition but got nothing";
             try (UnfilteredRowIterator partition = iterator.next())
@@ -366,10 +371,11 @@ public class Util
         }
     }
 
-    public static Row getOnlyRow(ReadCommand cmd)
+    public static Row getOnlyRow(ReadCommand command)
     {
-        try (ReadExecutionController executionController = cmd.executionController();
-             PartitionIterator iterator = cmd.executeInternal(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             assert iterator.hasNext() : "Expecting one row in one partition but got nothing";
             try (RowIterator partition = iterator.next())
@@ -383,10 +389,11 @@ public class Util
         }
     }
 
-    public static ImmutableBTreePartition getOnlyPartitionUnfiltered(ReadCommand cmd)
+    public static ImmutableBTreePartition getOnlyPartitionUnfiltered(ReadCommand command)
     {
-        try (ReadExecutionController executionController = cmd.executionController();
-             UnfilteredPartitionIterator iterator = cmd.executeLocally(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             UnfilteredPartitionIterator iterator = handler.executeLocally(context, command))
         {
             assert iterator.hasNext() : "Expecting a single partition but got nothing";
             try (UnfilteredRowIterator partition = iterator.next())
@@ -397,10 +404,11 @@ public class Util
         }
     }
 
-    public static FilteredPartition getOnlyPartition(ReadCommand cmd)
+    public static FilteredPartition getOnlyPartition(ReadCommand command)
     {
-        try (ReadExecutionController executionController = cmd.executionController();
-             PartitionIterator iterator = cmd.executeInternal(executionController))
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iterator = handler.executeInternal(context, command))
         {
             assert iterator.hasNext() : "Expecting a single partition but got nothing";
             try (RowIterator partition = iterator.next())
@@ -654,13 +662,6 @@ public class Util
         {
             return content.hasNext() ? content.next() : endOfData();
         }
-    }
-
-    public static UnfilteredPartitionIterator executeLocally(PartitionRangeReadCommand command,
-                                                             ColumnFamilyStore cfs,
-                                                             ReadExecutionController controller)
-    {
-        return command.queryStorage(cfs, controller);
     }
 
     public static Closeable markDirectoriesUnwriteable(ColumnFamilyStore cfs)

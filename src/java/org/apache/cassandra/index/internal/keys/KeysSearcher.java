@@ -27,6 +27,7 @@ import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.CassandraIndexSearcher;
@@ -46,9 +47,10 @@ public class KeysSearcher extends CassandraIndexSearcher
     protected UnfilteredPartitionIterator queryDataFromIndex(final DecoratedKey indexKey,
                                                              final RowIterator indexHits,
                                                              final ReadCommand command,
-                                                             final ReadExecutionController executionController)
+                                                             final ReadContext context)
     {
         assert indexHits.staticRow() == Rows.EMPTY_STATIC_ROW;
+        assert context.getIndexReadContext() != null; // we need the top level read context
 
         return new UnfilteredPartitionIterator()
         {
@@ -93,14 +95,12 @@ public class KeysSearcher extends CassandraIndexSearcher
                                                                                            command.clusteringIndexFilter(key),
                                                                                            null);
 
+                    ReadHandler readHandler = index.baseCfs.getReadHandler();
                     @SuppressWarnings("resource") // filterIfStale closes it's iterator if either it materialize it or if it returns null.
                                                   // Otherwise, we close right away if empty, and if it's assigned to next it will be called either
                                                   // by the next caller of next, or through closing this iterator is this come before.
-                    UnfilteredRowIterator dataIter = filterIfStale(dataCmd.queryMemtableAndDisk(index.baseCfs, executionController),
-                                                                   hit,
-                                                                   indexKey.getKey(),
-                                                                   executionController.getWriteContext(),
-                                                                   command.nowInSec());
+                    UnfilteredRowIterator rowIter = UnfilteredPartitionIterators.getOnlyElement(readHandler.executeDirect(context, dataCmd), dataCmd);
+                    UnfilteredRowIterator dataIter = filterIfStale(rowIter, hit, indexKey.getKey(), context.getWriteContext(), command.nowInSec());
 
                     if (dataIter != null)
                     {

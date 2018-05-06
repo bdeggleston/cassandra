@@ -135,14 +135,15 @@ public class MultiPartitionPager implements QueryPager
         return true;
     }
 
-    public ReadExecutionController executionController()
+    @Override
+    public ReadContext getReadContext()
     {
         // Note that for all pagers, the only difference is the partition key to which it applies, so in practice we
         // can use any of the sub-pager ReadOrderGroup group to protect the whole pager
         for (int i = current; i < pagers.length; i++)
         {
             if (pagers[i] != null)
-                return pagers[i].executionController();
+                return pagers[i].getReadContext();
         }
         throw new AssertionError("Shouldn't be called on an exhausted pager");
     }
@@ -155,10 +156,10 @@ public class MultiPartitionPager implements QueryPager
     }
 
     @SuppressWarnings("resource") // iter closed via countingIter
-    public PartitionIterator fetchPageInternal(int pageSize, ReadExecutionController executionController) throws RequestValidationException, RequestExecutionException
+    public PartitionIterator fetchPageInternal(int pageSize, ReadContext context) throws RequestValidationException, RequestExecutionException
     {
         int toQuery = Math.min(remaining, pageSize);
-        return new PagersIterator(toQuery, null, null, executionController, System.nanoTime());
+        return new PagersIterator(toQuery, null, null, context, System.nanoTime());
     }
 
     private class PagersIterator extends AbstractIterator<RowIterator> implements PartitionIterator
@@ -173,17 +174,17 @@ public class MultiPartitionPager implements QueryPager
         private final ClientState clientState;
 
         // For internal queries
-        private final ReadExecutionController executionController;
+        private final ReadContext context;
 
         private int pagerMaxRemaining;
         private int counted;
 
-        public PagersIterator(int pageSize, ConsistencyLevel consistency, ClientState clientState, ReadExecutionController executionController, long queryStartNanoTime)
+        public PagersIterator(int pageSize, ConsistencyLevel consistency, ClientState clientState, ReadContext context, long queryStartNanoTime)
         {
             this.pageSize = pageSize;
             this.consistency = consistency;
             this.clientState = clientState;
-            this.executionController = executionController;
+            this.context = context;
             this.queryStartNanoTime = queryStartNanoTime;
         }
 
@@ -212,7 +213,7 @@ public class MultiPartitionPager implements QueryPager
                 pagerMaxRemaining = pagers[current].maxRemaining();
                 int toQuery = pageSize - counted;
                 result = consistency == null
-                       ? pagers[current].fetchPageInternal(toQuery, executionController)
+                       ? pagers[current].fetchPageInternal(toQuery, context)
                        : pagers[current].fetchPage(toQuery, consistency, clientState, queryStartNanoTime);
             }
             return result.next();

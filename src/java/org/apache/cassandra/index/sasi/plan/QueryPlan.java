@@ -63,9 +63,9 @@ public class QueryPlan
         }
     }
 
-    public UnfilteredPartitionIterator execute(ReadExecutionController executionController) throws RequestTimeoutException
+    public UnfilteredPartitionIterator execute(ReadContext context) throws RequestTimeoutException
     {
-        return new ResultIterator(analyze(), controller, executionController);
+        return new ResultIterator(analyze(), controller, context);
     }
 
     private static class ResultIterator extends AbstractIterator<UnfilteredRowIterator> implements UnfilteredPartitionIterator
@@ -73,16 +73,16 @@ public class QueryPlan
         private final AbstractBounds<PartitionPosition> keyRange;
         private final Operation operationTree;
         private final QueryController controller;
-        private final ReadExecutionController executionController;
+        private final ReadContext context;
 
         private Iterator<DecoratedKey> currentKeys = null;
 
-        public ResultIterator(Operation operationTree, QueryController controller, ReadExecutionController executionController)
+        public ResultIterator(Operation operationTree, QueryController controller, ReadContext context)
         {
             this.keyRange = controller.dataRange().keyRange();
             this.operationTree = operationTree;
             this.controller = controller;
-            this.executionController = executionController;
+            this.context = context;
             if (operationTree != null)
                 operationTree.skipTo((Long) keyRange.left.getToken().getTokenValue());
         }
@@ -113,7 +113,7 @@ public class QueryPlan
                     if (!keyRange.inclusiveLeft() && key.compareTo(keyRange.left) == 0)
                         continue;
 
-                    try (UnfilteredRowIterator partition = controller.getPartition(key, executionController))
+                    try (UnfilteredRowIterator partition = controller.getPartition(key, context))
                     {
                         Row staticRow = partition.staticRow();
                         List<Unfiltered> clusters = new ArrayList<>();

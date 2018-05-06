@@ -118,8 +118,9 @@ public class SecondaryIndexTest
                                       .build();
 
         Index.Searcher searcher = rc.getIndex(cfs).searcherFor(rc);
-        try (ReadExecutionController executionController = rc.executionController();
-             UnfilteredPartitionIterator pi = searcher.search(executionController))
+        ReadHandler readHandler = rc.getReadHandler();
+        try (ReadContext context = readHandler.contextForCommand(rc);
+             UnfilteredPartitionIterator pi = searcher.search(context))
         {
             assertTrue(pi.hasNext());
             pi.next().close();
@@ -540,8 +541,9 @@ public class SecondaryIndexTest
         if (count != 0)
             assertNotNull(searcher);
 
-        try (ReadExecutionController executionController = rc.executionController();
-             PartitionIterator iter = UnfilteredPartitionIterators.filter(searcher.search(executionController),
+        ReadHandler handler = rc.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(rc);
+             PartitionIterator iter = UnfilteredPartitionIterators.filter(searcher.search(context),
                                                                           FBUtilities.nowInSeconds()))
         {
             assertEquals(count, Util.size(iter));
@@ -551,8 +553,9 @@ public class SecondaryIndexTest
     private void assertIndexCfsIsEmpty(ColumnFamilyStore indexCfs)
     {
         PartitionRangeReadCommand command = (PartitionRangeReadCommand)Util.cmd(indexCfs).build();
-        try (ReadExecutionController controller = command.executionController();
-             PartitionIterator iter = UnfilteredPartitionIterators.filter(Util.executeLocally(command, indexCfs, controller),
+        ReadHandler handler = command.getCfs().getReadHandler();
+        try (ReadContext context = handler.contextForCommand(command);
+             PartitionIterator iter = UnfilteredPartitionIterators.filter(handler.executeDirect(context, command),
                                                                           FBUtilities.nowInSeconds()))
         {
             assertFalse(iter.hasNext());

@@ -29,6 +29,7 @@ import org.apache.cassandra.db.filter.ClusteringIndexNamesFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.db.rows.RowIterator;
 import org.apache.cassandra.db.rows.UnfilteredRowIterators;
@@ -120,8 +121,9 @@ public final class CounterCacheKey extends CacheKey
 
         ClusteringIndexFilter filter = new ClusteringIndexNamesFilter(FBUtilities.singleton(clustering, metadata.comparator), false);
         SinglePartitionReadCommand cmd = SinglePartitionReadCommand.create(metadata, nowInSec, key, builder.build(), filter);
-        try (ReadExecutionController controller = cmd.executionController();
-             RowIterator iter = UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs, controller), nowInSec))
+        ReadHandler readHandler = cmd.getCfs().getReadHandler();
+        try (ReadContext context = readHandler.contextForCommand(cmd);
+             RowIterator iter = UnfilteredRowIterators.filter(UnfilteredPartitionIterators.getOnlyElement(readHandler.executeDirect(context, cmd), cmd), nowInSec))
         {
             ByteBuffer value = null;
             if (column.isStatic())

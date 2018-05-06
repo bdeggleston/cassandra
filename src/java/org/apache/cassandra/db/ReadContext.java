@@ -33,5 +33,37 @@ public interface ReadContext extends AutoCloseable
 
     boolean validForReadOn(ColumnFamilyStore cfs);
 
+    static final ReadContext EMPTY = new ReadContext()
+    {
+        public WriteContext getWriteContext()
+        {
+            return null;
+        }
+
+        public ReadContext getIndexReadContext()
+        {
+            return null;
+        }
+
+        public void close()
+        {
+
+        }
+
+        public TableMetadata metadata()
+        {
+            return null;
+        }
+
+        public boolean validForReadOn(ColumnFamilyStore cfs)
+        {
+            return true;
+        }
+    };
+    static ReadContext empty()
+    {
+        return EMPTY;
+    }
+
     // TODO: include read command?
 }

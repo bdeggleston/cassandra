@@ -58,7 +58,6 @@ public class PartitionRangeReadCommand extends ReadCommand
     protected static final SelectionDeserializer selectionDeserializer = new Deserializer();
 
     private final DataRange dataRange;
-    private int oldestUnrepairedTombstone = Integer.MAX_VALUE;
 
     private PartitionRangeReadCommand(boolean isDigest,
                                      int digestVersion,
@@ -121,11 +120,6 @@ public class PartitionRangeReadCommand extends ReadCommand
     public ClusteringIndexFilter clusteringIndexFilter(DecoratedKey key)
     {
         return dataRange.clusteringIndexFilter(key);
-    }
-
-    public boolean isNamesQuery()
-    {
-        return dataRange.isNamesQuery();
     }
 
     /**
@@ -241,118 +235,6 @@ public class PartitionRangeReadCommand extends ReadCommand
         return StorageProxy.getRangeSlice(this, consistency, queryStartNanoTime);
     }
 
-    public QueryPager getPager(PagingState pagingState, ProtocolVersion protocolVersion)
-    {
-            return new PartitionRangeQueryPager(this, pagingState, protocolVersion);
-    }
-
-    protected void recordLatency(TableMetrics metric, long latencyNanos)
-    {
-        metric.rangeLatency.addNano(latencyNanos);
-    }
-
-    @VisibleForTesting
-    public UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs, ReadExecutionController executionController)
-    {
-        ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));
-        Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), dataRange().keyRange().getString(metadata().partitionKeyType));
-
-        // fetch data from current memtable, historical memtables, and SSTables in the correct order.
-        final List<UnfilteredPartitionIterator> iterators = new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
-
-        try
-        {
-            for (Memtable memtable : view.memtables)
-            {
-                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this method
-                Memtable.MemtableUnfilteredPartitionIterator iter = memtable.makePartitionIterator(columnFilter(), dataRange());
-                oldestUnrepairedTombstone = Math.min(oldestUnrepairedTombstone, iter.getMinLocalDeletionTime());
-                iterators.add(iter);
-            }
-
-            SSTableReadsListener readCountUpdater = newReadCountUpdater();
-            for (SSTableReader sstable : view.sstables)
-            {
-                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this method
-                UnfilteredPartitionIterator iter = sstable.getScanner(columnFilter(), dataRange(), readCountUpdater);
-                iterators.add(iter);
-                if (!sstable.isRepaired())
-                    oldestUnrepairedTombstone = Math.min(oldestUnrepairedTombstone, sstable.getMinLocalDeletionTime());
-            }
-            // iterators can be empty for offline tools
-            return iterators.isEmpty() ? EmptyIterators.unfilteredPartition(metadata())
-                                       : checkCacheFilter(UnfilteredPartitionIterators.mergeLazily(iterators, nowInSec()), cfs);
-        }
-        catch (RuntimeException | Error e)
-        {
-            try
-            {
-                FBUtilities.closeAll(iterators);
-            }
-            catch (Exception suppressed)
-            {
-                e.addSuppressed(suppressed);
-            }
-
-            throw e;
-        }
-    }
-
-    /**
-     * Creates a new {@code SSTableReadsListener} to update the SSTables read counts.
-     * @return a new {@code SSTableReadsListener} to update the SSTables read counts.
-     */
-    private static SSTableReadsListener newReadCountUpdater()
-    {
-        return new SSTableReadsListener()
-                {
-                    @Override
-                    public void onScanningStarted(SSTableReader sstable)
-                    {
-                        sstable.incrementReadCount();
-                    }
-                };
-    }
-
-    @Override
-    protected int oldestUnrepairedTombstone()
-    {
-        return oldestUnrepairedTombstone;
-    }
-
-    private UnfilteredPartitionIterator checkCacheFilter(UnfilteredPartitionIterator iter, final ColumnFamilyStore cfs)
-    {
-        class CacheFilter extends Transformation
-        {
-            @Override
-            public BaseRowIterator applyToPartition(BaseRowIterator iter)
-            {
-                // Note that we rely on the fact that until we actually advance 'iter', no really costly operation is actually done
-                // (except for reading the partition key from the index file) due to the call to mergeLazily in queryStorage.
-                DecoratedKey dk = iter.partitionKey();
-
-                // Check if this partition is in the rowCache and if it is, if  it covers our filter
-                CachedPartition cached = cfs.getRawCachedPartition(dk);
-                ClusteringIndexFilter filter = dataRange().clusteringIndexFilter(dk);
-
-                if (cached != null && cfs.isFilterFullyCoveredBy(filter,
-                                                                 limits(),
-                                                                 cached,
-                                                                 nowInSec(),
-                                                                 iter.metadata().enforceStrictLiveness()))
-                {
-                    // We won't use 'iter' so close it now.
-                    iter.close();
-
-                    return filter.getUnfilteredRowIterator(columnFilter(), cached);
-                }
-
-                return iter;
-            }
-        }
-        return Transformation.apply(iter, new CacheFilter());
-    }
-
     public MessageOut<ReadCommand> createMessage()
     {
         return new MessageOut<>(MessagingService.Verb.RANGE_SLICE, this, serializer);
@@ -393,6 +275,12 @@ public class PartitionRangeReadCommand extends ReadCommand
     {
         return metadata().isStaticCompactTable() ||
                (dataRange.selectsAllPartition() && !rowFilter().hasExpressionOnClusteringOrRegularColumns());
+    }
+
+    @Override
+    public QueryPager getPager(PagingState pagingState, ProtocolVersion protocolVersion)
+    {
+        return new PartitionRangeQueryPager(this, pagingState, protocolVersion);
     }
 
     @Override

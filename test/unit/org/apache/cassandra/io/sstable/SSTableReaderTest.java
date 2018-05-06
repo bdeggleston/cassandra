@@ -678,9 +678,10 @@ public class SSTableReaderTest
                                              .build();
         Index.Searcher searcher = rc.getIndex(indexedCFS).searcherFor(rc);
         assertNotNull(searcher);
-        try (ReadExecutionController executionController = rc.executionController())
+        ReadHandler handler = rc.getReadHandler();
+        try (ReadContext context = handler.contextForCommand(rc))
         {
-            assertEquals(1, Util.size(UnfilteredPartitionIterators.filter(searcher.search(executionController), rc.nowInSec())));
+            assertEquals(1, Util.size(UnfilteredPartitionIterators.filter(searcher.search(context), rc.nowInSec())));
         }
     }
 

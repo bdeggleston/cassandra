@@ -1843,9 +1843,10 @@ public class StorageProxy implements StorageProxyMBean
             {
                 command.setMonitoringTime(constructionTime, false, verb.getTimeout(), DatabaseDescriptor.getSlowQueryTimeout());
 
+                ReadHandler readHandler = command.getCfs().getReadHandler();
                 ReadResponse response;
-                try (ReadExecutionController executionController = command.executionController();
-                     UnfilteredPartitionIterator iterator = command.executeLocally(executionController))
+                try (ReadContext context = readHandler.contextForCommand(command);
+                     UnfilteredPartitionIterator iterator = readHandler.executeLocally(context, command))
                 {
                     response = command.createResponse(iterator);
                 }

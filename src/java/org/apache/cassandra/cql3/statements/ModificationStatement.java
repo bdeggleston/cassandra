@@ -388,8 +388,8 @@ public abstract class ModificationStatement implements CQLStatement
 
         if (local)
         {
-            try (ReadExecutionController executionController = group.executionController();
-                 PartitionIterator iter = group.executeInternal(executionController))
+            try (ReadContext context = group.getReadContext();
+                 PartitionIterator iter = group.executeInternal(context))
             {
                 return asMaterializedMap(iter);
             }
@@ -614,9 +614,10 @@ public abstract class ModificationStatement implements CQLStatement
         UUID ballot = UUIDGen.getTimeUUIDFromMicros(state.getTimestamp());
 
         SinglePartitionReadCommand readCommand = request.readCommand(FBUtilities.nowInSeconds());
+        ReadHandler readHandler = readCommand.getCfs().getReadHandler();
         FilteredPartition current;
-        try (ReadExecutionController executionController = readCommand.executionController();
-             PartitionIterator iter = readCommand.executeInternal(executionController))
+        try (ReadContext context = readHandler.contextForCommand(readCommand);
+             PartitionIterator iter = readHandler.executeInternal(context, readCommand))
         {
             current = FilteredPartition.create(PartitionIterators.getOnlyElement(iter, readCommand));
         }

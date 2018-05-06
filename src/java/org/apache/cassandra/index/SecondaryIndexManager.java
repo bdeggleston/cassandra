@@ -843,9 +843,9 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
             SinglePartitionPager pager = new SinglePartitionPager(cmd, null, ProtocolVersion.CURRENT);
             while (!pager.isExhausted())
             {
-                try (ReadExecutionController controller = cmd.executionController();
+                try (ReadContext context = pager.getReadHandler().contextForCommand(cmd);
                      WriteContext ctx = keyspace.getWriteHandler().createContextForIndexing();
-                     UnfilteredPartitionIterator page = pager.fetchPageUnfiltered(baseCfs.metadata(), pageSize, controller))
+                     UnfilteredPartitionIterator page = pager.fetchPageUnfiltered(baseCfs.metadata(), pageSize, context))
                 {
                     if (!page.hasNext())
                         break;
