@@ -50,13 +50,13 @@ public abstract class AbstractReadExecutable implements ReadExecutable.Local
     private static final int TEST_ITERATION_DELAY_MILLIS = Integer.parseInt(System.getProperty("cassandra.test.read_iteration_delay_ms", "0"));
     private static final Logger logger = LoggerFactory.getLogger(AbstractReadExecutable.class);
 
-    private final ReadCommand command;
     protected final ColumnFamilyStore cfs;
+    private final ReadCommand command;
 
-    public AbstractReadExecutable(ReadCommand command)
+    public AbstractReadExecutable(ColumnFamilyStore cfs, ReadCommand command)
     {
+        this.cfs = cfs;
         this.command = command;
-        this.cfs = Keyspace.openAndGetStore(command.metadata());
     }
 
     protected abstract int oldestUnrepairedTombstone();

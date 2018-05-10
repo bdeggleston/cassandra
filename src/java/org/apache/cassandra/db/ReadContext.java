@@ -22,6 +22,9 @@ import org.apache.cassandra.schema.TableMetadata;
 
 public interface ReadContext extends AutoCloseable
 {
+    /**
+     * If a read context has a write context, it is responsible for closing it
+     */
     WriteContext getWriteContext();
 
     ReadContext getIndexReadContext();

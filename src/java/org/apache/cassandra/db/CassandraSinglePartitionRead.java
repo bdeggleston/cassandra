@@ -76,9 +76,9 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
     private final SinglePartitionReadCommand command;
     private int oldestUnrepairedTombstone = Integer.MAX_VALUE;
 
-    public CassandraSinglePartitionRead(SinglePartitionReadCommand command)
+    public CassandraSinglePartitionRead(ColumnFamilyStore cfs, SinglePartitionReadCommand command)
     {
-        super(command);
+        super(cfs, command);
         this.command = command;
     }
 
@@ -185,7 +185,7 @@ public class CassandraSinglePartitionRead extends AbstractReadExecutable
                 SinglePartitionReadCommand newCommand = SinglePartitionReadCommand.fullPartitionRead(command.metadata(),
                                                                                                      command.nowInSec(),
                                                                                                      command.partitionKey());
-                CassandraSinglePartitionRead newExecutable = new CassandraSinglePartitionRead(newCommand);
+                CassandraSinglePartitionRead newExecutable = new CassandraSinglePartitionRead(cfs, newCommand);
                 @SuppressWarnings("resource") // we close on exception or upon closing the result of this method
                 UnfilteredRowIterator iter = UnfilteredPartitionIterators.getOnlyElement(newExecutable.executeDirect(context), command);
                 try

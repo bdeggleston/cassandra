@@ -20,7 +20,6 @@ package org.apache.cassandra.db;
 
 import com.google.common.base.Preconditions;
 
-import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
@@ -94,11 +93,11 @@ public class CassandraReadHandler implements ReadHandler
     {
         if (command instanceof SinglePartitionReadCommand)
         {
-            return new CassandraSinglePartitionRead((SinglePartitionReadCommand) command);
+            return new CassandraSinglePartitionRead(cfs, (SinglePartitionReadCommand) command);
         }
         else if (command instanceof PartitionRangeReadCommand)
         {
-            return new CassandraPartitionRangeRead((PartitionRangeReadCommand) command);
+            return new CassandraPartitionRangeRead(cfs, (PartitionRangeReadCommand) command);
         }
         else
         {

@@ -39,8 +39,25 @@ public class CassandraReadContext implements ReadContext
     @Override
     public void close()
     {
-        if (op != null)
-            op.close();
+        try
+        {
+            if (op != null)
+                op.close();
+        }
+        finally
+        {
+            if (indexReadCtx != null)
+            {
+                try
+                {
+                    indexReadCtx.close();
+                }
+                finally
+                {
+                    writeCtx.close();
+                }
+            }
+        }
     }
 
     @Override

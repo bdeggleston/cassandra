@@ -18,9 +18,11 @@
 package org.apache.cassandra.db;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import javax.annotation.Nullable;
 
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +129,15 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery
 
     public ColumnFamilyStore getCfs()
     {
-        return Keyspace.openAndGetStore(metadata);
+        ColumnFamilyStore cfs = Keyspace.openAndGetStore(metadata);
+        Optional<String> idxName = metadata.indexName();
+        if (idxName.isPresent())
+        {
+            Optional<ColumnFamilyStore> indexCfs = cfs.indexManager.getIndexByName(idxName.get()).getBackingTable();
+            Preconditions.checkState(indexCfs.isPresent(), "Read commands can't be used on non-table backed index reads");
+            return indexCfs.get();
+        }
+        return cfs;
     }
 
     public ReadHandler getReadHandler()
