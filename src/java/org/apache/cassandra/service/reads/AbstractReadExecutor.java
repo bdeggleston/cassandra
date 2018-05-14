@@ -69,6 +69,9 @@ public abstract class AbstractReadExecutor
     protected final long queryStartNanoTime;
     protected volatile PartitionIterator result = null;
 
+    protected final Keyspace keyspace;
+    protected final int blockFor;
+
     AbstractReadExecutor(Keyspace keyspace, ColumnFamilyStore cfs, ReadCommand command, ConsistencyLevel consistency, List<InetAddressAndPort> targetReplicas, long queryStartNanoTime)
     {
         this.command = command;
@@ -80,6 +83,9 @@ public abstract class AbstractReadExecutor
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
+        this.keyspace = keyspace;
+        this.blockFor = consistency.blockFor(keyspace);
+
 
         // Set the digest version (if we request some digests). This is the smallest version amongst all our target replicas since new nodes
         // knows how to produce older digest but the reverse is not true.
@@ -91,16 +97,16 @@ public abstract class AbstractReadExecutor
         command.setDigestVersion(digestVersion);
     }
 
-    private DecoratedKey getKey()
+    public DecoratedKey getKey()
     {
-        if (command instanceof SinglePartitionReadCommand)
-        {
-            return ((SinglePartitionReadCommand) command).partitionKey();
-        }
-        else
-        {
-            return null;
-        }
+        Preconditions.checkState(command instanceof SinglePartitionReadCommand,
+                                 "Can only get keys for SinglePartitionReadCommand");
+        return ((SinglePartitionReadCommand) command).partitionKey();
+    }
+
+    public ReadRepair getReadRepair()
+    {
+        return readRepair;
     }
 
     protected void makeDataRequests(Iterable<InetAddressAndPort> endpoints)
@@ -423,9 +429,17 @@ public abstract class AbstractReadExecutor
         }
     }
 
-    public void maybeRepairAdditionalReplicas()
+    boolean isDone()
     {
-        // TODO: this
+        return result != null;
+    }
+
+    public void maybeSendAdditionalDataRequests()
+    {
+        if (isDone())
+            return;
+
+        readRepair.maybeSendAdditionalDataRequests();
     }
 
     public PartitionIterator getResult() throws ReadFailureException, ReadTimeoutException
