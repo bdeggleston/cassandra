@@ -37,4 +37,6 @@ public class ReadRepairMetrics
 
     public static final Meter speculatedRead = Metrics.meter(factory.createMetricName("SpeculatedRead"));
     public static final Meter speculatedWrite = Metrics.meter(factory.createMetricName("SpeculatedWrite"));
+
+    public static void init() {}
 }
