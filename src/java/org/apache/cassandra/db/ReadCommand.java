@@ -32,6 +32,7 @@ import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.transform.StoppingTransformation;
 import org.apache.cassandra.db.transform.Transformation;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.UnknownIndexException;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.index.IndexNotAvailableException;
@@ -119,6 +120,11 @@ public abstract class ReadCommand extends AbstractReadQuery
     protected abstract long selectionSerializedSize(int version);
 
     public abstract boolean isLimitedToOnePartition();
+
+    /**
+     * Return the token used to determine replicas
+     */
+    public abstract Token getReplicaToken();
 
     /**
      * Creates a new <code>ReadCommand</code> instance with new limits.

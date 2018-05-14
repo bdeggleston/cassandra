@@ -183,6 +183,8 @@ public class StorageProxy implements StorageProxyMBean
             readMetricsMap.put(level, new ClientRequestMetrics("Read-" + level.name()));
             writeMetricsMap.put(level, new ClientWriteRequestMetrics("Write-" + level.name()));
         }
+
+        ReadRepairMetrics.init();
     }
 
     /**
@@ -1766,6 +1768,34 @@ public class StorageProxy implements StorageProxyMBean
         }
     }
 
+    private static PartitionIterator concatAndBlockOnRepair(List<PartitionIterator> iterators, List<ReadRepair> repairs)
+    {
+        PartitionIterator concatenated = PartitionIterators.concat(iterators);
+
+        if (repairs.isEmpty())
+            return concatenated;
+
+        return new PartitionIterator()
+        {
+            public void close()
+            {
+                concatenated.close();
+                repairs.forEach(ReadRepair::maybeSendAdditionalRepairs);
+                repairs.forEach(ReadRepair::awaitRepairs);
+            }
+
+            public boolean hasNext()
+            {
+                return concatenated.hasNext();
+            }
+
+            public RowIterator next()
+            {
+                return concatenated.next();
+            }
+        };
+    }
+
     /**
      * This function executes local and remote reads, and blocks for the results:
      *
@@ -1806,7 +1836,7 @@ public class StorageProxy implements StorageProxyMBean
 
         for (int i=0; i<cmdCount; i++)
         {
-            reads[i].maybeRepairAdditionalReplicas();
+            reads[i].maybeSendAdditionalDataRequests();
         }
 
         for (int i=0; i<cmdCount; i++)
@@ -1815,12 +1845,14 @@ public class StorageProxy implements StorageProxyMBean
         }
 
         List<PartitionIterator> results = new ArrayList<>(cmdCount);
+        List<ReadRepair> repairs = new ArrayList<>(cmdCount);
         for (int i=0; i<cmdCount; i++)
         {
             results.add(reads[i].getResult());
+            repairs.add(reads[i].getReadRepair());
         }
 
-        return PartitionIterators.concat(results);
+        return concatAndBlockOnRepair(results, repairs);
     }
 
     public static class LocalReadRunnable extends DroppableRunnable
@@ -2029,12 +2061,14 @@ public class StorageProxy implements StorageProxyMBean
     {
         private final DataResolver resolver;
         private final ReadCallback handler;
+        private final ReadRepair readRepair;
         private PartitionIterator result;
 
-        private SingleRangeResponse(DataResolver resolver, ReadCallback handler)
+        private SingleRangeResponse(DataResolver resolver, ReadCallback handler, ReadRepair readRepair)
         {
             this.resolver = resolver;
             this.handler = handler;
+            this.readRepair = readRepair;
         }
 
         private void waitForResponse() throws ReadTimeoutException
@@ -2188,15 +2222,18 @@ public class StorageProxy implements StorageProxyMBean
                 }
             }
 
-            return new SingleRangeResponse(resolver, handler);
+            return new SingleRangeResponse(resolver, handler, readRepair);
         }
 
         private PartitionIterator sendNextRequests()
         {
             List<PartitionIterator> concurrentQueries = new ArrayList<>(concurrencyFactor);
+            List<ReadRepair> readRepairs = new ArrayList<>(concurrencyFactor);
             for (int i = 0; i < concurrencyFactor && ranges.hasNext(); i++)
             {
-                concurrentQueries.add(query(ranges.next(), i == 0));
+                SingleRangeResponse response = query(ranges.next(), i == 0);
+                concurrentQueries.add(response);
+                readRepairs.add(response.readRepair);
                 ++rangesQueried;
             }
 
@@ -2204,7 +2241,7 @@ public class StorageProxy implements StorageProxyMBean
             // We want to count the results for the sake of updating the concurrency factor (see updateConcurrencyFactor) but we don't want to
             // enforce any particular limit at this point (this could break code than rely on postReconciliationProcessing), hence the DataLimits.NONE.
             counter = DataLimits.NONE.newCounter(command.nowInSec(), true, command.selectsFullPartition(), enforceStrictLiveness);
-            return counter.applyTo(PartitionIterators.concat(concurrentQueries));
+            return counter.applyTo(concatAndBlockOnRepair(concurrentQueries, readRepairs));
         }
 
         public void close()
