@@ -195,8 +195,6 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
         if (awaitRepairs(timeout, timeoutUnit))
             return;
 
-        ReadRepairMetrics.speculatedWrite.mark();
-
         Set<InetAddressAndPort> exclude = Sets.newHashSet(participants);
         Iterable<InetAddressAndPort> candidates = Iterables.filter(getCandidateEndpoints(), e -> !exclude.contains(e));
         if (Iterables.isEmpty(candidates))
@@ -207,6 +205,8 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
             // final response was received between speculate
             // timeout and call to get unacked mutation.
             return;
+
+        ReadRepairMetrics.speculatedWrite.mark();
 
         Mutation[] versionedMutations = new Mutation[msgVersionIdx(MessagingService.current_version) + 1];
 

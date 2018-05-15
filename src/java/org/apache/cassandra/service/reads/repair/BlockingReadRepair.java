@@ -122,11 +122,12 @@ public class BlockingReadRepair implements ReadRepair
 
     public void awaitRepair() throws ReadTimeoutException
     {
-        if (digestRepair != null)
-        {
-            digestRepair.readCallback.awaitResults();
-            digestRepair.resultConsumer.accept(digestRepair.dataResolver.resolve());
-        }
+        DigestRepair repair = digestRepair;
+        if (repair == null)
+            return;
+
+        repair.readCallback.awaitResults();
+        repair.resultConsumer.accept(digestRepair.dataResolver.resolve());
     }
 
     boolean shouldSpeculate()
@@ -143,16 +144,20 @@ public class BlockingReadRepair implements ReadRepair
         if (repair == null)
             return;
 
-        if (shouldSpeculate()  && !repair.readCallback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
+        if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
         {
-            ReadRepairMetrics.speculatedRead.mark();
             Set<InetAddressAndPort> contacted = Sets.newHashSet(repair.initialContacts);
             Iterable<InetAddressAndPort> candidates = BlockingReadRepairs.getCandidateEndpoints(cfs.keyspace, command.getReplicaToken(), consistency);
+            boolean speculated = false;
             for (InetAddressAndPort endpoint: Iterables.filter(candidates, e -> !contacted.contains(e)))
             {
+                speculated = true;
                 Tracing.trace("Enqueuing speculative full data read to {}", endpoint);
                 MessagingService.instance().sendRR(command.createMessage(), endpoint, repair.readCallback);
             }
+
+            if (speculated)
+                ReadRepairMetrics.speculatedRead.mark();
         }
     }
 
