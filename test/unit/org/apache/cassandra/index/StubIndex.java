@@ -207,7 +207,7 @@ public class StubIndex implements Index
     public Searcher searcherFor(final ReadCommand command)
     {
         ReadHandler readHandler = command.getReadHandler();
-        return ctx -> readHandler.executeDirect(readHandler.contextForCommand(command), command);
+        return ctx -> readHandler.executeDirect(ctx, command);
     }
 
     public BiFunction<PartitionIterator, ReadCommand, PartitionIterator> postProcessorFor(ReadCommand readCommand)

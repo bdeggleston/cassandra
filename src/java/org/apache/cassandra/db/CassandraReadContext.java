@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.db;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
@@ -30,6 +32,8 @@ public class CassandraReadContext implements ReadContext
 
     public CassandraReadContext(OpOrder.Group op, TableMetadata metadata, ReadContext indexReadCtx, WriteContext writeCtx)
     {
+        Preconditions.checkArgument(writeCtx == null || indexReadCtx != null,
+                                    "writeCtx must be accompanied by an indexReadCtx");
         this.op = op;
         this.metadata = metadata;
         this.indexReadCtx = indexReadCtx;
