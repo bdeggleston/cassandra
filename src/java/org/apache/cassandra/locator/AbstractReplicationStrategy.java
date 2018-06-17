@@ -203,6 +203,11 @@ public abstract class AbstractReplicationStrategy
      */
     public abstract ReplicationFactor getReplicationFactor();
 
+    public boolean hasTransientReplicas()
+    {
+        return getReplicationFactor().trans > 0;
+    }
+
     /*
      * NOTE: this is pretty inefficient. also the inverse (getRangeAddresses) below.
      * this is fine as long as we don't use this on any critical path.

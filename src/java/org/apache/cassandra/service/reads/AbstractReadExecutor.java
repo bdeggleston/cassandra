@@ -38,8 +38,8 @@ import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaCollection;
 import org.apache.cassandra.locator.ReplicaList;
-import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageProxy;
@@ -80,7 +80,7 @@ public abstract class AbstractReadExecutor
         this.consistency = consistency;
         this.targetReplicas = targetReplicas;
         this.readRepair = ReadRepair.create(command, targetReplicas, queryStartNanoTime, consistency);
-        this.digestResolver = new DigestResolver(keyspace, command, consistency, readRepair, targetReplicas.size());
+        this.digestResolver = new DigestResolver(keyspace, command, consistency, targetReplicas, readRepair, targetReplicas.size(), queryStartNanoTime);
         this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
@@ -111,42 +111,36 @@ public abstract class AbstractReadExecutor
         return readRepair;
     }
 
-    protected void makeDataRequests(Iterable<Replica> replicas)
+    protected void sendReadRequests(ReplicaCollection replicas, int dataRequests)
     {
-        makeRequests(command, replicas);
-
-    }
-
-    protected void makeDigestRequests(Iterable<Replica> replicas)
-    {
-        makeRequests(command.copyAsDigestQuery(), replicas);
-    }
-
-    private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas)
-    {
-        boolean hasLocalEndpoint = false;
+        ReadCommand localCommand = null;
+        ReadCommand digestCommnand = dataRequests < replicas.size() ? command.copyAsDigestQuery() : null;
+        int numSent = 0;
 
         for (Replica replica: replicas)
         {
+            ReadCommand nextCommand = numSent < dataRequests || replica.isTransient() ? command : digestCommnand;
+            numSent++;
+
             InetAddressAndPort endpoint = replica.getEndpoint();
             if (StorageProxy.canDoLocalRequest(endpoint))
             {
-                hasLocalEndpoint = true;
+                localCommand = nextCommand;
                 continue;
             }
 
             if (traceState != null)
-                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-            logger.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-            MessageOut<ReadCommand> message = readCommand.createMessage();
+                traceState.trace("reading {} from {}", nextCommand.isDigestQuery() ? "digest" : "data", endpoint);
+            logger.trace("reading {} from {}", nextCommand.isDigestQuery() ? "digest" : "data", endpoint);
+            MessageOut<ReadCommand> message = nextCommand.createMessage();
             MessagingService.instance().sendRRWithFailure(message, endpoint, handler);
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling remote requests.
-        if (hasLocalEndpoint)
+        if (localCommand != null)
         {
-            logger.trace("reading {} locally", readCommand.isDigestQuery() ? "digest" : "data");
-            StageManager.getStage(Stage.READ).maybeExecuteImmediately(new LocalReadRunnable(command, handler));
+            logger.trace("reading {} locally", localCommand.isDigestQuery() ? "digest" : "data");
+            StageManager.getStage(Stage.READ).maybeExecuteImmediately(new LocalReadRunnable(localCommand, handler));
         }
     }
 
@@ -175,6 +169,7 @@ public abstract class AbstractReadExecutor
     {
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
         ReplicaList allReplicas = StorageProxy.getLiveSortedReplicas(keyspace, command.partitionKey());
+        allReplicas.prioritizeForRead();
         ReplicaList targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas);
 
         // Throw UAE early if we don't have enough replicas.
@@ -216,10 +211,10 @@ public abstract class AbstractReadExecutor
     boolean shouldSpeculateAndMaybeWait()
     {
         // no latency information, or we're overloaded
-        if (cfs.sampleLatencyNanos > TimeUnit.MILLISECONDS.toNanos(command.getTimeout()))
+        if (cfs.sampleReadLatencyNanos > TimeUnit.MILLISECONDS.toNanos(command.getTimeout()))
             return false;
 
-        return !handler.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS);
+        return !handler.await(cfs.sampleReadLatencyNanos, TimeUnit.NANOSECONDS);
     }
 
     void onReadTimeout() {}
@@ -241,10 +236,7 @@ public abstract class AbstractReadExecutor
 
         public void executeAsync()
         {
-            Replicas.checkFull(targetReplicas);
-            makeDataRequests(targetReplicas.subList(0, 1));
-            if (targetReplicas.size() > 1)
-                makeDigestRequests(targetReplicas.subList(1, targetReplicas.size()));
+            sendReadRequests(targetReplicas, 1);
         }
 
         public void maybeTryAdditionalReplicas()
@@ -281,24 +273,18 @@ public abstract class AbstractReadExecutor
             // that the last replica in our list is "extra."
             ReplicaList initialReplicas = targetReplicas.subList(0, targetReplicas.size() - 1);
 
-            Replicas.checkFull(initialReplicas);
-
             if (handler.blockfor < initialReplicas.size())
             {
                 // We're hitting additional targets for read repair.  Since our "extra" replica is the least-
                 // preferred by the snitch, we do an extra data read to start with against a replica more
                 // likely to reply; better to let RR fail than the entire query.
-                makeDataRequests(initialReplicas.subList(0, 2));
-                if (initialReplicas.size() > 2)
-                    makeDigestRequests(initialReplicas.subList(2, initialReplicas.size()));
+                sendReadRequests(initialReplicas, 2);
             }
             else
             {
                 // not doing read repair; all replies are important, so it doesn't matter which nodes we
                 // perform data reads against vs digest.
-                makeDataRequests(initialReplicas.subList(0, 1));
-                if (initialReplicas.size() > 1)
-                    makeDigestRequests(initialReplicas.subList(1, initialReplicas.size()));
+                sendReadRequests(initialReplicas, 1);
             }
         }
 
@@ -310,12 +296,11 @@ public abstract class AbstractReadExecutor
                 speculated = true;
                 cfs.metric.speculativeRetries.inc();
                 // Could be waiting on the data, or on enough digests.
-                ReadCommand retryCommand = command;
-                if (handler.resolver.isDataPresent())
-                    retryCommand = command.copyAsDigestQuery();
-
                 Replica extraReplica = Iterables.getLast(targetReplicas);
-                Replicas.checkFull(extraReplica);
+                ReadCommand retryCommand = command;
+
+                if (handler.resolver.isDataPresent() && extraReplica.isFull())
+                    retryCommand = command.copyAsDigestQuery();
 
                 if (traceState != null)
                     traceState.trace("speculating read retry on {}", extraReplica);
@@ -366,10 +351,7 @@ public abstract class AbstractReadExecutor
         @Override
         public void executeAsync()
         {
-            Replicas.checkFull(targetReplicas);
-            makeDataRequests(targetReplicas.subList(0, targetReplicas.size() > 1 ? 2 : 1));
-            if (targetReplicas.size() > 2)
-                makeDigestRequests(targetReplicas.subList(2, targetReplicas.size()));
+            sendReadRequests(targetReplicas, targetReplicas.size() > 1 ? 2 : 1);
             cfs.metric.speculativeRetries.inc();
         }
 

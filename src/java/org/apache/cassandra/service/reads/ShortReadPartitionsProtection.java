@@ -64,7 +64,6 @@ public class ShortReadPartitionsProtection extends Transformation<UnfilteredRowI
                                          DataLimits.Counter mergedResultCounter,
                                          long queryStartNanoTime)
     {
-        Replicas.checkFull(source);
         this.command = command;
         this.source = source;
         this.singleResultCounter = singleResultCounter;
@@ -172,7 +171,7 @@ public class ShortReadPartitionsProtection extends Transformation<UnfilteredRowI
     private UnfilteredPartitionIterator executeReadCommand(ReadCommand cmd)
     {
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-        DataResolver resolver = new DataResolver(keyspace, cmd, ConsistencyLevel.ONE, ReplicaList.of(source), 1, queryStartNanoTime, NoopReadRepair.instance);
+        DataResolver resolver = new DataResolver(keyspace, cmd, ConsistencyLevel.ONE, ReplicaList.of(source), NoopReadRepair.instance, 1, queryStartNanoTime);
         ReadCallback handler = new ReadCallback(resolver, ConsistencyLevel.ONE, cmd, ReplicaList.of(source), queryStartNanoTime, NoopReadRepair.instance);
 
         if (StorageProxy.canDoLocalRequest(source.getEndpoint()))

@@ -21,6 +21,7 @@ package org.apache.cassandra.service.reads.repair;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 
 import org.apache.cassandra.db.Clustering;
@@ -89,25 +90,25 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
         {
             public void onPrimaryKeyLivenessInfo(int i, Clustering clustering, LivenessInfo merged, LivenessInfo original)
             {
-                if (merged != null && !merged.equals(original))
+                if (merged != null && !merged.equals(original) && !isTransient(i))
                     currentRow(i, clustering).addPrimaryKeyLivenessInfo(merged);
             }
 
             public void onDeletion(int i, Clustering clustering, Row.Deletion merged, Row.Deletion original)
             {
-                if (merged != null && !merged.equals(original))
+                if (merged != null && !merged.equals(original) && !isTransient(i))
                     currentRow(i, clustering).addRowDeletion(merged);
             }
 
             public void onComplexDeletion(int i, Clustering clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
             {
-                if (merged != null && !merged.equals(original))
+                if (merged != null && !merged.equals(original) && !isTransient(i))
                     currentRow(i, clustering).addComplexDeletion(column, merged);
             }
 
             public void onCell(int i, Clustering clustering, Cell merged, Cell original)
             {
-                if (merged != null && !merged.equals(original) && isQueried(merged))
+                if (merged != null && !merged.equals(original) && isQueried(merged) && !isTransient(i))
                     currentRow(i, clustering).addCell(merged);
             }
 
@@ -124,6 +125,11 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
                 return column.isComplex() ? filter.fetchedCellIsQueried(column, cell.path()) : filter.fetchedColumnIsQueried(column);
             }
         };
+    }
+
+    private boolean isTransient(int i)
+    {
+        return sources[i].isTransient();
     }
 
     private PartitionUpdate.Builder update(int i)
@@ -159,6 +165,9 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
         this.partitionLevelDeletion = mergedDeletion;
         for (int i = 0; i < versions.length; i++)
         {
+            if (sources[i].isTransient())
+                continue;
+
             if (mergedDeletion.supersedes(versions[i]))
                 update(i).addPartitionDeletion(mergedDeletion);
         }
@@ -193,6 +202,9 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
 
         for (int i = 0; i < versions.length; i++)
         {
+            if (isTransient(i))
+                continue;
+
             RangeTombstoneMarker marker = versions[i];
 
             // Update what the source now thinks is the current deletion
@@ -312,6 +324,7 @@ public class RowIteratorMergeListener implements UnfilteredRowIterators.MergeLis
             if (repairs[i] == null)
                 continue;
 
+            Preconditions.checkState(!isTransient(i), "cannot read repair transient replicas");
             Mutation mutation = BlockingReadRepairs.createRepairMutation(repairs[i].build(), consistency, sources[i], false);
             if (mutation == null)
                 continue;

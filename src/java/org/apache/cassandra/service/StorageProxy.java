@@ -1991,6 +1991,7 @@ public class StorageProxy implements StorageProxyMBean
 
             AbstractBounds<PartitionPosition> range = ranges.next();
             ReplicaList liveReplicas = getLiveSortedReplicas(keyspace, range.right);
+            liveReplicas.prioritizeForRead();
             return new RangeForQuery(range,
                                      liveReplicas,
                                      consistency.filterForQuery(keyspace, liveReplicas));
@@ -2033,6 +2034,7 @@ public class StorageProxy implements StorageProxyMBean
                 RangeForQuery next = ranges.peek();
 
                 ReplicaList merged = ReplicaList.intersectEndpoints(current.liveReplicas, next.liveReplicas);
+                merged.prioritizeForRead();
 
                 // Check if there is enough endpoint for the merge to be possible.
                 if (!consistency.isSufficientLiveNodes(keyspace, merged))
@@ -2195,7 +2197,7 @@ public class StorageProxy implements StorageProxyMBean
             PartitionRangeReadCommand rangeCommand = command.forSubRange(toQuery.range, isFirst);
 
             ReadRepair readRepair = ReadRepair.create(command, toQuery.filteredReplicas, queryStartNanoTime, consistency);
-            DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredReplicas, toQuery.filteredReplicas.size(), queryStartNanoTime, readRepair);
+            DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredReplicas, readRepair, toQuery.filteredReplicas.size(), queryStartNanoTime);
 
             int blockFor = consistency.blockFor(keyspace);
             int minResponses = Math.min(toQuery.filteredReplicas.size(), blockFor);

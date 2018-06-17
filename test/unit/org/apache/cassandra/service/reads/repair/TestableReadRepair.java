@@ -29,6 +29,8 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
+import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
@@ -37,10 +39,13 @@ import org.apache.cassandra.service.reads.DigestResolver;
 
 public class TestableReadRepair implements ReadRepair
 {
-    public final Map<Replica, Mutation> sent = new HashMap<>();
+    public final Map<InetAddressAndPort, Mutation> sent = new HashMap<>();
 
     private final ReadCommand command;
     private final ConsistencyLevel consistency;
+
+    private boolean partitionListenerClosed = false;
+    private boolean rowListenerClosed = true;
 
     public TestableReadRepair(ReadCommand command, ConsistencyLevel consistency)
     {
@@ -51,7 +56,29 @@ public class TestableReadRepair implements ReadRepair
     @Override
     public UnfilteredPartitionIterators.MergeListener getMergeListener(Replica[] endpoints)
     {
-        return new PartitionIteratorMergeListener(endpoints, command, consistency, this);
+        return new PartitionIteratorMergeListener(endpoints, command, consistency, this) {
+            @Override
+            public void close()
+            {
+                super.close();
+                partitionListenerClosed = true;
+            }
+
+            @Override
+            public UnfilteredRowIterators.MergeListener getRowMergeListener(DecoratedKey partitionKey, List<UnfilteredRowIterator> versions)
+            {
+                assert rowListenerClosed;
+                rowListenerClosed = false;
+                return new RowIteratorMergeListener(partitionKey, columns(versions), isReversed(versions), endpoints, command, consistency, TestableReadRepair.this) {
+                    @Override
+                    public void close()
+                    {
+                        super.close();
+                        rowListenerClosed = true;
+                    }
+                };
+            }
+        };
     }
 
     @Override
@@ -87,11 +114,17 @@ public class TestableReadRepair implements ReadRepair
     @Override
     public void repairPartition(DecoratedKey key, Map<Replica, Mutation> mutations, Replica[] destinations)
     {
-        sent.putAll(mutations);
+        for (Map.Entry<Replica, Mutation> entry: mutations.entrySet())
+            sent.put(entry.getKey().getEndpoint(), entry.getValue());
     }
 
     public Mutation getForEndpoint(InetAddressAndPort endpoint)
     {
         return sent.get(endpoint);
+    }
+
+    public boolean dataWasConsumed()
+    {
+        return partitionListenerClosed && rowListenerClosed;
     }
 }

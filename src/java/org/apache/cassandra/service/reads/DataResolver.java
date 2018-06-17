@@ -41,14 +41,12 @@ import org.apache.cassandra.schema.TableMetadata;
 
 public class DataResolver extends ResponseResolver
 {
-    private final long queryStartNanoTime;
     private final boolean enforceStrictLiveness;
     private final Map<InetAddressAndPort, Replica> replicaMap;
 
-    public DataResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, ReplicaCollection replicas, int maxResponseCount, long queryStartNanoTime, ReadRepair readRepair)
+    public DataResolver(Keyspace keyspace, ReadCommand command, ConsistencyLevel consistency, ReplicaCollection replicas, ReadRepair readRepair, int maxResponseCount, long queryStartNanoTime)
     {
-        super(keyspace, command, consistency, readRepair, maxResponseCount);
-        this.queryStartNanoTime = queryStartNanoTime;
+        super(keyspace, command, consistency, replicas, readRepair, maxResponseCount, queryStartNanoTime);
         this.enforceStrictLiveness = command.metadata().enforceStrictLiveness();
 
         replicaMap = Maps.newHashMapWithExpectedSize(replicas.size());
@@ -81,12 +79,7 @@ public class DataResolver extends ResponseResolver
             MessageIn<ReadResponse> msg = responses.get(i);
             iters.add(msg.payload.makeIterator(command));
 
-            Replica replica = replicaMap.get(msg.from);
-            if (replica == null)
-                replica = command.decorateEndpoint(msg.from);
-
-            assert replica != null;
-            sources[i] = replica;
+            sources[i] = getReplicaFor(msg.from);
         }
 
         /*

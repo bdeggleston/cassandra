@@ -246,4 +246,41 @@ public class ReplicaList extends ReplicaCollection
     {
         return size < 10 ? new ReplicaList(size) : new ReplicaList();
     }
+
+    public void prioritizeForRead()
+    {
+        // TODO: remove in favor of a smarter snitch / replication strategy based approach
+        // put a full replica first
+        int firstFull = -1;
+        for (int i=0; i<size(); i++)
+        {
+            if (get(i).isFull())
+            {
+                firstFull = i;
+                break;
+            }
+        }
+
+        Preconditions.checkState(firstFull >= 0, "At least one full replica required for reads");
+
+        if (firstFull > 0)
+        {
+            Collections.rotate(replicaList.subList(0, firstFull + 1), 1);
+        }
+
+        int firstTrans = -1;
+        for (int i=1; i<size(); i++)
+        {
+            if (get(i).isTransient())
+            {
+                firstTrans = i;
+                break;
+            }
+        }
+
+        if (firstTrans > 1)
+        {
+            Collections.rotate(replicaList.subList(1, firstTrans + 1), 1);
+        }
+    }
 }
