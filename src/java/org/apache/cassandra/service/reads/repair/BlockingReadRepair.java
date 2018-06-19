@@ -47,7 +47,6 @@ import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.ReplicaCollection;
 import org.apache.cassandra.locator.ReplicaList;
 import org.apache.cassandra.locator.ReplicaSet;
-import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.reads.DataResolver;
@@ -73,6 +72,8 @@ public class BlockingReadRepair implements ReadRepair
 
     private volatile DigestRepair digestRepair = null;
 
+    private boolean blockingRepairReported = false;
+
     private static class DigestRepair
     {
         private final DataResolver dataResolver;
@@ -94,7 +95,6 @@ public class BlockingReadRepair implements ReadRepair
                               long queryStartNanoTime,
                               ConsistencyLevel consistency)
     {
-        Replicas.checkFull(replicas);
         this.command = command;
         this.replicas = replicas;
         this.queryStartNanoTime = queryStartNanoTime;
@@ -107,9 +107,23 @@ public class BlockingReadRepair implements ReadRepair
         return new PartitionIteratorMergeListener(replicas, command, consistency, this);
     }
 
+    /**
+     * Blocking repairs can be started by a digest mismatch for single partition reads, merged data
+     * on a partition range read, or transient data being repaired to full replicas. This makes sure
+     * we only report one blocking repair for each read repair instance.
+     */
+    private void maybeMarkBlockingRepair()
+    {
+        if (!blockingRepairReported)
+        {
+            ReadRepairMetrics.repairedBlocking.mark();
+            blockingRepairReported = true;
+        }
+    }
+
     public void startRepair(DigestResolver digestResolver, ReplicaList allReplicas, ReplicaList contactedReplicas, Consumer<PartitionIterator> resultConsumer)
     {
-        ReadRepairMetrics.repairedBlocking.mark();
+        maybeMarkBlockingRepair();
 
         // Do a full data read to resolve the correct response (and repair node that need be)
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
@@ -121,7 +135,6 @@ public class BlockingReadRepair implements ReadRepair
 
         for (Replica replica : contactedReplicas)
         {
-            Replicas.checkFull(replica);
             Tracing.trace("Enqueuing full data read to {}", replica);
             MessagingService.instance().sendRRWithFailure(command.createMessage(), replica.getEndpoint(), readCallback);
         }
@@ -142,7 +155,7 @@ public class BlockingReadRepair implements ReadRepair
         ConsistencyLevel speculativeCL = consistency.isDatacenterLocal() ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
         return  consistency != ConsistencyLevel.EACH_QUORUM
                && consistency.satisfies(speculativeCL, cfs.keyspace)
-               && cfs.sampleLatencyNanos <= TimeUnit.MILLISECONDS.toNanos(command.getTimeout());
+               && cfs.sampleReadLatencyNanos <= TimeUnit.MILLISECONDS.toNanos(command.getTimeout());
     }
 
     public void maybeSendAdditionalDataRequests()
@@ -151,7 +164,7 @@ public class BlockingReadRepair implements ReadRepair
         if (repair == null)
             return;
 
-        if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
+        if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleReadLatencyNanos, TimeUnit.NANOSECONDS))
         {
             ReplicaSet contacted = new ReplicaSet(repair.initialContacts);
             ReplicaCollection candidates = BlockingReadRepairs.getCandidateReplicas(cfs.keyspace, command.getReplicaToken(), consistency);
@@ -173,7 +186,7 @@ public class BlockingReadRepair implements ReadRepair
     {
         for (BlockingPartitionRepair repair: repairs)
         {
-            repair.maybeSendAdditionalRepairs(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS);
+            repair.maybeSendAdditionalRepairs(cfs.sampleReadLatencyNanos, TimeUnit.NANOSECONDS);
         }
     }
 
@@ -204,6 +217,7 @@ public class BlockingReadRepair implements ReadRepair
     @Override
     public void repairPartition(DecoratedKey key, Map<Replica, Mutation> mutations, Replica[] destinations)
     {
+        maybeMarkBlockingRepair();
         BlockingPartitionRepair blockingRepair = new BlockingPartitionRepair(cfs.keyspace, key, consistency, mutations, consistency.blockFor(cfs.keyspace), destinations);
         blockingRepair.sendInitialRepairs();
         repairs.add(blockingRepair);

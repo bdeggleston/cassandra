@@ -113,16 +113,7 @@ public class Replicas
 
     public static ReplicaCollection concatNaturalAndPending(ReplicaCollection natural, ReplicaCollection pending)
     {
-        Iterable<Replica> iterable;
-        if (Iterables.all(natural, Replica::isFull) && Iterables.all(pending, Replica::isFull))
-        {
-            iterable = Iterables.concat(natural, pending);
-        }
-        else
-        {
-            // FIXME: add support for transient replicas
-            throw new UnsupportedOperationException("transient replicas are currently unsupported");
-        }
+        Iterable<Replica> iterable = Iterables.concat(natural, pending);
 
         return new ImmutableReplicaContainer()
         {

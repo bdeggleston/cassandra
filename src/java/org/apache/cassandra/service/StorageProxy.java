@@ -704,6 +704,11 @@ public class StorageProxy implements StorageProxyMBean
                 }
             }
 
+            for (AbstractWriteResponseHandler<IMutation> responseHandler : responseHandlers)
+            {
+                responseHandler.maybeTryAdditionalReplicas();
+            }
+
             // wait for writes.  throws TimeoutException if necessary
             for (AbstractWriteResponseHandler<IMutation> responseHandler : responseHandlers)
             {
@@ -1065,7 +1070,7 @@ public class StorageProxy implements StorageProxyMBean
     private static void syncWriteToBatchlog(Collection<Mutation> mutations, Collection<InetAddressAndPort> endpoints, UUID uuid, long queryStartNanoTime)
     throws WriteTimeoutException, WriteFailureException
     {
-        ReplicaCollection replicas = SystemReplicas.getSystemReplicas(endpoints);
+        ReplicaList replicas = SystemReplicas.getSystemReplicas(endpoints);
         WriteResponseHandler<?> handler = new WriteResponseHandler<>(replicas,
                                                                      ReplicaList.empty(),
                                                                      replicas.size() == 1 ? ConsistencyLevel.ONE : ConsistencyLevel.TWO,
@@ -1169,7 +1174,7 @@ public class StorageProxy implements StorageProxyMBean
         // exit early if we can't fulfill the CL at this time
         responseHandler.assureSufficientLiveNodes();
 
-        performer.apply(mutation, Replicas.concatNaturalAndPending(naturalReplicas, pendingReplicas), responseHandler, localDataCenter, consistency_level);
+        performer.apply(mutation, responseHandler.getInitialRecipients(mutation, performer, localDataCenter), responseHandler, localDataCenter, consistency_level);
         return responseHandler;
     }
 

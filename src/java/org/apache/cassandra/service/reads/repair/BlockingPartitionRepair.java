@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AbstractFuture;
@@ -152,7 +153,7 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
         for (Map.Entry<Replica, Mutation> entry: pendingRepairs.entrySet())
         {
             Replica destination = entry.getKey();
-            Replicas.checkFull(destination);
+            Preconditions.checkState(destination.isFull(), "cannot send repair mutations to transient replicas");
             Mutation mutation = entry.getValue();
             TableId tableId = extractUpdate(mutation).metadata().id;
 
