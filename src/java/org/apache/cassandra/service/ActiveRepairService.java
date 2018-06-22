@@ -298,7 +298,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
      */
     public static Set<InetAddressAndPort> getNeighbors(String keyspaceName, Iterable<Range<Token>> keyspaceLocalRanges,
                                                        Range<Token> toRepair, Collection<String> dataCenters,
-                                                       Collection<String> hosts)
+                                                       Collection<String> hosts, boolean isIncremental)
     {
         StorageService ss = StorageService.instance;
         Map<Range<Token>, ReplicaList> replicaSets = ss.getRangeToAddressMap(keyspaceName);
@@ -322,7 +322,9 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
             return Collections.emptySet();
 
 
-        Replicas.checkFull(replicaSets.get(rangeSuperSet));
+        if (!isIncremental)
+            Replicas.checkFull(replicaSets.get(rangeSuperSet));
+
         Set<InetAddressAndPort> neighbors = replicaSets.get(rangeSuperSet).asEndpointSet();
         neighbors.remove(FBUtilities.getBroadcastAddressAndPort());
 

@@ -236,8 +236,6 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
         //pre-calculate output of getLocalReplicas and pass it to getNeighbors to increase performance and prevent
         //calculation multiple times
-        ReplicaSet replicatedRanges = storageService.getLocalReplicas(keyspace);
-        Replicas.checkFull(replicatedRanges);
         Iterable<Range<Token>> keyspaceLocalRanges = storageService.getLocalReplicas(keyspace).asRanges();
 
         try
@@ -246,7 +244,8 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             {
                 Set<InetAddressAndPort> neighbors = ActiveRepairService.getNeighbors(keyspace, keyspaceLocalRanges, range,
                                                                                      options.getDataCenters(),
-                                                                                     options.getHosts());
+                                                                                     options.getHosts(),
+                                                                                     options.isIncremental());
 
                 addRangeToNeighbors(commonRanges, range, neighbors);
                 allNeighbors.addAll(neighbors);
