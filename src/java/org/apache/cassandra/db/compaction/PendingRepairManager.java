@@ -39,23 +39,14 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.locator.AbstractReplicationStrategy;
-import org.apache.cassandra.locator.InetAddressAndPort;
-import org.apache.cassandra.locator.Replica;
-import org.apache.cassandra.locator.Replicas;
-import org.apache.cassandra.repair.consistent.LocalSession;
 import org.apache.cassandra.schema.CompactionParams;
-import org.apache.cassandra.schema.Schema;
-import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -72,6 +63,7 @@ class PendingRepairManager
 
     private final ColumnFamilyStore cfs;
     private final CompactionParams params;
+    private final boolean isTransient;
     private volatile ImmutableMap<UUID, AbstractCompactionStrategy> strategies = ImmutableMap.of();
 
     /**
@@ -85,10 +77,11 @@ class PendingRepairManager
         }
     }
 
-    PendingRepairManager(ColumnFamilyStore cfs, CompactionParams params)
+    PendingRepairManager(ColumnFamilyStore cfs, CompactionParams params, boolean isTransient)
     {
         this.cfs = cfs;
         this.params = params;
+        this.isTransient = isTransient;
     }
 
     private ImmutableMap.Builder<UUID, AbstractCompactionStrategy> mapBuilder()
@@ -166,6 +159,7 @@ class PendingRepairManager
 
     synchronized void addSSTable(SSTableReader sstable)
     {
+        Preconditions.checkArgument(sstable.isTransient() == isTransient);
         getOrCreate(sstable).addSSTable(sstable);
     }
 
@@ -414,6 +408,20 @@ class PendingRepairManager
         return strategies.keySet().contains(sessionID);
     }
 
+    boolean containsSSTable(SSTableReader sstable)
+    {
+        if (!sstable.isPendingRepair())
+            return false;
+
+        for (Map.Entry<UUID, AbstractCompactionStrategy> entry: strategies.entrySet())
+        {
+            if (entry.getKey().equals(sstable.getPendingRepair()) && entry.getValue().getSSTables().contains(sstable))
+                return true;
+
+        }
+        return false;
+    }
+
     public Collection<AbstractCompactionTask> createUserDefinedTasks(Collection<SSTableReader> sstables, int gcBefore)
     {
         Map<UUID, List<SSTableReader>> group = sstables.stream().collect(Collectors.groupingBy(s -> s.getSSTableMetadata().pendingRepair));
@@ -441,48 +449,22 @@ class PendingRepairManager
             return sessionID;
         }
 
-        private boolean isTransientReplica()
-        {
-            LocalSession session = ActiveRepairService.instance.consistent.local.getSession(sessionID);
-
-            Keyspace keyspace = null;
-            for (TableId tid: session.tableIds)
-            {
-                ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(tid);
-                if (cfs == null)
-                {
-                    continue;
-                }
-                Keyspace ks = cfs.keyspace;
-                Preconditions.checkNotNull(ks);
-                if (keyspace == null)
-                {
-                    keyspace = ks;
-                }
-                Preconditions.checkArgument(keyspace == ks);
-            }
-
-            AbstractReplicationStrategy replicationStrategy = keyspace.getReplicationStrategy();
-            InetAddressAndPort thisEndpoint = FBUtilities.getBroadcastAddressAndPort();
-            Set<Range<Token>> transientRanges = Replicas.filter(replicationStrategy.getAddressReplicas().get(thisEndpoint), Replica::isTransient).asRangeSet();
-            return Iterables.all(session.ranges, r -> transientRanges.contains(r));
-        }
-
         protected void runMayThrow() throws Exception
         {
             boolean completed = false;
-            boolean obsoleteSSTables = isTransientReplica() && repairedAt > 0;
+            boolean obsoleteSSTables = isTransient && repairedAt > 0;
             try
             {
                 if (obsoleteSSTables)
                 {
                     logger.info("Obsoleting transient repaired ssatbles");
+                    Preconditions.checkState(Iterables.all(transaction.originals(), SSTableReader::isTransient));
                     transaction.obsoleteOriginals();
                 }
                 else
                 {
                     logger.debug("Setting repairedAt to {} on {} for {}", repairedAt, transaction.originals(), sessionID);
-                    cfs.getCompactionStrategyManager().mutateRepaired(transaction.originals(), repairedAt, ActiveRepairService.NO_PENDING_REPAIR);
+                    cfs.getCompactionStrategyManager().mutateRepaired(transaction.originals(), repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false);
                 }
                 completed = true;
             }
