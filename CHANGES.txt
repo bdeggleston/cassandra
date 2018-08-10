@@ -1,6 +1,7 @@
 3.0.19
  * Support building Cassandra with JDK 11 (CASSANDRA-15108)
  * Fix AbstractBTreePartition locking in java 11 (CASSANDRA-14607)
+ * Revert 4.0 GC alg back to CMS (CASANDRA-14636)
  * Add experimental support for Java 11 (CASSANDRA-9608)
  * Throw IOE instead of asserting on unsupporter peer versions (CASSANDRA-15066)
  * Update token metadata when handling MOVING/REMOVING_TOKEN events (CASSANDRA-15120)
