@@ -516,8 +516,7 @@ public class AntiCompactionTest
 
         Range<Token> r = new Range<>(t(9), t(100)); // sstable is not intersecting and should not be included
 
-        Iterator<SSTableReader> sstableIterator = sstables.iterator();
-        CompactionManager.findSSTablesToAnticompact(sstableIterator, Collections.singletonList(r), UUID.randomUUID());
+        CompactionManager.validateSSTableBoundsForAnticompaction(UUID.randomUUID(), sstables, Collections.singletonList(r), Collections.emptyList());
     }
 
     @Test(expected = IllegalStateException.class)
@@ -532,8 +531,7 @@ public class AntiCompactionTest
 
         Range<Token> r = new Range<>(t(10), t(11)); // no sstable included, throw
 
-        Iterator<SSTableReader> sstableIterator = sstables.iterator();
-        CompactionManager.findSSTablesToAnticompact(sstableIterator, Collections.singletonList(r), UUID.randomUUID());
+        CompactionManager.validateSSTableBoundsForAnticompaction(UUID.randomUUID(), sstables, Collections.singletonList(r), Collections.emptyList());
     }
 
     @Test
