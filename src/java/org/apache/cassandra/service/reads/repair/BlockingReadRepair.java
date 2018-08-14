@@ -45,7 +45,9 @@ import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.NetworkTopologyStrategy;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.reads.DataResolver;
@@ -101,6 +103,20 @@ public class BlockingReadRepair implements ReadRepair
         return new PartitionIteratorMergeListener(endpoints, command, consistency, this);
     }
 
+    private int getMaxResponses()
+    {
+        AbstractReplicationStrategy strategy = cfs.keyspace.getReplicationStrategy();
+        if (consistency.isDatacenterLocal() && strategy instanceof NetworkTopologyStrategy)
+        {
+            NetworkTopologyStrategy nts = (NetworkTopologyStrategy) strategy;
+            return nts.getReplicationFactor(DatabaseDescriptor.getLocalDataCenter());
+        }
+        else
+        {
+            return strategy.getReplicationFactor();
+        }
+    }
+
     // digestResolver isn't used here because we resend read requests to all participants
     public void startRepair(DigestResolver digestResolver, List<InetAddressAndPort> allEndpoints, List<InetAddressAndPort> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
@@ -108,7 +124,7 @@ public class BlockingReadRepair implements ReadRepair
 
         // Do a full data read to resolve the correct response (and repair node that need be)
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-        DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, allEndpoints.size(), queryStartNanoTime, this);
+        DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, getMaxResponses(), queryStartNanoTime, this);
         ReadCallback readCallback = new ReadCallback(resolver, ConsistencyLevel.ALL, consistency.blockFor(cfs.keyspace), command,
                                                      keyspace, allEndpoints, queryStartNanoTime);
 
