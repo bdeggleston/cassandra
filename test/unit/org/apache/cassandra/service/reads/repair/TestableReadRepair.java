@@ -59,25 +59,25 @@ public class TestableReadRepair implements ReadRepair
     }
 
     @Override
-    public void awaitRepair() throws ReadTimeoutException
+    public void awaitReads() throws ReadTimeoutException
     {
 
     }
 
     @Override
-    public void maybeSendAdditionalDataRequests()
+    public void maybeSendAdditionalReads()
     {
 
     }
 
     @Override
-    public void maybeSendAdditionalRepairs()
+    public void maybeSendAdditionalWrites()
     {
 
     }
 
     @Override
-    public void awaitRepairs()
+    public void awaitWrites()
     {
 
     }

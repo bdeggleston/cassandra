@@ -1052,12 +1052,6 @@ public class SinglePartitionReadCommand extends ReadCommand
         return true;
     }
 
-    @Override
-    public Token getReplicaToken()
-    {
-        return partitionKey().getToken();
-    }
-
     /**
      * Groups multiple single partition read commands.
      */

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -52,7 +53,7 @@ public class BlockingPartitionRepair extends AbstractFuture<Object> implements I
     private final DecoratedKey key;
     private final ConsistencyLevel consistency;
     private final InetAddressAndPort[] participants;
-    private final Map<InetAddressAndPort, Mutation> pendingRepairs;
+    private final ConcurrentMap<InetAddressAndPort, Mutation> pendingRepairs;
     private final CountDownLatch latch;
 
     private volatile long mutationsSentTime;

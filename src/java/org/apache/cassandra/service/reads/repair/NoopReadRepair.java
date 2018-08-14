@@ -46,24 +46,24 @@ public class NoopReadRepair implements ReadRepair
         resultConsumer.accept(digestResolver.getData());
     }
 
-    public void awaitRepair() throws ReadTimeoutException
+    public void awaitReads() throws ReadTimeoutException
     {
     }
 
     @Override
-    public void maybeSendAdditionalDataRequests()
-    {
-
-    }
-
-    @Override
-    public void maybeSendAdditionalRepairs()
+    public void maybeSendAdditionalReads()
     {
 
     }
 
     @Override
-    public void awaitRepairs()
+    public void maybeSendAdditionalWrites()
+    {
+
+    }
+
+    @Override
+    public void awaitWrites()
     {
 
     }

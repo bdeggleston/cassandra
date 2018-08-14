@@ -41,6 +41,10 @@ public interface ReadRepair
     /**
      * Called when the digests from the initial read don't match. Reads may block on the
      * repair started by this method.
+     * @param digestResolver supplied so we can get the original data response
+     * @param allEndpoints all available replicas for this read
+     * @param contactedEndpoints the replicas we actually sent requests to
+     * @param resultConsumer hook for the repair to set it's result on completion
      */
     public void startRepair(DigestResolver digestResolver,
                             List<InetAddressAndPort> allEndpoints,
@@ -48,9 +52,9 @@ public interface ReadRepair
                             Consumer<PartitionIterator> resultConsumer);
 
     /**
-     * Wait for any operations started by {@link ReadRepair#startRepair} to complete
+     * Block on the reads (or timeout) sent out in {@link ReadRepair#startRepair}
      */
-    public void awaitRepair() throws ReadTimeoutException;
+    public void awaitReads() throws ReadTimeoutException;
 
     /**
      * if it looks like we might not receive data requests from everyone in time, send additional requests
@@ -60,7 +64,7 @@ public interface ReadRepair
      * have been successfully written and won't be included in the response the the client, preserving the
      * expectation of monotonic quorum reads
      */
-    public void maybeSendAdditionalDataRequests();
+    public void maybeSendAdditionalReads();
 
     /**
      * If it looks like we might not receive acks for all the repair mutations we sent out, combine all
@@ -69,14 +73,20 @@ public interface ReadRepair
      * out, so long as we receive the same number of acks as repair mutations transmitted. This prevents
      * misbehaving nodes from killing a quorum read, while continuing to guarantee monotonic quorum reads
      */
-    public void maybeSendAdditionalRepairs();
+    public void maybeSendAdditionalWrites();
 
-    public void awaitRepairs();
-
+    /**
+     * Hook for the merge listener to start repairs on individual partitions.
+     */
     void repairPartition(DecoratedKey key, Map<InetAddressAndPort, Mutation> mutations, InetAddressAndPort[] destinations);
 
-    static ReadRepair create(ReadCommand command, List<InetAddressAndPort> endpoints, long queryStartNanoTime, ConsistencyLevel consistency)
+    /**
+     * Block on any mutations (or timeout) we sent out to repair replicas in {@link ReadRepair#repairPartition}
+     */
+    public void awaitWrites();
+
+    static ReadRepair create(ReadCommand command, long queryStartNanoTime, ConsistencyLevel consistency)
     {
-        return new BlockingReadRepair(command, endpoints, queryStartNanoTime, consistency);
+        return new BlockingReadRepair(command, queryStartNanoTime, consistency);
     }
 }

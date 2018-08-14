@@ -133,11 +133,6 @@ public abstract class ReadCommand extends MonitorableImpl implements ReadQuery
     public abstract boolean isLimitedToOnePartition();
 
     /**
-     * Return the token used to determine replicas
-     */
-    public abstract Token getReplicaToken();
-
-    /**
      * Creates a new <code>ReadCommand</code> instance with new limits.
      *
      * @param newLimits the new limits

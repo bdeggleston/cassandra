@@ -1780,8 +1780,8 @@ public class StorageProxy implements StorageProxyMBean
             public void close()
             {
                 concatenated.close();
-                repairs.forEach(ReadRepair::maybeSendAdditionalRepairs);
-                repairs.forEach(ReadRepair::awaitRepairs);
+                repairs.forEach(ReadRepair::maybeSendAdditionalWrites);
+                repairs.forEach(ReadRepair::awaitWrites);
             }
 
             public boolean hasNext()
@@ -1814,36 +1814,49 @@ public class StorageProxy implements StorageProxyMBean
 
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
+        // Get the replica locations, sorted by response time according to the snitch, and create a read executor
+        // for type of speculation we'll use in this read
         for (int i=0; i<cmdCount; i++)
         {
             reads[i] = AbstractReadExecutor.getReadExecutor(commands.get(i), consistencyLevel, queryStartNanoTime);
         }
 
+        // sends a data request to the closest replica, and a digest request to the others. If we have a speculating
+        // read executoe, we'll only send read requests to enough replicas to satisfy the consistency level
         for (int i=0; i<cmdCount; i++)
         {
             reads[i].executeAsync();
         }
 
+        // if we have a speculating read executor and it looks like we may not receive a response from the initial
+        // set of replicas we sent messages to, speculatively send an additional messages to an un-contacted replica
         for (int i=0; i<cmdCount; i++)
         {
             reads[i].maybeTryAdditionalReplicas();
         }
 
+        // wait for enough responses to meet the consistency level. If there's a digest mismatch, begin the read
+        // repair process by sending full data reads to all replicas we received responses from.
         for (int i=0; i<cmdCount; i++)
         {
             reads[i].awaitResponses();
         }
 
+        // read repair - if it looks like we may not receive enough full data responses to meet CL, send
+        // an additional request to any remaining replicas we haven't contacted (if there are any)
         for (int i=0; i<cmdCount; i++)
         {
             reads[i].maybeSendAdditionalDataRequests();
         }
 
+        // read repair - block on full data responses
         for (int i=0; i<cmdCount; i++)
         {
             reads[i].awaitReadRepair();
         }
 
+        // if we didn't do a read repair, return the contents of the data response, if we did do a read
+        // repair, merge the full data reads
         List<PartitionIterator> results = new ArrayList<>(cmdCount);
         List<ReadRepair> repairs = new ArrayList<>(cmdCount);
         for (int i=0; i<cmdCount; i++)
@@ -1852,6 +1865,7 @@ public class StorageProxy implements StorageProxyMBean
             repairs.add(reads[i].getReadRepair());
         }
 
+        // if we did a read repair, assemble repair mutation and block on them
         return concatAndBlockOnRepair(results, repairs);
     }
 
@@ -2199,13 +2213,13 @@ public class StorageProxy implements StorageProxyMBean
         {
             PartitionRangeReadCommand rangeCommand = command.forSubRange(toQuery.range, isFirst);
 
-            ReadRepair readRepair = ReadRepair.create(command, toQuery.filteredEndpoints, queryStartNanoTime, consistency);
+            ReadRepair readRepair = ReadRepair.create(command, queryStartNanoTime, consistency);
             DataResolver resolver = new DataResolver(keyspace, rangeCommand, consistency, toQuery.filteredEndpoints.size(), queryStartNanoTime, readRepair);
 
             int blockFor = consistency.blockFor(keyspace);
             int minResponses = Math.min(toQuery.filteredEndpoints.size(), blockFor);
             List<InetAddressAndPort> minimalEndpoints = toQuery.filteredEndpoints.subList(0, minResponses);
-            ReadCallback handler = new ReadCallback(resolver, consistency, rangeCommand, minimalEndpoints, queryStartNanoTime, readRepair);
+            ReadCallback handler = new ReadCallback(resolver, consistency, rangeCommand, minimalEndpoints, queryStartNanoTime);
 
             handler.assureSufficientLiveNodes();
 

@@ -430,12 +430,6 @@ public class PartitionRangeReadCommand extends ReadCommand
             && dataRange.startKey().equals(dataRange.stopKey());
     }
 
-    @Override
-    public Token getReplicaToken()
-    {
-        return dataRange.stopKey().getToken();
-    }
-
     private static class Deserializer extends SelectionDeserializer
     {
         public ReadCommand deserialize(DataInputPlus in,

@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
@@ -39,8 +40,10 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadCommand;
+import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
@@ -59,7 +62,6 @@ public class BlockingReadRepair implements ReadRepair
     private static final Logger logger = LoggerFactory.getLogger(BlockingReadRepair.class);
 
     private final ReadCommand command;
-    private final List<InetAddressAndPort> endpoints;
     private final long queryStartNanoTime;
     private final ConsistencyLevel consistency;
     private final ColumnFamilyStore cfs;
@@ -85,12 +87,10 @@ public class BlockingReadRepair implements ReadRepair
     }
 
     public BlockingReadRepair(ReadCommand command,
-                              List<InetAddressAndPort> endpoints,
                               long queryStartNanoTime,
                               ConsistencyLevel consistency)
     {
         this.command = command;
-        this.endpoints = endpoints;
         this.queryStartNanoTime = queryStartNanoTime;
         this.consistency = consistency;
         this.cfs = Keyspace.openAndGetStore(command.metadata());
@@ -101,6 +101,7 @@ public class BlockingReadRepair implements ReadRepair
         return new PartitionIteratorMergeListener(endpoints, command, consistency, this);
     }
 
+    // digestResolver isn't used here because we resend read requests to all participants
     public void startRepair(DigestResolver digestResolver, List<InetAddressAndPort> allEndpoints, List<InetAddressAndPort> contactedEndpoints, Consumer<PartitionIterator> resultConsumer)
     {
         ReadRepairMetrics.repairedBlocking.mark();
@@ -109,7 +110,7 @@ public class BlockingReadRepair implements ReadRepair
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
         DataResolver resolver = new DataResolver(keyspace, command, ConsistencyLevel.ALL, allEndpoints.size(), queryStartNanoTime, this);
         ReadCallback readCallback = new ReadCallback(resolver, ConsistencyLevel.ALL, consistency.blockFor(cfs.keyspace), command,
-                                                     keyspace, allEndpoints, queryStartNanoTime, this);
+                                                     keyspace, allEndpoints, queryStartNanoTime);
 
         digestRepair = new DigestRepair(resolver, readCallback, resultConsumer, contactedEndpoints);
 
@@ -120,7 +121,7 @@ public class BlockingReadRepair implements ReadRepair
         }
     }
 
-    public void awaitRepair() throws ReadTimeoutException
+    public void awaitReads() throws ReadTimeoutException
     {
         DigestRepair repair = digestRepair;
         if (repair == null)
@@ -130,7 +131,7 @@ public class BlockingReadRepair implements ReadRepair
         repair.resultConsumer.accept(digestRepair.dataResolver.resolve());
     }
 
-    boolean shouldSpeculate()
+    private boolean shouldSpeculate()
     {
         ConsistencyLevel speculativeCL = consistency.isDatacenterLocal() ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
         return  consistency != ConsistencyLevel.EACH_QUORUM
@@ -138,8 +139,10 @@ public class BlockingReadRepair implements ReadRepair
                && cfs.sampleLatencyNanos <= TimeUnit.MILLISECONDS.toNanos(command.getTimeout());
     }
 
-    public void maybeSendAdditionalDataRequests()
+    public void maybeSendAdditionalReads()
     {
+        Preconditions.checkState(command instanceof SinglePartitionReadCommand,
+                                 "maybeSendAdditionalReads can only be called for SinglePartitionReadCommand");
         DigestRepair repair = digestRepair;
         if (repair == null)
             return;
@@ -147,13 +150,15 @@ public class BlockingReadRepair implements ReadRepair
         if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleLatencyNanos, TimeUnit.NANOSECONDS))
         {
             Set<InetAddressAndPort> contacted = Sets.newHashSet(repair.initialContacts);
-            Iterable<InetAddressAndPort> candidates = BlockingReadRepairs.getCandidateEndpoints(cfs.keyspace, command.getReplicaToken(), consistency);
+            Token replicaToken = ((SinglePartitionReadCommand) command).partitionKey().getToken();
+            Iterable<InetAddressAndPort> candidates = BlockingReadRepairs.getCandidateEndpoints(cfs.keyspace, replicaToken, consistency);
             boolean speculated = false;
             for (InetAddressAndPort endpoint: Iterables.filter(candidates, e -> !contacted.contains(e)))
             {
                 speculated = true;
                 Tracing.trace("Enqueuing speculative full data read to {}", endpoint);
                 MessagingService.instance().sendRR(command.createMessage(), endpoint, repair.readCallback);
+                break;
             }
 
             if (speculated)
@@ -162,7 +167,7 @@ public class BlockingReadRepair implements ReadRepair
     }
 
     @Override
-    public void maybeSendAdditionalRepairs()
+    public void maybeSendAdditionalWrites()
     {
         for (BlockingPartitionRepair repair: repairs)
         {
@@ -171,7 +176,7 @@ public class BlockingReadRepair implements ReadRepair
     }
 
     @Override
-    public void awaitRepairs()
+    public void awaitWrites()
     {
         boolean timedOut = false;
         for (BlockingPartitionRepair repair: repairs)

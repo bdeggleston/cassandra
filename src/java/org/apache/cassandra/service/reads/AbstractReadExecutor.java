@@ -77,9 +77,9 @@ public abstract class AbstractReadExecutor
         this.command = command;
         this.consistency = consistency;
         this.targetReplicas = targetReplicas;
-        this.readRepair = ReadRepair.create(command, targetReplicas, queryStartNanoTime, consistency);
+        this.readRepair = ReadRepair.create(command, queryStartNanoTime, consistency);
         this.digestResolver = new DigestResolver(keyspace, command, consistency, readRepair, targetReplicas.size());
-        this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime, readRepair);
+        this.handler = new ReadCallback(digestResolver, consistency, command, targetReplicas, queryStartNanoTime);
         this.cfs = cfs;
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
@@ -414,7 +414,7 @@ public abstract class AbstractReadExecutor
     {
         try
         {
-            readRepair.awaitRepair();
+            readRepair.awaitReads();
         }
         catch (ReadTimeoutException e)
         {
@@ -439,7 +439,7 @@ public abstract class AbstractReadExecutor
         if (isDone())
             return;
 
-        readRepair.maybeSendAdditionalDataRequests();
+        readRepair.maybeSendAdditionalReads();
     }
 
     public PartitionIterator getResult() throws ReadFailureException, ReadTimeoutException
