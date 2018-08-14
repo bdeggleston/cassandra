@@ -126,14 +126,6 @@ jobs:
                 exit ${RETURN}
             fi
           no_output_timeout: 15m
-      - run:
-          name: Run eclipse-warnings
-          command: |
-            export LANG=en_US.UTF-8
-            export JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF8"
-            export PATH=$PATH:$ANT_HOME/bin:$JAVA_HOME/bin
-            cd ~/cassandra
-            ant eclipse-warnings
       - persist_to_workspace:
             root: /home/cassandra
             paths:
@@ -206,7 +198,7 @@ jobs:
           name: Clone Cassandra dtest Repository (via git)
           command: |
             export LANG=en_US.UTF-8
-            git clone --single-branch --branch master --depth 1 git://github.com/aweisberg/cassandra-dtest.git ~/cassandra-dtest
+            git clone --single-branch --branch 14408 --depth 1 git://github.com/bdeggleston/cassandra-dtest.git ~/cassandra-dtest
       - run:
           name: Configure virtualenv and python Dependencies
           command: |
@@ -284,7 +276,7 @@ jobs:
           name: Clone Cassandra dtest Repository (via git)
           command: |
             export LANG=en_US.UTF-8
-            git clone --single-branch --branch master --depth 1 git://github.com/aweisberg/cassandra-dtest.git ~/cassandra-dtest
+            git clone --single-branch --branch 14408 --depth 1 git://github.com/bdeggleston/cassandra-dtest.git ~/cassandra-dtest
       - run:
           name: Configure virtualenv and python Dependencies
           command: |
