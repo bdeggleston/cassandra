@@ -77,7 +77,7 @@ public class RemoteSyncTask extends SyncTask implements CompletableRemoteSyncTas
             Preconditions.checkState(!isTransient.test(r1.endpoint) || !isTransient.test(r2.endpoint));
 
             AsymmetricSyncRequest request = new AsymmetricSyncRequest(desc, local, streamTo(), streamFrom(), differences, previewKind);
-            String message = String.format("Forwarding streaming repair of %d ranges to %s (to be streamed with %s)", request.ranges.size(), request.fetchingNode, request.fetchFrom);
+            String message = String.format("Forwarding streaming repair of %d transient ranges to %s (to be streamed from %s)", request.ranges.size(), request.fetchingNode, request.fetchFrom);
             Tracing.traceRepair(message);
             sendRequest(request, request.fetchingNode);
         }

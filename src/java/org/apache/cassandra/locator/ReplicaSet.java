@@ -192,7 +192,7 @@ public class ReplicaSet extends ReplicaCollection
         }
     }
 
-    public ReplicaSet intersectOnEndoints(Set<InetAddressAndPort> endpoints)
+    public ReplicaSet intersectOnEndpoints(Set<InetAddressAndPort> endpoints)
     {
         ReplicaSet intersection = new ReplicaSet(size());
         for (Replica replica : this)

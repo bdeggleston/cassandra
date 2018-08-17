@@ -207,7 +207,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
                                              Collection<Range<Token>> range,
                                              String keyspace,
                                              RepairParallelism parallelismDegree,
-                                             Set<InetAddressAndPort> fullEndpoints,
+                                             Set<InetAddressAndPort> endpoints,
                                              Set<InetAddressAndPort> transEndpoints,
                                              boolean isIncremental,
                                              boolean pullRepair,
@@ -217,17 +217,17 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
                                              ListeningExecutorService executor,
                                              String... cfnames)
     {
-        if (fullEndpoints.isEmpty())
+        if (endpoints.isEmpty())
             return null;
 
-        Preconditions.checkArgument(fullEndpoints.containsAll(transEndpoints), "transEndpoints must be a subset of fullEndpoints");
+        Preconditions.checkArgument(endpoints.containsAll(transEndpoints), "transEndpoints must be a subset of endpoints");
 
         if (cfnames.length == 0)
             return null;
 
 
         final RepairSession session = new RepairSession(parentRepairSession, UUIDGen.getTimeUUID(), range, keyspace,
-                                                        parallelismDegree, fullEndpoints, transEndpoints, isIncremental,
+                                                        parallelismDegree, endpoints, transEndpoints, isIncremental,
                                                         pullRepair, force, previewKind, optimiseStreams, cfnames);
 
         sessions.put(session.getId(), session);
@@ -341,7 +341,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
                 if (c != null)
                     dcEndpoints.addAll(c);
             }
-            return neighbors.intersectOnEndoints(dcEndpoints);
+            return neighbors.intersectOnEndpoints(dcEndpoints);
         }
         else if (hosts != null && !hosts.isEmpty())
         {
@@ -372,7 +372,7 @@ public class ActiveRepairService implements IEndpointStateChangeSubscriber, IFai
             }
 
             specifiedHost.remove(FBUtilities.getBroadcastAddressAndPort());
-            return neighbors.intersectOnEndoints(specifiedHost);
+            return neighbors.intersectOnEndpoints(specifiedHost);
         }
 
         return neighbors;

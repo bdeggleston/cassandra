@@ -97,7 +97,6 @@ public class CompactionStrategyManagerPendingRepairTest extends AbstractPendingR
         Assert.assertFalse(unrepairedContains(sstable));
         Assert.assertTrue(pendingContains(sstable));
         Assert.assertTrue(hasPendingStrategiesFor(repairID));
-        Assert.assertTrue(pendingContains(sstable));
         Assert.assertFalse(hasTransientStrategiesFor(repairID));
     }
 

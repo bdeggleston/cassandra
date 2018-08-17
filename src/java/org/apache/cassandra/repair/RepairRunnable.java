@@ -145,11 +145,12 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
         public CommonRange(Set<InetAddressAndPort> endpoints, Set<InetAddressAndPort> transEndpoints, Collection<Range<Token>> ranges)
         {
+            this.endpoints = endpoints;
             this.transEndpoints = transEndpoints;
             Preconditions.checkArgument(endpoints != null && !endpoints.isEmpty());
             Preconditions.checkArgument(transEndpoints != null);
+            Preconditions.checkArgument(endpoints.containsAll(transEndpoints), "transEndpoints must be a subset of endpoints");
             Preconditions.checkArgument(ranges != null && !ranges.isEmpty());
-            this.endpoints = endpoints;
             this.ranges = ranges;
         }
 
@@ -241,6 +242,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
         // pre-calculate output of getLocalReplicas and pass it to getNeighbors
         // to increase performance and prevent calculation multiple times
+        // we don't coordinate repairs for transient ranges
         Iterable<Range<Token>> keyspaceLocalRanges = storageService.getLocalReplicas(keyspace).fullRanges();
 
         try
@@ -248,8 +250,8 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
             for (Range<Token> range : options.getRanges())
             {
                 ReplicaSet neighbors = ActiveRepairService.getNeighbors(keyspace, keyspaceLocalRanges, range,
-                                                                                     options.getDataCenters(),
-                                                                                     options.getHosts());
+                                                                        options.getDataCenters(),
+                                                                        options.getHosts());
 
                 addRangeToNeighbors(commonRanges, range, neighbors);
                 allNeighbors.addAll(neighbors.asEndpointSet());
@@ -387,13 +389,14 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
             for (CommonRange commonRange: commonRanges)
             {
-                Set<InetAddressAndPort> fullEndpoints = ImmutableSet.copyOf(Iterables.filter(commonRange.endpoints, liveEndpoints::contains));
+                Set<InetAddressAndPort> endpoints = ImmutableSet.copyOf(Iterables.filter(commonRange.endpoints, liveEndpoints::contains));
                 Set<InetAddressAndPort> transEndpoints = ImmutableSet.copyOf(Iterables.filter(commonRange.transEndpoints, liveEndpoints::contains));
+                Preconditions.checkState(endpoints.containsAll(transEndpoints), "transEndpoints must be a subset of endpoints");
 
                 // this node is implicitly a participant in this repair, so a single endpoint is ok here
-                if (!fullEndpoints.isEmpty() || !transEndpoints.isEmpty())
+                if (!endpoints.isEmpty())
                 {
-                    filtered.add(new CommonRange(fullEndpoints, transEndpoints, commonRange.ranges));
+                    filtered.add(new CommonRange(endpoints, transEndpoints, commonRange.ranges));
                 }
             }
             Preconditions.checkState(!filtered.isEmpty(), "Not enough live endpoints for a repair");

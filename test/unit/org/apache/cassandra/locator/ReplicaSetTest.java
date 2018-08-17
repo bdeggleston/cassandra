@@ -202,7 +202,7 @@ public class ReplicaSetTest extends ReplicaCollectionTestBase
         ReplicaSet initial = ReplicaSet.of(A, B, C);
         Set<InetAddressAndPort> endpoints = Sets.newHashSet(A.getEndpoint(), B.getEndpoint());
         ReplicaSet expected = ReplicaSet.of(A, B);
-        ReplicaSet actual = initial.intersectOnEndoints(endpoints);
+        ReplicaSet actual = initial.intersectOnEndpoints(endpoints);
         Assert.assertEquals(expected, actual);
     }
 }

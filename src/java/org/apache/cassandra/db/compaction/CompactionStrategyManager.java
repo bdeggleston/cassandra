@@ -671,8 +671,6 @@ public class CompactionStrategyManager implements INotificationConsumer
                                                       repairedAt, pendingRepair));
     }
 
-
-
     /**
      * Split sstables into a list of grouped sstable containers, the list index an sstable
      * lives in matches the list index of the holder that's responsible for it

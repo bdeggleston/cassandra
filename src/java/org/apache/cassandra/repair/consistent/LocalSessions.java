@@ -580,6 +580,8 @@ public class LocalSessions
                 }
                 else
                 {
+                    // sanity check that the ranges we're suppose to split match
+                    // up with the ranges replicated by this node
                     Preconditions.checkState(!replica.getRange().intersects(range));
                 }
             }

@@ -85,8 +85,8 @@ public class LocalSyncTask extends SyncTask implements StreamEventHandler
     {
         InetAddressAndPort local = FBUtilities.getBroadcastAddressAndPort();
         // We can take anyone of the node as source or destination, however if one is localhost, we put at source to avoid a forwarding
-        Preconditions.checkState(!isTransient.test(local));
         InetAddressAndPort dst = r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;
+        Preconditions.checkState(!isTransient.test(local));
 
         String message = String.format("Performing streaming repair of %d ranges with %s", differences.size(), dst);
         logger.info("{} {}", previewKind.logPrefix(desc.sessionId), message);
