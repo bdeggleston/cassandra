@@ -120,7 +120,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      * @param ranges ranges to repair
      * @param keyspace name of keyspace
      * @param parallelismDegree specifies the degree of parallelism when calculating the merkle trees
-     * @param endpoints the data centers that should be part of the repair; null for all DCs
+     * @param endpoints the endpoints involved in this repair, excluding this endpoint
      * @param transEndpoints
      * @param pullRepair true if the repair should be one way (from remote host to this host and only applicable between two hosts--see RepairOption)
      * @param force true if the repair should ignore dead endpoints (instead of failing)

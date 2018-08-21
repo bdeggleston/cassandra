@@ -692,13 +692,13 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
     private void addRangeToNeighbors(List<CommonRange> neighborRangeList, Range<Token> range, ReplicaSet neighbors)
     {
-        Set<InetAddressAndPort> fullEndpoints = Sets.newHashSet(neighbors.asEndpoints());
+        Set<InetAddressAndPort> endpoints = Sets.newHashSet(neighbors.asEndpoints());
         Set<InetAddressAndPort> transEndpoints = Sets.newHashSet(neighbors.transientEndpoints());
         for (int i = 0; i < neighborRangeList.size(); i++)
         {
             CommonRange cr = neighborRangeList.get(i);
 
-            if (cr.endpoints.containsAll(fullEndpoints) && cr.transEndpoints.containsAll(transEndpoints))
+            if (cr.endpoints.containsAll(endpoints) && cr.transEndpoints.containsAll(transEndpoints))
             {
                 cr.ranges.add(range);
                 return;
@@ -707,7 +707,7 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
 
         List<Range<Token>> ranges = new ArrayList<>();
         ranges.add(range);
-        neighborRangeList.add(new CommonRange(fullEndpoints, transEndpoints, ranges));
+        neighborRangeList.add(new CommonRange(endpoints, transEndpoints, ranges));
     }
 
     private Thread createQueryThread(final int cmd, final UUID sessionId)
