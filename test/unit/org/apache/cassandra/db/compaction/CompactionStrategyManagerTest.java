@@ -35,8 +35,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
@@ -57,6 +61,7 @@ import org.apache.cassandra.notifications.SSTableDeletingNotification;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
 import static org.junit.Assert.assertEquals;
@@ -68,6 +73,8 @@ import static org.junit.Assert.fail;
 
 public class CompactionStrategyManagerTest
 {
+    private static final Logger logger = LoggerFactory.getLogger(CompactionStrategyManagerTest.class);
+
     private static final String KS_PREFIX = "Keyspace1";
     private static final String TABLE_PREFIX = "CF_STANDARD";
 
@@ -89,6 +96,13 @@ public class CompactionStrategyManagerTest
                                     KeyspaceParams.simple(1),
                                     SchemaLoader.standardCFMD(KS_PREFIX, TABLE_PREFIX)
                                                 .compaction(CompactionParams.stcs(Collections.emptyMap())));
+    }
+
+    @Before
+    public void setUp() throws Exception
+    {
+        ColumnFamilyStore cfs = Keyspace.open(KS_PREFIX).getColumnFamilyStore(TABLE_PREFIX);
+        cfs.truncateBlocking();
     }
 
     @AfterClass
@@ -144,7 +158,7 @@ public class CompactionStrategyManagerTest
         final Integer[] boundaries = computeBoundaries(numSSTables, numDisks);
 
         MockBoundaryManager mockBoundaryManager = new MockBoundaryManager(cfs, boundaries);
-        System.out.println("Boundaries for " + numDisks + " disks is " + Arrays.toString(boundaries));
+        logger.debug("Boundaries for {} disks is {}", numDisks, Arrays.toString(boundaries));
         CompactionStrategyManager csm = new CompactionStrategyManager(cfs, mockBoundaryManager::getBoundaries,
                                                                       true);
 
@@ -161,7 +175,7 @@ public class CompactionStrategyManagerTest
             updateBoundaries(mockBoundaryManager, boundaries, delta);
 
             // Check that SSTables are still assigned to the previous boundary layout
-            System.out.println("Old boundaries: " + Arrays.toString(previousBoundaries) + " New boundaries: " + Arrays.toString(boundaries));
+            logger.debug("Old boundaries: {} New boundaries: {}", Arrays.toString(previousBoundaries), Arrays.toString(boundaries));
             for (SSTableReader reader : cfs.getLiveSSTables())
             {
                 verifySSTableIsAssignedToCorrectStrategy(previousBoundaries, csm, reader);
@@ -426,18 +440,13 @@ public class CompactionStrategyManagerTest
         return result;
     }
 
-    /**
-     * Since each SSTable contains keys from 0-99, and each sstable
-     * generation is numbered from 1-100, since we are using ByteOrderedPartitioner
-     * we can compute the sstable position in the disk boundaries by finding
-     * the generation position relative to the boundaries
-     */
     private int getSSTableIndex(Integer[] boundaries, SSTableReader reader)
     {
         int index = 0;
-        while (boundaries[index] < reader.descriptor.generation)
+        int firstKey = Integer.parseInt(new String(ByteBufferUtil.getArray(reader.first.getKey())));
+        while (boundaries[index] <= firstKey)
             index++;
-        System.out.println("Index for SSTable " + reader.descriptor.generation + " on boundary " + Arrays.toString(boundaries) + " is " + index);
+        logger.debug("Index for SSTable {} on boundary {} is {}", reader.descriptor.generation, Arrays.toString(boundaries), index);
         return index;
     }
 
