@@ -69,14 +69,18 @@ import org.apache.cassandra.notifications.SSTableMetadataChanged;
 import org.apache.cassandra.notifications.SSTableRepairStatusChanged;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.ActiveRepairService;
 
 import static org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 
 /**
  * Manages the compaction strategies.
  *
- * For each directory, a separate compaction strategy instance for both repaired and unrepaired data, and also one instance
- * for each pending repair. This is done to keep the different sets of sstables completely separate.
+ * SSTables are isolated from each other based on their incremental repair status (repaired, unrepaired, or pending repair)
+ * and directory (determined by their starting token). This class handles the routing between {@link AbstractStrategyHolder}
+ * instances based on repair status, and the {@link AbstractStrategyHolder} instances have separate compaction strategies
+ * for each directory, which it routes sstables to. Note that {@link PendingRepairHolder} also divides sstables on their
+ * pending repair id.
  *
  * Operations on this class are guarded by a {@link ReentrantReadWriteLock}. This lock performs mutual exclusion on
  * reads and writes to the following variables: {@link this#repaired}, {@link this#unrepaired}, {@link this#isActive},
@@ -680,21 +684,36 @@ public class CompactionStrategyManager implements INotificationConsumer
 
     private AbstractStrategyHolder getHolder(long repairedAt, UUID pendingRepair)
     {
+        return getHolder(repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE,
+                         pendingRepair != ActiveRepairService.NO_PENDING_REPAIR);
+    }
+
+    @VisibleForTesting
+    AbstractStrategyHolder getHolder(boolean isRepaired, boolean isPendingRepair)
+    {
         for (AbstractStrategyHolder holder : holders)
         {
-            if (holder.managesRepairedState(repairedAt, pendingRepair))
+            if (holder.managesRepairedGroup(isRepaired, isPendingRepair))
                 return holder;
         }
 
-        throw new IllegalStateException(String.format("No holder claimed repairedAt: %s, pendingRepair %s",
-                                                      repairedAt, pendingRepair));
+        throw new IllegalStateException(String.format("No holder claimed isPendingRepair: %s, isPendingRepair %s",
+                                                      isRepaired, isPendingRepair));
+    }
+
+    @VisibleForTesting
+    ImmutableList<AbstractStrategyHolder> getHolders()
+    {
+        return holders;
     }
 
     /**
      * Split sstables into a list of grouped sstable containers, the list index an sstable
+     *
      * lives in matches the list index of the holder that's responsible for it
      */
-    private List<GroupedSSTableContainer> groupSSTables(Iterable<SSTableReader> sstables)
+    @VisibleForTesting
+    List<GroupedSSTableContainer> groupSSTables(Iterable<SSTableReader> sstables)
     {
         List<GroupedSSTableContainer> classified = new ArrayList<>(holders.size());
         for (AbstractStrategyHolder holder : holders)

@@ -20,14 +20,18 @@ package org.apache.cassandra.db.compaction;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import org.junit.AfterClass;
@@ -41,10 +45,10 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.DiskBoundaries;
-import org.apache.cassandra.db.DiskBoundaryManager;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.RowUpdateBuilder;
+import org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -57,7 +61,10 @@ import org.apache.cassandra.utils.UUIDGen;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class CompactionStrategyManagerTest
 {
@@ -179,8 +186,6 @@ public class CompactionStrategyManagerTest
         }
     }
 
-
-
     @Test
     public void testAutomaticUpgradeConcurrency() throws Exception
     {
@@ -253,6 +258,114 @@ public class CompactionStrategyManagerTest
         DatabaseDescriptor.setAutomaticSSTableUpgradeEnabled(false);
     }
 
+    private static void assertHolderExclusivity(boolean isRepaired, boolean isPendingRepair, Class<? extends AbstractStrategyHolder> expectedType)
+    {
+        ColumnFamilyStore cfs = Keyspace.open(KS_PREFIX).getColumnFamilyStore(TABLE_PREFIX);
+        CompactionStrategyManager csm = cfs.getCompactionStrategyManager();
+
+        AbstractStrategyHolder holder = csm.getHolder(isRepaired, isPendingRepair);
+        assertNotNull(holder);
+        assertSame(expectedType, holder.getClass());
+
+        int matches = 0;
+        for (AbstractStrategyHolder other : csm.getHolders())
+        {
+            if (other.managesRepairedGroup(isRepaired, isPendingRepair))
+            {
+                assertSame("holder assignment should be mutually exclusive", holder, other);
+                matches++;
+            }
+        }
+        assertEquals(1, matches);
+    }
+
+    private static void assertInvalieHolderConfig(boolean isRepaired, boolean isPendingRepair)
+    {
+        ColumnFamilyStore cfs = Keyspace.open(KS_PREFIX).getColumnFamilyStore(TABLE_PREFIX);
+        CompactionStrategyManager csm = cfs.getCompactionStrategyManager();
+        try
+        {
+            csm.getHolder(isRepaired, isPendingRepair);
+            fail("Expected IllegalArgumentException");
+        }
+        catch (IllegalArgumentException e)
+        {
+            // expected
+        }
+    }
+
+    /**
+     * If an sstable can be be assigned to a strategy holder, it shouldn't be possibly to
+     * assign it to any of the other holders.
+     */
+    @Test
+    public void testMutualExclusiveHolderClassification() throws Exception
+    {
+        assertHolderExclusivity(false, false, CompactionStrategyHolder.class);
+        assertHolderExclusivity(true, false, CompactionStrategyHolder.class);
+        assertHolderExclusivity(false, true, PendingRepairHolder.class);
+        assertInvalieHolderConfig(true, true);
+    }
+
+    PartitionPosition forKey(int key)
+    {
+        DecoratedKey dk = Util.dk(String.format("%04d", key));
+        return dk.getToken().minKeyBound();
+    }
+
+    /**
+     * Test that csm.groupSSTables correctly groups sstables by repaired status and directory
+     */
+    @Test
+    public void groupSSTables() throws Exception
+    {
+        final int numDir = 4;
+        ColumnFamilyStore cfs = createJBODMockCFS(numDir);
+        Keyspace.open(cfs.keyspace.getName()).getColumnFamilyStore(cfs.name).disableAutoCompaction();
+        assertTrue(cfs.getLiveSSTables().isEmpty());
+        List<SSTableReader> unrepaired = new ArrayList<>();
+        List<SSTableReader> pendingRepair = new ArrayList<>();
+        List<SSTableReader> repaired = new ArrayList<>();
+
+        for (int i = 0; i < numDir; i++)
+        {
+            int key = 100 * i;
+            unrepaired.add(createSSTableWithKey(cfs.keyspace.getName(), cfs.name, key++));
+            pendingRepair.add(createSSTableWithKey(cfs.keyspace.getName(), cfs.name, key++));
+            repaired.add(createSSTableWithKey(cfs.keyspace.getName(), cfs.name, key++));
+        }
+
+        cfs.getCompactionStrategyManager().mutateRepaired(pendingRepair, 0, UUID.randomUUID());
+        cfs.getCompactionStrategyManager().mutateRepaired(repaired, 1000, null);
+
+        DiskBoundaries boundaries = new DiskBoundaries(cfs.getDirectories().getWriteableLocations(),
+                                                       Lists.newArrayList(forKey(100), forKey(200), forKey(300)),
+                                                       10, 10);
+
+        CompactionStrategyManager csm = new CompactionStrategyManager(cfs, () -> boundaries, true);
+
+        List<GroupedSSTableContainer> grouped = csm.groupSSTables(Iterables.concat(repaired, pendingRepair, unrepaired));
+
+        for (int x=0; x<grouped.size(); x++)
+        {
+            GroupedSSTableContainer group = grouped.get(x);
+            AbstractStrategyHolder holder = csm.getHolders().get(x);
+            for (int y=0; y<numDir; y++)
+            {
+                SSTableReader sstable = Iterables.getOnlyElement(group.getGroup(y));
+                assertTrue(holder.managesSSTable(sstable));
+                SSTableReader expected;
+                if (sstable.isRepaired())
+                    expected = repaired.get(y);
+                else if (sstable.isPendingRepair())
+                    expected = pendingRepair.get(y);
+                else
+                    expected = unrepaired.get(y);
+
+                assertSame(expected, sstable);
+            }
+        }
+    }
 
     private MockCFS createJBODMockCFS(int disks)
     {
@@ -362,7 +475,7 @@ public class CompactionStrategyManagerTest
         }
     }
 
-    private static void createSSTableWithKey(String keyspace, String table, int key)
+    private static SSTableReader createSSTableWithKey(String keyspace, String table, int key)
     {
         long timestamp = System.currentTimeMillis();
         DecoratedKey dk = Util.dk(String.format("%04d", key));
@@ -372,7 +485,10 @@ public class CompactionStrategyManagerTest
         .add("val", "val")
         .build()
         .applyUnsafe();
+        Set<SSTableReader> before = cfs.getLiveSSTables();
         cfs.forceBlockingFlush();
+        Set<SSTableReader> after = cfs.getLiveSSTables();
+        return Iterables.getOnlyElement(Sets.difference(after, before));
     }
 
     // just to be able to override the data directories

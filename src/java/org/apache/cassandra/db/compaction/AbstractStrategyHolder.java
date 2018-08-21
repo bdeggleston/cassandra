@@ -152,11 +152,17 @@ public abstract class AbstractStrategyHolder
 
     protected abstract void setStrategyInternal(CompactionParams params, int numTokenPartitions);
 
-    public abstract boolean managesRepairedState(long repairedAt, UUID pendingRepair);
+    /**
+     * SSTables are grouped by their repaired and pending repair status. This method determines if this holder
+     * holds the sstable for the given repaired/grouped statuses. Holders should be mutually exclusive in the
+     * groups they deal with. IOW, if one holder returns true for a given isRepaired/isPendingRepair combo,
+     * none of the others should.
+     */
+    public abstract boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair);
 
     public boolean managesSSTable(SSTableReader sstable)
     {
-        return managesRepairedState(sstable.getRepairedAt(), sstable.getPendingRepair());
+        return managesRepairedGroup(sstable.isRepaired(), sstable.isPendingRepair());
     }
 
     public abstract AbstractCompactionStrategy getStrategyFor(SSTableReader sstable);
@@ -192,5 +198,9 @@ public abstract class AbstractStrategyHolder
                                                                 Collection<Index> indexes,
                                                                 LifecycleTransaction txn);
 
+    /**
+     * Return the directory index the given compaction strategy belongs to, or -1
+     * if it's not held by this holder
+     */
     public abstract int getStrategyIndex(AbstractCompactionStrategy strategy);
 }

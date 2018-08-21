@@ -70,14 +70,11 @@ public class PendingRepairHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public boolean managesRepairedState(long repairedAt, UUID pendingRepair)
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair)
     {
-        if (pendingRepair != null)
-        {
-            Preconditions.checkArgument(repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE);
-            return true;
-        }
-        return false;
+        Preconditions.checkArgument(!isPendingRepair || !isRepaired,
+                                    "SSTables cannot be both repaired and pending repair");
+        return isPendingRepair;
     }
 
     @Override

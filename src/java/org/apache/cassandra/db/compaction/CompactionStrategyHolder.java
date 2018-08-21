@@ -71,13 +71,11 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public boolean managesRepairedState(long repairedAt, UUID pendingRepair)
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair)
     {
-        if (pendingRepair != ActiveRepairService.NO_PENDING_REPAIR)
-        {
-            return false;
-        }
-        return (repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE) == isRepaired;
+        Preconditions.checkArgument(!isPendingRepair || !isRepaired,
+                                    "SSTables cannot be both repaired and pending repair");
+        return !isPendingRepair && (isRepaired == this.isRepaired);
     }
 
     @Override
