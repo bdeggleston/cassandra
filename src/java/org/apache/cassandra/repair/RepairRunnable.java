@@ -136,6 +136,9 @@ public class RepairRunnable extends WrappedRunnable implements ProgressEventNoti
         recordFailure(message, completionMessage);
     }
 
+    /**
+     * Groups ranges with identical endpoints/transient endpoints
+     */
     @VisibleForTesting
     static class CommonRange
     {

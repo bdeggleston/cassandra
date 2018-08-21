@@ -226,6 +226,7 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
             {
                 InetAddressAndPort address = trees.get(i).endpoint;
 
+                // we don't stream to transient replicas
                 if (isTransient(address))
                     continue;
 
