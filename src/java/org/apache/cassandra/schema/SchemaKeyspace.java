@@ -1298,7 +1298,7 @@ public final class SchemaKeyspace
         }
     }
 
-    public static ReadRepairStrategy getReadRepairStrategy(UntypedResultSet.Row row)
+    private static ReadRepairStrategy getReadRepairStrategy(UntypedResultSet.Row row)
     {
         return row.has("read_repair")
                ? ReadRepairStrategy.fromString(row.getString("read_repair"))
