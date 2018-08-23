@@ -991,7 +991,7 @@ public final class SchemaKeyspace
                           .crcCheckChance(row.getDouble("crc_check_chance"))
                           .speculativeRetry(SpeculativeRetryPolicy.fromString(row.getString("speculative_retry")))
                           .cdc(row.has("cdc") && row.getBoolean("cdc"))
-                          .readRepair(ReadRepairStrategy.fromRow(row))
+                          .readRepair(getReadRepairStrategy(row))
                           .build();
     }
 
@@ -1296,5 +1296,12 @@ public final class SchemaKeyspace
         {
             super(message);
         }
+    }
+
+    public static ReadRepairStrategy getReadRepairStrategy(UntypedResultSet.Row row)
+    {
+        return row.has("read_repair")
+               ? ReadRepairStrategy.fromString(row.getString("read_repair"))
+               : ReadRepairStrategy.BLOCKING;
     }
 }

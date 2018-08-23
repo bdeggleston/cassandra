@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
@@ -159,17 +160,14 @@ public abstract class AbstractReadRepair implements ReadRepair
             Set<InetAddressAndPort> contacted = Sets.newHashSet(repair.initialContacts);
             Token replicaToken = ((SinglePartitionReadCommand) command).partitionKey().getToken();
             Iterable<InetAddressAndPort> candidates = getCandidatesForToken(replicaToken);
-            boolean speculated = false;
-            for (InetAddressAndPort endpoint: Iterables.filter(candidates, e -> !contacted.contains(e)))
-            {
-                speculated = true;
-                Tracing.trace("Enqueuing speculative full data read to {}", endpoint);
-                sendReadCommand(endpoint, repair.readCallback);
-                break;
-            }
 
-            if (speculated)
+            Optional<InetAddressAndPort> endpoint = Iterables.tryFind(candidates, e -> !contacted.contains(e));
+            if (endpoint.isPresent())
+            {
+                Tracing.trace("Enqueuing speculative full data read to {}", endpoint);
+                sendReadCommand(endpoint.get(), repair.readCallback);
                 ReadRepairMetrics.speculatedRead.mark();
+            }
         }
     }
 }

@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.service.reads.repair;
 
-import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.ReadCommand;
 
@@ -30,15 +29,6 @@ public enum ReadRepairStrategy implements ReadRepair.Factory
         public ReadRepair create(ReadCommand command, long queryStartNanoTime, ConsistencyLevel consistency)
         {
             return new ReadOnlyReadRepair(command, queryStartNanoTime, consistency);
-        }
-    },
-
-    ASYNC
-    {
-        @Override
-        public ReadRepair create(ReadCommand command, long queryStartNanoTime, ConsistencyLevel consistency)
-        {
-            return new AsyncReadRepair(command, queryStartNanoTime, consistency);
         }
     },
 
@@ -54,12 +44,5 @@ public enum ReadRepairStrategy implements ReadRepair.Factory
     public static ReadRepairStrategy fromString(String s)
     {
         return valueOf(s.toUpperCase());
-    }
-
-    public static ReadRepairStrategy fromRow(UntypedResultSet.Row row)
-    {
-        return row.has("read_repair")
-               ? ReadRepairStrategy.fromString(row.getString("read_repair"))
-               : ReadRepairStrategy.BLOCKING;
     }
 }

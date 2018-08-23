@@ -627,13 +627,6 @@ The default setting. When ``read_repair`` is set to ``BLOCKING``, and a read rep
 on writes sent to other replicas until the CL is reached by the writes. Provides monotonic quorum reads, but not partition
 level write atomicity
 
-Async
-`````
-
-When ``read_repair`` is set to ``ASYNC``, and a read repair is triggered, the coordinator will send mutations to correct
-out of sync replicas, but will not block on them. Neither monotonic quorum reads or partition level write atomicity is
-provided by this setting.
-
 None
 ````
 
