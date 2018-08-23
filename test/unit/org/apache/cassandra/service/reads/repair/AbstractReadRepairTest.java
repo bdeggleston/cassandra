@@ -13,6 +13,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -48,6 +49,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.Tables;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
+@Ignore
 public abstract  class AbstractReadRepairTest
 {
     static Keyspace ks;
