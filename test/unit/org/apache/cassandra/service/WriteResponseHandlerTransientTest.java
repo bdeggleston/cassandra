@@ -134,13 +134,13 @@ public class WriteResponseHandlerTransientTest
     }
 
     @Test
-    public void checkPendingReplicasAreFiltered()
+    public void checkPendingReplicasArentFiltered()
     {
         EndpointsForRange natural = EndpointsForRange.of(full(EP1), full(EP2), trans(EP3));
         EndpointsForRange pending = EndpointsForRange.of(full(EP4), full(EP5), trans(EP6));
         WritePathReplicaPlan replicaPlan = WritePathReplicaPlan.createReplicaPlan(ks, ConsistencyLevel.QUORUM, natural, pending, (a) -> true);
 
-        Assert.assertEquals(EndpointsForRange.of(full(EP4), full(EP5)), replicaPlan.pendingReplicas());
+        Assert.assertEquals(EndpointsForRange.of(full(EP4), full(EP5), trans(EP6)), replicaPlan.pendingReplicas());
     }
 
     private static WritePathReplicaPlan expected(EndpointsForRange all, EndpointsForRange initial)
