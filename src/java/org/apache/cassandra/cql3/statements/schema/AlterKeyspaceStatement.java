@@ -130,6 +130,10 @@ public final class AlterKeyspaceStatement extends AlterSchemaStatement
 
         ReplicationFactor oldRF = oldStrategy.getReplicationFactor();
         ReplicationFactor newRF = newStrategy.getReplicationFactor();
+
+        if (oldRF.trans != newRF.trans)
+            throw new ConfigurationException("Replication changes on transient keyspaces is not currently supported");
+
         int oldTrans = oldRF.trans;
         int oldFull = oldRF.full;
         int newTrans = newRF.trans;
