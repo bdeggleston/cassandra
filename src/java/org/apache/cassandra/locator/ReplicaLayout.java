@@ -47,20 +47,23 @@ import org.apache.cassandra.utils.FBUtilities;
  * Encapsulates knowledge about the ring necessary for performing a specific operation, with static accessors
  * for building the relevant layout.
  *
- * Constitutes:
- *  - the 'natural' replicas replicating the range or token relevant for the operation
- *  - if for performing a write, any 'pending' replicas that are taking ownership of the range, and must receive updates
- *  - the 'selected' replicas, those that should be targeted for any operation
- *  - 'all' replicas represents natural+pending
+ * Constitutes all, natural, pending, and selected endpoints. See members for descriptions.
  *
  * @param <E> the type of Endpoints this ReplayLayout holds (either EndpointsForToken or EndpointsForRange)
  * @param <L> the type of itself, including its type parameters, for return type of modifying methods
  */
 public abstract class ReplicaLayout<E extends Endpoints<E>, L extends ReplicaLayout<E, L>>
 {
+    // natural + pending replicas
     private volatile E all;
+
+    // the replicas replicating the range or token relevant for the operation
     protected final E natural;
+
+    // if performing a write, any 'pending' replicas that are taking ownership of the range, and must receive updates
     protected final E pending;
+
+    // replicas that should be targeted for any operation
     protected final E selected;
 
     protected final Keyspace keyspace;
