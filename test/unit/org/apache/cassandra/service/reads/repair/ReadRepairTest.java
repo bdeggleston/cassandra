@@ -67,9 +67,9 @@ public class ReadRepairTest
     static Replica target3;
     static EndpointsForRange targets;
 
-    private static class InstrumentedReadRepairHandler<E extends Endpoints<E>, L extends ReplicaLayout<E, L>> extends BlockingPartitionRepair<E, L>
+    private static class InstrumentedPartitionRepair<E extends Endpoints<E>, L extends ReplicaLayout<E, L>> extends BlockingPartitionRepair<E, L>
     {
-        public InstrumentedReadRepairHandler(Map<Replica, Mutation> repairs, int maxBlockFor, L replicaLayout)
+        public InstrumentedPartitionRepair(Map<Replica, Mutation> repairs, int maxBlockFor, L replicaLayout)
         {
             super(repairs, maxBlockFor, replicaLayout);
         }
@@ -161,10 +161,10 @@ public class ReadRepairTest
         return new Mutation(PartitionUpdate.singleRowUpdate(cfm, key, builder.build()));
     }
 
-    private static InstrumentedReadRepairHandler createRepairHandler(Map<Replica, Mutation> repairs, int maxBlockFor, EndpointsForRange all, EndpointsForRange targets)
+    private static InstrumentedPartitionRepair createRepairHandler(Map<Replica, Mutation> repairs, int maxBlockFor, EndpointsForRange all, EndpointsForRange targets)
     {
         ReplicaLayout.ForRange replicaLayout = new ReplicaLayout.ForRange(ks, ConsistencyLevel.LOCAL_QUORUM, ReplicaUtils.FULL_BOUNDS, all, targets);
-        return new InstrumentedReadRepairHandler(repairs, maxBlockFor, replicaLayout);
+        return new InstrumentedPartitionRepair(repairs, maxBlockFor, replicaLayout);
     }
 
     @Test
@@ -198,8 +198,8 @@ public class ReadRepairTest
         repairs.put(target1, repair1);
         repairs.put(target2, repair2);
 
-        InstrumentedReadRepairHandler<?, ?> handler = createRepairHandler(repairs, 2,
-                                                                    targets, EndpointsForRange.of(target1, target2));
+        InstrumentedPartitionRepair<?, ?> handler = createRepairHandler(repairs, 2,
+                                                                        targets, EndpointsForRange.of(target1, target2));
 
         Assert.assertTrue(handler.mutationsSent.isEmpty());
 
@@ -234,7 +234,7 @@ public class ReadRepairTest
         repairs.put(target2, mutation(cell1));
 
         EndpointsForRange replicas = EndpointsForRange.of(target1, target2);
-        InstrumentedReadRepairHandler handler = createRepairHandler(repairs, 2, replicas, targets);
+        InstrumentedPartitionRepair handler = createRepairHandler(repairs, 2, replicas, targets);
         handler.sendInitialRepairs();
         handler.ack(target1.endpoint());
         handler.ack(target2.endpoint());
@@ -255,8 +255,8 @@ public class ReadRepairTest
         repairs.put(target1, mutation(cell2));
         repairs.put(target2, mutation(cell1));
 
-        InstrumentedReadRepairHandler handler = createRepairHandler(repairs, 2, EndpointsForRange.of(target1, target2),
-                                                                    EndpointsForRange.of(target1, target2));
+        InstrumentedPartitionRepair handler = createRepairHandler(repairs, 2, EndpointsForRange.of(target1, target2),
+                                                                  EndpointsForRange.of(target1, target2));
         handler.sendInitialRepairs();
 
         // we've already sent mutations to all candidates, so we shouldn't send any more
@@ -278,7 +278,7 @@ public class ReadRepairTest
         repairs.put(target1, repair1);
 
         // check that the correct initial mutations are sent out
-        InstrumentedReadRepairHandler handler = createRepairHandler(repairs, 2, targets, EndpointsForRange.of(target1, target2));
+        InstrumentedPartitionRepair handler = createRepairHandler(repairs, 2, targets, EndpointsForRange.of(target1, target2));
         handler.sendInitialRepairs();
         Assert.assertEquals(1, handler.mutationsSent.size());
         Assert.assertTrue(handler.mutationsSent.containsKey(target1.endpoint()));
@@ -301,7 +301,7 @@ public class ReadRepairTest
         Assert.assertEquals(3, repairs.size());
 
         EndpointsForRange replicas = EndpointsForRange.of(target1, target2, target3);
-        InstrumentedReadRepairHandler handler = createRepairHandler(repairs, 2, replicas, replicas);
+        InstrumentedPartitionRepair handler = createRepairHandler(repairs, 2, replicas, replicas);
         handler.sendInitialRepairs();
 
         Assert.assertFalse(handler.awaitRepairs(0, TimeUnit.NANOSECONDS));
@@ -330,7 +330,7 @@ public class ReadRepairTest
         EndpointsForRange participants = EndpointsForRange.of(target1, target2, remote1, remote2);
         EndpointsForRange targets = EndpointsForRange.of(target1, target2);
 
-        InstrumentedReadRepairHandler handler = createRepairHandler(repairs, 2, participants, targets);
+        InstrumentedPartitionRepair handler = createRepairHandler(repairs, 2, participants, targets);
         handler.sendInitialRepairs();
         Assert.assertEquals(2, handler.mutationsSent.size());
         Assert.assertTrue(handler.mutationsSent.containsKey(target1.endpoint()));
