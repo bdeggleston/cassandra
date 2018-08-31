@@ -19,12 +19,11 @@
 package org.apache.cassandra.repair;
 
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.cassandra.dht.Range;
@@ -38,7 +37,7 @@ public class CommonRange
 {
     public final ImmutableSet<InetAddressAndPort> endpoints;
     public final ImmutableSet<InetAddressAndPort> transEndpoints;
-    public final ImmutableCollection<Range<Token>> ranges;
+    public final Collection<Range<Token>> ranges;
 
     public CommonRange(Set<InetAddressAndPort> endpoints, Set<InetAddressAndPort> transEndpoints, Collection<Range<Token>> ranges)
     {
@@ -49,7 +48,7 @@ public class CommonRange
 
         this.endpoints = ImmutableSet.copyOf(endpoints);
         this.transEndpoints = ImmutableSet.copyOf(transEndpoints);
-        this.ranges = ImmutableList.copyOf(ranges);
+        this.ranges = new ArrayList(ranges);
     }
 
     public boolean equals(Object o)
