@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.repair.KeyspaceRepairManager;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -556,8 +557,24 @@ public class LocalSessions
 
     RangesAtEndpoint filterLocalRanges(String keyspace, Set<Range<Token>> ranges)
     {
-        return StorageService.instance.getLocalReplicas(keyspace)
-                                      .filter(r -> ranges.contains(r.range()));
+        RangesAtEndpoint localRanges = StorageService.instance.getLocalReplicas(keyspace);
+        RangesAtEndpoint.Builder builder = RangesAtEndpoint.builder(localRanges.endpoint());
+        for (Range<Token> range : ranges)
+        {
+            for (Replica replica : localRanges)
+            {
+                if (replica.range().equals(range))
+                {
+                    builder.add(replica);
+                }
+                else if (replica.contains(range))
+                {
+                    builder.add(replica.decorateSubrange(range));
+                }
+            }
+
+        }
+        return builder.build();
     }
 
     /**
