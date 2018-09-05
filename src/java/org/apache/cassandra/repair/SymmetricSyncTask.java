@@ -20,6 +20,7 @@ package org.apache.cassandra.repair;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ public abstract class SymmetricSyncTask extends AbstractSyncTask
 
     public SymmetricSyncTask(RepairJobDesc desc, TreeResponse r1, TreeResponse r2, PreviewKind previewKind)
     {
+        Preconditions.checkArgument(!r1.endpoint.equals(r2.endpoint), "Both sync targets are the same: %s", r1.endpoint);
         this.desc = desc;
         this.r1 = r1;
         this.r2 = r2;
