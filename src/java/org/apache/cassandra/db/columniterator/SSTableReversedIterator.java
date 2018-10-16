@@ -451,7 +451,8 @@ public class SSTableReversedIterator extends AbstractSSTableIterator
                          canIncludeSliceEnd ? slice.end() : null,
                          hasPreviousBlock,
                          hasNextBlock,
-                         currentFirstName, nextLastName
+                         currentFirstName,
+                         nextLastName
             );
             setIterator(slice);
         }
