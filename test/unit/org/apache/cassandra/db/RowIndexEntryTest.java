@@ -21,7 +21,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+
+import com.google.common.base.VerifyException;
+import com.google.common.collect.Lists;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.CFMetaData;
@@ -29,13 +33,19 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.rows.AbstractUnfilteredRowIterator;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.partitions.*;
+import org.apache.cassandra.db.rows.RangeTombstoneBoundMarker;
+import org.apache.cassandra.db.rows.Rows;
+import org.apache.cassandra.db.rows.Unfiltered;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.sstable.IndexHelper;
 import org.apache.cassandra.io.sstable.format.big.BigFormat;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.SequentialWriter;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 import org.junit.Assert;
@@ -176,6 +186,41 @@ public class RowIndexEntryTest extends CQLTester
         input = new DataInputBuffer(bb, false);
         RowIndexEntry.Serializer.skip(input, BigFormat.latestVersion);
         Assert.assertEquals(0, bb.remaining());
+    }
+
+    void writeRow(ColumnFamilyStore cfs, SequentialWriter writer, Iterable<Unfiltered> unfiltereds) throws IOException
+    {
+        SerializationHeader header = new SerializationHeader(true, cfs.metadata, cfs.metadata.partitionColumns(), EncodingStats.NO_STATS);
+        UnfilteredRowIterator iterator = new AbstractUnfilteredRowIterator(cfs.metadata,
+                                                                           cfs.getPartitioner().decorateKey(ByteBufferUtil.bytes(1)),
+                                                                           DeletionTime.LIVE,
+                                                                           cfs.metadata.partitionColumns(),
+                                                                           Rows.EMPTY_STATIC_ROW,
+                                                                           false,
+                                                                           EncodingStats.NO_STATS)
+        {
+            Iterator<Unfiltered> src = unfiltereds.iterator();
+            protected Unfiltered computeNext()
+            {
+                return src.hasNext() ? src.next() : null;
+            }
+        };
+        ColumnIndex.writeAndBuildIndex(iterator, writer, header, BigFormat.latestVersion);
+    }
+
+    @Test(expected = VerifyException.class)
+    public void clusteringOrderValidation() throws Exception
+    {
+        String tableName = createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY(k, c))");
+        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+
+        File tempFile = File.createTempFile("clustering_order_validation_test", null);
+        tempFile.deleteOnExit();
+        SequentialWriter writer = SequentialWriter.open(tempFile);
+
+        Unfiltered openMarker = RangeTombstoneBoundMarker.inclusiveOpen(false, Util.clustering(cfs.metadata.comparator, 5).values, DeletionTime.LIVE);
+        Unfiltered closeMarker = RangeTombstoneBoundMarker.inclusiveClose(false, Util.clustering(cfs.metadata.comparator, 3).values, DeletionTime.LIVE);
+        writeRow(cfs, writer, Lists.newArrayList(openMarker, closeMarker));
     }
 
     private void serializationCheck(RowIndexEntry<IndexHelper.IndexInfo> withIndex, IndexHelper.IndexInfo.Serializer indexSerializer, ByteBuffer bb, DataInputBuffer input) throws IOException

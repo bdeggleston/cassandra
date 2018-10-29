@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Verify;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.rows.*;
@@ -140,6 +141,9 @@ public class ColumnIndex
                 firstClustering = unfiltered.clustering();
                 startPosition = pos;
             }
+
+            Verify.verify(lastClustering == null || iterator.metadata().comparator.compare(unfiltered.clustering(), lastClustering) > 0,
+                          "unfiltered being added out of clustering order");
 
             UnfilteredSerializer.serializer.serialize(unfiltered, header, writer, pos - previousRowStart, version);
             lastClustering = unfiltered.clustering();

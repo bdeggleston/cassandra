@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import org.apache.cassandra.utils.AbstractIterator;
+
+import com.google.common.base.Verify;
 import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.cache.IMeasurableMemory;
@@ -147,6 +149,8 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
      */
     public void add(Slice.Bound start, Slice.Bound end, long markedAt, int delTime)
     {
+        Verify.verify(comparator.compare(start, end) <= 0,
+                      "range tombstone end bound precedes start bound");
         if (isEmpty())
         {
             addInternal(0, start, end, markedAt, delTime);

@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.VerifyException;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -537,6 +538,14 @@ public class RangeTombstoneListTest
 
         assertEquals(6, l.searchDeletionTime(clustering(15)).markedForDeleteAt());
         assertEquals(6, l.searchDeletionTime(clustering(1000)).markedForDeleteAt());
+    }
+
+    @Test (expected = VerifyException.class)
+    public void invalidRTFailure()
+    {
+        RangeTombstoneList l = new RangeTombstoneList(cmp, 0);
+        l.add(rt(4, 2, 5));
+
     }
 
     private static void assertRT(RangeTombstone expected, RangeTombstone actual)
