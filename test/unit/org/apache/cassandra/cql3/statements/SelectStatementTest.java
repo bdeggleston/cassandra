@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.Slices;
@@ -36,11 +37,18 @@ public class SelectStatementTest
     private static final String KEYSPACE = "ks";
 
     @BeforeClass
-    public static void setupClass() throws Exception
+    public static void setupClass()
     {
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE, KeyspaceParams.simple(1));
+    }
+
+    private static SelectStatement parseSelect(String query)
+    {
+        CQLStatement stmt = QueryProcessor.parseStatement(query).prepare(ClientState.forInternalCalls());
+        assert stmt instanceof SelectStatement;
+        return (SelectStatement) stmt;
     }
 
     @Test
@@ -48,7 +56,8 @@ public class SelectStatementTest
     {
         QueryProcessor.executeOnceInternal("CREATE TABLE ks.tbl (k int, c int, v int, primary key (k, c))");
         QueryProcessor.executeOnceInternal("INSERT INTO ks.tbl (k, c, v) VALUES (100, 10, 0)");
-        SelectStatement stmt = (SelectStatement) QueryProcessor.parseStatement("SELECT * FROM ks.tbl WHERE k=100 AND c > 10 AND c <= 10").prepare(ClientState.forInternalCalls());
-        Assert.assertEquals(Slices.NONE, stmt.makeSlices(QueryOptions.DEFAULT));
+        Assert.assertEquals(Slices.NONE, parseSelect("SELECT * FROM ks.tbl WHERE k=100 AND c > 10 AND c <= 10").makeSlices(QueryOptions.DEFAULT));
+        Assert.assertEquals(Slices.NONE, parseSelect("SELECT * FROM ks.tbl WHERE k=100 AND c < 10 AND c >= 10").makeSlices(QueryOptions.DEFAULT));
+        Assert.assertEquals(Slices.NONE, parseSelect("SELECT * FROM ks.tbl WHERE k=100 AND c < 10 AND c > 10").makeSlices(QueryOptions.DEFAULT));
     }
 }
