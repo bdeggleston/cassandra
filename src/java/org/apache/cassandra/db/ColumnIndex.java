@@ -23,7 +23,9 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.primitives.Ints;
+import com.google.common.base.Verify;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.ISerializer;
@@ -108,7 +110,7 @@ public class ColumnIndex
         this.headerLength = writer.position() - initialPosition;
 
         while (iterator.hasNext())
-            add(iterator.next());
+            add(iterator.next(), iterator.metadata());
 
         finish();
     }
@@ -232,7 +234,7 @@ public class ColumnIndex
         return new DataOutputBuffer(DatabaseDescriptor.getColumnIndexCacheSize() * 2);
     }
 
-    private void add(Unfiltered unfiltered) throws IOException
+    private void add(Unfiltered unfiltered, CFMetaData metadata) throws IOException
     {
         long pos = currentPosition();
 
@@ -249,6 +251,8 @@ public class ColumnIndex
         if (!observers.isEmpty())
             observers.forEach((o) -> o.nextUnfilteredCluster(unfiltered));
 
+        Verify.verify(lastClustering == null || metadata.comparator.compare(unfiltered.clustering(), lastClustering) > 0,
+                      "unfiltered being added out of clustering order");
         lastClustering = unfiltered.clustering();
         previousRowStart = pos;
         ++written;
