@@ -30,6 +30,8 @@ import java.util.List;
 import com.google.common.primitives.Ints;
 import org.junit.Assert;
 import org.junit.Test;
+import com.google.common.base.VerifyException;
+import com.google.common.collect.Lists;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.cache.IMeasurableMemory;
@@ -46,8 +48,10 @@ import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.BufferCell;
 import org.apache.cassandra.db.rows.ColumnData;
 import org.apache.cassandra.db.rows.EncodingStats;
+import org.apache.cassandra.db.rows.RangeTombstoneBoundMarker;
 import org.apache.cassandra.db.rows.RangeTombstoneMarker;
 import org.apache.cassandra.db.rows.Row;
+import org.apache.cassandra.db.rows.Rows;
 import org.apache.cassandra.db.rows.Unfiltered;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.rows.UnfilteredSerializer;
@@ -465,6 +469,49 @@ public class RowIndexEntryTest extends CQLTester
         input = new DataInputBuffer(bb, false);
         Pre_C_11206_RowIndexEntry.Serializer.skip(input, BigFormat.latestVersion);
         Assert.assertEquals(0, bb.remaining());
+    }
+
+    void writeRow(ColumnFamilyStore cfs, SequentialWriter writer, Iterable<Unfiltered> unfiltereds) throws IOException
+    {
+        SerializationHeader header = new SerializationHeader(true, cfs.metadata(), cfs.metadata().regularAndStaticColumns(), EncodingStats.NO_STATS);
+        UnfilteredRowIterator iterator = new AbstractUnfilteredRowIterator(cfs.metadata(),
+                                                                           cfs.getPartitioner().decorateKey(ByteBufferUtil.bytes(1)),
+                                                                           DeletionTime.LIVE,
+                                                                           cfs.metadata().regularAndStaticColumns(),
+                                                                           Rows.EMPTY_STATIC_ROW,
+                                                                           false,
+                                                                           EncodingStats.NO_STATS)
+        {
+            Iterator<Unfiltered> src = unfiltereds.iterator();
+            protected Unfiltered computeNext()
+            {
+                return src.hasNext() ? src.next() : null;
+            }
+        };
+
+        Version version = BigFormat.latestVersion;
+        IndexInfo.Serializer serializer = new IndexInfo.Serializer(version, cfs.metadata().comparator.subtypes());
+        org.apache.cassandra.db.ColumnIndex ci = new org.apache.cassandra.db.ColumnIndex(header,
+                                                                                         writer,
+                                                                                         version,
+                                                                                         Collections.emptyList(),
+                                                                                         serializer);
+        ci.buildRowIndex(iterator);
+    }
+
+    @Test(expected = VerifyException.class)
+    public void clusteringOrderValidation() throws Exception
+    {
+        String tableName = createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY(k, c))");
+        ColumnFamilyStore cfs = Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+
+        File tempFile = File.createTempFile("clustering_order_validation_test", null);
+        tempFile.deleteOnExit();
+        SequentialWriter writer = new SequentialWriter(tempFile);
+
+        Unfiltered openMarker = RangeTombstoneBoundMarker.inclusiveOpen(false, Util.clustering(cfs.metadata().comparator, 5).getRawValues(), DeletionTime.LIVE);
+        Unfiltered closeMarker = RangeTombstoneBoundMarker.inclusiveClose(false, Util.clustering(cfs.metadata().comparator, 3).getRawValues(), DeletionTime.LIVE);
+        writeRow(cfs, writer, Lists.newArrayList(openMarker, closeMarker));
     }
 
     private static void serializationCheck(Pre_C_11206_RowIndexEntry withIndex, IndexInfo.Serializer indexSerializer, ByteBuffer bb, DataInputBuffer input) throws IOException
