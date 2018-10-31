@@ -17,14 +17,12 @@
  */
 package org.apache.cassandra.io.sstable.metadata;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.collect.Maps;
 
@@ -231,7 +229,13 @@ public class MetadataCollector implements PartitionStatisticsCollector
 
     public MetadataCollector updateClusteringValues(ClusteringPrefix clustering)
     {
-        int size = clustering.size();
+        if (clustering.size() < minClusteringValues.length)
+        {
+            minClusteringValues = Arrays.copyOf(minClusteringValues, clustering.size(), ByteBuffer[].class);
+            maxClusteringValues = Arrays.copyOf(maxClusteringValues, clustering.size(), ByteBuffer[].class);
+        }
+
+        int size = Math.min(clustering.size(), minClusteringValues.length);
         for (int i = 0; i < size; i++)
         {
             AbstractType<?> type = comparator.subtype(i);
