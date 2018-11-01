@@ -326,7 +326,7 @@ public class StatsMetadata extends MetadataComponent
             for (int i = 0; i < colCount; i++)
             {
                 ByteBuffer val = ByteBufferUtil.readWithShortLength(in);
-                if (version.hasAccurateMinMax() || i < 1)
+                if (version.hasAccurateMinMax())
                     minClusteringValues.add(val);
             }
 
@@ -335,7 +335,7 @@ public class StatsMetadata extends MetadataComponent
             for (int i = 0; i < colCount; i++)
             {
                 ByteBuffer val = ByteBufferUtil.readWithShortLength(in);
-                if (version.hasAccurateMinMax() || i < 1)
+                if (version.hasAccurateMinMax())
                     maxClusteringValues.add(val);
             }
 

@@ -44,6 +44,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.ReadOrderGroup;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
+import org.apache.cassandra.db.SinglePartitionSliceCommandTest;
 import org.apache.cassandra.db.compaction.Verifier;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.RangeTombstoneMarker;
@@ -274,37 +275,19 @@ public class LegacySSTableTest
         QueryProcessor.executeInternal("CREATE TABLE legacy_tables.legacy_mc_inaccurate_min_max (k int, c1 int, c2 int, c3 int, v int, primary key (k, c1, c2, c3))");
         loadLegacyTable("legacy_%s_inaccurate_min_max%s", "mc", "");
 
+        /*
+         sstable has the following mutations:
+            INSERT INTO legacy_tables.legacy_mc_inaccurate_min_max (k, c1, c2, c3, v) VALUES (100, 4, 4, 4, 4)
+            DELETE FROM legacy_tables.legacy_mc_inaccurate_min_max WHERE k=100 AND c1<3
+         */
+
         String query = "SELECT * FROM legacy_tables.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1";
-        SelectStatement stmt = (SelectStatement) QueryProcessor.parseStatement(query).prepare(ClientState.forInternalCalls()).statement;
-
-        SinglePartitionReadCommand.Group queryGroup = (SinglePartitionReadCommand.Group) stmt.getQuery(QueryOptions.DEFAULT, FBUtilities.nowInSeconds());
-        Assert.assertEquals(1, queryGroup.commands.size());
-        SinglePartitionReadCommand command = Iterables.getOnlyElement(queryGroup.commands);
-        try (ReadOrderGroup group = ReadOrderGroup.forCommand(command);
-             UnfilteredPartitionIterator partitions = command.executeLocally(group))
-        {
-            Assert.assertTrue(partitions.hasNext());
-            try (UnfilteredRowIterator partition = partitions.next())
-            {
-                Assert.assertTrue(partition.hasNext());
-                Unfiltered first = partition.next();
-                Assert.assertTrue(first.isRangeTombstoneMarker());
-
-                RangeTombstoneMarker firstMarker = (RangeTombstoneMarker) first;
-                Assert.assertTrue(firstMarker.isOpen(false));
-
-
-                Assert.assertTrue(partition.hasNext());
-                Unfiltered second = partition.next();
-                Assert.assertTrue(first.isRangeTombstoneMarker());
-
-                RangeTombstoneMarker secondMarker = (RangeTombstoneMarker) second;
-                Assert.assertTrue(secondMarker.isClose(false));
-
-                Assert.assertFalse(partition.hasNext());
-            }
-            Assert.assertFalse(partitions.hasNext());
-        }
+        List<Unfiltered> unfiltereds = SinglePartitionSliceCommandTest.getUnfilteredsFromSinglePartition(query);
+        Assert.assertEquals(2, unfiltereds.size());
+        Assert.assertTrue(unfiltereds.get(0).isRangeTombstoneMarker());
+        Assert.assertTrue(((RangeTombstoneMarker) unfiltereds.get(0)).isOpen(false));
+        Assert.assertTrue(unfiltereds.get(1).isRangeTombstoneMarker());
+        Assert.assertTrue(((RangeTombstoneMarker) unfiltereds.get(1)).isClose(false));
     }
 
     @Test
