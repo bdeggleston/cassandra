@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+
 import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import com.clearspring.analytics.stream.cardinality.ICardinality;
 import org.apache.cassandra.db.*;
@@ -98,8 +101,8 @@ public class MetadataCollector implements PartitionStatisticsCollector
     protected double compressionRatio = NO_COMPRESSION_RATIO;
     protected StreamingTombstoneHistogramBuilder estimatedTombstoneDropTime = new StreamingTombstoneHistogramBuilder(SSTable.TOMBSTONE_HISTOGRAM_BIN_SIZE, SSTable.TOMBSTONE_HISTOGRAM_SPOOL_SIZE, SSTable.TOMBSTONE_HISTOGRAM_TTL_ROUND_SECONDS);
     protected int sstableLevel;
-    protected ByteBuffer[] minClusteringValues;
-    protected ByteBuffer[] maxClusteringValues;
+    private ClusteringPrefix minClustering = ClusteringBound.TOP;
+    private ClusteringPrefix maxClustering = ClusteringBound.BOTTOM;
     protected boolean hasLegacyCounterShards = false;
     protected long totalColumnsSet;
     protected long totalRows;
@@ -117,8 +120,6 @@ public class MetadataCollector implements PartitionStatisticsCollector
     {
         this.comparator = comparator;
 
-        this.minClusteringValues = new ByteBuffer[comparator.size()];
-        this.maxClusteringValues = new ByteBuffer[comparator.size()];
     }
 
     public MetadataCollector(Iterable<SSTableReader> sstables, ClusteringComparator comparator, int level)
@@ -227,20 +228,8 @@ public class MetadataCollector implements PartitionStatisticsCollector
 
     public MetadataCollector updateClusteringValues(ClusteringPrefix clustering)
     {
-        if (clustering.size() < minClusteringValues.length)
-        {
-            minClusteringValues = Arrays.copyOf(minClusteringValues, clustering.size(), ByteBuffer[].class);
-            maxClusteringValues = Arrays.copyOf(maxClusteringValues, clustering.size(), ByteBuffer[].class);
-        }
-
-        int size = Math.min(clustering.size(), minClusteringValues.length);
-        for (int i = 0; i < size; i++)
-        {
-            AbstractType<?> type = comparator.subtype(i);
-            ByteBuffer newValue = clustering.get(i);
-            minClusteringValues[i] = maybeMinimize(min(minClusteringValues[i], newValue, type));
-            maxClusteringValues[i] = maybeMinimize(max(maxClusteringValues[i], newValue, type));
-        }
+        minClustering = comparator.compare(clustering, minClustering) < 0 ? clustering : minClustering;
+        maxClustering = comparator.compare(clustering, maxClustering) > 0 ? clustering : maxClustering;
         return this;
     }
 
@@ -282,6 +271,7 @@ public class MetadataCollector implements PartitionStatisticsCollector
 
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance, long repairedAt, UUID pendingRepair, boolean isTransient, SerializationHeader header)
     {
+        Preconditions.checkState(comparator.compare(maxClustering, minClustering) >= 0);
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
         components.put(MetadataType.VALIDATION, new ValidationMetadata(partitioner, bloomFilterFPChance));
         components.put(MetadataType.STATS, new StatsMetadata(estimatedPartitionSize,
@@ -296,8 +286,8 @@ public class MetadataCollector implements PartitionStatisticsCollector
                                                              compressionRatio,
                                                              estimatedTombstoneDropTime.build(),
                                                              sstableLevel,
-                                                             makeList(minClusteringValues),
-                                                             makeList(maxClusteringValues),
+                                                             makeList(minClustering.getRawValues()),
+                                                             makeList(maxClustering.getRawValues()),
                                                              hasLegacyCounterShards,
                                                              repairedAt,
                                                              totalColumnsSet,
