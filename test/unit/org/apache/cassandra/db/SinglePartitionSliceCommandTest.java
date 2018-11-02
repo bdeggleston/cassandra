@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
+import com.google.common.primitives.Ints;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -56,6 +58,7 @@ import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.RangeTombstoneMarker;
@@ -412,6 +415,21 @@ public class SinglePartitionSliceCommandTest
         return unfiltereds;
     }
 
+    private static void assertQueryReturnsSingleRT(String query)
+    {
+        List<Unfiltered> unfiltereds = getUnfilteredsFromSinglePartition(query);
+        Assert.assertEquals(2, unfiltereds.size());
+        Assert.assertTrue(unfiltereds.get(0).isRangeTombstoneMarker());
+        Assert.assertTrue(((RangeTombstoneMarker) unfiltereds.get(0)).isOpen(false));
+        Assert.assertTrue(unfiltereds.get(1).isRangeTombstoneMarker());
+        Assert.assertTrue(((RangeTombstoneMarker) unfiltereds.get(1)).isClose(false));
+    }
+
+    private static ByteBuffer bb(int v)
+    {
+        return Int32Type.instance.decompose(v);
+    }
+
     /**
      * tests the bug raised in CASSANDRA-14861, where the sstable min/max can
      * exclude range tombstones for clustering ranges not also covered by rows
@@ -420,23 +438,31 @@ public class SinglePartitionSliceCommandTest
     public void sstableFiltering()
     {
         QueryProcessor.executeOnceInternal("CREATE TABLE ks.legacy_mc_inaccurate_min_max (k int, c1 int, c2 int, c3 int, v int, primary key (k, c1, c2, c3))");
-        QueryProcessor.executeOnceInternal("INSERT INTO ks.legacy_mc_inaccurate_min_max (k, c1, c2, c3, v) VALUES (100, 2, 2, 2, 2)");
-        QueryProcessor.executeOnceInternal("DELETE FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1");
-
         CFMetaData metadata = Schema.instance.getCFMetaData("ks", "legacy_mc_inaccurate_min_max");
         ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(metadata.cfId);
 
-        List<Unfiltered> preFlush = getUnfilteredsFromSinglePartition("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1");
-        Assert.assertEquals(2, preFlush.size());
-        Assert.assertTrue(preFlush.get(0).isRangeTombstoneMarker());
-        Assert.assertTrue(((RangeTombstoneMarker) preFlush.get(0)).isOpen(false));
-        Assert.assertTrue(preFlush.get(1).isRangeTombstoneMarker());
-        Assert.assertTrue(((RangeTombstoneMarker) preFlush.get(1)).isClose(false));
-
+        QueryProcessor.executeOnceInternal("INSERT INTO ks.legacy_mc_inaccurate_min_max (k, c1, c2, c3, v) VALUES (100, 2, 2, 2, 2)");
+        QueryProcessor.executeOnceInternal("DELETE FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1");
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1");
         cfs.forceBlockingFlush();
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1");
 
-        List<Unfiltered> postFlush = getUnfilteredsFromSinglePartition("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1");
-        Assert.assertEquals(2, postFlush.size());
-        Assert.assertEquals(preFlush, postFlush);
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=1 AND c2=1 AND c3=1"); // clustering names
+
+        cfs.truncateBlocking();
+
+        long nowMillis = System.currentTimeMillis();
+        Slice slice = Slice.make(new Clustering(bb(2), bb(3)), new Clustering(bb(10), bb(10)));
+        RangeTombstone rt = new RangeTombstone(slice, new DeletionTime(TimeUnit.MILLISECONDS.toMicros(nowMillis),
+                                                                       Ints.checkedCast(TimeUnit.MILLISECONDS.toSeconds(nowMillis))));
+        PartitionUpdate update = new PartitionUpdate(cfs.metadata, bb(100), cfs.metadata.partitionColumns(), 1);
+        update.add(rt);
+        new Mutation(update).apply();
+
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=3 AND c2=2");
+        cfs.forceBlockingFlush();
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=3 AND c2=2");
+        assertQueryReturnsSingleRT("SELECT * FROM ks.legacy_mc_inaccurate_min_max WHERE k=100 AND c1=3 AND c2=2 AND c3=2"); // clustering names
+
     }
 }
