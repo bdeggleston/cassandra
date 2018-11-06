@@ -350,8 +350,8 @@ public class StatsMetadata extends MetadataComponent
             int sstableLevel = in.readInt();
             long repairedAt = in.readLong();
 
-            // for legacy sstables, we only deserialize the first element of the min and max
-            // value to prevent erroneously excluding sstables from reads (see CASSANDRA-14861)
+            // for legacy sstables, we skip deserializing the min and max clustering value
+            // to prevent erroneously excluding sstables from reads (see CASSANDRA-14861)
             int colCount = in.readInt();
             List<ByteBuffer> minClusteringValues = new ArrayList<>(colCount);
             for (int i = 0; i < colCount; i++)
