@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -275,15 +276,33 @@ public class DatabaseDescriptorTest
         DatabaseDescriptor.applyAddressConfig(testConfig);
 
     }
-    
+
     @Test
     public void testTokensFromString()
     {
         assertTrue(DatabaseDescriptor.tokensFromString(null).isEmpty());
         Collection<String> tokens = DatabaseDescriptor.tokensFromString(" a,b ,c , d, f,g,h");
         assertEquals(7, tokens.size());
-        assertTrue(tokens.containsAll(Arrays.asList(new String[]{"a", "b", "c", "d", "f", "g", "h"})));
+        assertTrue(tokens.containsAll(Arrays.asList(new String[]{ "a", "b", "c", "d", "f", "g", "h" })));
+    }
 
-        
+    @Test
+    public void testRepairSessionSizeToggles()
+    {
+        int previousDepth = DatabaseDescriptor.getRepairSessionMaxTreeDepth();
+        try
+        {
+            Assert.assertEquals(18, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(4);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(0);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+        }
+        finally
+        {
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(previousDepth);
+        }
     }
 }

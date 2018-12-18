@@ -434,6 +434,9 @@ public class DatabaseDescriptor
         else
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
+        if (conf.repair_session_max_tree_depth < 1)
+            throw new ConfigurationException(("repair_session_max_tree_depth must be strictly positive, but was " + conf.repair_session_max_tree_depth));
+
         if (conf.thrift_framed_transport_size_in_mb <= 0)
             throw new ConfigurationException("thrift_framed_transport_size_in_mb must be positive, but was " + conf.thrift_framed_transport_size_in_mb, false);
 
@@ -2275,6 +2278,21 @@ public class DatabaseDescriptor
     public static Float getMemtableCleanupThreshold()
     {
         return conf.memtable_cleanup_threshold;
+    }
+
+    public static int getRepairSessionMaxTreeDepth()
+    {
+        return conf.repair_session_max_tree_depth;
+    }
+
+    public static void setRepairSessionMaxTreeDepth(int depth)
+    {
+        if (depth < 1)
+        {
+            logger.warn("Cannot set repair session max tree depth to less than one, doing nothing");
+            return;
+        }
+        conf.repair_session_max_tree_depth = depth;
     }
 
     public static int getIndexSummaryResizeIntervalInMinutes()
