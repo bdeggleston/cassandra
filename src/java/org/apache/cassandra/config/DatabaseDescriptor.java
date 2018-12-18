@@ -439,6 +439,9 @@ public class DatabaseDescriptor
         else
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
+        if (conf.repair_session_max_tree_depth < 1)
+            throw new ConfigurationException(("repair_session_max_tree_depth must be strictly positive, but was " + conf.repair_session_max_tree_depth));
+
         applyAddressConfig(config);
 
         if (conf.thrift_framed_transport_size_in_mb <= 0)
@@ -1949,6 +1952,21 @@ public class DatabaseDescriptor
             default:
                 throw new AssertionError();
         }
+    }
+
+    public static int getRepairSessionMaxTreeDepth()
+    {
+        return conf.repair_session_max_tree_depth;
+    }
+
+    public static void setRepairSessionMaxTreeDepth(int depth)
+    {
+        if (depth < 1)
+        {
+            logger.warn("Cannot set repair session max tree depth to less than one, doing nothing");
+            return;
+        }
+        conf.repair_session_max_tree_depth = depth;
     }
 
     public static boolean getOutboundBindAny()
