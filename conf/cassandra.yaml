@@ -498,6 +498,35 @@ concurrent_materialized_view_writes: 32
 #    off heap objects
 memtable_allocation_type: heap_buffers
 
+# Limit the maximum Merkle tree depth to conserve memory during repairs.
+# The main tradeoff is that smaller trees are less precise, which can
+# lead to over-streaming data. Prior to 2.0 all trees were of depth 15
+# per range giving a resolution of 2^15 = 32,768 leaves. Since 2.1 tree
+# depth dynamically changes based on the number of partitions up to
+# the default maximum depth of 18 giving 2^18 = maximum 262,144 leaves.
+#
+# In a tree of depth n, there are 2^n - 1 inner nodes and 2^n leaf
+# nodes. During repair RF trees are held in memory to compare them. As
+# leaves are roughly 80 bytes and inner nodes are roughly 112 bytes,
+# you can estimate the depth you need to meet a certain memory budget
+# as follows:
+#    depth ~= log_2((size_in_bytes + size_of(inner)) /
+#                   (size_of(inner) + size_of(leaf))
+#                  )
+#    depth ~= log_2((size_in_bytes + 112) / 192)
+#
+# For example, if you have RF=3 and want to use 100MiB total or
+# equivalently 33.3 MiB per tree:
+#    repair_session_max_tree_depth = log_2((34952533 + 112) / (192))
+#    repair_session_max_tree_depth = floor(17.47)
+#    repair_session_max_tree_depth = 17
+#
+# The default setting of 18 generates trees on the order of 50 MiB
+# per tree, so with RF3, the coordinator is holding 150 MiB on heap.
+# For more details see https://issues.apache.org/jira/browse/CASSANDRA-14096.
+#
+# repair_session_max_tree_depth: 18
+
 # Total space to use for commit logs on disk.
 #
 # If space gets above this value, Cassandra will flush every dirty CF
