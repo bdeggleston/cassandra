@@ -458,6 +458,14 @@ public class DatabaseDescriptor
         else
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
+        if (conf.repair_session_space_in_mb == null)
+            conf.repair_session_space_in_mb = Math.max(1, (int) (Runtime.getRuntime().maxMemory() / (16 * 1048576)));
+
+        if (conf.repair_session_space_in_mb < 1)
+            throw new ConfigurationException(("repair_session_space_in_mb must be strictly positive, but was " + conf.repair_session_space_in_mb));
+        if (conf.repair_session_max_tree_depth < 1)
+            throw new ConfigurationException(("repair_session_max_tree_depth must be strictly positive, but was " + conf.repair_session_max_tree_depth));
+
         checkForLowestAcceptedTimeouts(conf);
 
         if (conf.native_transport_max_frame_size_in_mb <= 0)
@@ -2370,6 +2378,37 @@ public class DatabaseDescriptor
     public static Config.MemtableAllocationType getMemtableAllocationType()
     {
         return conf.memtable_allocation_type;
+    }
+
+    public static int getRepairSessionMaxTreeDepth()
+    {
+        return conf.repair_session_max_tree_depth;
+    }
+
+    public static void setRepairSessionMaxTreeDepth(int depth)
+    {
+        if (depth < 1)
+        {
+            logger.warn("Cannot set repair session max tree depth to less than one, doing nothing");
+            return;
+        }
+        conf.repair_session_max_tree_depth = depth;
+    }
+
+    public static int getRepairSessionSpaceInMegabytes()
+    {
+        return conf.repair_session_space_in_mb;
+    }
+
+    public static void setRepairSessionSpaceInMegabytes(int sizeInMegabytes)
+    {
+        if (sizeInMegabytes < 1)
+        {
+            logger.warn("Cannot set repair session space to less than one megabyte, doing nothing");
+            return;
+        }
+
+        conf.repair_session_space_in_mb = sizeInMegabytes;
     }
 
     public static Float getMemtableCleanupThreshold()

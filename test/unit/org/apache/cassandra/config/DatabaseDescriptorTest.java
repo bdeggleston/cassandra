@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -249,5 +250,36 @@ public class DatabaseDescriptorTest
         assertTrue(testConfig.cas_contention_timeout_in_ms == DatabaseDescriptor.LOWEST_ACCEPTED_TIMEOUT);
         assertTrue(testConfig.counter_write_request_timeout_in_ms == DatabaseDescriptor.LOWEST_ACCEPTED_TIMEOUT);
         assertTrue(testConfig.request_timeout_in_ms == DatabaseDescriptor.LOWEST_ACCEPTED_TIMEOUT);
+    }
+
+    @Test
+    public void testRepairSessionSizeToggles()
+    {
+        int previousSize = DatabaseDescriptor.getRepairSessionSpaceInMegabytes();
+        int previousDepth = DatabaseDescriptor.getRepairSessionMaxTreeDepth();
+        try
+        {
+            Assert.assertEquals((Runtime.getRuntime().maxMemory() / (1024 * 1024) / 16),
+                                DatabaseDescriptor.getRepairSessionSpaceInMegabytes());
+
+            DatabaseDescriptor.setRepairSessionSpaceInMegabytes(20);
+            Assert.assertEquals(DatabaseDescriptor.getRepairSessionSpaceInMegabytes(), 20);
+
+            DatabaseDescriptor.setRepairSessionSpaceInMegabytes(0);
+            Assert.assertEquals(DatabaseDescriptor.getRepairSessionSpaceInMegabytes(), 20);
+
+            Assert.assertEquals(18, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(4);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(0);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
+            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+        }
+        finally
+        {
+            DatabaseDescriptor.setRepairSessionSpaceInMegabytes(previousSize);
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(previousDepth);
+        }
     }
 }
