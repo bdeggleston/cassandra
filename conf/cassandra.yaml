@@ -506,6 +506,23 @@ concurrent_materialized_view_writes: 32
 #    off heap objects
 memtable_allocation_type: heap_buffers
 
+# Limit memory usage for Merkle Tree calculations during repairs. You can
+# either limit the total amount of memory used by a single repair session
+# (defaults to 1/16 of the heap), or you can limit the maximum depth of
+# the Merkle trees themselves. Note that repair will not allocate trees
+# that violate the memory budget _or_ go past the max tree depth, if you
+# want larger trees than a depth of 18 you must raise the max tree depth.
+#
+# The main tradeoff is that smaller trees are less precise, which can
+# lead to over-streaming data. Prior to 2.0 all trees were of depth 15
+# per range giving a resolution of 2^15 = 32,768 leaves. After 2.1 tree
+# depth dynamically changes based on the number of partitions but
+# the maximum depth is 18 giving 2^18 = maximum 262,144 leaves.
+# For more details see https://issues.apache.org/jira/browse/CASSANDRA-14096.
+#
+# repair_session_space_in_mb:
+# repair_session_max_tree_depth: 18
+
 # Total space to use for commit logs on disk.
 #
 # If space gets above this value, Cassandra will flush every dirty CF

@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.*;
 import org.slf4j.Logger;
@@ -102,10 +103,13 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     // Each validation task waits response from replica in validating ConcurrentMap (keyed by CF name and endpoint address)
     private final ConcurrentMap<Pair<RepairJobDesc, InetAddressAndPort>, ValidationTask> validating = new ConcurrentHashMap<>();
     // Remote syncing jobs wait response in syncingTasks map
-    private final ConcurrentMap<Pair<RepairJobDesc, SyncNodePair>, CompletableRemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
+    @VisibleForTesting
+    final ConcurrentMap<Pair<RepairJobDesc, SyncNodePair>, CompletableRemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
 
     // Tasks(snapshot, validate request, differencing, ...) are run on taskExecutor
-    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask"));
+    @VisibleForTesting
+    final DebuggableThreadPoolExecutor debuggableExecutor = DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
+    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(debuggableExecutor);
     public final boolean optimiseStreams;
 
     private volatile boolean terminated = false;
@@ -230,7 +234,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      */
     public void syncComplete(RepairJobDesc desc, SyncNodePair nodes, boolean success, List<SessionSummary> summaries)
     {
-        CompletableRemoteSyncTask task = syncingTasks.get(Pair.create(desc, nodes));
+        CompletableRemoteSyncTask task = syncingTasks.remove(Pair.create(desc, nodes));
         if (task == null)
         {
             assert terminated;
