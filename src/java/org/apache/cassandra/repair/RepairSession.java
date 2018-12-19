@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.*;
 import org.slf4j.Logger;
@@ -53,8 +54,8 @@ import org.apache.cassandra.utils.Pair;
  *      validationComplete()).
  *   </li>
  *   <li>Synchronization phase: once all trees are received, the job compares each tree with
- *      all the other using a so-called {@link SyncTask}. If there is difference between 2 trees, the
- *      concerned SyncTask will start a streaming of the difference between the 2 endpoint concerned.
+ *      all the others and creates a {@link SyncTask} for each diverging replica. If there are differences
+ *      between 2 trees, the concerned SyncTask stream the differences between the 2 endpoints concerned.
  *   </li>
  * </ol>
  * The job is done once all its SyncTasks are done (i.e. have either computed no differences
@@ -96,10 +97,13 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     // Each validation task waits response from replica in validating ConcurrentMap (keyed by CF name and endpoint address)
     private final ConcurrentMap<Pair<RepairJobDesc, InetAddress>, ValidationTask> validating = new ConcurrentHashMap<>();
     // Remote syncing jobs wait response in syncingTasks map
-    private final ConcurrentMap<Pair<RepairJobDesc, NodePair>, RemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
+    @VisibleForTesting
+    final ConcurrentMap<Pair<RepairJobDesc, NodePair>, RemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
 
     // Tasks(snapshot, validate request, differencing, ...) are run on taskExecutor
-    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask"));
+    @VisibleForTesting
+    final DebuggableThreadPoolExecutor debuggableExecutor = DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
+    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(debuggableExecutor);
 
     private volatile boolean terminated = false;
 
@@ -187,7 +191,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      */
     public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
     {
-        RemoteSyncTask task = syncingTasks.get(Pair.create(desc, nodes));
+        RemoteSyncTask task = removeSyncingTask(desc, nodes);
         if (task == null)
         {
             assert terminated;
@@ -196,6 +200,11 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
 
         logger.debug(String.format("[repair #%s] Repair completed between %s and %s on %s", getId(), nodes.endpoint1, nodes.endpoint2, desc.columnFamily));
         task.syncComplete(success);
+    }
+
+    RemoteSyncTask removeSyncingTask(RepairJobDesc desc, NodePair nodes)
+    {
+        return syncingTasks.remove(Pair.create(desc, nodes));
     }
 
     private String repairedNodes()
