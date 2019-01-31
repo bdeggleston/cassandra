@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +42,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.IPartitioner;
@@ -83,6 +85,24 @@ public class RepairJobTest extends SchemaLoader
     private RepairJob job;
     private RepairJobDesc sessionJobDesc;
 
+    // So that threads actually get recycled and we can have accurate memory accounting while testing
+    // memory retention from CASSANDRA-14096
+    private static class MeasureableRepairSession extends RepairSession
+    {
+        public MeasureableRepairSession(UUID parentRepairSession, UUID id, Collection<Range<Token>> ranges, String keyspace,
+                                        RepairParallelism parallelismDegree, Set<InetAddress> endpoints, long repairedAt, String... cfnames)
+        {
+            super(parentRepairSession, id, ranges, keyspace, parallelismDegree, endpoints, repairedAt, cfnames);
+        }
+
+        protected DebuggableThreadPoolExecutor createExecutor()
+        {
+            DebuggableThreadPoolExecutor executor = super.createExecutor();
+            executor.setKeepAliveTime(THREAD_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            return executor;
+        }
+    }
+
     @BeforeClass
     public static void setupClass() throws UnknownHostException
     {
@@ -106,13 +126,10 @@ public class RepairJobTest extends SchemaLoader
                                                                  Collections.singletonList(Keyspace.open(KEYSPACE).getColumnFamilyStore(CF)), fullRange, false,
                                                                  ActiveRepairService.UNREPAIRED_SSTABLE, false);
 
-        this.session = new RepairSession(parentRepairSession, UUIDGen.getTimeUUID(), fullRange,
-                                         KEYSPACE, RepairParallelism.SEQUENTIAL, neighbors,
-                                         ActiveRepairService.UNREPAIRED_SSTABLE, CF);
+        this.session = new MeasureableRepairSession(parentRepairSession, UUIDGen.getTimeUUID(), fullRange,
+                                                    KEYSPACE, RepairParallelism.SEQUENTIAL, neighbors,
+                                                    ActiveRepairService.UNREPAIRED_SSTABLE, CF);
 
-        // So that threads actually get recycled and we can have accurate memory accounting while testing
-        // memory retention from CASSANDRA-14096
-        this.session.debuggableExecutor.setKeepAliveTime(THREAD_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
         this.job = new RepairJob(session, CF);
         this.sessionJobDesc = new RepairJobDesc(session.parentRepairSession, session.getId(),
                                                 session.keyspace, CF, session.getRanges());
@@ -146,7 +163,9 @@ public class RepairJobTest extends SchemaLoader
         RepairResult result = job.get(TEST_TIMEOUT_S, TimeUnit.SECONDS);
 
         assertEquals(3, result.stats.size());
-        assertEquals(0, session.syncingTasks.size());
+        // Should be one remote sync left behind (other two should be local)
+        assertEquals(1, session.getSyncingTasks().size());
+        assertTasksAllEmpty(new ArrayList<>(session.getSyncingTasks().values()));
 
         // RepairJob should send out SNAPSHOTS -> VALIDATIONS -> done
         List<RepairMessage.Type> expectedTypes = new ArrayList<>();
@@ -212,11 +231,10 @@ public class RepairJobTest extends SchemaLoader
 
         assertTrue(ObjectSizes.measureDeep(results) < 0.8 * singleTreeSize);
 
-        // Simulate the final success callback
-        results.forEach(stat -> session.removeSyncingTask(sessionJobDesc, stat.nodes));
-
         assertEquals(3, results.size());
-        assertEquals(0, session.syncingTasks.size());
+        // The one empty RemoteSyncTask should be retained
+        assertEquals(1, session.getSyncingTasks().size());
+        assertTasksAllEmpty(new ArrayList<>(session.getSyncingTasks().values()));
 
         int numDifferent = 0;
         for (SyncStat stat : results)
@@ -228,6 +246,14 @@ public class RepairJobTest extends SchemaLoader
             }
         }
         assertEquals(2, numDifferent);
+    }
+
+    private void assertTasksAllEmpty(List<RemoteSyncTask> tasks)
+    {
+        for (SyncTask task : tasks)
+        {
+            assertEquals(0, task.getCurrentStat().numberOfDifferences);
+        }
     }
 
     private MerkleTrees createInitialTree(boolean invalidate)
