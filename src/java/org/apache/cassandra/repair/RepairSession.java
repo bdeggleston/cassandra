@@ -97,13 +97,10 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     // Each validation task waits response from replica in validating ConcurrentMap (keyed by CF name and endpoint address)
     private final ConcurrentMap<Pair<RepairJobDesc, InetAddress>, ValidationTask> validating = new ConcurrentHashMap<>();
     // Remote syncing jobs wait response in syncingTasks map
-    @VisibleForTesting
-    final ConcurrentMap<Pair<RepairJobDesc, NodePair>, RemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<RepairJobDesc, NodePair>, RemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
 
     // Tasks(snapshot, validate request, differencing, ...) are run on taskExecutor
-    @VisibleForTesting
-    final DebuggableThreadPoolExecutor debuggableExecutor = DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
-    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(debuggableExecutor);
+    public final ListeningExecutorService taskExecutor;
 
     private volatile boolean terminated = false;
 
@@ -138,6 +135,13 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         this.ranges = ranges;
         this.endpoints = endpoints;
         this.repairedAt = repairedAt;
+        this.taskExecutor = MoreExecutors.listeningDecorator(createExecutor());
+    }
+
+    @VisibleForTesting
+    protected DebuggableThreadPoolExecutor createExecutor()
+    {
+        return DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
     }
 
     public UUID getId()
@@ -191,7 +195,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      */
     public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
     {
-        RemoteSyncTask task = removeSyncingTask(desc, nodes);
+        RemoteSyncTask task = syncingTasks.remove(Pair.create(desc, nodes));
         if (task == null)
         {
             assert terminated;
@@ -202,9 +206,10 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         task.syncComplete(success);
     }
 
-    RemoteSyncTask removeSyncingTask(RepairJobDesc desc, NodePair nodes)
+    @VisibleForTesting
+    Map<Pair<RepairJobDesc, NodePair>, RemoteSyncTask> getSyncingTasks()
     {
-        return syncingTasks.remove(Pair.create(desc, nodes));
+        return Collections.unmodifiableMap(syncingTasks);
     }
 
     private String repairedNodes()

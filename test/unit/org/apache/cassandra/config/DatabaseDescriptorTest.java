@@ -280,12 +280,12 @@ public class DatabaseDescriptorTest
         try
         {
             Assert.assertEquals(18, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
-            DatabaseDescriptor.setRepairSessionMaxTreeDepth(4);
-            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
-            DatabaseDescriptor.setRepairSessionMaxTreeDepth(0);
-            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(10);
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(9);
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
             DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
-            Assert.assertEquals(4, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
         }
         finally
         {
