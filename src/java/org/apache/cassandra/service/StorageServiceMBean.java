@@ -368,14 +368,6 @@ public interface StorageServiceMBean extends NotificationEmitter
     @Nullable
     public List<String> getParentRepairStatus(int cmd);
 
-    public void setRepairSessionMaxTreeDepth(int depth);
-
-    public int getRepairSessionMaxTreeDepth();
-
-    public void setRepairSessionSpaceInMegabytes(int sizeInMegabytes);
-
-    public int getRepairSessionSpaceInMegabytes();
-
     /**
      * transfer this node's data to other machines and remove it from service.
      * @param force Decommission even if this will reduce N to be less than RF.

@@ -103,13 +103,10 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
     // Each validation task waits response from replica in validating ConcurrentMap (keyed by CF name and endpoint address)
     private final ConcurrentMap<Pair<RepairJobDesc, InetAddressAndPort>, ValidationTask> validating = new ConcurrentHashMap<>();
     // Remote syncing jobs wait response in syncingTasks map
-    @VisibleForTesting
-    final ConcurrentMap<Pair<RepairJobDesc, SyncNodePair>, CompletableRemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Pair<RepairJobDesc, SyncNodePair>, CompletableRemoteSyncTask> syncingTasks = new ConcurrentHashMap<>();
 
     // Tasks(snapshot, validate request, differencing, ...) are run on taskExecutor
-    @VisibleForTesting
-    final DebuggableThreadPoolExecutor debuggableExecutor = DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
-    public final ListeningExecutorService taskExecutor = MoreExecutors.listeningDecorator(debuggableExecutor);
+    public final ListeningExecutorService taskExecutor;
     public final boolean optimiseStreams;
 
     private volatile boolean terminated = false;
@@ -176,6 +173,12 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         this.pullRepair = pullRepair;
         this.skippedReplicas = forceSkippedReplicas;
         this.optimiseStreams = optimiseStreams;
+        this.taskExecutor = MoreExecutors.listeningDecorator(createExecutor());
+    }
+
+    protected DebuggableThreadPoolExecutor createExecutor()
+    {
+        return DebuggableThreadPoolExecutor.createCachedThreadpoolWithMaxSize("RepairJobTask");
     }
 
     public UUID getId()
@@ -244,6 +247,12 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
         if (logger.isDebugEnabled())
             logger.debug("{} Repair completed between {} and {} on {}", previewKind.logPrefix(getId()), nodes.coordinator, nodes.peer, desc.columnFamily);
         task.syncComplete(success, summaries);
+    }
+
+    @VisibleForTesting
+    Map<Pair<RepairJobDesc, SyncNodePair>, CompletableRemoteSyncTask> getSyncingTasks()
+    {
+        return Collections.unmodifiableMap(syncingTasks);
     }
 
     private String repairedNodes()

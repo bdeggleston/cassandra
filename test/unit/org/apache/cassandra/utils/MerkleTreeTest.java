@@ -574,6 +574,10 @@ public class MerkleTreeTest
         // With no allowed space we should still get a depth of 1
         Assert.assertEquals(1, MerkleTree.estimatedMaxDepthForBytes(Murmur3Partitioner.instance, 0, 32));
 
+        // The minimum of 1 megabyte split between RF=3 should yield trees of around 10
+        Assert.assertEquals(10, MerkleTree.estimatedMaxDepthForBytes(Murmur3Partitioner.instance,
+                                                                     1048576 / 3, 32));
+
         // With a single megabyte of space we should get 12
         Assert.assertEquals(12, MerkleTree.estimatedMaxDepthForBytes(Murmur3Partitioner.instance,
                                                                      1048576, 32));

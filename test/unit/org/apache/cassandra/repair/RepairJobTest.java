@@ -44,6 +44,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.IPartitioner;
@@ -97,6 +98,23 @@ public class RepairJobTest
     private RepairJob job;
     private RepairJobDesc sessionJobDesc;
 
+    // So that threads actually get recycled and we can have accurate memory accounting while testing
+    // memory retention from CASSANDRA-14096
+    private static class MeasureableRepairSession extends RepairSession
+    {
+        public MeasureableRepairSession(UUID parentRepairSession, UUID id, CommonRange commonRange, String keyspace,
+                                        RepairParallelism parallelismDegree, boolean isIncremental, boolean pullRepair,
+                                        boolean force, PreviewKind previewKind, boolean optimiseStreams, String... cfnames)
+        {
+            super(parentRepairSession, id, commonRange, keyspace, parallelismDegree, isIncremental, pullRepair, force, previewKind, optimiseStreams, cfnames);
+        }
+
+        protected DebuggableThreadPoolExecutor createExecutor()
+        {
+            DebuggableThreadPoolExecutor executor = super.createExecutor();
+            executor.setKeepAliveTime(THREAD_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            return executor;        }
+    }
     @BeforeClass
     public static void setupClass() throws UnknownHostException
     {
@@ -121,15 +139,12 @@ public class RepairJobTest
                                                                  Collections.singletonList(Keyspace.open(KEYSPACE).getColumnFamilyStore(CF)), fullRange, false,
                                                                  ActiveRepairService.UNREPAIRED_SSTABLE, false, PreviewKind.NONE);
 
-        this.session = new RepairSession(parentRepairSession, UUIDGen.getTimeUUID(),
-                                         new CommonRange(neighbors, Collections.emptySet(), fullRange),
-                                         KEYSPACE, RepairParallelism.SEQUENTIAL,
-                                         false, false, false,
-                                         PreviewKind.NONE, false, CF);
+        this.session = new MeasureableRepairSession(parentRepairSession, UUIDGen.getTimeUUID(),
+                                                    new CommonRange(neighbors, Collections.emptySet(), fullRange),
+                                                    KEYSPACE, RepairParallelism.SEQUENTIAL,
+                                                    false, false, false,
+                                                    PreviewKind.NONE, false, CF);
 
-        // So that threads actually get recycled and we can have accurate memory accounting while testing
-        // memory retention from CASSANDRA-14096
-        this.session.debuggableExecutor.setKeepAliveTime(THREAD_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
         this.job = new RepairJob(session, CF);
         this.sessionJobDesc = new RepairJobDesc(session.parentRepairSession, session.getId(),
                                                 session.keyspace, CF, session.ranges());
@@ -233,7 +248,7 @@ public class RepairJobTest
         assertTrue(ObjectSizes.measureDeep(results) < 0.8 * singleTreeSize);
 
         assertEquals(2, results.size());
-        assertEquals(0, session.syncingTasks.size());
+        assertEquals(0, session.getSyncingTasks().size());
         assertTrue(results.stream().allMatch(s -> s.numberOfDifferences == 1));
 
         assertEquals(2, messages.size());
