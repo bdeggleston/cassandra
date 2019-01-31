@@ -435,7 +435,7 @@ public class DatabaseDescriptor
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
         if (conf.repair_session_max_tree_depth < 10)
-            throw new ConfigurationException(("repair_session_max_tree_depth should not be < 10, but was " + conf.repair_session_max_tree_depth));
+            throw new ConfigurationException("repair_session_max_tree_depth should not be < 10, but was " + conf.repair_session_max_tree_depth);
         if (conf.repair_session_max_tree_depth > 20)
             logger.warn("repair_session_max_tree_depth of " + conf.repair_session_max_tree_depth + " > 20 could lead to excessive memory usage");
 
@@ -2290,10 +2290,9 @@ public class DatabaseDescriptor
     public static void setRepairSessionMaxTreeDepth(int depth)
     {
         if (depth < 10)
-        {
-            logger.warn("Cannot set repair session max tree depth to less than 10, doing nothing");
-            return;
-        }
+            throw new ConfigurationException("repair_session_max_tree_depth should not be < 10, but was " + depth);
+        if (depth > 20)
+            logger.warn("repair_session_max_tree_depth of " + depth + " > 20 could lead to excessive memory usage");
         conf.repair_session_max_tree_depth = depth;
     }
 
