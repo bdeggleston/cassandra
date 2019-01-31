@@ -120,11 +120,6 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
             {
                 logger.info("[repair #{}] {} is fully synced", session.getId(), desc.columnFamily);
                 SystemDistributedKeyspace.successfulRepairJob(session.getId(), desc.keyspace, desc.columnFamily);
-                // Cleans up any leftover RemoteSyncTasks from the RepairSession's syncingTasks map for nodes
-                // that immediately succeeded in SyncTask::run with no differences (meaning no syncComplete callback)
-                // We do this so keyspaces with many column families do not needlessly retain memory
-                // See CASSANDRA-14096 for more information.
-                stats.forEach(stat -> session.removeSyncingTask(desc, stat.nodes));
                 set(new RepairResult(desc, stats));
             }
 
@@ -136,8 +131,6 @@ public class RepairJob extends AbstractFuture<RepairResult> implements Runnable
                 logger.warn("[repair #{}] {} sync failed", session.getId(), desc.columnFamily);
                 SystemDistributedKeyspace.failedRepairJob(session.getId(), desc.keyspace, desc.columnFamily, t);
                 setException(t);
-                // We don't have to call session.removeSyncingTask here because this failure will bubble up to the
-                // RepairSession which will call RepairSession::forceShutdown from the callback
             }
         }, taskExecutor);
 
