@@ -163,9 +163,8 @@ public class RepairJobTest extends SchemaLoader
         RepairResult result = job.get(TEST_TIMEOUT_S, TimeUnit.SECONDS);
 
         assertEquals(3, result.stats.size());
-        // Should be one remote sync left behind (other two should be local)
-        assertEquals(1, session.getSyncingTasks().size());
-        assertTasksAllEmpty(new ArrayList<>(session.getSyncingTasks().values()));
+        // Should be one RemoteSyncTask left behind (other two should be local)
+        assertExpectedDifferences(session.getSyncingTasks().values(), 0);
 
         // RepairJob should send out SNAPSHOTS -> VALIDATIONS -> done
         List<RepairMessage.Type> expectedTypes = new ArrayList<>();
@@ -232,9 +231,8 @@ public class RepairJobTest extends SchemaLoader
         assertTrue(ObjectSizes.measureDeep(results) < 0.8 * singleTreeSize);
 
         assertEquals(3, results.size());
-        // The one empty RemoteSyncTask should be retained
-        assertEquals(1, session.getSyncingTasks().size());
-        assertTasksAllEmpty(new ArrayList<>(session.getSyncingTasks().values()));
+        // Should be two RemoteSyncTasks with ranges and one empty one
+        assertExpectedDifferences(new ArrayList<>(session.getSyncingTasks().values()), 1, 1, 0);
 
         int numDifferent = 0;
         for (SyncStat stat : results)
@@ -248,12 +246,14 @@ public class RepairJobTest extends SchemaLoader
         assertEquals(2, numDifferent);
     }
 
-    private void assertTasksAllEmpty(List<RemoteSyncTask> tasks)
+    private void assertExpectedDifferences(Collection<RemoteSyncTask> tasks, Integer ... differences)
     {
-        for (SyncTask task : tasks)
-        {
-            assertEquals(0, task.getCurrentStat().numberOfDifferences);
-        }
+        List<Integer> expectedDifferences = new ArrayList<>(Arrays.asList(differences));
+        List<Integer> observedDifferences = tasks.stream()
+                                                 .map(t -> (int) t.getCurrentStat().numberOfDifferences)
+                                                 .collect(Collectors.toList());
+        assertEquals(expectedDifferences.size(), observedDifferences.size());
+        assertTrue(expectedDifferences.containsAll(observedDifferences));
     }
 
     private MerkleTrees createInitialTree(boolean invalidate)

@@ -117,7 +117,7 @@ public class Config
     public Float memtable_cleanup_threshold = null;
 
     // Limit the maximum depth of repair session merkle trees
-    public Integer repair_session_max_tree_depth = 18;
+    public volatile Integer repair_session_max_tree_depth = 18;
 
     public Integer storage_port = 7000;
     public Integer ssl_storage_port = 7001;
