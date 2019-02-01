@@ -37,6 +37,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class DatabaseDescriptorTest
@@ -253,7 +254,7 @@ public class DatabaseDescriptorTest
     }
 
     @Test
-    public void testRepairSessionSizeToggles()
+    public void testRepairSessionMemorySizeToggles()
     {
         int previousSize = DatabaseDescriptor.getRepairSessionSpaceInMegabytes();
         try
@@ -269,12 +270,53 @@ public class DatabaseDescriptorTest
             DatabaseDescriptor.setRepairSessionSpaceInMegabytes(10);
             Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionSpaceInMegabytes());
 
-            DatabaseDescriptor.setRepairSessionSpaceInMegabytes(0);
+            try
+            {
+                DatabaseDescriptor.setRepairSessionSpaceInMegabytes(0);
+                fail("Should have received a ConfigurationException for depth of 9");
+            }
+            catch (ConfigurationException ignored) { }
+
             Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionSpaceInMegabytes());
         }
         finally
         {
             DatabaseDescriptor.setRepairSessionSpaceInMegabytes(previousSize);
+        }
+    }
+
+    @Test
+    public void testRepairSessionSizeToggles()
+    {
+        int previousDepth = DatabaseDescriptor.getRepairSessionMaxTreeDepth();
+        try
+        {
+            Assert.assertEquals(20, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(10);
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+
+            try
+            {
+                DatabaseDescriptor.setRepairSessionMaxTreeDepth(9);
+                fail("Should have received a ConfigurationException for depth of 9");
+            }
+            catch (ConfigurationException ignored) { }
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+
+            try
+            {
+                DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
+                fail("Should have received a ConfigurationException for depth of -20");
+            }
+            catch (ConfigurationException ignored) { }
+            Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(22);
+            Assert.assertEquals(22, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+        }
+        finally
+        {
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(previousDepth);
         }
     }
 }

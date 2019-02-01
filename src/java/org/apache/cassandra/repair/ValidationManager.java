@@ -65,8 +65,11 @@ public class ValidationManager
             // capping at a depth that does not exceed our memory budget (CASSANDRA-11390, CASSANDRA-14096)
             int rangeAvailableBytes = Math.max(1, (int) (rangeOwningRatio * availableBytes));
             // Try to estimate max tree depth that fits the space budget assuming hashes of 256 bits = 32 bytes
+            // note that estimatedMaxDepthForBytes cannot return a number lower than 1
             int estimatedMaxDepth = MerkleTree.estimatedMaxDepthForBytes(cfs.getPartitioner(), rangeAvailableBytes, 32);
-            int maxDepth = rangeOwningRatio > 0 ? Math.max(1, Math.min(estimatedMaxDepth, 20)) : 0;
+            int maxDepth = rangeOwningRatio > 0
+                           ? Math.min(estimatedMaxDepth, DatabaseDescriptor.getRepairSessionMaxTreeDepth())
+                           : 0;
             // determine tree depth from number of partitions, capping at max tree depth (CASSANDRA-5263)
             int depth = numPartitions > 0 ? (int) Math.min(Math.ceil(Math.log(numPartitions) / Math.log(2)), maxDepth) : 0;
             tree.addMerkleTree((int) Math.pow(2, depth), range);

@@ -223,7 +223,7 @@ public class RepairJobTest
                                                                      session.previewKind);
 
         // SyncTasks themselves should not contain significant memory
-        assertTrue(ObjectSizes.measureDeep(syncTasks) < 0.8 * singleTreeSize);
+        assertTrue(ObjectSizes.measureDeep(syncTasks) < 0.2 * singleTreeSize);
 
         ListenableFuture<List<SyncStat>> syncResults = job.executeTasks(syncTasks);
 
@@ -245,7 +245,7 @@ public class RepairJobTest
 
         List<SyncStat> results = syncResults.get(TEST_TIMEOUT_S, TimeUnit.SECONDS);
 
-        assertTrue(ObjectSizes.measureDeep(results) < 0.8 * singleTreeSize);
+        assertTrue(ObjectSizes.measureDeep(results) < 0.2 * singleTreeSize);
 
         assertEquals(2, results.size());
         assertEquals(0, session.getSyncingTasks().size());

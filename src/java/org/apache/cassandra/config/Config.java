@@ -125,8 +125,8 @@ public class Config
 
     // Limit the maximum depth of repair session merkle trees
     @Deprecated
-    public Integer repair_session_max_tree_depth = null;
-    public Integer repair_session_space_in_mb = null;
+    public volatile Integer repair_session_max_tree_depth = null;
+    public volatile Integer repair_session_space_in_mb = null;
 
     public int storage_port = 7000;
     public int ssl_storage_port = 7001;

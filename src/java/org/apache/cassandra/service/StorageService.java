@@ -3876,14 +3876,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                ImmutableList.<String>builder().add(pair.left.name()).addAll(pair.right).build();
     }
 
-    public void setRepairSessionSpaceInMegabytes(int sizeInMegabytes)
+    public void setRepairSessionMaxTreeDepth(int depth)
     {
-        DatabaseDescriptor.setRepairSessionSpaceInMegabytes(sizeInMegabytes);
+        DatabaseDescriptor.setRepairSessionMaxTreeDepth(depth);
     }
 
-    public int getRepairSessionSpaceInMegabytes()
+    public int getRepairSessionMaxTreeDepth()
     {
-        return DatabaseDescriptor.getRepairSessionSpaceInMegabytes();
+        return DatabaseDescriptor.getRepairSessionMaxTreeDepth();
     }
 
     /* End of MBean interface methods */
