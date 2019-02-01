@@ -45,6 +45,7 @@ import org.apache.cassandra.thrift.ThriftConversion;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import static org.junit.Assert.assertTrue;
 
@@ -295,10 +296,25 @@ public class DatabaseDescriptorTest
             Assert.assertEquals(18, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
             DatabaseDescriptor.setRepairSessionMaxTreeDepth(10);
             Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
-            DatabaseDescriptor.setRepairSessionMaxTreeDepth(9);
+
+            try
+            {
+                DatabaseDescriptor.setRepairSessionMaxTreeDepth(9);
+                fail("Should have received a ConfigurationException for depth of 9");
+            }
+            catch (ConfigurationException ignored) { }
             Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
-            DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
+
+            try
+            {
+                DatabaseDescriptor.setRepairSessionMaxTreeDepth(-20);
+                fail("Should have received a ConfigurationException for depth of -20");
+            }
+            catch (ConfigurationException ignored) { }
             Assert.assertEquals(10, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
+
+            DatabaseDescriptor.setRepairSessionMaxTreeDepth(22);
+            Assert.assertEquals(22, DatabaseDescriptor.getRepairSessionMaxTreeDepth());
         }
         finally
         {

@@ -199,7 +199,7 @@ public class RepairSession extends AbstractFuture<RepairSessionResult> implement
      */
     public void syncComplete(RepairJobDesc desc, NodePair nodes, boolean success)
     {
-        RemoteSyncTask task = syncingTasks.remove(Pair.create(desc, nodes));
+        RemoteSyncTask task = syncingTasks.get(Pair.create(desc, nodes));
         if (task == null)
         {
             assert terminated;
