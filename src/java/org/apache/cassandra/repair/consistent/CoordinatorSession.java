@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 
 import javax.annotation.Nullable;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.AsyncFunction;
@@ -95,6 +96,12 @@ public class CoordinatorSession extends ConsistentSession
         super.setState(state);
     }
 
+    @VisibleForTesting
+    synchronized State getParticipantState(InetAddressAndPort participant)
+    {
+        return participantStates.get(participant);
+    }
+
     public synchronized void setParticipantState(InetAddressAndPort participant, State state)
     {
         logger.trace("Setting participant {} to state {} for repair {}", participant, state, sessionID);
@@ -153,25 +160,31 @@ public class CoordinatorSession extends ConsistentSession
 
     public synchronized void handlePrepareResponse(InetAddressAndPort participant, boolean success)
     {
-        if (getState() == State.FAILED)
+        if (!success)
         {
-            logger.trace("Incremental repair session {} has failed, ignoring prepare response from {}", sessionID, participant);
-        }
-        else if (!success)
-        {
-            logger.debug("{} failed the prepare phase for incremental repair session {}. Aborting session", participant, sessionID);
-            fail();
-            prepareFuture.set(false);
+            logger.debug("{} failed the prepare phase for incremental repair session {}", participant, sessionID);
+            setParticipantState(participant, State.FAILED);
+            sendFailureMessageToParticipants();
         }
         else
         {
             logger.trace("Successful prepare response received from {} for repair session {}", participant, sessionID);
             setParticipantState(participant, State.PREPARED);
-            if (getState() == State.PREPARED)
-            {
-                logger.debug("Incremental repair session {} successfully prepared.", sessionID);
-                prepareFuture.set(true);
-            }
+        }
+
+        // don't progress until we've heard from all replicas
+        if(Iterables.any(participantStates.values(), v -> v == State.PREPARING))
+            return;
+
+        if (getState() == State.PREPARED)
+        {
+            logger.info("Incremental repair session {} successfully prepared.", sessionID);
+            prepareFuture.set(true);
+        }
+        else
+        {
+            fail();
+            prepareFuture.set(false);
         }
     }
 
@@ -229,9 +242,8 @@ public class CoordinatorSession extends ConsistentSession
         logger.info("Incremental repair session {} completed", sessionID);
     }
 
-    public synchronized void fail()
+    private void sendFailureMessageToParticipants()
     {
-        logger.info("Incremental repair session {} failed", sessionID);
         FailSession message = new FailSession(sessionID);
         for (final InetAddressAndPort participant : participants)
         {
@@ -240,6 +252,12 @@ public class CoordinatorSession extends ConsistentSession
                 sendMessage(participant, message);
             }
         }
+    }
+
+    public synchronized void fail()
+    {
+        logger.info("Incremental repair session {} failed", sessionID);
+        sendFailureMessageToParticipants();
         setAll(State.FAILED);
 
         String exceptionMsg = String.format("Incremental repair session %s has failed", sessionID);
