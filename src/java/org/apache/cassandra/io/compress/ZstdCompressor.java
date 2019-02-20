@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.io.compress;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -32,9 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.luben.zstd.Zstd;
-import com.github.luben.zstd.ZstdOutputStream;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FastByteOperations;
 
 /**
  * ZSTD Compressor
@@ -159,18 +155,9 @@ public class ZstdCompressor implements ICompressor
     @Override
     public void compress(ByteBuffer input, ByteBuffer output) throws IOException
     {
-        byte[] inBytes = ByteBufferUtil.getArray(input);
-        input.position(input.position() + inBytes.length);
-        ByteArrayOutputStream compressedStream = new ByteArrayOutputStream((int) Zstd.compressBound(inBytes.length));
-
-        try (ZstdOutputStream out = new ZstdOutputStream(compressedStream, compressionLevel, true, true))
+        try
         {
-            out.write(inBytes, 0, inBytes.length);
-            out.close(); // required for Zstd to write the checksum and complete the compression stream
-
-            byte[] compressed = compressedStream.toByteArray();
-            FastByteOperations.copy(ByteBuffer.wrap(compressed), 0, output, output.position(), compressed.length);
-            output.position(output.position() + compressed.length);
+            Zstd.compress(output, input, compressionLevel);
         }
         catch (Exception e)
         {
@@ -243,8 +230,8 @@ public class ZstdCompressor implements ICompressor
     }
 
 
-    /* Following methods required for testing */
-    public int getCompressionLevel()
+    @VisibleForTesting
+    int getCompressionLevel()
     {
         return compressionLevel;
     }
