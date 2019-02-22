@@ -338,35 +338,48 @@ public class CoordinatorSession extends ConsistentSession
         {
             public void onSuccess(@Nullable Boolean result)
             {
-                if (result != null && result)
+                try
                 {
-                    if (logger.isDebugEnabled())
+                    if (result != null && result)
                     {
-                        logger.debug("Incremental repair {} finalization phase completed in {}", sessionID, formatDuration(finalizeStart, System.currentTimeMillis()));
+                        if (logger.isDebugEnabled())
+                        {
+                            logger.debug("Incremental repair {} finalization phase completed in {}", sessionID, formatDuration(finalizeStart, System.currentTimeMillis()));
+                        }
+                        finalizeCommit();
+                        if (logger.isDebugEnabled())
+                        {
+                            logger.debug("Incremental repair {} phase completed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
+                        }
                     }
-                    finalizeCommit();
-                    if (logger.isDebugEnabled())
+                    else
                     {
-                        logger.debug("Incremental repair {} phase completed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
+                        hasFailure.set(true);
+                        fail();
                     }
+                    resultFuture.set(result);
                 }
-                else
+                catch (Exception e)
                 {
-                    hasFailure.set(true);
-                    fail();
+                    resultFuture.setException(e);
                 }
-                resultFuture.set(result);
             }
 
             public void onFailure(Throwable t)
             {
-                if (logger.isDebugEnabled())
+                try
                 {
-                    logger.debug("Incremental repair {} phase failed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
+                    if (logger.isDebugEnabled())
+                    {
+                        logger.debug("Incremental repair {} phase failed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
+                    }
+                    hasFailure.set(true);
+                    fail();
                 }
-                hasFailure.set(true);
-                fail();
-                resultFuture.setException(t);
+                finally
+                {
+                    resultFuture.setException(t);
+                }
             }
         });
 

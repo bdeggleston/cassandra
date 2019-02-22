@@ -1611,13 +1611,13 @@ public class CompactionManager implements CompactionManagerMBean
         {
             if (e instanceof CompactionInterruptedException && isCancelled.getAsBoolean())
             {
-                logger.info("Anticompaction has been canceled");
+                logger.info("Anticompaction has been canceled for session {}", pendingRepair);
                 logger.trace(e.getMessage(), e);
             }
             else
             {
                 JVMStabilityInspector.inspectThrowable(e);
-                logger.error("Error anticompacting " + txn, e);
+                logger.error("Error anticompacting " + txn + " for " + pendingRepair, e);
             }
             throw e;
         }
