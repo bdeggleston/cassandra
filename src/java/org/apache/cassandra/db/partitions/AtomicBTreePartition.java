@@ -108,7 +108,7 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
         return true;
     }
 
-    private long[] addAllWithSizeDeltaInternal(RowUpdater updater, DeletionInfo inputDeletionInfoCopy, final PartitionUpdate update, OpOrder.Group writeOp, UpdateTransaction indexer)
+    private long[] addAllWithSizeDeltaInternal(RowUpdater updater, PartitionUpdate update, UpdateTransaction indexer)
     {
         Holder current = ref;
         updater.ref = current;
@@ -123,10 +123,10 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
         DeletionInfo deletionInfo;
         if (update.deletionInfo().mayModify(current.deletionInfo))
         {
-            if (inputDeletionInfoCopy == null)
-                inputDeletionInfoCopy = update.deletionInfo().copy(HeapAllocator.instance);
+            if (updater.inputDeletionInfoCopy == null)
+                updater.inputDeletionInfoCopy = update.deletionInfo().copy(HeapAllocator.instance);
 
-            deletionInfo = current.deletionInfo.mutableCopy().add(inputDeletionInfoCopy);
+            deletionInfo = current.deletionInfo.mutableCopy().add(updater.inputDeletionInfoCopy);
             updater.allocated(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
         }
         else
@@ -161,7 +161,6 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
     public long[] addAllWithSizeDelta(final PartitionUpdate update, OpOrder.Group writeOp, UpdateTransaction indexer)
     {
         RowUpdater updater = new RowUpdater(this, allocator, writeOp, indexer);
-        DeletionInfo inputDeletionInfoCopy = null;
         try
         {
             boolean shouldLock = usePessimisticLocking();
@@ -174,7 +173,7 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
                 {
                     synchronized (this)
                     {
-                        long[] result = addAllWithSizeDeltaInternal(updater, inputDeletionInfoCopy, update, writeOp, indexer);
+                        long[] result = addAllWithSizeDeltaInternal(updater, update, indexer);
                         if (result == null)
                             throw new RuntimeException("synchronized update was unsuccessful");
                         return result;
@@ -182,7 +181,7 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
                 }
                 else
                 {
-                    long[] result = addAllWithSizeDeltaInternal(updater, inputDeletionInfoCopy, update, writeOp, indexer);
+                    long[] result = addAllWithSizeDeltaInternal(updater, update, indexer);
                     if (result != null)
                         return result;
 
@@ -320,6 +319,8 @@ public final class AtomicBTreePartition extends AtomicBTreePartitionBase
         long heapSize;
         long colUpdateTimeDelta = Long.MAX_VALUE;
         List<Row> inserted; // TODO: replace with walk of aborted BTree
+
+        DeletionInfo inputDeletionInfoCopy = null;
 
         private RowUpdater(AtomicBTreePartition updating, MemtableAllocator allocator, OpOrder.Group writeOp, UpdateTransaction indexer)
         {
