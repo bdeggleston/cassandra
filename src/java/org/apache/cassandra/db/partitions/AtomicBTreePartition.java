@@ -174,9 +174,8 @@ public final class AtomicBTreePartition extends AbstractBTreePartition
                     synchronized (this)
                     {
                         long[] result = addAllWithSizeDeltaInternal(updater, update, indexer);
-                        if (result == null)
-                            throw new RuntimeException("synchronized update was unsuccessful");
-                        return result;
+                        if (result != null)
+                            return result;
                     }
                 }
                 else
