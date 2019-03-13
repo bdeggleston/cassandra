@@ -47,7 +47,7 @@ import org.apache.cassandra.utils.memory.MemtableAllocator;
  * other thread can see the state where only parts but not all rows have
  * been added.
  */
-public final class AtomicBTreePartition extends AtomicBTreePartitionBase
+public final class AtomicBTreePartition extends AbstractBTreePartition
 {
     public static final long EMPTY_SIZE = ObjectSizes.measure(new AtomicBTreePartition(null,
                                                                                        DatabaseDescriptor.getPartitioner().decorateKey(ByteBuffer.allocate(1)),
