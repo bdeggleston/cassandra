@@ -75,7 +75,6 @@
     -->
     <property name="source.version" value="8"/>
     <property name="target.version" value="8"/>
-    <property name="release.version" value="10"/>
 
     <condition property="version" value="${base.version}">
       <isset property="release"/>
@@ -1022,7 +1021,6 @@
 
     <!-- creates release tarballs -->
     <target name="artifacts" depends="jar,javadoc,gen-doc"
-            unless="java.version.8"
             description="Create Cassandra release artifacts">
       <mkdir dir="${dist.dir}"/>
       <!-- fix the control linefeed so that builds on windows works on linux -->
