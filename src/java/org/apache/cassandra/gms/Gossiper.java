@@ -322,6 +322,13 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     private static void runInGossipStageBlocking(Runnable runnable)
     {
+        // run immediately if we're already in the gossip stage
+        if (Thread.currentThread().getName().startsWith(Stage.GOSSIP.getJmxName()))
+        {
+            runnable.run();
+            return;
+        }
+
         ListenableFutureTask task = ListenableFutureTask.create(runnable, null);
         StageManager.getStage(Stage.GOSSIP).execute(task);
         try
