@@ -85,6 +85,7 @@ jobs:
     - CCM_HEAP_NEWSIZE: 256M
     - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - CASSANDRA_USE_JDK11: 1
   build:
     docker:
     - image: spod/cassandra-testing-ubuntu1810-java11:20181210
@@ -167,6 +168,7 @@ jobs:
     - CCM_HEAP_NEWSIZE: 256M
     - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - CASSANDRA_USE_JDK11: 1
   j11_dtests-with-vnodes:
     docker:
     - image: spod/cassandra-testing-ubuntu1810-java11:20181210
@@ -221,7 +223,7 @@ jobs:
           \ executed on every circle container\n# so the goal here is to get the circleci\
           \ script to return the tests *this* container will run\n# which we do via\
           \ the `circleci` cli tool.\n\ncd cassandra-dtest\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -n '' ]; then\n  export \nfi\n\n\
           echo \"***Collected DTests (j11_with_vnodes)***\"\nset -eo pipefail && ./run_dtests.py\
           \ --use-vnodes --skip-resource-intensive-tests --dtest-print-tests-only\
           \ --dtest-print-tests-output=/tmp/all_dtest_tests_j11_with_vnodes_raw --cassandra-dir=../cassandra\n\
@@ -237,7 +239,7 @@ jobs:
         no_output_timeout: 15m
         command: "echo \"cat /tmp/split_dtest_tests_j11_with_vnodes_final.txt\"\n\
           cat /tmp/split_dtest_tests_j11_with_vnodes_final.txt\n\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\nif [ -n '' ]; then\n  export \nfi\n\n\
           java -version\ncd ~/cassandra-dtest\nmkdir -p /tmp/dtest\n\necho \"env:\
           \ $(env)\"\necho \"** done env\"\nmkdir -p /tmp/results/dtests\n# we need\
           \ the \"set -o pipefail\" here so that the exit code that circleci will\
@@ -273,6 +275,7 @@ jobs:
     - CCM_HEAP_NEWSIZE: 256M
     - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - CASSANDRA_USE_JDK11: 1
   j8_dtests-no-vnodes:
     docker:
     - image: spod/cassandra-testing-ubuntu1810-java11-w-dependencies:20190306
@@ -857,7 +860,7 @@ jobs:
           \ executed on every circle container\n# so the goal here is to get the circleci\
           \ script to return the tests *this* container will run\n# which we do via\
           \ the `circleci` cli tool.\n\ncd cassandra-dtest\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\n\nif [ -n '' ]; then\n  export \nfi\n\n\
           echo \"***Collected DTests (j11_without_vnodes)***\"\nset -eo pipefail &&\
           \ ./run_dtests.py --skip-resource-intensive-tests --dtest-print-tests-only\
           \ --dtest-print-tests-output=/tmp/all_dtest_tests_j11_without_vnodes_raw\
@@ -874,7 +877,7 @@ jobs:
         no_output_timeout: 15m
         command: "echo \"cat /tmp/split_dtest_tests_j11_without_vnodes_final.txt\"\
           \ncat /tmp/split_dtest_tests_j11_without_vnodes_final.txt\n\nsource ~/env/bin/activate\n\
-          export PATH=$JAVA_HOME/bin:$PATH\nif [ -z '' ]; then\n  export \nfi\n\n\
+          export PATH=$JAVA_HOME/bin:$PATH\nif [ -n '' ]; then\n  export \nfi\n\n\
           java -version\ncd ~/cassandra-dtest\nmkdir -p /tmp/dtest\n\necho \"env:\
           \ $(env)\"\necho \"** done env\"\nmkdir -p /tmp/results/dtests\n# we need\
           \ the \"set -o pipefail\" here so that the exit code that circleci will\
@@ -910,6 +913,7 @@ jobs:
     - CCM_HEAP_NEWSIZE: 256M
     - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - CASSANDRA_USE_JDK11: 1
   utests_compression:
     docker:
     - image: spod/cassandra-testing-ubuntu1810-java11-w-dependencies:20190306
@@ -1231,6 +1235,7 @@ workflows:
 #       <<: *default_env_vars
 #       JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
 #       JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+#       CASSANDRA_USE_JDK11: 1
 # 
 # jobs:
 #   build:
