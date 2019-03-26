@@ -241,19 +241,25 @@
   </macrodef>
 
     <target name="validate-build-conf">
-        <fail message="-Duse.jdk=11 cannot be set when building from java 8">
+        <condition property="use-jdk11">
+            <or>
+                <isset property="build.java.11"/>
+                <isset property="env.CASSANDRA_USE_JDK11"/>
+            </or>
+        </condition>
+        <fail message="-Duse.jdk=11/$CASSANDRA_USE_JDK11 cannot be set when building from java 8">
             <condition>
                 <not><or>
                     <not><isset property="java.version.8"/></not>
-                    <not><isset property="build.java.11"/></not>
+                    <not><isset property="use-jdk11"/></not>
                 </or></not>
             </condition>
         </fail>
-        <fail message="-Duse.jdk=11 must be set when building from java 11">
+        <fail message="-Duse.jdk=11/$CASSANDRA_USE_JDK11 must be set when building from java 11">
             <condition>
                 <not><or>
                     <isset property="java.version.8"/>
-                    <isset property="build.java.11"/>
+                    <isset property="use-jdk11"/>
                 </or></not>
             </condition>
         </fail>
