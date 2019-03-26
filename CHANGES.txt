@@ -3,6 +3,7 @@
  * Fixed nodetool cfstats printing index name twice (CASSANDRA-14903)
  * Add flag to disable SASI indexes, and warnings on creation (CASSANDRA-14866)
 Merged from 3.0:
+ * Support building Cassandra with JDK 11 (CASSANDRA-15108)
  * Fix AbstractBTreePartition locking in java 11 (CASSANDRA-14607)
  * Add experimental support for Java 11 (CASSANDRA-9608)
  * Throw IOE instead of asserting on unsupporter peer versions (CASSANDRA-15066)
