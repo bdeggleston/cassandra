@@ -2017,6 +2017,10 @@
     <replace file="${eclipse.project.name}.iml" token="JDK_1_8" value="JDK_11"/>
     <replace file=".idea/misc.xml" token="JDK_1_8" value="JDK_11"/>
     <replace file=".idea/misc.xml" token="1.8" value="11"/>
+    <replaceregexp file=".idea/workspace.xml"
+                   match="name=&quot;VM_PARAMETERS&quot; value=&quot;(.*)&quot;"
+                   replace="name=&quot;VM_PARAMETERS&quot; value=&quot;\1 ${java11-jvmargs}&quot;"
+                   byline="true"/>
   </target>
 
   <!-- Generate IDEA project description files -->
