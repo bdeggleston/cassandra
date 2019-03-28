@@ -2013,6 +2013,12 @@
       </java>
   </target>
 
+  <target name="_maybe_update_idea_to_java11" if="java.version.11">
+    <replace file="${eclipse.project.name}.iml" token="JDK_1_8" value="JDK_11"/>
+    <replace file=".idea/misc.xml" token="JDK_1_8" value="JDK_11"/>
+    <replace file=".idea/misc.xml" token="1.8" value="11"/>
+  </target>
+
   <!-- Generate IDEA project description files -->
   <target name="generate-idea-files" depends="build-test" description="Generate IDEA files">
     <mkdir dir=".idea"/>
@@ -2031,6 +2037,7 @@
     </modules>
   </component>
 </project>]]></echo>
+      <antcall target="_maybe_update_idea_to_java11"/>
   </target>
 
   <!-- Generate Eclipse project description files -->
