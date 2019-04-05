@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
@@ -67,6 +68,10 @@ import org.apache.cassandra.utils.JVMStabilityInspector;
 public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 {
     public static final String MBEAN_NAME = "org.apache.cassandra.net:type=Gossiper";
+    public static class Props
+    {
+        public static final String DISABLE_THREAD_VALIDATION = "cassandra.gossip.disable_thread_validation";
+    }
 
     private static final DebuggableScheduledThreadPoolExecutor executor = new DebuggableScheduledThreadPoolExecutor("GossipTasks");
 
@@ -132,6 +137,37 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     private final Map<InetAddress, EndpointState> endpointShadowStateMap = new ConcurrentHashMap<>();
 
     private volatile long lastProcessedMessageAt = System.currentTimeMillis();
+
+    private static FastThreadLocal<Boolean> isGossipStage = new FastThreadLocal<>();
+
+    private static final boolean disableThreadValidation = Boolean.getBoolean(Props.DISABLE_THREAD_VALIDATION);
+
+    private static boolean isInGossipStage()
+    {
+        Boolean isGossip = isGossipStage.get();
+        if (isGossip == null)
+        {
+            isGossip = Thread.currentThread().getName().contains(Stage.GOSSIP.getJmxName());
+            isGossipStage.set(isGossip);
+        }
+        return isGossip;
+    }
+
+    private static void checkProperThreadForStateMutation()
+    {
+        if (disableThreadValidation || isInGossipStage())
+            return;
+
+        IllegalStateException e = new IllegalStateException("Attempting gossip state mutation from illegal thread: " + Thread.currentThread().getName());
+        if (DatabaseDescriptor.strictRuntimeChecks())
+        {
+            throw e;
+        }
+        else
+        {
+            logger.error(e.getMessage(), e);
+        }
+    }
 
     private class GossipTask implements Runnable
     {
@@ -320,10 +356,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         return state.equals(VersionedValue.SHUTDOWN);
     }
 
-    private static void runInGossipStageBlocking(Runnable runnable)
+    public static void runInGossipStageBlocking(Runnable runnable)
     {
         // run immediately if we're already in the gossip stage
-        if (Thread.currentThread().getName().startsWith(Stage.GOSSIP.getJmxName()))
+        if (isInGossipStage())
         {
             runnable.run();
             return;
@@ -377,6 +413,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     protected void markAsShutdown(InetAddress endpoint)
     {
+        checkProperThreadForStateMutation();
         EndpointState epState = endpointStateMap.get(endpoint);
         if (epState == null)
             return;
@@ -408,6 +445,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     private void evictFromMembership(InetAddress endpoint)
     {
+        checkProperThreadForStateMutation();
         unreachableEndpoints.remove(endpoint);
         endpointStateMap.remove(endpoint);
         expireTimeEndpointMap.remove(endpoint);
@@ -422,6 +460,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     public void removeEndpoint(InetAddress endpoint)
     {
+        checkProperThreadForStateMutation();
         // do subscribers first so anything in the subscriber that depends on gossiper state won't get confused
         for (IEndpointStateChangeSubscriber subscriber : subscribers)
             subscriber.onRemove(endpoint);
@@ -482,6 +521,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     public void replacedEndpoint(InetAddress endpoint)
     {
+        checkProperThreadForStateMutation();
         removeEndpoint(endpoint);
         evictFromMembership(endpoint);
         replacementQuarantine(endpoint);
@@ -595,6 +635,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     {
         InetAddress endpoint = InetAddress.getByName(address);
         runInGossipStageBlocking(() -> {
+            checkProperThreadForStateMutation();
             EndpointState epState = endpointStateMap.get(endpoint);
             Collection<Token> tokens = null;
             logger.warn("Assassinating {} via gossip", endpoint);
@@ -800,8 +841,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                     && TimeUnit.NANOSECONDS.toMillis(nowNano - epState.getUpdateTimestamp()) > fatClientTimeout)
                 {
                     logger.info("FatClient {} has been silent for {}ms, removing from gossip", endpoint, fatClientTimeout);
-                    removeEndpoint(endpoint); // will put it in justRemovedEndpoints to respect quarantine delay
-                    evictFromMembership(endpoint); // can get rid of the state immediately
+                    runInGossipStageBlocking(() -> {
+                        removeEndpoint(endpoint); // will put it in justRemovedEndpoints to respect quarantine delay
+                        evictFromMembership(endpoint); // can get rid of the state immediately
+                    });
                 }
 
                 // check for dead state removal
@@ -1002,7 +1045,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
             public void response(MessageIn msg)
             {
-                realMarkAlive(addr, localState);
+                runInGossipStageBlocking(() -> realMarkAlive(addr, localState));
             }
         };
 
@@ -1012,6 +1055,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     @VisibleForTesting
     public void realMarkAlive(final InetAddress addr, final EndpointState localState)
     {
+        checkProperThreadForStateMutation();
         if (logger.isTraceEnabled())
             logger.trace("marking as alive {}", addr);
         localState.markAlive();
@@ -1030,6 +1074,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     @VisibleForTesting
     public void markDead(InetAddress addr, EndpointState localState)
     {
+        checkProperThreadForStateMutation();
         if (logger.isTraceEnabled())
             logger.trace("marking as down {}", addr);
         localState.markDead();
@@ -1050,6 +1095,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     private void handleMajorStateChange(InetAddress ep, EndpointState epState)
     {
+        checkProperThreadForStateMutation();
         EndpointState localEpState = endpointStateMap.get(ep);
         if (!isDeadState(epState))
         {
@@ -1121,6 +1167,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     void applyStateLocally(Map<InetAddress, EndpointState> epStateMap)
     {
+        checkProperThreadForStateMutation();
         for (Entry<InetAddress, EndpointState> entry : epStateMap.entrySet())
         {
             InetAddress ep = entry.getKey();
@@ -1437,6 +1484,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     public void addSavedEndpoint(InetAddress ep)
     {
+        checkProperThreadForStateMutation();
         if (ep.equals(FBUtilities.getBroadcastAddress()))
         {
             logger.debug("Attempt to add self as saved endpoint");
