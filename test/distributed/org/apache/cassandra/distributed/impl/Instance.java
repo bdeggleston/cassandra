@@ -230,12 +230,12 @@ public class Instance extends IsolatedExecutor implements IInvokableInstance
 
     public int getMessagingVersion()
     {
-        return sync(() -> MessagingService.current_version).call();
+        return callsOnInstance(() -> MessagingService.current_version).call();
     }
 
     public void setMessagingVersion(InetAddressAndPort endpoint, int version)
     {
-        sync(() -> MessagingService.instance().setVersion(endpoint, version));
+        runOnInstance(() -> MessagingService.instance().setVersion(endpoint, version));
     }
 
     @Override
