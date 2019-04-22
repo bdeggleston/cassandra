@@ -41,6 +41,7 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.utils.CassandraVersion;
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.cassandra.utils.MBeanWrapper;
+import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +101,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     public final static int intervalInMillis = 1000;
     public final static int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
+    private static final NoSpamLogger noSpamLogger = NoSpamLogger.getLogger(logger, 15L, TimeUnit.MINUTES);
+
     public static final Gossiper instance = new Gossiper(true);
 
     // Timestamp to prevent processing any in-flight messages for we've not send any SYN yet, see CASSANDRA-12653.
@@ -205,7 +208,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         }
         else
         {
-            logger.error(e.getMessage(), e);
+            noSpamLogger.error(e.getMessage(), e);
         }
     }
 
@@ -709,7 +712,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     {
         InetAddressAndPort endpoint = InetAddressAndPort.getByName(address);
         runInGossipStageBlocking(() -> {
-            checkProperThreadForStateMutation();
             EndpointState epState = endpointStateMap.get(endpoint);
             Collection<Token> tokens = null;
             logger.warn("Assassinating {} via gossip", endpoint);
