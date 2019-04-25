@@ -30,6 +30,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -208,7 +209,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         }
         else
         {
-            noSpamLogger.error(e.getMessage(), e);
+            noSpamLogger.getStatement(Throwables.getStackTraceAsString(e)).error(e.getMessage(), e);
         }
     }
 
