@@ -68,91 +68,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
-    - ANT_HOME: /usr/share/ant
-    - LANG: en_US.UTF-8
-    - KEEP_TEST_DIR: true
-    - DEFAULT_DIR: /home/cassandra/cassandra-dtest
-    - PYTHONIOENCODING: utf-8
-    - PYTHONUNBUFFERED: true
-    - CASS_DRIVER_NO_EXTENSIONS: true
-    - CASS_DRIVER_NO_CYTHON: true
-    - CASSANDRA_SKIP_SYNC: true
-    - DTEST_REPO: git://github.com/bdeggleston/cassandra-dtest.git
-    - DTEST_BRANCH: jdk11
-    - CCM_MAX_HEAP_SIZE: 1024M
-    - CCM_HEAP_NEWSIZE: 256M
-    - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
-    - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
-    - CASSANDRA_USE_JDK11: 1
-  build:
-    docker:
-    - image: spod/cassandra-testing-ubuntu1810-java11:20181210
-    resource_class: medium
-    working_directory: ~/
-    shell: /bin/bash -eo pipefail -l
-    parallelism: 1
-    steps:
-    - run:
-        name: Log Environment Information
-        command: |
-          echo '*** id ***'
-          id
-          echo '*** cat /proc/cpuinfo ***'
-          cat /proc/cpuinfo
-          echo '*** free -m ***'
-          free -m
-          echo '*** df -m ***'
-          df -m
-          echo '*** ifconfig -a ***'
-          ifconfig -a
-          echo '*** uname -a ***'
-          uname -a
-          echo '*** mount ***'
-          mount
-          echo '*** env ***'
-          env
-          echo '*** java ***'
-          which java
-          java -version
-    - run:
-        name: Clone Cassandra Repository (via git)
-        command: |
-          git clone --single-branch --depth 1 --branch $CIRCLE_BRANCH git://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git ~/cassandra
-    - run:
-        name: Build Cassandra
-        command: |
-          export PATH=$JAVA_HOME/bin:$PATH
-          cd ~/cassandra
-          # Loop to prevent failure due to maven-ant-tasks not downloading a jar..
-          for x in $(seq 1 3); do
-              ${ANT_HOME}/bin/ant clean realclean jar
-              RETURN="$?"
-              if [ "${RETURN}" -eq "0" ]; then
-                  break
-              fi
-          done
-          # Exit, if we didn't build successfully
-          if [ "${RETURN}" -ne "0" ]; then
-              echo "Build failed with exit code: ${RETURN}"
-              exit ${RETURN}
-          fi
-        no_output_timeout: 15m
-    - run:
-        name: Run eclipse-warnings
-        command: |
-          export PATH=$JAVA_HOME/bin:$PATH
-          cd ~/cassandra
-          ant eclipse-warnings
-    - persist_to_workspace:
-        root: /home/cassandra
-        paths:
-        - cassandra
-        - .m2
-    environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -258,8 +173,6 @@ jobs:
         path: ~/cassandra-dtest/logs
         destination: dtest_j11_with_vnodes_logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -344,8 +257,6 @@ jobs:
         path: ~/cassandra-dtest/logs
         destination: dtest_j8_without_vnodes_logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -444,8 +355,6 @@ jobs:
         path: ~/cassandra-dtest/logs
         destination: dtest_j8_upgradetests_without_vnodes_logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -488,8 +397,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -573,8 +480,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -590,6 +495,87 @@ jobs:
     - CCM_HEAP_NEWSIZE: 256M
     - JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
     - JDK_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+  j11_build:
+    docker:
+    - image: spod/cassandra-testing-ubuntu1810-java11:20181210
+    resource_class: medium
+    working_directory: ~/
+    shell: /bin/bash -eo pipefail -l
+    parallelism: 1
+    steps:
+    - run:
+        name: Log Environment Information
+        command: |
+          echo '*** id ***'
+          id
+          echo '*** cat /proc/cpuinfo ***'
+          cat /proc/cpuinfo
+          echo '*** free -m ***'
+          free -m
+          echo '*** df -m ***'
+          df -m
+          echo '*** ifconfig -a ***'
+          ifconfig -a
+          echo '*** uname -a ***'
+          uname -a
+          echo '*** mount ***'
+          mount
+          echo '*** env ***'
+          env
+          echo '*** java ***'
+          which java
+          java -version
+    - run:
+        name: Clone Cassandra Repository (via git)
+        command: |
+          git clone --single-branch --depth 1 --branch $CIRCLE_BRANCH git://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git ~/cassandra
+    - run:
+        name: Build Cassandra
+        command: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          cd ~/cassandra
+          # Loop to prevent failure due to maven-ant-tasks not downloading a jar..
+          for x in $(seq 1 3); do
+              ${ANT_HOME}/bin/ant clean realclean jar
+              RETURN="$?"
+              if [ "${RETURN}" -eq "0" ]; then
+                  break
+              fi
+          done
+          # Exit, if we didn't build successfully
+          if [ "${RETURN}" -ne "0" ]; then
+              echo "Build failed with exit code: ${RETURN}"
+              exit ${RETURN}
+          fi
+        no_output_timeout: 15m
+    - run:
+        name: Run eclipse-warnings
+        command: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          cd ~/cassandra
+          ant eclipse-warnings
+    - persist_to_workspace:
+        root: /home/cassandra
+        paths:
+        - cassandra
+        - .m2
+    environment:
+    - ANT_HOME: /usr/share/ant
+    - LANG: en_US.UTF-8
+    - KEEP_TEST_DIR: true
+    - DEFAULT_DIR: /home/cassandra/cassandra-dtest
+    - PYTHONIOENCODING: utf-8
+    - PYTHONUNBUFFERED: true
+    - CASS_DRIVER_NO_EXTENSIONS: true
+    - CASS_DRIVER_NO_CYTHON: true
+    - CASSANDRA_SKIP_SYNC: true
+    - DTEST_REPO: git://github.com/bdeggleston/cassandra-dtest.git
+    - DTEST_BRANCH: jdk11
+    - CCM_MAX_HEAP_SIZE: 1024M
+    - CCM_HEAP_NEWSIZE: 256M
+    - JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - JDK_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - CASSANDRA_USE_JDK11: 1
   j8_dtests-with-vnodes:
     docker:
     - image: spod/cassandra-testing-ubuntu1810-java11-w-dependencies:20190306
@@ -657,8 +643,6 @@ jobs:
         path: ~/cassandra-dtest/logs
         destination: dtest_j8_with_vnodes_logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -701,8 +685,86 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    - ANT_HOME: /usr/share/ant
+    - LANG: en_US.UTF-8
+    - KEEP_TEST_DIR: true
+    - DEFAULT_DIR: /home/cassandra/cassandra-dtest
+    - PYTHONIOENCODING: utf-8
+    - PYTHONUNBUFFERED: true
+    - CASS_DRIVER_NO_EXTENSIONS: true
+    - CASS_DRIVER_NO_CYTHON: true
+    - CASSANDRA_SKIP_SYNC: true
+    - DTEST_REPO: git://github.com/bdeggleston/cassandra-dtest.git
+    - DTEST_BRANCH: jdk11
+    - CCM_MAX_HEAP_SIZE: 1024M
+    - CCM_HEAP_NEWSIZE: 256M
+    - JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+    - JDK_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+  j8_build:
+    docker:
+    - image: spod/cassandra-testing-ubuntu1810-java11-w-dependencies:20190306
+    resource_class: medium
+    working_directory: ~/
+    shell: /bin/bash -eo pipefail -l
+    parallelism: 1
+    steps:
+    - run:
+        name: Log Environment Information
+        command: |
+          echo '*** id ***'
+          id
+          echo '*** cat /proc/cpuinfo ***'
+          cat /proc/cpuinfo
+          echo '*** free -m ***'
+          free -m
+          echo '*** df -m ***'
+          df -m
+          echo '*** ifconfig -a ***'
+          ifconfig -a
+          echo '*** uname -a ***'
+          uname -a
+          echo '*** mount ***'
+          mount
+          echo '*** env ***'
+          env
+          echo '*** java ***'
+          which java
+          java -version
+    - run:
+        name: Clone Cassandra Repository (via git)
+        command: |
+          git clone --single-branch --depth 1 --branch $CIRCLE_BRANCH git://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git ~/cassandra
+    - run:
+        name: Build Cassandra
+        command: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          cd ~/cassandra
+          # Loop to prevent failure due to maven-ant-tasks not downloading a jar..
+          for x in $(seq 1 3); do
+              ${ANT_HOME}/bin/ant clean realclean jar
+              RETURN="$?"
+              if [ "${RETURN}" -eq "0" ]; then
+                  break
+              fi
+          done
+          # Exit, if we didn't build successfully
+          if [ "${RETURN}" -ne "0" ]; then
+              echo "Build failed with exit code: ${RETURN}"
+              exit ${RETURN}
+          fi
+        no_output_timeout: 15m
+    - run:
+        name: Run eclipse-warnings
+        command: |
+          export PATH=$JAVA_HOME/bin:$PATH
+          cd ~/cassandra
+          ant eclipse-warnings
+    - persist_to_workspace:
+        root: /home/cassandra
+        paths:
+        - cassandra
+        - .m2
+    environment:
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -745,8 +807,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -789,8 +849,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -896,8 +954,6 @@ jobs:
         path: ~/cassandra-dtest/logs
         destination: dtest_j11_without_vnodes_logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -982,8 +1038,6 @@ jobs:
         path: /tmp/cassandra/build/test/logs
         destination: logs
     environment:
-    - JAVA8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
-    - JAVA11_HOME: /usr/lib/jvm/java-11-openjdk-amd64
     - ANT_HOME: /usr/share/ant
     - LANG: en_US.UTF-8
     - KEEP_TEST_DIR: true
@@ -1001,54 +1055,54 @@ jobs:
     - JDK_HOME: /usr/lib/jvm/java-8-openjdk-amd64
 workflows:
   version: 2
-  build_and_run_tests:
+  java8_build_and_run_tests:
     jobs:
-    - build
+    - j8_build
     - j8_unit_tests:
         requires:
-        - build
+        - j8_build
     - j8_jvm_dtests:
         requires:
-        - build
+        - j8_build
     - start_j11_unit_tests:
         type: approval
         requires:
-        - build
+        - j8_build
     - j11_unit_tests:
         requires:
         - start_j11_unit_tests
     - start_utests_long:
         type: approval
         requires:
-        - build
+        - j8_build
     - utests_long:
         requires:
         - start_utests_long
     - start_utests_compression:
         type: approval
         requires:
-        - build
+        - j8_build
     - utests_compression:
         requires:
         - start_utests_compression
     - start_utests_stress:
         type: approval
         requires:
-        - build
+        - j8_build
     - utests_stress:
         requires:
         - start_utests_stress
     - start_utests_fqltool:
         type: approval
         requires:
-        - build
+        - j8_build
     - utests_fqltool:
         requires:
         - start_utests_fqltool
     - start_j8_dtests:
         type: approval
         requires:
-        - build
+        - j8_build
     - j8_dtests-with-vnodes:
         requires:
         - start_j8_dtests
@@ -1058,7 +1112,7 @@ workflows:
     - start_j11_dtests:
         type: approval
         requires:
-        - build
+        - j8_build
     - j11_dtests-with-vnodes:
         requires:
         - start_j11_dtests
@@ -1068,7 +1122,27 @@ workflows:
     - start_upgrade_tests:
         type: approval
         requires:
-        - build
+        - j8_build
     - j8_upgradetests-no-vnodes:
         requires:
         - start_upgrade_tests
+  java11_build_and_run_tests:
+    jobs:
+    - j11_build
+    - start_j11_unit_tests:
+        type: approval
+        requires:
+        - j11_build
+    - j11_unit_tests:
+        requires:
+        - start_j11_unit_tests
+    - start_j11_dtests:
+        type: approval
+        requires:
+        - j11_build
+    - j11_dtests-with-vnodes:
+        requires:
+        - start_j11_dtests
+    - j11_dtests-no-vnodes:
+        requires:
+        - start_j11_dtests
