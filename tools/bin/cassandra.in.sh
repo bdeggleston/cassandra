@@ -33,6 +33,7 @@ if [ -d $CASSANDRA_HOME/build ] ; then
     for jar in "$CASSANDRA_HOME"/build/apache-cassandra*.jar; do
         CLASSPATH="$CLASSPATH:$jar"
     done
+    CLASSPATH="$CLASSPATH:$CASSANDRA_HOME/build/classes/stress"
 fi
 
 # the default location for commitlogs, sstables, and saved caches
@@ -123,7 +124,7 @@ if [ $JAVA_VERSION -ge 11 ] ; then
 else
     JVM_DEP_OPTS_FILE=$CASSANDRA_CONF/jvm8${jvmoptions_variant:--clients}.options
 fi
-t
+
 for opt in `grep "^-" $JVM_OPTS_FILE` `grep "^-" $JVM_DEP_OPTS_FILE`
 do
   JVM_OPTS="$JVM_OPTS $opt"
