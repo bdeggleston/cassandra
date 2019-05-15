@@ -223,19 +223,6 @@
             <exclude name="**/ant-*.jar"/>
         </fileset>
     </path>
-    <path id="cassandra.classpath.test">
-        <file file="${build.dir}/${final.name}.jar"/> <!-- we need the jar for tests and benchmarks (multi-version jar) -->
-        <fileset dir="${build.lib}">
-            <include name="**/*.jar" />
-            <exclude name="**/*-sources.jar"/>
-            <exclude name="**/ant-*.jar"/>
-        </fileset>
-        <fileset dir="${build.dir.lib}">
-            <include name="**/*.jar" />
-            <exclude name="**/*-sources.jar"/>
-            <exclude name="**/ant-*.jar"/>
-        </fileset>
-    </path>
 
   <macrodef name="create-javadoc">
     <attribute name="destdir"/>
@@ -931,7 +918,7 @@
             description="Run in test mode.  Not for production use!">
       <java classname="org.apache.cassandra.service.CassandraDaemon" fork="true">
         <classpath>
-          <path refid="cassandra.classpath.test"/>
+          <path refid="cassandra.classpath"/>
           <pathelement location="${test.conf}"/>
         </classpath>
         <jvmarg value="-Dstorage-config=${test.conf}"/>
@@ -1430,7 +1417,7 @@
         <classpath>
           <pathelement path="${java.class.path}"/>
           <pathelement location="${stress.build.classes}"/>
-          <path refid="cassandra.classpath.test" />
+          <path refid="cassandra.classpath" />
           <pathelement location="${test.classes}"/>
           <pathelement location="${stress.test.classes}"/>
           <pathelement location="${test.conf}"/>
@@ -1654,7 +1641,7 @@
         <jvmarg value="-Dcassandra.test.use_prepared=${cassandra.test.use_prepared}"/>
         <jvmarg value="-Dcassandra.skip_sync=true" />
         <classpath>
-          <path refid="cassandra.classpath.test" />
+          <path refid="cassandra.classpath" />
           <pathelement location="${test.classes}"/>
           <pathelement location="${test.conf}"/>
           <fileset dir="${test.lib}">
@@ -1696,7 +1683,7 @@
         <jvmarg value="-Dcassandra.memtable_row_overhead_computation_step=100"/>
         <jvmarg value="-Dcassandra.skip_sync=true" />
         <classpath>
-          <path refid="cassandra.classpath.test" />
+          <path refid="cassandra.classpath" />
           <pathelement location="${test.classes}"/>
           <pathelement location="${test.conf}"/>
           <fileset dir="${test.lib}">
@@ -2019,7 +2006,7 @@
             fork="true"
             failonerror="true">
           <classpath>
-              <path refid="cassandra.classpath.test" />
+              <path refid="cassandra.classpath" />
               <pathelement location="${test.classes}"/>
               <pathelement location="${test.conf}"/>
               <fileset dir="${test.lib}">
