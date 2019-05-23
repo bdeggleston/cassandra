@@ -102,6 +102,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
     }
 
     @Override
+    @SuppressWarnings("resource")
     protected UnfilteredRowIterator initializeIterator()
     {
         @SuppressWarnings("resource") // 'iter' is added to iterators which is closed on exception, or through the closing of the final merged iterator
