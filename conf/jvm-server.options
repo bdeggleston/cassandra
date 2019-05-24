@@ -99,11 +99,6 @@
 # a lower priority to avoid interfering with client workload
 -XX:+UseThreadPriorities
 
-# allows lowering thread priority without being root on linux - probably
-# not necessary on Windows but doesn't harm anything.
-# see http://tech.stolsvik.com/2010/01/linux-java-thread-priorities-workar
--XX:ThreadPriorityPolicy=42
-
 # Enable heap-dump if there's an OOM
 -XX:+HeapDumpOnOutOfMemoryError
 
