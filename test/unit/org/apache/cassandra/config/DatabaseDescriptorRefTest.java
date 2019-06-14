@@ -185,24 +185,10 @@ public class DatabaseDescriptorRefTest
                         violations.add(Pair.create(name, new Exception()));
                 }
 
-                URL url = delegate.getResource(name.replace('.', '/') + ".class");
-                if (url == null)
-                    throw new ClassNotFoundException(name);
-                try (InputStream in = url.openConnection().getInputStream())
-                {
-                    ByteArrayOutputStream os = new ByteArrayOutputStream();
-                    int c;
-                    while ((c = in.read()) != -1)
-                        os.write(c);
-                    byte[] data = os.toByteArray();
-                    cls = defineClass(name, data, 0, data.length);
-                    classMap.put(name, cls);
-                    return cls;
-                }
-                catch (IOException e)
-                {
-                    throw new ClassNotFoundException(name, e);
-                }
+
+                cls = delegate.loadClass(name);
+                classMap.put(name, cls);
+                return cls;
             }
         };
 
