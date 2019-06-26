@@ -258,6 +258,7 @@ public class CustomTThreadPoolServer extends TServer
                     SSLServerSocket sslServerSocket = (SSLServerSocket) sslServer.getServerSocket();
                     String[] suites = SSLFactory.filterCipherSuites(sslServerSocket.getSupportedCipherSuites(), clientEnc.cipher_suites);
                     sslServerSocket.setEnabledCipherSuites(suites);
+                    sslServerSocket.setEnabledProtocols(SSLFactory.ACCEPTED_PROTOCOLS);
                     serverTransport = new TCustomServerSocket(sslServerSocket, args.keepAlive, args.sendBufferSize, args.recvBufferSize);
                 }
                 else
