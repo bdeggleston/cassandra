@@ -26,6 +26,7 @@ import com.google.common.primitives.Ints;
 
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.rows.Cell;
@@ -403,11 +404,11 @@ public class PagingState
                     continue;
                 }
 
-                ByteBuffer v = clustering.get(i);
+                ByteBuffer v = clustering.getBuffer(i);
                 // we can have null (only for dense compound tables for backward compatibility reasons) but that
                 // means we're done and should stop there as far as building the composite is concerned.
                 if (v == null)
-                    return CompositeType.build(Arrays.copyOfRange(values, 0, i));
+                    return CompositeType.build(ByteBufferAccessor.instance, Arrays.copyOfRange(values, 0, i));
 
                 values[i] = v;
             }
@@ -416,7 +417,7 @@ public class PagingState
             if (collectionElement != null)
                 values[clusteringSize + 1] = collectionElement;
 
-            return CompositeType.build(isStatic, values);
+            return CompositeType.build(ByteBufferAccessor.instance, isStatic, values);
         }
 
         private static Clustering decodeClustering(TableMetadata metadata, ByteBuffer value)
@@ -425,10 +426,10 @@ public class PagingState
             if (csize == 0)
                 return Clustering.EMPTY;
 
-            if (CompositeType.isStaticName(value))
+            if (CompositeType.isStaticName(value, ByteBufferAccessor.instance))
                 return Clustering.STATIC_CLUSTERING;
 
-            List<ByteBuffer> components = CompositeType.splitName(value);
+            List<ByteBuffer> components = CompositeType.splitName(value, ByteBufferAccessor.instance);
 
             return Clustering.make(components.subList(0, Math.min(csize, components.size())).toArray(new ByteBuffer[csize]));
         }

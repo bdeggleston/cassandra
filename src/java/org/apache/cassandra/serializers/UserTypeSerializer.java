@@ -17,11 +17,11 @@
  */
 package org.apache.cassandra.serializers;
 
-import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 
-import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 
 public class UserTypeSerializer extends BytesSerializer
 {
@@ -33,33 +33,35 @@ public class UserTypeSerializer extends BytesSerializer
     }
 
     @Override
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T input, ValueAccessor<T> handle) throws MarshalException
     {
-        ByteBuffer input = bytes.duplicate();
-        int i = -1; // first thing in the loop is to increment, so when starting this will get set to 0 and match the fields
+        int i = -1;
+        int offset = 0;
         for (Entry<String, TypeSerializer<?>> entry : fields.entrySet())
         {
             i++;
             // we allow the input to have less fields than declared so as to support field addition.
-            if (!input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) == 0)
                 return;
 
-            if (input.remaining() < 4)
+            if (handle.sizeFromOffset(input, offset) < 4)
                 throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s", i, entry.getKey()));
 
-            int size = input.getInt();
+            int size = handle.getInt(input, offset);
+            offset += TypeSizes.sizeof(size);
 
             // size < 0 means null value
             if (size < 0)
                 continue;
 
-            if (input.remaining() < size)
+            if (handle.sizeFromOffset(input, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth field %s", i, entry.getKey()));
 
-            ByteBuffer field = ByteBufferUtil.readBytes(input, size);
+            T field = handle.slice(input, offset, size);
             try
             {
-                entry.getValue().validate(field);
+                offset += size;
+                entry.getValue().validate(field, handle);
             }
             catch (MarshalException e)
             {
@@ -68,7 +70,7 @@ public class UserTypeSerializer extends BytesSerializer
         }
 
         // We're allowed to get less fields than declared, but not more
-        if (input.hasRemaining())
+        if (handle.sizeFromOffset(input, offset) != 0)
             throw new MarshalException("Invalid remaining data after end of UDT value");
     }
 }
