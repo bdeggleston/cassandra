@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db.compaction;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,9 +50,17 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.ReadExecutionController;
+import org.apache.cassandra.db.ReadQuery;
+import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
+import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.utils.FBUtilities;
@@ -381,7 +390,7 @@ public class CompactionAllocationTest
         Assert.assertFalse(tasks.isEmpty());
 
         String compactionSummary = "SKIPPED";
-        if (!PROFILING_READS)
+        if (!PROFILING_READS || true)
         {
             compactionSampler.start();
             if (PROFILING_COMPACTION && !workload.name().equals("warmup"))
@@ -422,6 +431,23 @@ public class CompactionAllocationTest
         Thread.sleep(1000); // maybe log entries will stop disappearing?
     }
 
+    private static void runQuery(ReadQuery query, TableMetadata metadata)
+    {
+        try (ReadExecutionController executionController = query.executionController();
+             UnfilteredPartitionIterator iterator = query.executeLocally(executionController))
+        {
+            try (DataOutputBuffer buffer = new DataOutputBuffer())
+            {
+                UnfilteredPartitionIterators.serializerForIntraNode().serialize(iterator, ColumnFilter.all(metadata), buffer, MessagingService.current_version);
+            }
+            catch (IOException e)
+            {
+                // We're serializing in memory so this shouldn't happen
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     private static void testTinyPartitions(String name, int numSSTable, int sstablePartitions, boolean overlap) throws Throwable
     {
         String ksname = "ks_" + name.toLowerCase();
@@ -452,7 +478,8 @@ public class CompactionAllocationTest
                         if (!overlap || f == 0)
                         {
                             QueryOptions options = QueryProcessor.makeInternalOptions(select, new Object[]{f});
-                            reads.add(() -> select.executeLocally(queryState, options));
+                            ReadQuery query = select.getQuery(options, queryState.getNowInSeconds());
+                            reads.add(() -> runQuery(query, cfs.metadata.get()));
                         }
                     }
                     cfs.forceBlockingFlush();
@@ -566,7 +593,8 @@ public class CompactionAllocationTest
                         if (!overlap || f == 0)
                         {
                             QueryOptions options = QueryProcessor.makeInternalOptions(select, new Object[]{key});
-                            reads.add(() -> select.executeLocally(queryState, options));
+                            ReadQuery query = select.getQuery(options, queryState.getNowInSeconds());
+                            reads.add(() -> runQuery(query, cfs.metadata.get()));
                         }
                     }
                     cfs.forceBlockingFlush();
@@ -665,7 +693,8 @@ public class CompactionAllocationTest
                         if (!overlap || f == 0)
                         {
                             QueryOptions options = QueryProcessor.makeInternalOptions(select, new Object[]{key});
-                            reads.add(() -> select.executeLocally(queryState, options));
+                            ReadQuery query = select.getQuery(options, queryState.getNowInSeconds());
+                            reads.add(() -> runQuery(query, cfs.metadata.get()));
                         }
                     }
                     cfs.forceBlockingFlush();
