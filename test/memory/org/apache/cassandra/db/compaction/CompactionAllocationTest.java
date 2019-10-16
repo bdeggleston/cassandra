@@ -57,6 +57,8 @@ import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataOutputBuffer;
+import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.io.util.UnbufferedDataOutputStreamPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Schema;
@@ -431,20 +433,23 @@ public class CompactionAllocationTest
         Thread.sleep(1000); // maybe log entries will stop disappearing?
     }
 
+    private static final DataOutputPlus NOOP_OUT = new UnbufferedDataOutputStreamPlus()
+    {
+        public void write(byte[] buffer, int offset, int count) throws IOException {}
+
+        public void write(int oneByte) throws IOException {}
+    };
+
     private static void runQuery(ReadQuery query, TableMetadata metadata)
     {
         try (ReadExecutionController executionController = query.executionController();
-             UnfilteredPartitionIterator iterator = query.executeLocally(executionController))
+             UnfilteredPartitionIterator partitions = query.executeLocally(executionController))
         {
-            try (DataOutputBuffer buffer = new DataOutputBuffer())
-            {
-                UnfilteredPartitionIterators.serializerForIntraNode().serialize(iterator, ColumnFilter.all(metadata), buffer, MessagingService.current_version);
-            }
-            catch (IOException e)
-            {
-                // We're serializing in memory so this shouldn't happen
-                throw new RuntimeException(e);
-            }
+            UnfilteredPartitionIterators.serializerForIntraNode().serialize(partitions, ColumnFilter.all(metadata), NOOP_OUT, MessagingService.current_version);
+        }
+        catch (IOException e)
+        {
+            throw new AssertionError(e);
         }
     }
 
