@@ -34,6 +34,8 @@ public class ReducingKeyIterator implements CloseableIterator<DecoratedKey>
 {
     private final ArrayList<KeyIterator> iters;
     private IMergeIterator<DecoratedKey,DecoratedKey> mi;
+    long bytesRead = -1;
+    long totalBytes = -1;
 
     public ReducingKeyIterator(Collection<SSTableReader> sstables)
     {
@@ -72,11 +74,18 @@ public class ReducingKeyIterator implements CloseableIterator<DecoratedKey>
     public void close()
     {
         if (mi != null)
+        {
+            totalBytes = getTotalBytes();
+            bytesRead = getBytesRead();
             mi.close();
+        }
     }
 
     public long getTotalBytes()
     {
+        if (totalBytes != -1)
+            return totalBytes;
+
         maybeInit();
 
         long m = 0;
@@ -89,6 +98,9 @@ public class ReducingKeyIterator implements CloseableIterator<DecoratedKey>
 
     public long getBytesRead()
     {
+        if (bytesRead != -1)
+            return bytesRead;
+
         maybeInit();
 
         long m = 0;
