@@ -52,8 +52,9 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
 
     public void close()
     {
-        for (Iterator<In> iterator : this.iterators)
+        for (int i=0; i<iterators.size(); i++)
         {
+            Iterator<In> iterator = iterators.get(i);
             try
             {
                 if (iterator instanceof AutoCloseable)
