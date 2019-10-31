@@ -74,6 +74,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.FBUtilities;
@@ -192,9 +193,9 @@ public class Util
         return store;
     }
 
-    public static boolean equalsCounterId(CounterId n, ByteBuffer context, int offset)
+    public static boolean equalsCounterId(CounterId n, byte[] context, int offset)
     {
-        return CounterId.wrap(context, context.position() + offset).equals(n);
+        return CounterId.wrap(context, offset).equals(n);
     }
 
     /**
@@ -445,7 +446,7 @@ public class Util
     {
         Cell cell = cell(cfs, row, columnName);
         assert cell != null : "Row " + row.toString(cfs.metadata()) + " has no cell for " + columnName;
-        assertEquals(value, cell.column().type.compose(cell.value()));
+        assertEquals(value, cell.column().type.compose(ByteBuffer.wrap(cell.value())));
     }
 
     public static void consume(UnfilteredRowIterator iter)
@@ -546,7 +547,7 @@ public class Util
     public static void assertColumn(Cell cell, String value, long timestamp)
     {
         assertNotNull(cell);
-        assertEquals(0, ByteBufferUtil.compareUnsigned(cell.value(), ByteBufferUtil.bytes(value)));
+        assertEquals(0, ByteBufferUtil.compareUnsigned(ByteBuffer.wrap(cell.value()), ByteBufferUtil.bytes(value)));
         assertEquals(timestamp, cell.timestamp());
     }
 
@@ -727,7 +728,7 @@ public class Util
 
         ColumnMetadata def = metadata.getColumn(new ColumnIdentifier("myCol", false));
         Clustering c = Clustering.make(ByteBufferUtil.bytes("c1"), ByteBufferUtil.bytes(42));
-        Row row = BTreeRow.singleCellRow(c, BufferCell.live(def, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+        Row row = BTreeRow.singleCellRow(c, BufferCell.live(def, 0, ByteArrayUtil.EMPTY_BYTE_ARRAY));
         PagingState.RowMark mark = PagingState.RowMark.create(metadata, row, protocolVersion);
         return new PagingState(pk, mark, 10, remainingInPartition);
     }

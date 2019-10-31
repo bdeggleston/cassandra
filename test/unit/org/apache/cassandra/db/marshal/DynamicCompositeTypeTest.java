@@ -212,7 +212,7 @@ public class DynamicCompositeTypeTest
     }
     private void compareValues(Cell c, String r) throws CharacterCodingException
     {
-        assert ByteBufferUtil.string(c.value()).equals(r) : "Expected: {" + ByteBufferUtil.string(c.value()) + "} got: {" + r + "}";
+        assert ByteArrayUtil.string(c.value()).equals(r) : "Expected: {" + ByteArrayUtil.string(c.value()) + "} got: {" + r + "}";
     }
 
     @Test

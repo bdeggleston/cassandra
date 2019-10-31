@@ -33,6 +33,7 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.serializers.TimeUUIDSerializer;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -52,7 +53,7 @@ public class ColumnConditionTest
 
     private static Row newRow(ColumnMetadata definition, ByteBuffer value)
     {
-        BufferCell cell = new BufferCell(definition, 0L, Cell.NO_TTL, Cell.NO_DELETION_TIME, value, null);
+        BufferCell cell = new BufferCell(definition, 0L, Cell.NO_TTL, Cell.NO_DELETION_TIME, ByteBufferUtil.toArray(value), null);
         return BTreeRow.singleCellRow(Clustering.EMPTY, cell);
     }
 
@@ -72,7 +73,7 @@ public class ColumnConditionTest
                                                  0L,
                                                  Cell.NO_TTL,
                                                  Cell.NO_DELETION_TIME,
-                                                 value,
+                                                 ByteBufferUtil.toArray(value),
                                                  CellPath.create(key));
                 builder.addCell(cell);
             }
@@ -92,7 +93,7 @@ public class ColumnConditionTest
                                                  0L,
                                                  Cell.NO_TTL,
                                                  Cell.NO_DELETION_TIME,
-                                                 ByteBufferUtil.EMPTY_BYTE_BUFFER,
+                                                 ByteArrayUtil.EMPTY_BYTE_ARRAY,
                                                  CellPath.create(value));
                 builder.addCell(cell);
             }
@@ -112,7 +113,7 @@ public class ColumnConditionTest
                                                  0L,
                                                  Cell.NO_TTL,
                                                  Cell.NO_DELETION_TIME,
-                                                 entry.getValue(),
+                                                 ByteBufferUtil.toArray(entry.getValue()),
                                                  CellPath.create(entry.getKey()));
                 builder.addCell(cell);
             }

@@ -139,12 +139,12 @@ public class CommitLogUpgradeTest
         Assert.assertEquals(hash, hasher.hash);
     }
 
-    public static int hash(int hash, ByteBuffer bytes)
+    public static int hash(int hash, byte[] bytes)
     {
         int shift = 0;
-        for (int i = 0; i < bytes.limit(); i++)
+        for (int i = 0; i < bytes.length; i++)
         {
-            hash += (bytes.get(i) & 0xFF) << shift;
+            hash += (bytes[i] & 0xFF) << shift;
             shift = (shift + 8) & 0x1F;
         }
         return hash;

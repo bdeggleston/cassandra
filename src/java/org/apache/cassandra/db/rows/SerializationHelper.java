@@ -140,7 +140,7 @@ public class SerializationHelper
         return currentDroppedComplex != null && complexDeletion.markedForDeleteAt() <= currentDroppedComplex.droppedTime;
     }
 
-    public ByteBuffer maybeClearCounterValue(ByteBuffer value)
+    public byte[] maybeClearCounterValue(byte[] value)
     {
         return flag == Flag.FROM_REMOTE || (flag == Flag.LOCAL && CounterContext.instance().shouldClearLocal(value))
              ? CounterContext.instance().clearAllLocal(value)

@@ -59,6 +59,7 @@ import org.apache.cassandra.io.sstable.format.Version;
 import org.apache.cassandra.io.sstable.format.big.BigFormat;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.serializers.LongSerializer;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ObjectSizes;
@@ -231,7 +232,7 @@ public class RowIndexEntryTest extends CQLTester
             BTree.Builder<ColumnData> builder = BTree.builder(ColumnData.comparator);
             builder.add(BufferCell.live(metadata.regularAndStaticColumns().iterator().next(),
                                         1L,
-                                        ByteBuffer.allocate(0)));
+                                        ByteArrayUtil.EMPTY_BYTE_ARRAY));
             return BTreeRow.create(clustering, primaryKeyLivenessInfo, deletion, builder.build());
         }
     }

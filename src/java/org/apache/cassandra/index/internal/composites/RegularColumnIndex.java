@@ -103,6 +103,6 @@ public class RegularColumnIndex extends CassandraIndex
         Cell cell = data.getCell(indexedColumn);
         return cell == null
             || !cell.isLive(nowInSec)
-            || indexedColumn.type.compare(indexValue, cell.value()) != 0;
+            || indexedColumn.type.compare(cell.value(), indexValue) != 0;
     }
 }

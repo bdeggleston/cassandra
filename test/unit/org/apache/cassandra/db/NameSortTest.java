@@ -29,6 +29,7 @@ import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.junit.Assert.assertEquals;
@@ -100,7 +101,7 @@ public class NameSortTest
                         continue;
                     int cellVal = Integer.valueOf(cd.name.toString().substring(cd.name.toString().length() - 1));
                     String expected = cellVal % 2 == 0 ? "a" : "b";
-                    assertEquals(expected, ByteBufferUtil.string(r.getCell(cd).value()));
+                    assertEquals(expected, ByteArrayUtil.string(r.getCell(cd).value()));
                 }
             }
         }

@@ -24,6 +24,7 @@ import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
 public abstract class AbstractAllocator
 {
@@ -45,18 +46,22 @@ public abstract class AbstractAllocator
 
     public abstract ByteBuffer allocate(int size);
 
-    public Row.Builder cloningBTreeRowBuilder()
+    public Row.Builder cloningBTreeRowBuilder(OpOrder.Group opGroup)
     {
-        return new CloningBTreeRowBuilder(this);
+        return new CloningBTreeRowBuilder(opGroup, this);
     }
+
+    public abstract Cell cloneCell(Cell from, OpOrder.Group opGroup);
 
     private static class CloningBTreeRowBuilder extends BTreeRow.Builder
     {
+        private final OpOrder.Group opGroup;
         private final AbstractAllocator allocator;
 
-        private CloningBTreeRowBuilder(AbstractAllocator allocator)
+        private CloningBTreeRowBuilder(OpOrder.Group opGroup, AbstractAllocator allocator)
         {
             super(true);
+            this.opGroup = opGroup;
             this.allocator = allocator;
         }
 
@@ -69,7 +74,7 @@ public abstract class AbstractAllocator
         @Override
         public void addCell(Cell cell)
         {
-            super.addCell(cell.copy(allocator));
+            super.addCell(cell.copy(allocator, opGroup));
         }
     }
 }

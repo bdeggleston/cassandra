@@ -565,7 +565,7 @@ public abstract class Lists
             List<ByteBuffer> toDiscard = ((Value)value).elements;
             for (Cell cell : complexData)
             {
-                if (toDiscard.contains(cell.value()))
+                if (toDiscard.contains(ByteBuffer.wrap(cell.value())))  // FIXME
                     params.addTombstone(column, cell.path());
             }
         }

@@ -43,6 +43,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.pager.QueryPager;
 import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -518,6 +519,6 @@ public class QueryPagerTest
     {
         Cell cell = row.getCell(column);
         assertNotNull(cell);
-        assertEquals(value, ByteBufferUtil.toInt(cell.value()));
+        assertEquals(value, ByteArrayUtil.getInt(cell.value()));
     }
 }

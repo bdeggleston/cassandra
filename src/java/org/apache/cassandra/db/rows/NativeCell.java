@@ -17,9 +17,14 @@
  */
 package org.apache.cassandra.db.rows;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.google.common.primitives.Ints;
+
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
@@ -59,19 +64,10 @@ public class NativeCell extends AbstractCell
              cell.path());
     }
 
-    public NativeCell(NativeAllocator allocator,
-                      OpOrder.Group writeOp,
-                      ColumnMetadata column,
-                      long timestamp,
-                      int ttl,
-                      int localDeletionTime,
-                      ByteBuffer value,
-                      CellPath path)
+    public static int totalSize(int valueLength, ColumnMetadata column, CellPath path)
     {
-        super(column);
-        long size = simpleSize(value.remaining());
+        long size = simpleSize(valueLength);
 
-        assert value.order() == ByteOrder.BIG_ENDIAN;
         assert column.isComplex() == (path != null);
         if (path != null)
         {
@@ -82,24 +78,55 @@ public class NativeCell extends AbstractCell
         if (size > Integer.MAX_VALUE)
             throw new IllegalStateException();
 
-        // cellpath? : timestamp : ttl : localDeletionTime : length : <data> : [cell path length] : [<cell path data>]
-        peer = allocator.allocate((int) size, writeOp);
+        return Ints.checkedCast(size);
+    }
+
+    public NativeCell(NativeAllocator allocator,
+                      OpOrder.Group writeOp,
+                      ColumnMetadata column,
+                      long timestamp,
+                      int ttl,
+                      int localDeletionTime,
+                      byte[] value,
+                      CellPath path)
+    {
+        this(allocator.allocate(totalSize(value.length, column, path), writeOp),
+             column, timestamp, ttl, localDeletionTime, value, path);
+    }
+
+    public NativeCell(long peer,
+                      ColumnMetadata column,
+                      long timestamp,
+                      int ttl,
+                      int localDeletionTime,
+                      byte[] value,
+                      CellPath path)
+    {
+        super(column);
+        this.peer = peer;
         MemoryUtil.setByte(peer + HAS_CELLPATH, (byte)(path == null ? 0 : 1));
         MemoryUtil.setLong(peer + TIMESTAMP, timestamp);
         MemoryUtil.setInt(peer + TTL, ttl);
         MemoryUtil.setInt(peer + DELETION, localDeletionTime);
-        MemoryUtil.setInt(peer + LENGTH, value.remaining());
-        MemoryUtil.setBytes(peer + VALUE, value);
+        MemoryUtil.setInt(peer + LENGTH, value.length);
+        MemoryUtil.setBytes(peer + VALUE, value, 0, value.length);
 
         if (path != null)
         {
             ByteBuffer pathbuffer = path.get(0);
             assert pathbuffer.order() == ByteOrder.BIG_ENDIAN;
 
-            long offset = peer + VALUE + value.remaining();
+            long offset = peer + VALUE + value.length;
             MemoryUtil.setInt(offset, pathbuffer.remaining());
             MemoryUtil.setBytes(offset + 4, pathbuffer);
         }
+    }
+
+    public NativeCell(long peer, NativeCell from, int size)
+    {
+        super(from.column);
+        this.peer = peer;
+        MemoryUtil.setBytes(from.peer, this.peer, size);
     }
 
     private static long simpleSize(int length)
@@ -122,10 +149,32 @@ public class NativeCell extends AbstractCell
         return MemoryUtil.getInt(peer + DELETION);
     }
 
-    public ByteBuffer value()
+    public byte[] value()
     {
-        int length = MemoryUtil.getInt(peer + LENGTH);
-        return MemoryUtil.getByteBuffer(peer + VALUE, length, ByteOrder.BIG_ENDIAN);
+        int length = valueSize();
+        byte[] val = new byte[length];
+        MemoryUtil.getBytes(peer + VALUE, val, 0, length);
+        return val;
+    }
+
+    public int valueSize()
+    {
+        return MemoryUtil.getInt(peer + LENGTH);
+    }
+
+    public int compareValue(Cell that)
+    {
+        return Cells.compare(this, that, null);
+    }
+
+    public int compareValue(Cell that, AbstractType<?> type)
+    {
+        return Cells.compare(this, that, type);
+    }
+
+    public void writeValue(DataOutput out) throws IOException
+    {
+        out.write(value());
     }
 
     public CellPath path()
@@ -138,7 +187,7 @@ public class NativeCell extends AbstractCell
         return CellPath.create(MemoryUtil.getByteBuffer(offset + 4, size, ByteOrder.BIG_ENDIAN));
     }
 
-    public Cell withUpdatedValue(ByteBuffer newValue)
+    public Cell withUpdatedValue(byte[] newValue)
     {
         throw new UnsupportedOperationException();
     }

@@ -32,7 +32,7 @@ public abstract class MemtableBufferAllocator extends MemtableAllocator
 
     public Row.Builder rowBuilder(OpOrder.Group writeOp)
     {
-        return allocator(writeOp).cloningBTreeRowBuilder();
+        return allocator(writeOp).cloningBTreeRowBuilder(writeOp);
     }
 
     public DecoratedKey clone(DecoratedKey key, OpOrder.Group writeOp)
@@ -46,4 +46,6 @@ public abstract class MemtableBufferAllocator extends MemtableAllocator
     {
         return new ContextAllocator(writeOp, this);
     }
+
+    public abstract Cell cloneCell(Cell cell, AbstractAllocator allocator, OpOrder.Group opGroup);
 }

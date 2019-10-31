@@ -17,16 +17,18 @@
  */
 package org.apache.cassandra.db.rows;
 
+import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ByteArrayUtil;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
@@ -73,7 +75,12 @@ public abstract class Cell extends ColumnData
      *
      * @return the cell value.
      */
-    public abstract ByteBuffer value();
+    public abstract byte[] value();
+
+    public abstract int valueSize();
+    public abstract int compareValue(Cell that);
+    public abstract int compareValue(Cell that, AbstractType<?> type);
+    public abstract void writeValue(DataOutput out) throws IOException;
 
     /**
      * The cell timestamp.
@@ -134,11 +141,11 @@ public abstract class Cell extends ColumnData
 
     public abstract Cell withUpdatedColumn(ColumnMetadata newColumn);
 
-    public abstract Cell withUpdatedValue(ByteBuffer newValue);
+    public abstract Cell withUpdatedValue(byte[] newValue);
 
     public abstract Cell withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime);
 
-    public abstract Cell copy(AbstractAllocator allocator);
+    public abstract Cell copy(AbstractAllocator allocator, OpOrder.Group opGroup);
 
     @Override
     // Overrides super type to provide a more precise return type.
@@ -178,7 +185,7 @@ public abstract class Cell extends ColumnData
         public void serialize(Cell cell, ColumnMetadata column, DataOutputPlus out, LivenessInfo rowLiveness, SerializationHeader header) throws IOException
         {
             assert cell != null;
-            boolean hasValue = cell.value().hasRemaining();
+            boolean hasValue = cell.valueSize() > 0;
             boolean isDeleted = cell.isTombstone();
             boolean isExpiring = cell.isExpiring();
             boolean useRowTimestamp = !rowLiveness.isEmpty() && cell.timestamp() == rowLiveness.timestamp();
@@ -211,7 +218,7 @@ public abstract class Cell extends ColumnData
                 column.cellPathSerializer().serialize(cell.path(), out);
 
             if (hasValue)
-                header.getType(column).writeValue(cell.value(), out);
+                header.getType(column).writeValue(cell, out);
         }
 
         public Cell deserialize(DataInputPlus in, LivenessInfo rowLiveness, ColumnMetadata column, SerializationHeader header, SerializationHelper helper) throws IOException
@@ -235,7 +242,7 @@ public abstract class Cell extends ColumnData
                             ? column.cellPathSerializer().deserialize(in)
                             : null;
 
-            ByteBuffer value = ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            byte[] value = ByteArrayUtil.EMPTY_BYTE_ARRAY;
             if (hasValue)
             {
                 if (helper.canSkipValue(column) || (path != null && helper.canSkipValue(path)))
@@ -246,7 +253,7 @@ public abstract class Cell extends ColumnData
                 {
                     boolean isCounter = localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
 
-                    value = header.getType(column).readValue(in, DatabaseDescriptor.getMaxValueSize());
+                    value = header.getType(column).readArrayValue(in, DatabaseDescriptor.getMaxValueSize());
                     if (isCounter)
                         value = helper.maybeClearCounterValue(value);
                 }
@@ -258,7 +265,7 @@ public abstract class Cell extends ColumnData
         public long serializedSize(Cell cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)
         {
             long size = 1; // flags
-            boolean hasValue = cell.value().hasRemaining();
+            boolean hasValue = cell.valueSize() > 0;
             boolean isDeleted = cell.isTombstone();
             boolean isExpiring = cell.isExpiring();
             boolean useRowTimestamp = !rowLiveness.isEmpty() && cell.timestamp() == rowLiveness.timestamp();
@@ -276,7 +283,7 @@ public abstract class Cell extends ColumnData
                 size += column.cellPathSerializer().serializedSize(cell.path());
 
             if (hasValue)
-                size += header.getType(column).writtenLength(cell.value());
+                size += header.getType(column).writtenLength(cell);
 
             return size;
         }

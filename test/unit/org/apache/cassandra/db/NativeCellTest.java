@@ -132,7 +132,7 @@ public class NativeCellTest
             path = CellPath.create(ByteBuffer.wrap(pathbytes));
         }
 
-        return new BufferCell(col, timestamp, ttl, localDeletionTime, ByteBuffer.wrap(value), path);
+        return new BufferCell(col, timestamp, ttl, localDeletionTime, value, path);
     }
 
     private static int expdecay()

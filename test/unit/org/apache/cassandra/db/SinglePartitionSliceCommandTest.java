@@ -73,6 +73,7 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.btree.BTreeSet;
@@ -252,7 +253,7 @@ public class SinglePartitionSliceCommandTest
         Assert.assertTrue(staticRow.toString(metadata, true), cellIterator.hasNext());
         Cell cell = cellIterator.next();
         Assert.assertEquals(s, cell.column());
-        Assert.assertEquals(ByteBufferUtil.bytesToHex(cell.value()), ByteBufferUtil.bytes("s"), cell.value());
+        Assert.assertEquals(ByteArrayUtil.bytesToHex(cell.value()), ByteBufferUtil.bytes("s"), cell.value());
         Assert.assertFalse(cellIterator.hasNext());
     }
 

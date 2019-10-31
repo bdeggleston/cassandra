@@ -38,6 +38,7 @@ import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.serializers.MarshalException;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -135,17 +136,17 @@ public class CellTest
 
         // Valid cells
         c = fakeColumn("c", Int32Type.instance);
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4)));
+        assertValid(BufferCell.live(c, 0, ByteArrayUtil.EMPTY_BYTE_ARRAY));
+        assertValid(BufferCell.live(c, 0, ByteArrayUtil.bytes(4)));
 
-        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteBufferUtil.bytes(4)));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteArrayUtil.EMPTY_BYTE_ARRAY));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteArrayUtil.bytes(4)));
 
         assertValid(BufferCell.tombstone(c, 0, 4));
 
         // Invalid value (we don't all empty values for smallint)
         c = fakeColumn("c", ShortType.instance);
-        assertInvalid(BufferCell.live(c, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+        assertInvalid(BufferCell.live(c, 0, ByteArrayUtil.EMPTY_BYTE_ARRAY));
         // But this should be valid even though the underlying value is an empty BB (catches bug #11618)
         assertValid(BufferCell.tombstone(c, 0, 4));
         // And of course, this should be valid with a proper value
@@ -159,9 +160,9 @@ public class CellTest
 
         c = fakeColumn("c", MapType.getInstance(Int32Type.instance, Int32Type.instance, true));
         // Valid cell path
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes(4))));
+        assertValid(BufferCell.live(c, 0, ByteArrayUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes(4))));
         // Invalid cell path (int values should be 0 or 4 bytes)
-        assertInvalid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes((long)4))));
+        assertInvalid(BufferCell.live(c, 0, ByteArrayUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes((long)4))));
     }
 
     @Test
@@ -170,7 +171,7 @@ public class CellTest
         FieldIdentifier f1 = field("f1");  // has field position 0
         FieldIdentifier f2 = field("f2");  // has field position 1
         UserType udt = new UserType("ks",
-                                    bb("myType"),
+                                    ByteBuffer.wrap(bb("myType")),
                                     asList(f1, f2),
                                     asList(Int32Type.instance, UTF8Type.instance),
                                     true);
@@ -203,13 +204,13 @@ public class CellTest
         FieldIdentifier f1 = field("f1");  // has field position 0
         FieldIdentifier f2 = field("f2");  // has field position 1
         UserType udt = new UserType("ks",
-                                    bb("myType"),
+                                    ByteBuffer.wrap(bb("myType")),
                                     asList(f1, f2),
                                     asList(Int32Type.instance, UTF8Type.instance),
                                     false);
 
         ColumnMetadata c = fakeColumn("c", udt);
-        ByteBuffer val = udt(bb(1), bb("foo"));
+        byte[] val = udt(bb(1), bb("foo"));
 
         // Valid cells
         assertValid(BufferCell.live(c, 0, val));
@@ -324,24 +325,29 @@ public class CellTest
         Assert.assertNull(purged);
     }
 
-    private static ByteBuffer bb(int i)
+    private static byte[] bb(int i)
     {
-        return ByteBufferUtil.bytes(i);
+        return ByteArrayUtil.bytes(i);
     }
 
-    private static ByteBuffer bbs(int s)
+    private static byte[] bbs(int s)
     {
-        return ByteBufferUtil.bytes((short) s);
+        return ByteArrayUtil.bytes((short) s);
     }
 
-    private static ByteBuffer bb(String str)
+    private static byte[] bb(String str)
     {
-        return UTF8Type.instance.decompose(str);
+        return ByteBufferUtil.toArray(UTF8Type.instance.decompose(str));
     }
 
     private static ByteBuffer udt(ByteBuffer...buffers)
     {
         return UserType.buildValue(buffers);
+    }
+
+    private static byte[] udt(byte[]...buffers)
+    {
+        return ByteBufferUtil.toArray(UserType.buildValue(buffers));
     }
 
     private static FieldIdentifier field(String field)
@@ -394,7 +400,7 @@ public class CellTest
     private Cell regular(TableMetadata cfm, String columnName, String value, long timestamp)
     {
         ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
-        return BufferCell.live(cdef, timestamp, ByteBufferUtil.bytes(value));
+        return BufferCell.live(cdef, timestamp, ByteArrayUtil.bytes(value));
     }
 
     private Cell expiring(TableMetadata cfm, String columnName, String value, long timestamp, int localExpirationTime)
@@ -405,7 +411,7 @@ public class CellTest
     private Cell expiring(TableMetadata cfm, String columnName, String value, long timestamp, int ttl, int localExpirationTime)
     {
         ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
-        return new BufferCell(cdef, timestamp, ttl, localExpirationTime, ByteBufferUtil.bytes(value), null);
+        return new BufferCell(cdef, timestamp, ttl, localExpirationTime, ByteArrayUtil.bytes(value), null);
     }
 
     private Cell deleted(TableMetadata cfm, String columnName, int localDeletionTime, long timestamp)

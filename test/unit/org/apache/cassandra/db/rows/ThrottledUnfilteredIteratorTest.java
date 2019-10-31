@@ -63,6 +63,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
@@ -601,7 +602,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
                               timestamp,
                               BufferCell.NO_TTL,
                               localDeletionTime,
-                              ByteBufferUtil.bytes(v),
+                              ByteArrayUtil.bytes(v),
                               null);
     }
 

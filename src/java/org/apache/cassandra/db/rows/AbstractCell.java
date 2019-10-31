@@ -30,6 +30,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.HashingUtils;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
@@ -70,8 +71,8 @@ public abstract class AbstractCell extends Cell
         if (!isCounterCell())
             return this;
 
-        ByteBuffer value = value();
-        ByteBuffer marked = CounterContext.instance().markLocalToBeCleared(value);
+        byte[] value = value();
+        byte[] marked = CounterContext.instance().markLocalToBeCleared(value);
         return marked == value ? this : new BufferCell(column, timestamp(), ttl(), localDeletionTime(), marked, path());
     }
 
@@ -98,10 +99,9 @@ public abstract class AbstractCell extends Cell
         return this;
     }
 
-    public Cell copy(AbstractAllocator allocator)
+    public Cell copy(AbstractAllocator allocator, OpOrder.Group opGroup)
     {
-        CellPath path = path();
-        return new BufferCell(column, timestamp(), ttl(), localDeletionTime(), allocator.clone(value()), path == null ? null : path.copy(allocator));
+        return allocator.cloneCell(this, opGroup);
     }
 
     // note: while the cell returned may be different, the value is the same, so if the value is offheap it must be referenced inside a guarded context (or copied)
@@ -116,7 +116,7 @@ public abstract class AbstractCell extends Cell
         return TypeSizes.sizeof(timestamp())
                + TypeSizes.sizeof(ttl())
                + TypeSizes.sizeof(localDeletionTime())
-               + value().remaining()
+               + value().length
                + (path == null ? 0 : path.dataSize());
     }
 
@@ -128,7 +128,7 @@ public abstract class AbstractCell extends Cell
         }
         else
         {
-            HashingUtils.updateBytes(hasher, value().duplicate());
+            hasher.putBytes(value());
         }
 
         HashingUtils.updateWithLong(hasher, timestamp());
@@ -204,13 +204,13 @@ public abstract class AbstractCell extends Cell
             return String.format("[%s[%s]=%s %s]",
                                  column().name,
                                  ct.nameComparator().getString(path().get(0)),
-                                 ct.valueComparator().getString(value()),
+                                 ct.valueComparator().getString(ByteBuffer.wrap(value())), // FIXME?
                                  livenessInfoString());
         }
         if (isTombstone())
             return String.format("[%s=<tombstone> %s]", column().name, livenessInfoString());
         else
-            return String.format("[%s=%s %s]", column().name, type.getString(value()), livenessInfoString());
+            return String.format("[%s=%s %s]", column().name, type.getString(ByteBuffer.wrap(value())), livenessInfoString());  // FIXME?
     }
 
     private String livenessInfoString()

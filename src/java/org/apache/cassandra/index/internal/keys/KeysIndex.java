@@ -78,6 +78,6 @@ public class KeysIndex extends CassandraIndex
 
         return (cell == null
              || !cell.isLive(nowInSec)
-             || indexedColumn.type.compare(indexValue, cell.value()) != 0);
+             || indexedColumn.type.compare(cell.value(), indexValue) != 0);
     }
 }

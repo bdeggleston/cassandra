@@ -364,7 +364,7 @@ public class CacheService implements CacheServiceMBean
             {
                 public Pair<CounterCacheKey, ClockAndCount> call() throws Exception
                 {
-                    ByteBuffer value = cacheKey.readCounterValue(cfs);
+                    byte[] value = cacheKey.readCounterValue(cfs);
                     return value == null
                          ? null
                          : Pair.create(cacheKey, CounterContext.instance().getLocalClockAndCount(value));

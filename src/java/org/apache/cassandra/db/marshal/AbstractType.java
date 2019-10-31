@@ -35,6 +35,7 @@ import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.Term;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
@@ -116,6 +117,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getSerializer().deserialize(bytes);
     }
 
+    public T compose(byte[] bytes)
+    {
+        return compose(ByteBuffer.wrap(bytes));
+    }
+
     public ByteBuffer decompose(T value)
     {
         return getSerializer().serialize(value);
@@ -131,6 +137,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         serializer.validate(bytes);
 
         return serializer.toString(serializer.deserialize(bytes));
+    }
+
+    public String getString(byte[] bytes)
+    {
+        return getString(ByteBuffer.wrap(bytes));
     }
 
     /** get a byte representation of the given string. */
@@ -167,6 +178,20 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return isByteOrderComparable
                ? FastByteOperations.compareUnsigned(left, right)
                : compareCustom(left, right);
+    }
+
+    public final int compare(byte[] left, ByteBuffer right)
+    {
+        return isByteOrderComparable
+               ? FastByteOperations.compareUnsigned(left, 0, left.length, right)
+               : compareCustom(ByteBuffer.wrap(left), right); // FIXME
+    }
+
+    public final int compare(byte[] left, byte[] right)
+    {
+        return isByteOrderComparable
+               ? FastByteOperations.compareUnsigned(left, 0, left.length, right, 0, right.length)
+               : compareCustom(ByteBuffer.wrap(left), ByteBuffer.wrap(right)); // FIXME
     }
 
     /**
@@ -403,6 +428,15 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return -1;
     }
 
+    public void writeValue(Cell cell, DataOutputPlus out) throws IOException
+    {
+        assert cell.valueSize() > 0;
+
+        if(valueLengthIfFixed() < 0)
+            out.writeUnsignedVInt(cell.valueSize());
+        cell.writeValue(out);
+    }
+
     // This assumes that no empty values are passed
     public void writeValue(ByteBuffer value, DataOutputPlus out) throws IOException
     {
@@ -411,6 +445,14 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
             out.write(value);
         else
             ByteBufferUtil.writeWithVIntLength(value, out);
+    }
+
+    public long writtenLength(Cell cell)
+    {
+        assert cell.valueSize() > 0;
+        return valueLengthIfFixed() >= 0
+               ? cell.valueSize()
+               : TypeSizes.sizeofWithVIntLength(cell.valueSize());
     }
 
     public long writtenLength(ByteBuffer value)
@@ -444,6 +486,38 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
                                                     l, maxValueSize));
 
             return ByteBufferUtil.read(in, l);
+        }
+    }
+
+    public byte[] readArrayValue(DataInputPlus in) throws IOException
+    {
+        return readArrayValue(in, Integer.MAX_VALUE);
+    }
+
+    public byte[] readArrayValue(DataInputPlus in, int maxValueSize) throws IOException
+    {
+        int length = valueLengthIfFixed();
+
+        if (length >= 0)
+        {
+            byte[] val = new byte[length];
+            in.readFully(val);
+            return val;
+        }
+        else
+        {
+            int l = (int)in.readUnsignedVInt();
+            if (l < 0)
+                throw new IOException("Corrupt (negative) value length encountered");
+
+            if (l > maxValueSize)
+                throw new IOException(String.format("Corrupt value length %d encountered, as it exceeds the maximum of %d, " +
+                                                    "which is set via max_value_size_in_mb in cassandra.yaml",
+                                                    l, maxValueSize));
+
+            byte[] val = new byte[l];
+            in.readFully(val);
+            return val;
         }
     }
 

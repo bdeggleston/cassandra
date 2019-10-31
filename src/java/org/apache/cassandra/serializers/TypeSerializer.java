@@ -29,6 +29,11 @@ public interface TypeSerializer<T>
      */
     public T deserialize(ByteBuffer bytes);
 
+    default T deserialize(byte[] bytes)
+    {
+        return deserialize(ByteBuffer.wrap(bytes));
+    }
+
     /*
      * Validate that the byte array is a valid sequence for the type this represents.
      * This guarantees deserialize() can be called without errors.

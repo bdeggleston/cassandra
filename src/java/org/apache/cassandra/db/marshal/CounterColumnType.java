@@ -47,7 +47,7 @@ public class CounterColumnType extends NumberType<Long>
     @Override
     public Long compose(ByteBuffer bytes)
     {
-        return CounterContext.instance().total(bytes);
+        return CounterContext.instance().total(ByteBufferUtil.toArray(bytes));  // FIXME?
     }
 
     @Override
@@ -59,7 +59,7 @@ public class CounterColumnType extends NumberType<Long>
     @Override
     public void validateCellValue(ByteBuffer cellValue) throws MarshalException
     {
-        CounterContext.instance().validateContext(cellValue);
+        CounterContext.instance().validateContext(ByteBufferUtil.toArray(cellValue));  // FIXME?
     }
 
     public String getString(ByteBuffer bytes)

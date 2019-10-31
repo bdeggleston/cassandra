@@ -18,6 +18,13 @@
 package org.apache.cassandra.utils.memory;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+
+import org.apache.cassandra.db.rows.BufferCell;
+import org.apache.cassandra.db.rows.Cell;
+import org.apache.cassandra.db.rows.CellPath;
+import org.apache.cassandra.db.rows.Row;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
 public final class HeapAllocator extends AbstractAllocator
 {
@@ -37,5 +44,16 @@ public final class HeapAllocator extends AbstractAllocator
     public boolean allocatingOnHeap()
     {
         return true;
+    }
+    public Row.Builder cloningBTreeRowBuilder()
+    {
+        return cloningBTreeRowBuilder(null);
+    }
+
+    public Cell cloneCell(Cell from, OpOrder.Group opGroup)
+    {
+        byte[] val = Arrays.copyOf(from.value(), from.valueSize());
+        CellPath path = from.path() == null ? null : from.path().copy(this);
+        return new BufferCell(from.column(), from.timestamp(), from.ttl(), from.localDeletionTime(), val, path);
     }
 }

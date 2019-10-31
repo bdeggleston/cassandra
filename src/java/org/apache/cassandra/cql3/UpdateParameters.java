@@ -28,6 +28,7 @@ import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.partitions.Partition;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
  * Groups the parameters of an update query, and make building updates easier.
@@ -147,8 +148,8 @@ public class UpdateParameters
     public void addCell(ColumnMetadata column, CellPath path, ByteBuffer value) throws InvalidRequestException
     {
         Cell cell = ttl == LivenessInfo.NO_TTL
-                  ? BufferCell.live(column, timestamp, value, path)
-                  : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
+                  ? BufferCell.live(column, timestamp, ByteBufferUtil.toArray(value), path)
+                  : BufferCell.expiring(column, timestamp, ttl, nowInSec, ByteBufferUtil.toArray(value), path);
         builder.addCell(cell);
     }
 

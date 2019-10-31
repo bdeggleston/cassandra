@@ -43,6 +43,7 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.schema.KeyspaceParams;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 import static org.apache.cassandra.db.commitlog.CommitLogUpgradeTest.*;
@@ -241,7 +242,7 @@ public class CommitLogUpgradeTestMaker
                     int sz = randomSize ? tlr.nextInt(cellSize) : cellSize;
                     ByteBuffer bytes = randomBytes(sz, tlr);
                     builder.newRow(CommitLogUpgradeTest.CELLNAME + ii).add("val", bytes);
-                    hash = hash(hash, bytes);
+                    hash = hash(hash, ByteBufferUtil.toArray(bytes));
                     ++cells;
                     dataSize += sz;
                 }

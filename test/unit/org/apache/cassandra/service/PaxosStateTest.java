@@ -35,6 +35,7 @@ import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.service.paxos.PaxosState;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
@@ -95,8 +96,8 @@ public class PaxosStateTest
     private void assertDataPresent(ColumnFamilyStore cfs, DecoratedKey key, String name, ByteBuffer value)
     {
         Row row = Util.getOnlyRowUnfiltered(Util.cmd(cfs, key).build());
-        assertEquals(0, ByteBufferUtil.compareUnsigned(value,
-                row.getCell(cfs.metadata().getColumn(ByteBufferUtil.bytes(name))).value()));
+        assertEquals(0, ByteArrayUtil.compare(ByteBufferUtil.toArray(value),
+                                              row.getCell(cfs.metadata().getColumn(ByteBufferUtil.bytes(name))).value()));
     }
 
     private void assertNoDataPresent(ColumnFamilyStore cfs, DecoratedKey key)

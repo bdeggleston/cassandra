@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.utils.memory.MemoryUtil;
 
 public class CounterId implements Comparable<CounterId>
 {
@@ -33,7 +34,7 @@ public class CounterId implements Comparable<CounterId>
         static final LocalCounterIdHolder instance = new LocalCounterIdHolder();
     }
 
-    private final ByteBuffer id;
+    private final byte[] id;
 
     private static LocalCounterIdHolder localId()
     {
@@ -55,28 +56,29 @@ public class CounterId implements Comparable<CounterId>
     public static CounterId fromInt(int n)
     {
         long lowBits = 0xC000000000000000L | n;
-        return new CounterId(ByteBuffer.allocate(16).putLong(0, 0).putLong(8, lowBits));
+        byte[] bb = new byte[LENGTH];
+        ByteArrayUtil.putLong(bb, 8, lowBits);
+        return new CounterId(bb);
     }
 
     /*
      * For performance reasons, this function interns the provided ByteBuffer.
      */
-    public static CounterId wrap(ByteBuffer id)
+    public static CounterId wrap(byte[] id)
     {
         return new CounterId(id);
     }
 
-    public static CounterId wrap(ByteBuffer bb, int offset)
+    public static CounterId wrap(byte[] bb, int offset)
     {
-        ByteBuffer dup = bb.duplicate();
-        dup.position(offset);
-        dup.limit(dup.position() + LENGTH);
+        byte[] dup = new byte[bb.length - offset];
+        System.arraycopy(bb, offset, dup, 0, dup.length);
         return wrap(dup);
     }
 
-    private CounterId(ByteBuffer id)
+    private CounterId(byte[] id)
     {
-        if (id.remaining() != LENGTH)
+        if (id.length != LENGTH)
             throw new IllegalArgumentException("A CounterId representation is exactly " + LENGTH + " bytes");
 
         this.id = id;
@@ -84,14 +86,14 @@ public class CounterId implements Comparable<CounterId>
 
     public static CounterId generate()
     {
-        return new CounterId(ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes()));
+        return new CounterId(UUIDGen.getTimeUUIDBytes());
     }
 
     /*
      * For performance reasons, this function returns a reference to the internal ByteBuffer. Clients not modify the
      * result of this function.
      */
-    public ByteBuffer bytes()
+    public byte[] bytes()
     {
         return id;
     }
@@ -103,13 +105,13 @@ public class CounterId implements Comparable<CounterId>
 
     public int compareTo(CounterId o)
     {
-        return ByteBufferUtil.compareSubArrays(id, id.position(), o.id, o.id.position(), CounterId.LENGTH);
+        return ByteArrayUtil.compare(id, o.id);
     }
 
     @Override
     public String toString()
     {
-        return UUIDGen.getUUID(id).toString();
+        return UUIDGen.getUUID(ByteBuffer.wrap(id)).toString();
     }
 
     @Override
@@ -136,7 +138,7 @@ public class CounterId implements Comparable<CounterId>
 
         LocalCounterIdHolder()
         {
-            current = new AtomicReference<>(wrap(ByteBufferUtil.bytes(SystemKeyspace.getLocalHostId())));
+            current = new AtomicReference<>(wrap(UUIDGen.decompose(SystemKeyspace.getLocalHostId())));
         }
 
         CounterId get()

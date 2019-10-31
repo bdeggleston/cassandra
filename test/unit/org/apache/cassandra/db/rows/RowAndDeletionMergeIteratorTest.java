@@ -429,7 +429,8 @@ public class RowAndDeletionMergeIteratorTest
 
     private Cell makeCell(ColumnMetadata columnMetadata, int value, long timestamp)
     {
-        return BufferCell.live(columnMetadata, timestamp, ((AbstractType) columnMetadata.cellValueType()).decompose(value));
+        ByteBuffer b = ((AbstractType) columnMetadata.cellValueType()).decompose(value);
+        return BufferCell.live(columnMetadata, timestamp, ByteBufferUtil.toArray(((AbstractType) columnMetadata.cellValueType()).decompose(value)));
     }
 
     private static RangeTombstone atLeast(int start, long tstamp, int delTime)

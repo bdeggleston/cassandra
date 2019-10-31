@@ -604,6 +604,16 @@ public class ByteBufferUtil
         };
     }
 
+    public static byte[] toArray(ByteBuffer buffer)
+    {
+        if (buffer.hasArray() && buffer.position() == 0 && buffer.limit() == buffer.capacity())
+            return buffer.array();
+
+        byte[] arr = new byte[buffer.remaining()];
+        copyBytes(buffer, buffer.position(), arr, 0, arr.length);
+        return arr;
+    }
+
     /*
      * Does not modify position or limit of buffer even temporarily
      * so this is safe even without duplication.

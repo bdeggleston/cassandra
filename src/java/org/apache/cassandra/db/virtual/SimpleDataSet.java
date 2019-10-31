@@ -178,7 +178,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
             {
                 Object value = values.get(c);
                 if (null != value)
-                    builder.addCell(BufferCell.live(c, now, decompose(c.type, value)));
+                    builder.addCell(BufferCell.live(c, now, ByteBufferUtil.toArray(decompose(c.type, value))));  // FIXME
             });
 
             return builder.build();

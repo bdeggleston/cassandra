@@ -19,6 +19,7 @@ package org.apache.cassandra.db.context;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -31,6 +32,7 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.memory.MemoryUtil;
 
 /**
  * An implementation of a partitioned counter context.
@@ -121,7 +123,7 @@ public class CounterContext
      * It was problematic, because it was possible to return a false positive, and on read path encode an old counter
      * cell from 2.0 era with a regular local shard as a counter update, and to break the 2.1 coordinator.
      */
-    public ByteBuffer createUpdate(long count)
+    public byte[] createUpdate(long count)
     {
         ContextState state = ContextState.allocate(0, 1, 0);
         state.writeLocal(UPDATE_CLOCK_ID, 1L, count);
@@ -131,7 +133,7 @@ public class CounterContext
     /**
      * Checks if a context is an update (see createUpdate() for justification).
      */
-    public boolean isUpdate(ByteBuffer context)
+    public boolean isUpdate(byte[] context)
     {
         return ContextState.wrap(context).getCounterId().equals(UPDATE_CLOCK_ID);
     }
@@ -139,7 +141,7 @@ public class CounterContext
     /**
      * Creates a counter context with a single global, 2.1+ shard (a result of increment).
      */
-    public ByteBuffer createGlobal(CounterId id, long clock, long count)
+    public byte[] createGlobal(CounterId id, long clock, long count)
     {
         ContextState state = ContextState.allocate(1, 0, 0);
         state.writeGlobal(id, clock, count);
@@ -150,7 +152,7 @@ public class CounterContext
      * Creates a counter context with a single local shard.
      * For use by tests of compatibility with pre-2.1 counters only.
      */
-    public ByteBuffer createLocal(long count)
+    public byte[] createLocal(long count)
     {
         ContextState state = ContextState.allocate(0, 1, 0);
         state.writeLocal(CounterId.getLocalId(), 1L, count);
@@ -161,21 +163,21 @@ public class CounterContext
      * Creates a counter context with a single remote shard.
      * For use by tests of compatibility with pre-2.1 counters only.
      */
-    public ByteBuffer createRemote(CounterId id, long clock, long count)
+    public byte[] createRemote(CounterId id, long clock, long count)
     {
         ContextState state = ContextState.allocate(0, 0, 1);
         state.writeRemote(id, clock, count);
         return state.context;
     }
 
-    private static int headerLength(ByteBuffer context)
+    private static int headerLength(byte[] context)
     {
-        return HEADER_SIZE_LENGTH + Math.abs(context.getShort(context.position())) * HEADER_ELT_LENGTH;
+        return HEADER_SIZE_LENGTH + Math.abs(ByteArrayUtil.getShort(context, 0)) * HEADER_ELT_LENGTH;
     }
 
-    private static int compareId(ByteBuffer bb1, int pos1, ByteBuffer bb2, int pos2)
+    private static int compareId(byte[] bb1, int pos1, byte[] bb2, int pos2)
     {
-        return ByteBufferUtil.compareSubArrays(bb1, pos1, bb2, pos2, CounterId.LENGTH);
+        return ByteArrayUtil.compare(bb1, pos1, bb2, pos2, CounterId.LENGTH);
     }
 
     /**
@@ -192,7 +194,7 @@ public class CounterContext
      * @param right counter context.
      * @return the Relationship between the contexts.
      */
-    public Relationship diff(ByteBuffer left, ByteBuffer right)
+    public Relationship diff(byte[] left, byte[] right)
     {
         Relationship relationship = Relationship.EQUAL;
         ContextState leftState = ContextState.wrap(left);
@@ -291,7 +293,7 @@ public class CounterContext
      * @param left counter context.
      * @param right counter context.
      */
-    public ByteBuffer merge(ByteBuffer left, ByteBuffer right)
+    public byte[] merge(byte[] left, byte[] right)
     {
         boolean leftIsSuperSet = true;
         boolean rightIsSuperSet = true;
@@ -395,7 +397,7 @@ public class CounterContext
         return merge(ContextState.allocate(globalCount, localCount, remoteCount), leftState, rightState);
     }
 
-    private ByteBuffer merge(ContextState mergedState, ContextState leftState, ContextState rightState)
+    private byte[] merge(ContextState mergedState, ContextState leftState, ContextState rightState)
     {
         while (leftState.hasRemaining() && rightState.hasRemaining())
         {
@@ -535,7 +537,7 @@ public class CounterContext
      * @param context counter context.
      * @return a human-readable String of the context.
      */
-    public String toString(ByteBuffer context)
+    public String toString(byte[] context)
     {
         ContextState state = ContextState.wrap(context);
         StringBuilder sb = new StringBuilder();
@@ -567,34 +569,34 @@ public class CounterContext
      * @param context a counter context
      * @return the aggregated count represented by {@code context}
      */
-    public long total(ByteBuffer context)
+    public long total(byte[] context)
     {
         long total = 0L;
         // we could use a ContextState but it is easy enough that we avoid the object creation
-        for (int offset = context.position() + headerLength(context); offset < context.limit(); offset += STEP_LENGTH)
-            total += context.getLong(offset + CounterId.LENGTH + CLOCK_LENGTH);
+        for (int offset = headerLength(context); offset < context.length; offset += STEP_LENGTH)
+            total += ByteArrayUtil.getLong(context, offset + CounterId.LENGTH + CLOCK_LENGTH);
         return total;
     }
 
-    public boolean shouldClearLocal(ByteBuffer context)
+    public boolean shouldClearLocal(byte[] context)
     {
         // #elt being negative means we have to clean local shards.
-        return context.getShort(context.position()) < 0;
+        return ByteArrayUtil.getShort(context, 0) < 0;
     }
 
     /**
      * Detects whether or not the context has any legacy (local or remote) shards in it.
      */
-    public boolean hasLegacyShards(ByteBuffer context)
+    public boolean hasLegacyShards(byte[] context)
     {
-        int totalCount = (context.remaining() - headerLength(context)) / STEP_LENGTH;
-        int localAndGlobalCount = Math.abs(context.getShort(context.position()));
+        int totalCount = (context.length - headerLength(context)) / STEP_LENGTH;
+        int localAndGlobalCount = Math.abs(ByteArrayUtil.getShort(context, 0));
 
         if (localAndGlobalCount < totalCount)
             return true; // remote shard(s) present
 
         for (int i = 0; i < localAndGlobalCount; i++)
-            if (context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH) >= 0)
+            if (ByteArrayUtil.getShort(context, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH) >= 0)
                 return true; // found a local shard
 
         return false;
@@ -608,16 +610,16 @@ public class CounterContext
      * @param context a counter context
      * @return context that marked to delete local refs
      */
-    public ByteBuffer markLocalToBeCleared(ByteBuffer context)
+    public byte[] markLocalToBeCleared(byte[] context)
     {
-        short count = context.getShort(context.position());
+        short count = ByteArrayUtil.getShort(context, 0);
         if (count <= 0)
             return context; // already marked or all are remote.
 
         boolean hasLocalShards = false;
         for (int i = 0; i < count; i++)
         {
-            if (context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH) >= 0)
+            if (ByteArrayUtil.getShort(context, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH) >= 0)
             {
                 hasLocalShards = true;
                 break;
@@ -627,13 +629,9 @@ public class CounterContext
         if (!hasLocalShards)
             return context; // all shards are global or remote.
 
-        ByteBuffer marked = ByteBuffer.allocate(context.remaining());
-        marked.putShort(marked.position(), (short) (count * -1));
-        ByteBufferUtil.copyBytes(context,
-                                 context.position() + HEADER_SIZE_LENGTH,
-                                 marked,
-                                 marked.position() + HEADER_SIZE_LENGTH,
-                                 context.remaining() - HEADER_SIZE_LENGTH);
+        byte[] marked = new byte[context.length];
+        ByteArrayUtil.putShort(marked, 0, (short) (count * -1));
+        System.arraycopy(context, HEADER_SIZE_LENGTH, marked, HEADER_SIZE_LENGTH, context.length - HEADER_SIZE_LENGTH);
         return marked;
     }
 
@@ -643,16 +641,16 @@ public class CounterContext
      * @param context a counter context
      * @return a version of {@code context} where no shards are local.
      */
-    public ByteBuffer clearAllLocal(ByteBuffer context)
+    public byte[] clearAllLocal(byte[] context)
     {
-        int count = Math.abs(context.getShort(context.position()));
+        int count = Math.abs(ByteArrayUtil.getShort(context, 0));
         if (count == 0)
             return context; // no local or global shards present.
 
         List<Short> globalShardIndexes = new ArrayList<>(count);
         for (int i = 0; i < count; i++)
         {
-            short elt = context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH);
+            short elt = ByteArrayUtil.getShort(context, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH);
             if (elt < 0)
                 globalShardIndexes.add(elt);
         }
@@ -661,25 +659,20 @@ public class CounterContext
             return context; // no local shards detected.
 
         // allocate a smaller BB for the cleared context - with no local header elts.
-        ByteBuffer cleared = ByteBuffer.allocate(context.remaining() - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH);
+        byte[] cleared = new byte[context.length - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH];
 
-        cleared.putShort(cleared.position(), (short) globalShardIndexes.size());
+        ByteArrayUtil.putShort(cleared, 0, (short) globalShardIndexes.size());
         for (int i = 0; i < globalShardIndexes.size(); i++)
-            cleared.putShort(cleared.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
+            ByteArrayUtil.putShort(cleared, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
 
         int origHeaderLength = headerLength(context);
-        ByteBufferUtil.copyBytes(context,
-                                 context.position() + origHeaderLength,
-                                 cleared,
-                                 cleared.position() + headerLength(cleared),
-                                 context.remaining() - origHeaderLength);
-
+        System.arraycopy(context, origHeaderLength, cleared, headerLength(cleared), context.length - origHeaderLength);
         return cleared;
     }
 
-    public void validateContext(ByteBuffer context) throws MarshalException
+    public void validateContext(byte[] context) throws MarshalException
     {
-        if ((context.remaining() - headerLength(context)) % STEP_LENGTH != 0)
+        if ((context.length - headerLength(context)) % STEP_LENGTH != 0)
             throw new MarshalException("Invalid size for a counter context");
     }
 
@@ -690,20 +683,19 @@ public class CounterContext
      * nodes. This means in particular that we always have:
      *  updateDigest(ctx) == updateDigest(clearAllLocal(ctx))
      */
-    public void updateDigest(Hasher hasher, ByteBuffer context)
+    public void updateDigest(Hasher hasher, byte[] context)
     {
         // context can be empty due to the optimization from CASSANDRA-10657
-        if (!context.hasRemaining())
+        if (context.length == 0)
             return;
-        ByteBuffer dup = context.duplicate();
-        dup.position(context.position() + headerLength(context));
-        HashingUtils.updateBytes(hasher, dup);
+        int headerLen = headerLength(context);
+        hasher.putBytes(context, headerLen, context.length - headerLen);
     }
 
     /**
      * Returns the clock and the count associated with the local counter id, or (0, 0) if no such shard is present.
      */
-    public ClockAndCount getLocalClockAndCount(ByteBuffer context)
+    public ClockAndCount getLocalClockAndCount(byte[] context)
     {
         return getClockAndCountOf(context, CounterId.getLocalId());
     }
@@ -711,7 +703,7 @@ public class CounterContext
     /**
      * Returns the count associated with the local counter id, or 0 if no such shard is present.
      */
-    public long getLocalCount(ByteBuffer context)
+    public long getLocalCount(byte[] context)
     {
         return getLocalClockAndCount(context).count;
     }
@@ -720,14 +712,14 @@ public class CounterContext
      * Returns the clock and the count associated with the given counter id, or (0, 0) if no such shard is present.
      */
     @VisibleForTesting
-    public ClockAndCount getClockAndCountOf(ByteBuffer context, CounterId id)
+    public ClockAndCount getClockAndCountOf(byte[] context, CounterId id)
     {
         int position = findPositionOf(context, id);
         if (position == -1)
             return ClockAndCount.BLANK;
 
-        long clock = context.getLong(position + CounterId.LENGTH);
-        long count = context.getLong(position + CounterId.LENGTH + CLOCK_LENGTH);
+        long clock = ByteArrayUtil.getLong(context, position + CounterId.LENGTH);
+        long count = ByteArrayUtil.getLong(context, position + CounterId.LENGTH + CLOCK_LENGTH);
         return ClockAndCount.create(clock, count);
     }
 
@@ -735,18 +727,18 @@ public class CounterContext
      * Finds the position of a shard with the given id within the context (via binary search).
      */
     @VisibleForTesting
-    public int findPositionOf(ByteBuffer context, CounterId id)
+    public int findPositionOf(byte[] context, CounterId id)
     {
         int headerLength = headerLength(context);
-        int offset = context.position() + headerLength;
+        int offset = headerLength;
 
         int left = 0;
-        int right = (context.remaining() - headerLength) / STEP_LENGTH - 1;
+        int right = (context.length - headerLength) / STEP_LENGTH - 1;
 
         while (right >= left)
         {
             int middle = (left + right) / 2;
-            int cmp = compareId(context, offset + middle * STEP_LENGTH, id.bytes(), id.bytes().position());
+            int cmp = compareId(context, offset + middle * STEP_LENGTH, id.bytes(), 0);
 
             if (cmp == -1)
                 left = middle + 1;
@@ -771,7 +763,7 @@ public class CounterContext
      */
     public static class ContextState
     {
-        public final ByteBuffer context;
+        public final byte[] context;
         public final int headerLength;
 
         private int headerOffset;        // offset from context.position()
@@ -779,7 +771,7 @@ public class CounterContext
         private boolean currentIsGlobal;
         private boolean currentIsLocal;
 
-        private ContextState(ByteBuffer context)
+        private ContextState(byte[] context)
         {
             this.context = context;
             this.headerLength = this.bodyOffset = headerLength(context);
@@ -787,7 +779,7 @@ public class CounterContext
             updateIsGlobalOrLocal();
         }
 
-        public static ContextState wrap(ByteBuffer context)
+        public static ContextState wrap(byte[] context)
         {
             return new ContextState(context);
         }
@@ -801,8 +793,8 @@ public class CounterContext
             int headerLength = HEADER_SIZE_LENGTH + (globalCount + localCount) * HEADER_ELT_LENGTH;
             int bodyLength = (globalCount + localCount + remoteCount) * STEP_LENGTH;
 
-            ByteBuffer buffer = ByteBuffer.allocate(headerLength + bodyLength);
-            buffer.putShort(buffer.position(), (short) (globalCount + localCount));
+            byte[] buffer = new byte[headerLength + bodyLength];
+            ByteArrayUtil.putShort(buffer, 0, (short) (globalCount + localCount));
 
             return ContextState.wrap(buffer);
         }
@@ -830,7 +822,7 @@ public class CounterContext
             }
             else
             {
-                short headerElt = context.getShort(context.position() + headerOffset);
+                short headerElt = ByteArrayUtil.getShort(context, headerOffset);
                 currentIsGlobal = headerElt == getElementIndex() + Short.MIN_VALUE;
                 currentIsLocal = headerElt == getElementIndex();
             }
@@ -838,7 +830,7 @@ public class CounterContext
 
         public boolean hasRemaining()
         {
-            return bodyOffset < context.remaining();
+            return bodyOffset < context.length;
         }
 
         public void moveToNext()
@@ -856,7 +848,7 @@ public class CounterContext
 
         public int compareIdTo(ContextState other)
         {
-            return compareId(context, context.position() + bodyOffset, other.context, other.context.position() + other.bodyOffset);
+            return compareId(context, bodyOffset, other.context, other.bodyOffset);
         }
 
         public void reset()
@@ -873,17 +865,17 @@ public class CounterContext
 
         public CounterId getCounterId()
         {
-            return CounterId.wrap(context, context.position() + bodyOffset);
+            return CounterId.wrap(context, bodyOffset);
         }
 
         public long getClock()
         {
-            return context.getLong(context.position() + bodyOffset + CounterId.LENGTH);
+            return ByteArrayUtil.getLong(context, bodyOffset + CounterId.LENGTH);
         }
 
         public long getCount()
         {
-            return context.getLong(context.position() + bodyOffset + CounterId.LENGTH + CLOCK_LENGTH);
+            return ByteArrayUtil.getLong(context, bodyOffset + CounterId.LENGTH + CLOCK_LENGTH);
         }
 
         public void writeGlobal(CounterId id, long clock, long count)
@@ -905,12 +897,12 @@ public class CounterContext
 
         private void writeElement(CounterId id, long clock, long count, boolean isGlobal, boolean isLocal)
         {
-            writeElementAtOffset(context, context.position() + bodyOffset, id, clock, count);
+            writeElementAtOffset(context, bodyOffset, id, clock, count);
 
             if (isGlobal)
-                context.putShort(context.position() + headerOffset, (short) (getElementIndex() + Short.MIN_VALUE));
+                ByteArrayUtil.putShort(context, headerOffset, (short) (getElementIndex() + Short.MIN_VALUE));
             else if (isLocal)
-                context.putShort(context.position() + headerOffset, (short) getElementIndex());
+                ByteArrayUtil.putShort(context, headerOffset, (short) getElementIndex());
 
             currentIsGlobal = isGlobal;
             currentIsLocal = isLocal;
@@ -918,13 +910,12 @@ public class CounterContext
         }
 
         // write a tuple (counter id, clock, count) at an absolute (bytebuffer-wise) offset
-        private void writeElementAtOffset(ByteBuffer ctx, int offset, CounterId id, long clock, long count)
+        private void writeElementAtOffset(byte[] ctx, int offset, CounterId id, long clock, long count)
         {
-            ctx = ctx.duplicate();
-            ctx.position(offset);
-            ctx.put(id.bytes().duplicate());
-            ctx.putLong(clock);
-            ctx.putLong(count);
+            byte[] idBytes = id.bytes();
+            System.arraycopy(idBytes, 0, ctx, 0, idBytes.length);
+            ByteArrayUtil.putLong(ctx, idBytes.length, clock);
+            ByteArrayUtil.putLong(ctx, idBytes.length + 8, count);
         }
     }
 }

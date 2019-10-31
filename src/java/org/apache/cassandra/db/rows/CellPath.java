@@ -48,6 +48,11 @@ public abstract class CellPath
         return new SingleItemCellPath(value);
     }
 
+    public static CellPath create(byte[] value)
+    {
+        return create(ByteBuffer.wrap(value));
+    }
+
     public int dataSize()
     {
         int size = 0;

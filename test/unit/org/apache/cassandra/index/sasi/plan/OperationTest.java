@@ -38,6 +38,7 @@ import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 import org.junit.*;
@@ -683,7 +684,7 @@ public class OperationTest extends SchemaLoader
 
     private static Cell buildCell(ColumnMetadata column, ByteBuffer value, long timestamp)
     {
-        return BufferCell.live(column, timestamp, value);
+        return BufferCell.live(column, timestamp, ByteBufferUtil.toArray(value));
     }
 
     private static Cell deletedCell(ColumnMetadata column, long timestamp, int nowInSeconds)

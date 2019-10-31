@@ -212,7 +212,7 @@ public class ViewUpdateGenerator
             return UpdateAction.DELETE_OLD;
         }
 
-        return baseColumn.cellValueType().compare(before.value(), after.value()) == 0
+        return baseColumn.cellValueType().compare(ByteBuffer.wrap(before.value()), ByteBuffer.wrap(after.value())) == 0  // FIXME?
              ? UpdateAction.UPDATE_EXISTING
              : UpdateAction.SWITCH_ENTRY;
     }
@@ -596,7 +596,7 @@ public class ViewUpdateGenerator
                 return row.clustering().get(column.position());
             default:
                 // This shouldn't NPE as we shouldn't get there if the value can be null (or there is a bug in updateAction())
-                return row.getCell(column).value();
+                return ByteBuffer.wrap(row.getCell(column).value());
         }
     }
 }

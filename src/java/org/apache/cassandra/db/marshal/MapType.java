@@ -239,7 +239,7 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         {
             Cell c = cells.next();
             bbs.add(c.path().get(0));
-            bbs.add(c.value());
+            bbs.add(ByteBuffer.wrap(c.value()));  // FIXME
         }
         return bbs;
     }

@@ -603,7 +603,7 @@ public abstract class CassandraIndex implements Index
                 {
                     for (Cell cell : data)
                     {
-                        validateIndexedValue(getIndexedValue(null, null, cell.path(), cell.value()));
+                        validateIndexedValue(getIndexedValue(null, null, cell.path(), ByteBuffer.wrap(cell.value())));  // FIXME
                     }
                 }
             }
@@ -633,7 +633,7 @@ public abstract class CassandraIndex implements Index
         return getIndexedValue(rowKey,
                                clustering,
                                cell == null ? null : cell.path(),
-                               cell == null ? null : cell.value()
+                               cell == null ? null : ByteBuffer.wrap(cell.value())  // FIXME
         );
     }
 

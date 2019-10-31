@@ -29,6 +29,7 @@ import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ClockAndCount;
 import org.apache.cassandra.db.context.CounterContext.Relationship;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 
@@ -61,16 +62,16 @@ public class CounterContextTest
     public void testAllocate()
     {
         ContextState allGlobal = ContextState.allocate(3, 0, 0);
-        assertEquals(headerSizeLength + 3 * headerEltLength + 3 * stepLength, allGlobal.context.remaining());
+        assertEquals(headerSizeLength + 3 * headerEltLength + 3 * stepLength, allGlobal.context.length);
 
         ContextState allLocal = ContextState.allocate(0, 3, 0);
-        assertEquals(headerSizeLength + 3 * headerEltLength + 3 * stepLength, allLocal.context.remaining());
+        assertEquals(headerSizeLength + 3 * headerEltLength + 3 * stepLength, allLocal.context.length);
 
         ContextState allRemote = ContextState.allocate(0, 0, 3);
-        assertEquals(headerSizeLength + 3 * stepLength, allRemote.context.remaining());
+        assertEquals(headerSizeLength + 3 * stepLength, allRemote.context.length);
 
         ContextState mixed = ContextState.allocate(1, 1, 1);
-        assertEquals(headerSizeLength + 2 * headerEltLength + 3 * stepLength, mixed.context.remaining());
+        assertEquals(headerSizeLength + 2 * headerEltLength + 3 * stepLength, mixed.context.length);
     }
 
     @Test
@@ -84,7 +85,7 @@ public class CounterContextTest
         left.writeRemote(CounterId.fromInt(3), 3L, 0L);
         left.writeRemote(CounterId.fromInt(6), 2L, 0L);
         left.writeRemote(CounterId.fromInt(9), 1L, 0L);
-        right = ContextState.wrap(ByteBufferUtil.clone(left.context));
+        right = ContextState.wrap(left.context);
 
         assertEquals(Relationship.EQUAL, cc.diff(left.context, right.context));
 
@@ -263,31 +264,31 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(5), 5L, 5L);
         right.writeLocal(CounterId.getLocalId(), 2L, 9L);
 
-        ByteBuffer merged = cc.merge(left.context, right.context);
+        byte[] merged = cc.merge(left.context, right.context);
         int hd = 4;
 
-        assertEquals(hd + 5 * stepLength, merged.remaining());
+        assertEquals(hd + 5 * stepLength, merged.length);
         // local node id's counts are aggregated
         assertTrue(Util.equalsCounterId(CounterId.getLocalId(), merged, hd + 4 * stepLength));
-        assertEquals(9L, merged.getLong(merged.position() + hd + 4 * stepLength + idLength));
-        assertEquals(12L,  merged.getLong(merged.position() + hd + 4*stepLength + idLength + clockLength));
+        assertEquals(9L, ByteArrayUtil.getLong(merged, 4 * stepLength + idLength));
+        assertEquals(12L,  ByteArrayUtil.getLong(merged, hd + 4*stepLength + idLength + clockLength));
 
         // remote node id counts are reconciled (i.e. take max)
         assertTrue(Util.equalsCounterId(CounterId.fromInt(4), merged, hd + 2 * stepLength));
-        assertEquals(6L, merged.getLong(merged.position() + hd + 2 * stepLength + idLength));
-        assertEquals( 3L,  merged.getLong(merged.position() + hd + 2*stepLength + idLength + clockLength));
+        assertEquals(6L, ByteArrayUtil.getLong(merged, hd + 2 * stepLength + idLength));
+        assertEquals( 3L,  ByteArrayUtil.getLong(merged, hd + 2*stepLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(5), merged, hd + 3 * stepLength));
-        assertEquals(5L, merged.getLong(merged.position() + hd + 3 * stepLength + idLength));
-        assertEquals( 5L,  merged.getLong(merged.position() + hd + 3*stepLength + idLength + clockLength));
+        assertEquals(5L, ByteArrayUtil.getLong(merged, hd + 3 * stepLength + idLength));
+        assertEquals( 5L,  ByteArrayUtil.getLong(merged, hd + 3*stepLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(2), merged, hd + stepLength));
-        assertEquals(2L, merged.getLong(merged.position() + hd + stepLength + idLength));
-        assertEquals( 2L,  merged.getLong(merged.position() + hd + stepLength + idLength + clockLength));
+        assertEquals(2L, ByteArrayUtil.getLong(merged, hd + stepLength + idLength));
+        assertEquals( 2L,  ByteArrayUtil.getLong(merged, hd + stepLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, hd));
-        assertEquals( 1L,  merged.getLong(merged.position() + hd + idLength));
-        assertEquals( 1L,  merged.getLong(merged.position() + hd + idLength + clockLength));
+        assertEquals( 1L,  ByteArrayUtil.getLong(merged, hd + idLength));
+        assertEquals( 1L,  ByteArrayUtil.getLong(merged, hd + idLength + clockLength));
 
         //
         // Test merging two exclusively global contexts
@@ -303,27 +304,27 @@ public class CounterContextTest
         right.writeGlobal(CounterId.fromInt(5), 5L, 5L);
 
         merged = cc.merge(left.context, right.context);
-        assertEquals(headerSizeLength + 5 * headerEltLength + 5 * stepLength, merged.remaining());
+        assertEquals(headerSizeLength + 5 * headerEltLength + 5 * stepLength, merged.length);
         assertEquals(18L, cc.total(merged));
-        assertEquals(5, merged.getShort(merged.position()));
+        assertEquals(5, ByteArrayUtil.getShort(merged, 0));
 
         int headerLength = headerSizeLength + 5 * headerEltLength;
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, headerLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + idLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + idLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + idLength + clockLength));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(2), merged, headerLength + stepLength));
-        assertEquals(2L, merged.getLong(merged.position() + headerLength + stepLength + idLength));
-        assertEquals(2L, merged.getLong(merged.position() + headerLength + stepLength + idLength + clockLength));
+        assertEquals(2L, ByteArrayUtil.getLong(merged, headerLength + stepLength + idLength));
+        assertEquals(2L, ByteArrayUtil.getLong(merged, headerLength + stepLength + idLength + clockLength));
         // pick the global shard with the largest clock
         assertTrue(Util.equalsCounterId(CounterId.fromInt(3), merged, headerLength + 2 * stepLength));
-        assertEquals(6L, merged.getLong(merged.position() + headerLength + 2 * stepLength + idLength));
-        assertEquals(6L, merged.getLong(merged.position() + headerLength + 2 * stepLength + idLength + clockLength));
+        assertEquals(6L, ByteArrayUtil.getLong(merged, headerLength + 2 * stepLength + idLength));
+        assertEquals(6L, ByteArrayUtil.getLong(merged, headerLength + 2 * stepLength + idLength + clockLength));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(4), merged, headerLength + 3 * stepLength));
-        assertEquals(4L, merged.getLong(merged.position() + headerLength + 3 * stepLength + idLength));
-        assertEquals(4L, merged.getLong(merged.position() + headerLength + 3 * stepLength + idLength + clockLength));
+        assertEquals(4L, ByteArrayUtil.getLong(merged, headerLength + 3 * stepLength + idLength));
+        assertEquals(4L, ByteArrayUtil.getLong(merged, headerLength + 3 * stepLength + idLength + clockLength));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(5), merged, headerLength + 4 * stepLength));
-        assertEquals(5L, merged.getLong(merged.position() + headerLength + 4 * stepLength + idLength));
-        assertEquals(5L, merged.getLong(merged.position() + headerLength + 4 * stepLength + idLength + clockLength));
+        assertEquals(5L, ByteArrayUtil.getLong(merged, headerLength + 4 * stepLength + idLength));
+        assertEquals(5L, ByteArrayUtil.getLong(merged, headerLength + 4 * stepLength + idLength + clockLength));
 
         //
         // Test merging two global contexts w/ 'invalid shards'
@@ -336,13 +337,13 @@ public class CounterContextTest
 
         merged = cc.merge(left.context, right.context);
         headerLength = headerSizeLength + headerEltLength;
-        assertEquals(headerLength + stepLength, merged.remaining());
+        assertEquals(headerLength + stepLength, merged.length);
         assertEquals(30L, cc.total(merged));
-        assertEquals(1, merged.getShort(merged.position()));
+        assertEquals(1, ByteArrayUtil.getShort(merged, 0));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, headerLength));
-        assertEquals(10L, merged.getLong(merged.position() + headerLength + idLength));
+        assertEquals(10L, ByteArrayUtil.getLong(merged, headerLength + idLength));
         // with equal clock, we should pick the largest value
-        assertEquals(30L, merged.getLong(merged.position() + headerLength + idLength + clockLength));
+        assertEquals(30L, ByteArrayUtil.getLong(merged, headerLength + idLength + clockLength));
 
         //
         // Test merging global w/ mixed contexts
@@ -358,15 +359,15 @@ public class CounterContextTest
         // global shards should dominate local/remote, even with lower clock and value
         merged = cc.merge(left.context, right.context);
         headerLength = headerSizeLength + 2 * headerEltLength;
-        assertEquals(headerLength + 2 * stepLength, merged.remaining());
+        assertEquals(headerLength + 2 * stepLength, merged.length);
         assertEquals(2L, cc.total(merged));
-        assertEquals(2, merged.getShort(merged.position()));
+        assertEquals(2, ByteArrayUtil.getShort(merged, 0));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), merged, headerLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + idLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + idLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + idLength + clockLength));
         assertTrue(Util.equalsCounterId(CounterId.fromInt(2), merged, headerLength + stepLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + stepLength + idLength));
-        assertEquals(1L, merged.getLong(merged.position() + headerLength + stepLength + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + stepLength + idLength));
+        assertEquals(1L, ByteArrayUtil.getLong(merged, headerLength + stepLength + idLength + clockLength));
     }
 
     @Test
@@ -391,8 +392,8 @@ public class CounterContextTest
     public void testClearLocal()
     {
         ContextState state;
-        ByteBuffer marked;
-        ByteBuffer cleared;
+        byte[] marked;
+        byte[] cleared;
 
         // mark/clear for remote-only contexts is a no-op
         state = ContextState.allocate(0, 0, 1);
@@ -400,7 +401,7 @@ public class CounterContextTest
 
         assertFalse(cc.shouldClearLocal(state.context));
         marked = cc.markLocalToBeCleared(state.context);
-        assertEquals(0, marked.getShort(marked.position()));
+        assertEquals(0, ByteArrayUtil.getShort(marked, 0));
         assertSame(state.context, marked); // should return the original context
 
         cleared = cc.clearAllLocal(marked);
@@ -413,12 +414,12 @@ public class CounterContextTest
         assertFalse(cc.shouldClearLocal(state.context));
         marked = cc.markLocalToBeCleared(state.context);
         assertTrue(cc.shouldClearLocal(marked));
-        assertEquals(-1, marked.getShort(marked.position()));
+        assertEquals(-1, ByteArrayUtil.getShort(marked, 0));
         assertNotSame(state.context, marked); // shouldn't alter in place, as it used to do
 
         cleared = cc.clearAllLocal(marked);
         assertFalse(cc.shouldClearLocal(cleared));
-        assertEquals(0, cleared.getShort(cleared.position()));
+        assertEquals(0, ByteArrayUtil.getShort(cleared, 0));
 
         // 2 global + 1 local shard
         state = ContextState.allocate(2, 1, 0);
@@ -430,43 +431,43 @@ public class CounterContextTest
         marked = cc.markLocalToBeCleared(state.context);
         assertTrue(cc.shouldClearLocal(marked));
 
-        assertEquals(-3, marked.getShort(marked.position()));
-        assertEquals(0, marked.getShort(marked.position() + headerSizeLength));
-        assertEquals(Short.MIN_VALUE + 1, marked.getShort(marked.position() + headerSizeLength + headerEltLength));
-        assertEquals(Short.MIN_VALUE + 2, marked.getShort(marked.position() + headerSizeLength + 2 * headerEltLength));
+        assertEquals(-3, ByteArrayUtil.getShort(marked, 0));
+        assertEquals(0, ByteArrayUtil.getShort(marked, headerSizeLength));
+        assertEquals(Short.MIN_VALUE + 1, ByteArrayUtil.getShort(marked, headerSizeLength + headerEltLength));
+        assertEquals(Short.MIN_VALUE + 2, ByteArrayUtil.getShort(marked, headerSizeLength + 2 * headerEltLength));
 
         int headerLength = headerSizeLength + 3 * headerEltLength;
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), marked, headerLength));
-        assertEquals(1L, marked.getLong(marked.position() + headerLength + idLength));
-        assertEquals(1L, marked.getLong(marked.position() + headerLength + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(marked, headerLength + idLength));
+        assertEquals(1L, ByteArrayUtil.getLong(marked, headerLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(2), marked, headerLength + stepLength));
-        assertEquals(2L, marked.getLong(marked.position() + headerLength + stepLength + idLength));
-        assertEquals(2L, marked.getLong(marked.position() + headerLength + stepLength + idLength + clockLength));
+        assertEquals(2L, ByteArrayUtil.getLong(marked, headerLength + stepLength + idLength));
+        assertEquals(2L, ByteArrayUtil.getLong(marked, headerLength + stepLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(3), marked, headerLength + 2 * stepLength));
-        assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength));
-        assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength + clockLength));
+        assertEquals(3L, ByteArrayUtil.getLong(marked, headerLength + 2 * stepLength + idLength));
+        assertEquals(3L, ByteArrayUtil.getLong(marked, headerLength + 2 * stepLength + idLength + clockLength));
 
         cleared = cc.clearAllLocal(marked);
         assertFalse(cc.shouldClearLocal(cleared));
 
-        assertEquals(2, cleared.getShort(cleared.position())); // 2 global shards
-        assertEquals(Short.MIN_VALUE + 1, cleared.getShort(marked.position() + headerEltLength));
-        assertEquals(Short.MIN_VALUE + 2, cleared.getShort(marked.position() + headerSizeLength + headerEltLength));
+        assertEquals(2, ByteArrayUtil.getShort(cleared, 0)); // 2 global shards
+        assertEquals(Short.MIN_VALUE + 1, ByteArrayUtil.getShort(cleared, headerEltLength));
+        assertEquals(Short.MIN_VALUE + 2, ByteArrayUtil.getShort(cleared, headerSizeLength + headerEltLength));
 
         headerLength = headerSizeLength + 2 * headerEltLength;
         assertTrue(Util.equalsCounterId(CounterId.fromInt(1), cleared, headerLength));
-        assertEquals(1L, cleared.getLong(cleared.position() + headerLength + idLength));
-        assertEquals(1L, cleared.getLong(cleared.position() + headerLength + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(cleared, headerLength + idLength));
+        assertEquals(1L, ByteArrayUtil.getLong(cleared, headerLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(2), cleared, headerLength + stepLength));
-        assertEquals(2L, cleared.getLong(cleared.position() + headerLength + stepLength + idLength));
-        assertEquals(2L, cleared.getLong(cleared.position() + headerLength + stepLength + idLength + clockLength));
+        assertEquals(2L, ByteArrayUtil.getLong(cleared, headerLength + stepLength + idLength));
+        assertEquals(2L, ByteArrayUtil.getLong(cleared, headerLength + stepLength + idLength + clockLength));
 
         assertTrue(Util.equalsCounterId(CounterId.fromInt(3), cleared, headerLength + 2 * stepLength));
-        assertEquals(3L, cleared.getLong(cleared.position() + headerLength + 2 * stepLength + idLength));
-        assertEquals(3L, cleared.getLong(cleared.position() + headerLength + 2 * stepLength + idLength + clockLength));
+        assertEquals(3L, ByteArrayUtil.getLong(cleared, headerLength + 2 * stepLength + idLength));
+        assertEquals(3L, ByteArrayUtil.getLong(cleared, headerLength + 2 * stepLength + idLength + clockLength));
 
         // a single global shard - no-op
         state = ContextState.allocate(1, 0, 0);
@@ -474,7 +475,7 @@ public class CounterContextTest
 
         assertFalse(cc.shouldClearLocal(state.context));
         marked = cc.markLocalToBeCleared(state.context);
-        assertEquals(1, marked.getShort(marked.position()));
+        assertEquals(1, ByteArrayUtil.getShort(marked, 0));
         assertSame(state.context, marked);
 
         cleared = cc.clearAllLocal(marked);
@@ -551,7 +552,7 @@ public class CounterContextTest
          * a context with just one 'update' shard - a local shard with a hardcoded value of CounterContext.UPDATE_CLOCK_ID
          */
 
-        ByteBuffer updateContext = CounterContext.instance().createUpdate(10L);
+        byte[] updateContext = CounterContext.instance().createUpdate(10L);
 
         assertEquals(ClockAndCount.create(1L, 10L), cc.getClockAndCountOf(updateContext, CounterContext.UPDATE_CLOCK_ID));
         assertTrue(cc.isUpdate(updateContext));
@@ -565,7 +566,7 @@ public class CounterContextTest
         notUpdateContextState.writeLocal( CounterId.fromInt(1), 1L, 10L);
         notUpdateContextState.writeRemote(CounterId.fromInt(2), 1L, 10L);
         notUpdateContextState.writeGlobal(CounterId.fromInt(3), 1L, 10L);
-        ByteBuffer notUpdateContext = notUpdateContextState.context;
+        byte[] notUpdateContext = notUpdateContextState.context;
 
         assertFalse(cc.isUpdate(notUpdateContext));
     }

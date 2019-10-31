@@ -161,7 +161,7 @@ public class UserType extends TupleType
     {
         assert isMultiCell;
 
-        ByteBuffer[] components = new ByteBuffer[size()];
+        byte[][] components = new byte[size()][];
         short fieldPosition = 0;
         while (cells.hasNext())
         {
@@ -189,11 +189,11 @@ public class UserType extends TupleType
             ByteBuffer path = cell.path().get(0);
             nameComparator().validate(path);
             Short fieldPosition = nameComparator().getSerializer().deserialize(path);
-            fieldType(fieldPosition).validate(cell.value());
+            fieldType(fieldPosition).validate(ByteBuffer.wrap(cell.value()));  // FIXME
         }
         else
         {
-            validate(cell.value());
+            validate(ByteBuffer.wrap(cell.value()));  // FIXME
         }
     }
 

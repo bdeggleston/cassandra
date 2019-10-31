@@ -18,6 +18,7 @@
 package org.apache.cassandra.utils.memory;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,7 +27,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.db.rows.BufferCell;
+import org.apache.cassandra.db.rows.Cell;
+import org.apache.cassandra.db.rows.CellPath;
+import org.apache.cassandra.db.rows.NativeCell;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.io.util.Memory;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
@@ -80,6 +86,22 @@ public class SlabAllocator extends MemtableBufferAllocator
         return allocate(size, null);
     }
 
+    Region getRegionFor(int size)
+    {
+        // satisfy large allocations directly from JVM since they don't cause fragmentation
+        // as badly, and fill up our regions quickly
+        if (size > MAX_CLONED_SIZE)
+        {
+            unslabbedSize.addAndGet(size);
+            assert !allocateOnHeapOnly;
+            Region region = new Region(ByteBuffer.allocateDirect(size));
+            offHeapRegions.add(region);
+            return region;
+        }
+
+        return getRegion();
+    }
+
     public ByteBuffer allocate(int size, OpOrder.Group opGroup)
     {
         assert size >= 0;
@@ -89,19 +111,12 @@ public class SlabAllocator extends MemtableBufferAllocator
         (allocateOnHeapOnly ? onHeap() : offHeap()).allocate(size, opGroup);
         // satisfy large allocations directly from JVM since they don't cause fragmentation
         // as badly, and fill up our regions quickly
-        if (size > MAX_CLONED_SIZE)
-        {
-            unslabbedSize.addAndGet(size);
-            if (allocateOnHeapOnly)
-                return ByteBuffer.allocate(size);
-            Region region = new Region(ByteBuffer.allocateDirect(size));
-            offHeapRegions.add(region);
-            return region.allocate(size);
-        }
+        if (size > MAX_CLONED_SIZE && allocateOnHeapOnly)
+            return ByteBuffer.allocate(size);
 
         while (true)
         {
-            Region region = getRegion();
+            Region region = getRegionFor(size);
 
             // Try to allocate from this region
             ByteBuffer cloned = region.allocate(size);
@@ -194,6 +209,25 @@ public class SlabAllocator extends MemtableBufferAllocator
             data = buffer;
         }
 
+        public int allocateOffset(int size)
+        {
+            while (true)
+            {
+                int oldOffset = nextFreeOffset.get();
+
+                if (oldOffset + size > data.capacity()) // capacity == remaining
+                    return -1;
+
+                // Try to atomically claim this region
+                if (nextFreeOffset.compareAndSet(oldOffset, oldOffset + size))
+                {
+                    // we got the alloc
+                    allocCount.incrementAndGet();
+                    return oldOffset + size;
+                }
+                // we raced and lost alloc, try again
+            }
+        }
         /**
          * Try to allocate <code>size</code> bytes from the region.
          *
@@ -201,22 +235,18 @@ public class SlabAllocator extends MemtableBufferAllocator
          */
         public ByteBuffer allocate(int size)
         {
-            while (true)
-            {
-                int oldOffset = nextFreeOffset.get();
+            int offset = allocateOffset(size);
+            if (offset < 0)
+                return null;
+            return (ByteBuffer) data.duplicate().position(offset).limit(offset);
+        }
 
-                if (oldOffset + size > data.capacity()) // capacity == remaining
-                    return null;
-
-                // Try to atomically claim this region
-                if (nextFreeOffset.compareAndSet(oldOffset, oldOffset + size))
-                {
-                    // we got the alloc
-                    allocCount.incrementAndGet();
-                    return (ByteBuffer) data.duplicate().position(oldOffset).limit(oldOffset + size);
-                }
-                // we raced and lost alloc, try again
-            }
+        public long allocatePointer(int size)
+        {
+            int offset = allocateOffset(size);
+            if (offset < 0)
+                return -1;
+            return MemoryUtil.getPeer(data) + offset;
         }
 
         @Override
@@ -225,6 +255,35 @@ public class SlabAllocator extends MemtableBufferAllocator
             return "Region@" + System.identityHashCode(this) +
                    " allocs=" + allocCount.get() + "waste=" +
                    (data.capacity() - nextFreeOffset.get());
+        }
+    }
+
+    public Cell cloneCell(Cell from, AbstractAllocator allocator, OpOrder.Group opGroup)
+    {
+        if (allocateOnHeapOnly)
+        {
+            onHeap().allocate(from.valueSize(), opGroup);
+            byte[] val = Arrays.copyOf(from.value(), from.valueSize());
+            CellPath path = from.path() == null ? null : from.path().copy(allocator);
+            return new BufferCell(from.column(), from.timestamp(), from.ttl(), from.localDeletionTime(), val, path);
+        }
+        else
+        {
+            int totalSize = NativeCell.totalSize(from.valueSize(), from.column(), from.path());
+            onHeap().allocate(totalSize, opGroup);
+            while (true)
+            {
+                Region region = getRegionFor(totalSize);
+                long peer = region.allocatePointer(totalSize);
+                if (peer >= 0)
+                {
+                    return  (from instanceof NativeCell) ? new NativeCell(peer, (NativeCell) from, totalSize)
+                                                         : new NativeCell(peer, from.column(), from.timestamp(), from.ttl(),
+                                                                          from.localDeletionTime(), from.value(), from.path());
+                }
+                // not enough space!
+                currentRegion.compareAndSet(region, null);
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ package org.apache.cassandra.utils.memory;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
@@ -55,5 +56,10 @@ public final class ContextAllocator extends AbstractAllocator
     public ByteBuffer allocate(int size)
     {
         return allocator.allocate(size, opGroup);
+    }
+
+    public Cell cloneCell(Cell from, OpOrder.Group opGroup)
+    {
+        return allocator.cloneCell(from, this, opGroup);
     }
 }

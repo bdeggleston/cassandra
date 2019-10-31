@@ -218,6 +218,29 @@ public class TupleType extends AbstractType<ByteBuffer>
         return components;
     }
 
+    public static ByteBuffer buildValue(byte[][] components)
+    {
+        int totalLength = 0;
+        for (byte[] component : components)
+            totalLength += 4 + (component == null ? 0 : component.length);
+
+        ByteBuffer result = ByteBuffer.allocate(totalLength);
+        for (byte[] component : components)
+        {
+            if (component == null)
+            {
+                result.putInt(-1);
+            }
+            else
+            {
+                result.putInt(component.length);
+                result.put(component);
+            }
+        }
+        result.rewind();
+        return result;
+    }
+
     public static ByteBuffer buildValue(ByteBuffer[] components)
     {
         int totalLength = 0;
@@ -283,7 +306,7 @@ public class TupleType extends AbstractType<ByteBuffer>
             throw new MarshalException(String.format("Invalid tuple literal: too many elements. Type %s expects %d but got %d",
                                                      asCQL3Type(), size(), fieldStrings.size()));
 
-        ByteBuffer[] fields = new ByteBuffer[fieldStrings.size()];
+        byte[][] fields = new byte[fieldStrings.size()][];
         for (int i = 0; i < fieldStrings.size(); i++)
         {
             String fieldString = fieldStrings.get(i);
@@ -294,7 +317,7 @@ public class TupleType extends AbstractType<ByteBuffer>
             AbstractType<?> type = type(i);
             fieldString = ESCAPED_COLON_PAT.matcher(fieldString).replaceAll(COLON);
             fieldString = ESCAPED_AT_PAT.matcher(fieldString).replaceAll(AT);
-            fields[i] = type.fromString(fieldString);
+            fields[i] = ByteBufferUtil.toArray(type.fromString(fieldString));
         }
         return buildValue(fields);
     }

@@ -19,7 +19,11 @@
 package org.apache.cassandra.utils.memory;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
+import org.apache.cassandra.db.rows.BufferCell;
+import org.apache.cassandra.db.rows.Cell;
+import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
 public class HeapPool extends MemtablePool
@@ -51,6 +55,13 @@ public class HeapPool extends MemtablePool
         public EnsureOnHeap ensureOnHeap()
         {
             return ENSURE_NOOP;
+        }
+
+        public Cell cloneCell(Cell from, AbstractAllocator allocator, OpOrder.Group opGroup)
+        {
+            byte[] val = Arrays.copyOf(from.value(), from.valueSize());
+            CellPath path = from.path() == null ? null : from.path().copy(allocator);
+            return new BufferCell(from.column(), from.timestamp(), from.ttl(), from.localDeletionTime(), val, path);
         }
     }
 }

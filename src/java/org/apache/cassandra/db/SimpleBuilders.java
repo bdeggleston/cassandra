@@ -452,8 +452,8 @@ public abstract class SimpleBuilders
                 return BufferCell.tombstone(column, timestamp, nowInSec, path);
 
             return ttl == LivenessInfo.NO_TTL
-                 ? BufferCell.live(column, timestamp, value, path)
-                 : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
+                 ? BufferCell.live(column, timestamp, ByteBufferUtil.toArray(value), path)
+                 : BufferCell.expiring(column, timestamp, ttl, nowInSec, ByteBufferUtil.toArray(value), path);
         }
 
         private ByteBuffer toByteBuffer(Object value, AbstractType<?> type)
@@ -468,7 +468,7 @@ public abstract class SimpleBuilders
             {
                 // See UpdateParameters.addCounter()
                 assert value instanceof Long : "Attempted to adjust Counter cell with non-long value.";
-                return CounterContext.instance().createGlobal(CounterId.getLocalId(), 1, (Long)value);
+                return ByteBuffer.wrap(CounterContext.instance().createGlobal(CounterId.getLocalId(), 1, (Long)value));
             }
 
             return ((AbstractType)type).decompose(value);

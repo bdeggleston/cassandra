@@ -436,7 +436,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().get(column.position());
                 default:
                     Cell cell = row.getCell(column);
-                    return cell == null ? null : cell.value();
+                    return cell == null ? null : ByteBuffer.wrap(cell.value()); // FIXME
             }
         }
 
@@ -601,7 +601,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                             if (foundValue == null)
                                 return false;
 
-                            ByteBuffer counterValue = LongType.instance.decompose(CounterContext.instance().total(foundValue));
+                            ByteBuffer counterValue = LongType.instance.decompose(CounterContext.instance().total(foundValue.array())); // FIXME
                             return operator.isSatisfiedBy(LongType.instance, counterValue, value);
                         }
                         else

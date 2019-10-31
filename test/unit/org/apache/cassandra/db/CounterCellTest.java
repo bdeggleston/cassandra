@@ -90,25 +90,25 @@ public class CounterCellTest
         Cell cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
 
         assertEquals(delta, CounterContext.instance().total(cell.value()));
-        assertEquals(1, cell.value().getShort(0));
-        assertEquals(0, cell.value().getShort(2));
+        assertEquals(1, ByteArrayUtil.getShort(cell.value(), 0));
+        assertEquals(0, ByteArrayUtil.getShort(cell.value(), 2));
         Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId());
-        assertEquals(1L, cell.value().getLong(4 + idLength));
-        assertEquals(delta, cell.value().getLong(4 + idLength + clockLength));
+        assertEquals(1L, ByteArrayUtil.getLong(cell.value(), 4 + idLength));
+        assertEquals(delta, ByteArrayUtil.getLong(cell.value(), 4 + idLength + clockLength));
 
     }
 
     private Cell createLegacyCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
-        ByteBuffer val = CounterContext.instance().createLocal(count);
+        byte[] val = CounterContext.instance().createLocal(count);
         return BufferCell.live(cDef, ts, val);
     }
 
     private Cell createCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, CounterId id, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
-        ByteBuffer val = CounterContext.instance().createGlobal(id, ts, count);
+        byte[] val = CounterContext.instance().createGlobal(id, ts, count);
         return BufferCell.live(cDef, ts, val);
     }
 
@@ -217,7 +217,7 @@ public class CounterCellTest
         leftContext.writeRemote(CounterId.fromInt(3), 3L, 0L);
         leftContext.writeRemote(CounterId.fromInt(6), 2L, 0L);
         leftContext.writeRemote(CounterId.fromInt(9), 1L, 0L);
-        rightContext = ContextState.wrap(ByteBufferUtil.clone(leftContext.context));
+        rightContext = ContextState.wrap(leftContext.context);
 
         leftCell = createCounterCellFromContext(cfs, col, leftContext, 1);
         rightCell = createCounterCellFromContext(cfs, col, rightContext, 1);
@@ -290,7 +290,7 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
 
         ColumnMetadata emptyColDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val2"));
-        BufferCell emptyCell = BufferCell.live(emptyColDef, 0, ByteBuffer.allocate(0));
+        BufferCell emptyCell = BufferCell.live(emptyColDef, 0, ByteArrayUtil.EMPTY_BYTE_ARRAY);
 
         Row.Builder builder = BTreeRow.unsortedBuilder();
         builder.newRow(Clustering.make(AsciiSerializer.instance.serialize("test")));

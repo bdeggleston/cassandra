@@ -263,9 +263,9 @@ public class CustomCassandraIndex implements Index
 
     protected ByteBuffer getIndexedValue(ByteBuffer partitionKey,
                                       Clustering clustering,
-                                      CellPath path, ByteBuffer cellValue)
+                                      CellPath path, byte[] cellValue)
     {
-        return cellValue;
+        return ByteBuffer.wrap(cellValue);
     }
 
     public IndexEntry decodeEntry(DecoratedKey indexedValue, Row indexEntry)
@@ -282,7 +282,7 @@ public class CustomCassandraIndex implements Index
 
         return (cell == null
              || !cell.isLive(nowInSec)
-             || indexedColumn.type.compare(indexValue, cell.value()) != 0);
+             || indexedColumn.type.compare(indexValue, ByteBuffer.wrap(cell.value())) != 0);
     }
 
     public Indexer indexerFor(final DecoratedKey key,

@@ -42,6 +42,8 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
+import org.apache.cassandra.utils.ByteBufferUtil;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -98,7 +100,7 @@ public class SerializationHeaderTest
                     ColumnMetadata cd = schema.getColumn(v);
                     for (int i = 0 ; i < 5 ; ++i) {
                         final ByteBuffer value = Int32Type.instance.decompose(i);
-                        Cell cell = BufferCell.live(cd, 1L, value);
+                        Cell cell = BufferCell.live(cd, 1L, ByteBufferUtil.toArray(value));
                         Clustering clustering = clusteringFunction.apply(value);
                         Row row = BTreeRow.singleCellRow(clustering, cell);
                         sstableWriter.append(PartitionUpdate.singleRowUpdate(schema, value, row).unfilteredIterator());

@@ -63,6 +63,7 @@ import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.service.reads.repair.RepairedDataTracker;
 import org.apache.cassandra.service.reads.repair.RepairedDataVerifier;
 import org.apache.cassandra.service.reads.repair.TestableReadRepair;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.Util.assertClustering;
@@ -700,9 +701,9 @@ public class DataResolverTest extends AbstractReadResponseTest
                : rt;
     }
 
-    private static ByteBuffer bb(int b)
+    private static byte[] bb(int b)
     {
-        return ByteBufferUtil.bytes(b);
+        return ByteArrayUtil.bytes(b);
     }
 
     private Cell mapCell(int k, int v, long ts)

@@ -218,6 +218,12 @@ public abstract class MemoryUtil
         return hollowBuffer;
     }
 
+    public static long getPeer(ByteBuffer source)
+    {
+        assert source.getClass() == DIRECT_BYTE_BUFFER_CLASS || source.getClass() == RO_DIRECT_BYTE_BUFFER_CLASS;
+        return unsafe.getLong(source, DIRECT_BYTE_BUFFER_ADDRESS_OFFSET);
+    }
+
     public static ByteBuffer sliceDirectByteBuffer(ByteBuffer source, ByteBuffer hollowBuffer, int offset, int length)
     {
         assert source.getClass() == DIRECT_BYTE_BUFFER_CLASS || source.getClass() == RO_DIRECT_BYTE_BUFFER_CLASS;

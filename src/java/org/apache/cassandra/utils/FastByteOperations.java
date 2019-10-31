@@ -45,6 +45,11 @@ public class FastByteOperations
         return BestHolder.BEST.compare(b1, s1, l1, b2, s2, l2);
     }
 
+    public static int compareUnsigned(byte[] b1, byte[] b2)
+    {
+        return BestHolder.BEST.compare(b1, 0, b1.length, b2, 0, b2.length);
+    }
+
     public static int compareUnsigned(ByteBuffer b1, byte[] b2, int s2, int l2)
     {
         return BestHolder.BEST.compare(b1, b2, s2, l2);

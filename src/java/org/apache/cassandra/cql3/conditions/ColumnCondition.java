@@ -329,7 +329,7 @@ public abstract class ColumnCondition
         private ByteBuffer rowValue(Row row)
         {
             Cell c = getCell(row, column);
-            return c == null ? null : c.value();
+            return c == null ? null : ByteBuffer.wrap(c.value());  // FIXME
         }
 
         private boolean isSatisfiedBy(ByteBuffer rowValue)
@@ -394,13 +394,13 @@ public abstract class ColumnCondition
             if (column.type.isMultiCell())
             {
                 Cell cell = getCell(row, column, CellPath.create(collectionElement));
-                return cell == null ? null : cell.value();
+                return cell == null ? null : ByteBuffer.wrap(cell.value());  // FIXME
             }
 
             Cell cell = getCell(row, column);
             return cell == null
                     ? null
-                    : type.getSerializer().getSerializedValue(cell.value(), collectionElement, type.getKeysType());
+                    : type.getSerializer().getSerializedValue(ByteBuffer.wrap(cell.value()), collectionElement, type.getKeysType()); // FIXME
         }
 
         private ByteBuffer rowListValue(ListType<?> type, Row row)
@@ -411,14 +411,14 @@ public abstract class ColumnCondition
             Cell cell = getCell(row, column);
             return cell == null
                     ? null
-                    : type.getSerializer().getElement(cell.value(), getListIndex(collectionElement));
+                    : type.getSerializer().getElement(ByteBuffer.wrap(cell.value()), getListIndex(collectionElement));  // FIXME
         }
 
         private static ByteBuffer cellValueAtIndex(Iterator<Cell> iter, int index)
         {
             int adv = Iterators.advance(iter, index);
             if (adv == index && iter.hasNext())
-                return iter.next().value();
+                return ByteBuffer.wrap(iter.next().value());
 
             return null;
         }
@@ -518,7 +518,7 @@ public abstract class ColumnCondition
                     return (operator == Operator.GT) || (operator == Operator.GTE) || (operator == Operator.NEQ);
 
                 // for lists we use the cell value; for sets we use the cell name
-                ByteBuffer cellValue = isSet ? iter.next().path().get(0) : iter.next().value();
+                ByteBuffer cellValue = isSet ? iter.next().path().get(0) : ByteBuffer.wrap(iter.next().value());  // FIXME
                 int comparison = type.compare(cellValue, conditionIter.next());
                 if (comparison != 0)
                     return evaluateComparisonWithOperator(comparison, operator);
@@ -609,13 +609,13 @@ public abstract class ColumnCondition
             if (column.type.isMultiCell())
             {
                 Cell cell = getCell(row, column, userType.cellPathForField(field));
-                return cell == null ? null : cell.value();
+                return cell == null ? null : ByteBuffer.wrap(cell.value());  // FIXME
             }
 
             Cell cell = getCell(row, column);
             return cell == null
                       ? null
-                      : userType.split(cell.value())[userType.fieldPosition(field)];
+                      : userType.split(ByteBuffer.wrap(cell.value()))[userType.fieldPosition(field)];  // FIXME
         }
 
         private boolean isSatisfiedBy(ByteBuffer rowValue)

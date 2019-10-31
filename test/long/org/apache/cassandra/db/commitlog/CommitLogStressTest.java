@@ -57,6 +57,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.security.EncryptionContext;
 import org.apache.cassandra.security.EncryptionContextGenerator;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 
 @Ignore
@@ -77,12 +78,12 @@ public abstract class CommitLogStressTest
 
     public static String location = DatabaseDescriptor.getCommitLogLocation() + "/stress";
 
-    public static int hash(int hash, ByteBuffer bytes)
+    public static int hash(int hash, byte[] bytes)
     {
         int shift = 0;
-        for (int i = 0; i < bytes.limit(); i++)
+        for (int i = 0; i < bytes.length; i++)
         {
-            hash += (bytes.get(i) & 0xFF) << shift;
+            hash += (bytes[i] & 0xFF) << shift;
             shift = (shift + 8) & 0x1F;
         }
         return hash;
@@ -406,7 +407,7 @@ public abstract class CommitLogStressTest
                     int sz = randomSize ? rand.nextInt(cellSize) : cellSize;
                     ByteBuffer bytes = randomBytes(sz, rand);
                     builder.newRow("name" + ii).add("val", bytes);
-                    hash = hash(hash, bytes);
+                    hash = hash(hash, ByteBufferUtil.toArray(bytes));
                     ++cells;
                     dataSize += sz;
                 }

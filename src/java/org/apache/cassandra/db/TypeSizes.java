@@ -74,6 +74,11 @@ public final class TypeSizes
         return sizeofUnsignedVInt(value.remaining()) + value.remaining();
     }
 
+    public static int sizeofWithVIntLength(int numBytes)
+    {
+        return sizeofUnsignedVInt(numBytes) + numBytes;
+    }
+
     public static int sizeof(boolean value)
     {
         return BOOL_SIZE;

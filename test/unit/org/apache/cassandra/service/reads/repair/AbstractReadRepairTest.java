@@ -135,7 +135,7 @@ public abstract  class AbstractReadRepairTest
 
     static Cell cell(String name, String value, long timestamp)
     {
-        return BufferCell.live(cfm.getColumn(ColumnIdentifier.getInterned(name, false)), timestamp, ByteBufferUtil.bytes(value));
+        return BufferCell.live(cfm.getColumn(ColumnIdentifier.getInterned(name, false)), timestamp, value.getBytes());
     }
 
     static PartitionUpdate update(Cell... cells)

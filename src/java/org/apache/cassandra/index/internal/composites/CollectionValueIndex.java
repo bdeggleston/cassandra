@@ -109,7 +109,7 @@ public class CollectionValueIndex extends CassandraIndex
         for (Cell cell : complexData)
         {
             if (cell.isLive(nowInSec) && ((CollectionType) columnDef.type).valueComparator()
-                                                                          .compare(indexValue, cell.value()) == 0)
+                                                                          .compare(cell.value(), indexValue) == 0)
                 return false;
         }
         return true;

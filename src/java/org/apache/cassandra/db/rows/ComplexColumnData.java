@@ -210,7 +210,7 @@ public class ComplexColumnData extends ColumnData implements Iterable<Cell>
 
     // This is the partner in crime of ArrayBackedRow.setValue. The exact warning apply. The short
     // version is: "don't use that method".
-    void setValue(CellPath path, ByteBuffer value)
+    void setValue(CellPath path, byte[] value)
     {
         Cell current = (Cell) BTree.<Object>find(cells, column.asymmetricCellPathComparator(), path);
         BTree.replaceInSitu(cells, column.cellComparator(), current, current.withUpdatedValue(value));

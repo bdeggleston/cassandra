@@ -22,9 +22,11 @@ import java.util.Comparator;
 import java.util.Iterator;
 
 import org.apache.cassandra.db.context.CounterContext;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
+import org.apache.cassandra.utils.ByteArrayUtil;
 
 /**
  * Static methods to work on cells.
@@ -161,10 +163,7 @@ public abstract class Cells
             if (leftLocalDeletionTime != rightLocalDeletionTime)
                 return leftLocalDeletionTime > rightLocalDeletionTime ? left : right;
         }
-
-        ByteBuffer leftValue = left.value();
-        ByteBuffer rightValue = right.value();
-        return leftValue.compareTo(rightValue) >= 0 ? left : right;
+        return left.compareValue(right) >= 0 ? left : right;
     }
 
     private static Cell resolveCounter(Cell left, Cell right)
@@ -182,14 +181,14 @@ public abstract class Cells
             return leftIsTombstone ? left : right;
         }
 
-        ByteBuffer leftValue = left.value();
-        ByteBuffer rightValue = right.value();
+        byte[] leftValue = left.value();
+        byte[] rightValue = right.value();
 
         // Handle empty values. Counters can't truly have empty values, but we can have a counter cell that temporarily
         // has one on read if the column for the cell is not queried by the user due to the optimization of #10657. We
         // thus need to handle this (see #11726 too).
-        boolean leftIsEmpty = !leftValue.hasRemaining();
-        boolean rightIsEmpty = !rightValue.hasRemaining();
+        boolean leftIsEmpty = leftValue.length == 0;
+        boolean rightIsEmpty = rightValue.length == 0;
         if (leftIsEmpty || rightIsEmpty)
         {
             if (leftIsEmpty != rightIsEmpty)
@@ -197,7 +196,7 @@ public abstract class Cells
             return leftTimestamp > rightTimestamp ? left : right;
         }
 
-        ByteBuffer merged = CounterContext.instance().merge(leftValue, rightValue);
+        byte[] merged = CounterContext.instance().merge(leftValue, rightValue);
         long timestamp = Math.max(leftTimestamp, rightTimestamp);
 
         // We save allocating a new cell object if it turns out that one cell was
@@ -348,5 +347,13 @@ public abstract class Cells
     private static Cell getNext(Iterator<Cell> iterator)
     {
         return iterator == null || !iterator.hasNext() ? null : iterator.next();
+    }
+
+    public static int compare(Cell left, Cell right, AbstractType<?> type)
+    {
+        if (type == null)
+            return ByteArrayUtil.compare(left.value(), right.value());
+
+        return type.compare(left.value(), right.value());
     }
 }

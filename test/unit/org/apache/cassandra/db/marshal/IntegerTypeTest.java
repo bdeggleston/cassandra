@@ -65,7 +65,7 @@ public class IntegerTypeTest
     @Test(expected = NullPointerException.class)
     public void testNullLeft()
     {
-        comparator.compare(null, ByteBuffer.wrap(new byte[1]));
+        comparator.compare((ByteBuffer) null, ByteBuffer.wrap(new byte[1]));
     }
 
     @Test(expected = NullPointerException.class)
@@ -77,7 +77,7 @@ public class IntegerTypeTest
     @Test(expected = NullPointerException.class)
     public void testNullBoth()
     {
-        comparator.compare(null, null);
+        comparator.compare((ByteBuffer) null, (ByteBuffer) null);
     }
 
     @Test

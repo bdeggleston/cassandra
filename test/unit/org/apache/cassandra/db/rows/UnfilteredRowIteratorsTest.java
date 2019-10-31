@@ -35,6 +35,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -180,6 +181,6 @@ public class UnfilteredRowIteratorsTest
     public Cell cell(ColumnMetadata metadata, int v)
     {
         return new BufferCell(metadata,
-                              1L, BufferCell.NO_TTL, BufferCell.NO_DELETION_TIME, ByteBufferUtil.bytes(v), null);
+                              1L, BufferCell.NO_TTL, BufferCell.NO_DELETION_TIME, ByteArrayUtil.bytes(v), null);
     }
 }

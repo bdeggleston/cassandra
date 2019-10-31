@@ -19,6 +19,7 @@
 package org.apache.cassandra.db;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -155,7 +156,7 @@ public class RowTest
         int ttl = 1;
         ColumnMetadata def = metadata.getColumn(new ColumnIdentifier("a", true));
 
-        Cell cell = BufferCell.expiring(def, 0, ttl, nowInSeconds, ((AbstractType) def.cellValueType()).decompose("a1"));
+        Cell cell = BufferCell.expiring(def, 0, ttl, nowInSeconds, ByteBufferUtil.toArray(((AbstractType) def.cellValueType()).decompose("a1")));
 
         PartitionUpdate update = PartitionUpdate.singleRowUpdate(metadata, dk, BTreeRow.singleCellRow(metadata.comparator.make("c1"), cell));
         new Mutation(update).applyUnsafe();
@@ -163,7 +164,7 @@ public class RowTest
         // when we read with a nowInSeconds before the cell has expired,
         // the PartitionIterator includes the row we just wrote
         Row row = Util.getOnlyRow(Util.cmd(cfs, dk).includeRow("c1").withNowInSeconds(nowInSeconds).build());
-        assertEquals("a1", ByteBufferUtil.string(row.getCell(def).value()));
+        assertEquals("a1", ByteBufferUtil.string(ByteBuffer.wrap(row.getCell(def).value())));
 
         // when we read with a nowInSeconds after the cell has expired, the row is filtered
         // so the PartitionIterator is empty
@@ -215,6 +216,6 @@ public class RowTest
                                       String value,
                                       long timestamp)
     {
-       builder.addCell(BufferCell.live(columnMetadata, timestamp, ((AbstractType) columnMetadata.cellValueType()).decompose(value)));
+       builder.addCell(BufferCell.live(columnMetadata, timestamp, ByteBufferUtil.toArray(((AbstractType) columnMetadata.cellValueType()).decompose(value))));
     }
 }
