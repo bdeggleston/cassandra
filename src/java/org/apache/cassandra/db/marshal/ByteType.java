@@ -65,7 +65,7 @@ public class ByteType extends NumberType<Byte>
     public Term fromJSONObject(Object parsed) throws MarshalException
     {
         if (parsed instanceof String || parsed instanceof Number)
-            return new Constants.Value(fromString(String.valueOf(parsed)));
+            return new Constants.TValue(fromString(String.valueOf(parsed)));
 
         throw new MarshalException(String.format(
                 "Expected a byte value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));

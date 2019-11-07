@@ -72,12 +72,12 @@ public class BooleanType extends AbstractType<Boolean>
     public Term fromJSONObject(Object parsed) throws MarshalException
     {
         if (parsed instanceof String)
-            return new Constants.Value(fromString((String) parsed));
+            return new Constants.TValue(fromString((String) parsed));
         else if (!(parsed instanceof Boolean))
             throw new MarshalException(String.format(
                     "Expected a boolean value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));
 
-        return new Constants.Value(getSerializer().serialize((Boolean) parsed));
+        return new Constants.TValue(getSerializer().serialize((Boolean) parsed));
     }
 
     @Override

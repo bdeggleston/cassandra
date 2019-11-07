@@ -498,13 +498,13 @@ public abstract class ColumnCondition
             switch (type.kind)
             {
                 case LIST:
-                    List<ByteBuffer> valueList = ((Lists.Value) value).elements;
+                    List<ByteBuffer> valueList = ((Lists.TValue) value).elements;
                     return listAppliesTo((ListType<?>)type, iter, valueList, operator);
                 case SET:
-                    Set<ByteBuffer> valueSet = ((Sets.Value) value).elements;
+                    Set<ByteBuffer> valueSet = ((Sets.TValue) value).elements;
                     return setAppliesTo((SetType<?>)type, iter, valueSet, operator);
                 case MAP:
-                    Map<ByteBuffer, ByteBuffer> valueMap = ((Maps.Value) value).map;
+                    Map<ByteBuffer, ByteBuffer> valueMap = ((Maps.TValue) value).map;
                     return mapAppliesTo((MapType<?, ?>)type, iter, valueMap, operator);
             }
             throw new AssertionError();

@@ -145,15 +145,15 @@ public interface Terms
                     switch (((CollectionType<?>) type).kind)
                     {
                         case LIST:
-                            return e -> Lists.Value.fromSerialized(e, (ListType<?>) type, version);
+                            return e -> Lists.TValue.fromSerialized(e, (ListType<?>) type, version);
                         case SET:
-                            return e -> Sets.Value.fromSerialized(e, (SetType<?>) type, version);
+                            return e -> Sets.TValue.fromSerialized(e, (SetType<?>) type, version);
                         case MAP:
-                            return e -> Maps.Value.fromSerialized(e, (MapType<?, ?>) type, version);
+                            return e -> Maps.TValue.fromSerialized(e, (MapType<?, ?>) type, version);
                     }
                     throw new AssertionError();
                 }
-                return e -> new Constants.Value(e);
+                return e -> new Constants.TValue(e);
             }
         };
     }

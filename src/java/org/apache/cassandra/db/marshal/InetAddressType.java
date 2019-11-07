@@ -65,7 +65,7 @@ public class InetAddressType extends AbstractType<InetAddress>
     {
         try
         {
-            return new Constants.Value(InetAddressType.instance.fromString((String) parsed));
+            return new Constants.TValue(InetAddressType.instance.fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

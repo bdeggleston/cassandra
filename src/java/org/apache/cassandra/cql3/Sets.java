@@ -129,7 +129,7 @@ public abstract class Sets
             // We've parsed empty maps as a set literal to break the ambiguity so
             // handle that case now
             if (receiver.type instanceof MapType && elements.isEmpty())
-                return new Maps.Value(Collections.<ByteBuffer, ByteBuffer>emptyMap());
+                return new Maps.TValue(Collections.<ByteBuffer, ByteBuffer>emptyMap());
 
             ColumnSpecification valueSpec = Sets.valueSpecOf(receiver);
             Set<Term> values = new HashSet<>(elements.size());
@@ -187,16 +187,16 @@ public abstract class Sets
         }
     }
 
-    public static class Value extends Term.Terminal
+    public static class TValue extends Term.Terminal
     {
         public final SortedSet<ByteBuffer> elements;
 
-        public Value(SortedSet<ByteBuffer> elements)
+        public TValue(SortedSet<ByteBuffer> elements)
         {
             this.elements = elements;
         }
 
-        public static Value fromSerialized(ByteBuffer value, SetType type, ProtocolVersion version) throws InvalidRequestException
+        public static TValue fromSerialized(ByteBuffer value, SetType type, ProtocolVersion version) throws InvalidRequestException
         {
             try
             {
@@ -206,7 +206,7 @@ public abstract class Sets
                 SortedSet<ByteBuffer> elements = new TreeSet<>(type.getElementsType());
                 for (Object element : s)
                     elements.add(type.getElementsType().decompose(element));
-                return new Value(elements);
+                return new TValue(elements);
             }
             catch (MarshalException e)
             {
@@ -219,7 +219,7 @@ public abstract class Sets
             return CollectionSerializer.pack(elements, elements.size(), protocolVersion);
         }
 
-        public boolean equals(SetType st, Value v)
+        public boolean equals(SetType st, TValue v)
         {
             if (elements.size() != v.elements.size())
                 return false;
@@ -271,7 +271,7 @@ public abstract class Sets
 
                 buffers.add(bytes);
             }
-            return new Value(buffers);
+            return new TValue(buffers);
         }
 
         public void addFunctionsTo(List<Function> functions)
@@ -295,7 +295,7 @@ public abstract class Sets
                 return null;
             if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 return UNSET_VALUE;
-            return Value.fromSerialized(value, (SetType)receiver.type, options.getProtocolVersion());
+            return TValue.fromSerialized(value, (SetType)receiver.type, options.getProtocolVersion());
         }
     }
 
@@ -341,7 +341,7 @@ public abstract class Sets
                 if (value == null)
                     return;
 
-                for (ByteBuffer bb : ((Value) value).elements)
+                for (ByteBuffer bb : ((TValue) value).elements)
                 {
                     if (bb == ByteBufferUtil.UNSET_BYTE_BUFFER)
                         continue;
@@ -377,8 +377,8 @@ public abstract class Sets
                 return;
 
             // This can be either a set or a single element
-            Set<ByteBuffer> toDiscard = value instanceof Sets.Value
-                                      ? ((Sets.Value)value).elements
+            Set<ByteBuffer> toDiscard = value instanceof TValue
+                                      ? ((TValue)value).elements
                                       : Collections.singleton(value.get(params.options.getProtocolVersion()));
 
             for (ByteBuffer bb : toDiscard)

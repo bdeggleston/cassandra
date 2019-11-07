@@ -143,16 +143,16 @@ public class Tuples
     /**
      * A tuple of terminal values (e.g (123, 'abc')).
      */
-    public static class Value extends Term.MultiItemTerminal
+    public static class TValue extends Term.MultiItemTerminal
     {
         public final ByteBuffer[] elements;
 
-        public Value(ByteBuffer[] elements)
+        public TValue(ByteBuffer[] elements)
         {
             this.elements = elements;
         }
 
-        public static Value fromSerialized(ByteBuffer bytes, TupleType type)
+        public static TValue fromSerialized(ByteBuffer bytes, TupleType type)
         {
             ByteBuffer[] values = type.split(bytes);
             if (values.length > type.size())
@@ -161,7 +161,7 @@ public class Tuples
                         "Tuple value contained too many fields (expected %s, got %s)", type.size(), values.length));
             }
 
-            return new Value(type.split(bytes));
+            return new TValue(type.split(bytes));
         }
 
         public ByteBuffer get(ProtocolVersion protocolVersion)
@@ -221,9 +221,9 @@ public class Tuples
             return buffers;
         }
 
-        public Value bind(QueryOptions options) throws InvalidRequestException
+        public TValue bind(QueryOptions options) throws InvalidRequestException
         {
-            return new Value(bindInternal(options));
+            return new TValue(bindInternal(options));
         }
 
         @Override
@@ -391,12 +391,12 @@ public class Tuples
             super(bindIndex, receiver);
         }
 
-        public Value bind(QueryOptions options) throws InvalidRequestException
+        public TValue bind(QueryOptions options) throws InvalidRequestException
         {
             ByteBuffer value = options.getValues().get(bindIndex);
             if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 throw new InvalidRequestException(String.format("Invalid unset value for tuple %s", receiver.name));
-            return value == null ? null : Value.fromSerialized(value, getTupleType(receiver.type));
+            return value == null ? null : TValue.fromSerialized(value, getTupleType(receiver.type));
         }
     }
 

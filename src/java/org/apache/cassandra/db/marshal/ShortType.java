@@ -69,7 +69,7 @@ public class ShortType extends NumberType<Short>
     public Term fromJSONObject(Object parsed) throws MarshalException
     {
         if (parsed instanceof String || parsed instanceof Number)
-            return new Constants.Value(fromString(String.valueOf(parsed)));
+            return new Constants.TValue(fromString(String.valueOf(parsed)));
 
         throw new MarshalException(String.format(
                 "Expected a short value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));

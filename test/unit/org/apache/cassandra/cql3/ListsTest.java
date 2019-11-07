@@ -136,7 +136,7 @@ public class ListsTest extends CQLTester
         TableMetadata metaData = currentTableMetadata();
 
         ColumnMetadata columnMetadata = metaData.getColumn(ByteBufferUtil.bytes("l"));
-        Term term = new Lists.Value(terms);
+        Term term = new Lists.TValue(terms);
         Lists.Prepender prepender = new Lists.Prepender(columnMetadata, term);
 
         ByteBuffer keyBuf = ByteBufferUtil.bytes("key");

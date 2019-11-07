@@ -182,16 +182,16 @@ public abstract class Lists
         }
     }
 
-    public static class Value extends Term.MultiItemTerminal
+    public static class TValue extends Term.MultiItemTerminal
     {
         public final List<ByteBuffer> elements;
 
-        public Value(List<ByteBuffer> elements)
+        public TValue(List<ByteBuffer> elements)
         {
             this.elements = elements;
         }
 
-        public static Value fromSerialized(ByteBuffer value, ListType type, ProtocolVersion version) throws InvalidRequestException
+        public static TValue fromSerialized(ByteBuffer value, ListType type, ProtocolVersion version) throws InvalidRequestException
         {
             try
             {
@@ -202,7 +202,7 @@ public abstract class Lists
                 for (Object element : l)
                     // elements can be null in lists that represent a set of IN values
                     elements.add(element == null ? null : type.getElementsType().decompose(element));
-                return new Value(elements);
+                return new TValue(elements);
             }
             catch (MarshalException e)
             {
@@ -215,7 +215,7 @@ public abstract class Lists
             return CollectionSerializer.pack(elements, elements.size(), protocolVersion);
         }
 
-        public boolean equals(ListType lt, Value v)
+        public boolean equals(ListType lt, TValue v)
         {
             if (elements.size() != v.elements.size())
                 return false;
@@ -275,7 +275,7 @@ public abstract class Lists
 
                 buffers.add(bytes);
             }
-            return new Value(buffers);
+            return new TValue(buffers);
         }
 
         public void addFunctionsTo(List<Function> functions)
@@ -302,7 +302,7 @@ public abstract class Lists
                 return null;
             if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 return UNSET_VALUE;
-            return Value.fromSerialized(value, (ListType)receiver.type, options.getProtocolVersion());
+            return TValue.fromSerialized(value, (ListType)receiver.type, options.getProtocolVersion());
         }
     }
 
@@ -480,7 +480,7 @@ public abstract class Lists
                 if (value == null)
                     return;
 
-                for (ByteBuffer buffer : ((Value) value).elements)
+                for (ByteBuffer buffer : ((TValue) value).elements)
                 {
                     ByteBuffer uuid = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
                     params.addCell(column, CellPath.create(uuid), buffer);
@@ -511,7 +511,7 @@ public abstract class Lists
             if (value == null || value == UNSET_VALUE)
                 return;
 
-            List<ByteBuffer> toAdd = ((Value) value).elements;
+            List<ByteBuffer> toAdd = ((TValue) value).elements;
             final int totalCount = toAdd.size();
 
             // we have to obey MAX_NANOS per batch - in the unlikely event a client has decided to prepend a list with
@@ -562,7 +562,7 @@ public abstract class Lists
             // Meaning that if toDiscard is big, converting it to a HashSet might be more efficient. However,
             // the read-before-write this operation requires limits its usefulness on big lists, so in practice
             // toDiscard will be small and keeping a list will be more efficient.
-            List<ByteBuffer> toDiscard = ((Value)value).elements;
+            List<ByteBuffer> toDiscard = ((TValue)value).elements;
             for (Cell cell : complexData)
             {
                 if (toDiscard.contains(cell.value()))

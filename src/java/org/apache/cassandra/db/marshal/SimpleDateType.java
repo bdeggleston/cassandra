@@ -23,7 +23,6 @@ import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.Constants;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.cql3.Term;
-import org.apache.cassandra.cql3.statements.RequestValidations;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.SimpleDateSerializer;
 import org.apache.cassandra.serializers.TypeSerializer;
@@ -65,7 +64,7 @@ public class SimpleDateType extends TemporalType<Integer>
     {
         try
         {
-            return new Constants.Value(fromString((String) parsed));
+            return new Constants.TValue(fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

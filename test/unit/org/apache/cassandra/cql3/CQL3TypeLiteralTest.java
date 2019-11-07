@@ -49,13 +49,13 @@ public class CQL3TypeLiteralTest
      * Container holding the expected CQL literal for a type and serialized value.
      * The CQL literal is generated independently from the code in {@link CQL3Type}.
      */
-    static class Value
+    static class CValue
     {
         final String expected;
         final CQL3Type cql3Type;
         final ByteBuffer value;
 
-        Value(String expected, CQL3Type cql3Type, ByteBuffer value)
+        CValue(String expected, CQL3Type cql3Type, ByteBuffer value)
         {
             this.expected = expected;
             this.cql3Type = cql3Type;
@@ -63,14 +63,14 @@ public class CQL3TypeLiteralTest
         }
     }
 
-    static final Map<CQL3Type.Native, List<Value>> nativeTypeValues = new EnumMap<>(CQL3Type.Native.class);
+    static final Map<CQL3Type.Native, List<CValue>> nativeTypeValues = new EnumMap<>(CQL3Type.Native.class);
 
     static void addNativeValue(String expected, CQL3Type.Native cql3Type, ByteBuffer value)
     {
-        List<Value> l = nativeTypeValues.get(cql3Type);
+        List<CValue> l = nativeTypeValues.get(cql3Type);
         if (l == null)
             nativeTypeValues.put(cql3Type, l = new ArrayList<>());
-        l.add(new Value(expected, cql3Type, value));
+        l.add(new CValue(expected, cql3Type, value));
     }
 
     static
@@ -272,9 +272,9 @@ public class CQL3TypeLiteralTest
 
         for (ProtocolVersion version : ProtocolVersion.SUPPORTED)
         {
-            for (Map.Entry<CQL3Type.Native, List<Value>> entry : nativeTypeValues.entrySet())
+            for (Map.Entry<CQL3Type.Native, List<CValue>> entry : nativeTypeValues.entrySet())
             {
-                for (Value value : entry.getValue())
+                for (CValue value : entry.getValue())
                 {
                     compareCqlLiteral(version, value);
                 }
@@ -292,7 +292,7 @@ public class CQL3TypeLiteralTest
         {
             for (int n = 0; n < 100; n++)
             {
-                Value value = generateCollectionValue(version, randomCollectionType(0), true);
+                CValue value = generateCollectionValue(version, randomCollectionType(0), true);
                 compareCqlLiteral(version, value);
             }
         }
@@ -310,19 +310,19 @@ public class CQL3TypeLiteralTest
             for (boolean frozen : Arrays.asList(true, false))
             {
                 // empty
-                Value value = new Value("[]", ListType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
+                CValue value = new CValue("[]", ListType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
                 compareCqlLiteral(version, value);
-                value = new Value("{}", SetType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
+                value = new CValue("{}", SetType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
                 compareCqlLiteral(version, value);
-                value = new Value("{}", MapType.getInstance(UTF8Type.instance, UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
+                value = new CValue("{}", MapType.getInstance(UTF8Type.instance, UTF8Type.instance, frozen).asCQL3Type(), emptyCollection);
                 compareCqlLiteral(version, value);
 
                 // null
-                value = new Value("null", ListType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), null);
+                value = new CValue("null", ListType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), null);
                 compareCqlLiteral(version, value);
-                value = new Value("null", SetType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), null);
+                value = new CValue("null", SetType.getInstance(UTF8Type.instance, frozen).asCQL3Type(), null);
                 compareCqlLiteral(version, value);
-                value = new Value("null", MapType.getInstance(UTF8Type.instance, UTF8Type.instance, frozen).asCQL3Type(), null);
+                value = new CValue("null", MapType.getInstance(UTF8Type.instance, UTF8Type.instance, frozen).asCQL3Type(), null);
                 compareCqlLiteral(version, value);
             }
         }
@@ -337,7 +337,7 @@ public class CQL3TypeLiteralTest
         {
             for (int n = 0; n < 100; n++)
             {
-                Value value = generateTupleValue(version, randomTupleType(0), true);
+                CValue value = generateTupleValue(version, randomTupleType(0), true);
                 compareCqlLiteral(version, value);
             }
         }
@@ -352,7 +352,7 @@ public class CQL3TypeLiteralTest
         {
             for (int n = 0; n < 100; n++)
             {
-                Value value = generateUserDefinedValue(version, randomUserType(0), true);
+                CValue value = generateUserDefinedValue(version, randomUserType(0), true);
                 compareCqlLiteral(version, value);
             }
         }
@@ -369,13 +369,13 @@ public class CQL3TypeLiteralTest
         {
             for (int n = 0; n < 100; n++)
             {
-                Value value = randomNested(version);
+                CValue value = randomNested(version);
                 compareCqlLiteral(version, value);
             }
         }
     }
 
-    static void compareCqlLiteral(ProtocolVersion version, Value value)
+    static void compareCqlLiteral(ProtocolVersion version, CValue value)
     {
         ByteBuffer buffer = value.value != null ? value.value.duplicate() : null;
         String msg = "Failed to get expected value for type " + value.cql3Type + " / " + value.cql3Type.getType() + " with protocol-version " + version + " expected:\"" + value.expected + '"';
@@ -391,7 +391,7 @@ public class CQL3TypeLiteralTest
         }
     }
 
-    static Value randomNested(ProtocolVersion version)
+    static CValue randomNested(ProtocolVersion version)
     {
         AbstractType type = randomNestedType(2);
 
@@ -419,7 +419,7 @@ public class CQL3TypeLiteralTest
         throw new AssertionError();
     }
 
-    static Value generateCollectionValue(ProtocolVersion version, CollectionType collectionType, boolean allowNull)
+    static CValue generateCollectionValue(ProtocolVersion version, CollectionType collectionType, boolean allowNull)
     {
         StringBuilder expected = new StringBuilder();
         ByteBuffer buffer;
@@ -464,7 +464,7 @@ public class CQL3TypeLiteralTest
             Set<ByteBuffer> added = new HashSet<>();
             for (int i = 0; i < size; i++)
             {
-                Value el = generateAnyValue(version, elements);
+                CValue el = generateAnyValue(version, elements);
                 if (!added.add(el.value))
                     continue;
 
@@ -486,13 +486,13 @@ public class CQL3TypeLiteralTest
             buffer = CollectionSerializer.pack(buffers, added.size(), version);
         }
 
-        return new Value(expected.toString(), collectionType.asCQL3Type(), buffer);
+        return new CValue(expected.toString(), collectionType.asCQL3Type(), buffer);
     }
 
     /**
      * Generates a value for any type or type structure.
      */
-    static Value generateAnyValue(ProtocolVersion version, CQL3Type type)
+    static CValue generateAnyValue(ProtocolVersion version, CQL3Type type)
     {
         if (type instanceof CQL3Type.Native)
             return generateNativeValue(type, false);
@@ -505,7 +505,7 @@ public class CQL3TypeLiteralTest
         throw new AssertionError();
     }
 
-    static Value generateTupleValue(ProtocolVersion version, TupleType tupleType, boolean allowNull)
+    static CValue generateTupleValue(ProtocolVersion version, TupleType tupleType, boolean allowNull)
     {
         StringBuilder expected = new StringBuilder();
         ByteBuffer buffer;
@@ -539,7 +539,7 @@ public class CQL3TypeLiteralTest
                     continue;
                 }
 
-                Value value = generateAnyValue(version, fieldType.asCQL3Type());
+                CValue value = generateAnyValue(version, fieldType.asCQL3Type());
                 expected.append(value.expected);
                 buffers[i] = value.value.duplicate();
             }
@@ -547,10 +547,10 @@ public class CQL3TypeLiteralTest
             buffer = TupleType.buildValue(buffers);
         }
 
-        return new Value(expected.toString(), tupleType.asCQL3Type(), buffer);
+        return new CValue(expected.toString(), tupleType.asCQL3Type(), buffer);
     }
 
-    static Value generateUserDefinedValue(ProtocolVersion version, UserType userType, boolean allowNull)
+    static CValue generateUserDefinedValue(ProtocolVersion version, UserType userType, boolean allowNull)
     {
         StringBuilder expected = new StringBuilder();
         ByteBuffer buffer;
@@ -587,7 +587,7 @@ public class CQL3TypeLiteralTest
                     continue;
                 }
 
-                Value value = generateAnyValue(version, fieldType.asCQL3Type());
+                CValue value = generateAnyValue(version, fieldType.asCQL3Type());
                 expected.append(value.expected);
                 buffers[i] = value.value.duplicate();
             }
@@ -595,16 +595,16 @@ public class CQL3TypeLiteralTest
             buffer = TupleType.buildValue(buffers);
         }
 
-        return new Value(expected.toString(), userType.asCQL3Type(), buffer);
+        return new CValue(expected.toString(), userType.asCQL3Type(), buffer);
     }
 
-    static Value generateNativeValue(CQL3Type type, boolean allowNull)
+    static CValue generateNativeValue(CQL3Type type, boolean allowNull)
     {
-        List<Value> values = nativeTypeValues.get(type);
+        List<CValue> values = nativeTypeValues.get(type);
         assert values != null : type.toString() + " needs to be defined";
         while (true)
         {
-            Value v = values.get(randInt(values.size()));
+            CValue v = values.get(randInt(values.size()));
             if (allowNull || v.value != null)
                 return v;
         }

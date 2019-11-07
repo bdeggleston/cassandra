@@ -71,7 +71,7 @@ public class LexicalUUIDType extends AbstractType<UUID>
     {
         try
         {
-            return new Constants.Value(fromString((String) parsed));
+            return new Constants.TValue(fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

@@ -203,21 +203,21 @@ public abstract class UserTypes
         }
     }
 
-    public static class Value extends Term.MultiItemTerminal
+    public static class TValue extends Term.MultiItemTerminal
     {
         private final UserType type;
         public final ByteBuffer[] elements;
 
-        public Value(UserType type, ByteBuffer[] elements)
+        public TValue(UserType type, ByteBuffer[] elements)
         {
             this.type = type;
             this.elements = elements;
         }
 
-        public static Value fromSerialized(ByteBuffer bytes, UserType type)
+        public static TValue fromSerialized(ByteBuffer bytes, UserType type)
         {
             type.validate(bytes);
-            return new Value(type, type.split(bytes));
+            return new TValue(type, type.split(bytes));
         }
 
         public ByteBuffer get(ProtocolVersion protocolVersion)
@@ -225,7 +225,7 @@ public abstract class UserTypes
             return TupleType.buildValue(elements);
         }
 
-        public boolean equals(UserType userType, Value v)
+        public boolean equals(UserType userType, TValue v)
         {
             if (elements.length != v.elements.length)
                 return false;
@@ -293,9 +293,9 @@ public abstract class UserTypes
             return buffers;
         }
 
-        public Value bind(QueryOptions options) throws InvalidRequestException
+        public TValue bind(QueryOptions options) throws InvalidRequestException
         {
-            return new Value(type, bindInternal(options));
+            return new TValue(type, bindInternal(options));
         }
 
         @Override
@@ -320,7 +320,7 @@ public abstract class UserTypes
                 return null;
             if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 return UNSET_VALUE;
-            return Value.fromSerialized(value, (UserType) receiver.type);
+            return TValue.fromSerialized(value, (UserType) receiver.type);
         }
     }
 
@@ -337,7 +337,7 @@ public abstract class UserTypes
             if (value == UNSET_VALUE)
                 return;
 
-            Value userTypeValue = (Value) value;
+            TValue userTypeValue = (TValue) value;
             if (column.type.isMultiCell())
             {
                 // setting a whole UDT at once means we overwrite all cells, so delete existing cells

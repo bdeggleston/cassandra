@@ -85,7 +85,7 @@ public class DecimalType extends NumberType<BigDecimal>
     {
         try
         {
-            return new Constants.Value(getSerializer().serialize(new BigDecimal(parsed.toString())));
+            return new Constants.TValue(getSerializer().serialize(new BigDecimal(parsed.toString())));
         }
         catch (NumberFormatException exc)
         {

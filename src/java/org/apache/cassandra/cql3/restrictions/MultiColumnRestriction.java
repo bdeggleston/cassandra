@@ -175,7 +175,7 @@ public abstract class MultiColumnRestriction implements SingleRestriction
         @Override
         public MultiCBuilder appendTo(MultiCBuilder builder, QueryOptions options)
         {
-            Tuples.Value t = ((Tuples.Value) value.bind(options));
+            Tuples.TValue t = ((Tuples.TValue) value.bind(options));
             List<ByteBuffer> values = t.getElements();
             for (int i = 0, m = values.size(); i < m; i++)
             {
@@ -188,7 +188,7 @@ public abstract class MultiColumnRestriction implements SingleRestriction
         @Override
         public final void addRowFilterTo(RowFilter filter, IndexRegistry indexRegistry, QueryOptions options)
         {
-            Tuples.Value t = ((Tuples.Value) value.bind(options));
+            Tuples.TValue t = ((Tuples.TValue) value.bind(options));
             List<ByteBuffer> values = t.getElements();
 
             for (int i = 0, m = columnDefs.size(); i < m; i++)
@@ -499,9 +499,9 @@ public abstract class MultiColumnRestriction implements SingleRestriction
 
             Terminal terminal = slice.bound(b).bind(options);
 
-            if (terminal instanceof Tuples.Value)
+            if (terminal instanceof Tuples.TValue)
             {
-                return ((Tuples.Value) terminal).getElements();
+                return ((Tuples.TValue) terminal).getElements();
             }
 
             return Collections.singletonList(terminal.get(options.getProtocolVersion()));

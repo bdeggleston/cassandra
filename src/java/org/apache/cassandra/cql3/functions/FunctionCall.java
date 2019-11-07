@@ -110,19 +110,19 @@ public class FunctionCall extends Term.NonTerminal
             switch (((CollectionType) fun.returnType()).kind)
             {
                 case LIST:
-                    return Lists.Value.fromSerialized(result, (ListType) fun.returnType(), version);
+                    return Lists.TValue.fromSerialized(result, (ListType) fun.returnType(), version);
                 case SET:
-                    return Sets.Value.fromSerialized(result, (SetType) fun.returnType(), version);
+                    return Sets.TValue.fromSerialized(result, (SetType) fun.returnType(), version);
                 case MAP:
-                    return Maps.Value.fromSerialized(result, (MapType) fun.returnType(), version);
+                    return Maps.TValue.fromSerialized(result, (MapType) fun.returnType(), version);
             }
         }
         else if (fun.returnType().isUDT())
         {
-            return UserTypes.Value.fromSerialized(result, (UserType) fun.returnType());
+            return UserTypes.TValue.fromSerialized(result, (UserType) fun.returnType());
         }
 
-        return new Constants.Value(result);
+        return new Constants.TValue(result);
     }
 
     public static class Raw extends Term.Raw

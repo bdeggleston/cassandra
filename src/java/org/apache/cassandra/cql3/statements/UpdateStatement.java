@@ -48,7 +48,7 @@ import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
  */
 public class UpdateStatement extends ModificationStatement
 {
-    private static final Constants.Value EMPTY = new Constants.Value(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+    private static final Constants.TValue EMPTY = new Constants.TValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
 
     private UpdateStatement(StatementType type,
                             VariableSpecifications bindVariables,

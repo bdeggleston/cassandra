@@ -23,7 +23,6 @@ import java.util.Date;
 import org.apache.cassandra.cql3.Constants;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.cql3.Term;
-import org.apache.cassandra.cql3.statements.RequestValidations;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,11 +85,11 @@ public class TimestampType extends TemporalType<Date>
     public Term fromJSONObject(Object parsed) throws MarshalException
     {
         if (parsed instanceof Long)
-            return new Constants.Value(ByteBufferUtil.bytes((Long) parsed));
+            return new Constants.TValue(ByteBufferUtil.bytes((Long) parsed));
 
         try
         {
-            return new Constants.Value(TimestampType.instance.fromString((String) parsed));
+            return new Constants.TValue(TimestampType.instance.fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

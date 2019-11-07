@@ -64,7 +64,7 @@ public class EmptyType extends AbstractType<Void>
         if (!((String) parsed).isEmpty())
             throw new MarshalException(String.format("'%s' is not empty", parsed));
 
-        return new Constants.Value(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        return new Constants.TValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
     }
 
     @Override

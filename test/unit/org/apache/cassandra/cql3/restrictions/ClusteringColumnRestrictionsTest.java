@@ -1881,7 +1881,7 @@ public class ClusteringColumnRestrictionsTest
      */
     private static MultiItemTerminal toMultiItemTerminal(ByteBuffer... values)
     {
-        return new Tuples.Value(values);
+        return new Tuples.TValue(values);
     }
 
     /**
@@ -1892,7 +1892,7 @@ public class ClusteringColumnRestrictionsTest
      */
     private static Term toTerm(ByteBuffer value)
     {
-        return new Constants.Value(value);
+        return new Constants.TValue(value);
     }
 
     /**

@@ -116,7 +116,7 @@ public abstract class Constants
     // We don't have "unset" literal in the syntax, but it's used implicitely for JSON "DEFAULT UNSET" option
     public static final UnsetLiteral UNSET_LITERAL = new UnsetLiteral();
 
-    public static final Value UNSET_VALUE = new Value(ByteBufferUtil.UNSET_BYTE_BUFFER);
+    public static final TValue UNSET_VALUE = new TValue(ByteBufferUtil.UNSET_BYTE_BUFFER);
 
     private static class NullLiteral extends Term.Raw
     {
@@ -148,7 +148,7 @@ public abstract class Constants
 
     public static final NullLiteral NULL_LITERAL = new NullLiteral();
 
-    public static final Term.Terminal NULL_VALUE = new Value(null)
+    public static final Term.Terminal NULL_VALUE = new TValue(null)
     {
         @Override
         public Terminal bind(QueryOptions options)
@@ -213,12 +213,12 @@ public abstract class Constants
             return new Literal(Type.DURATION, text);
         }
 
-        public Value prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
+        public TValue prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
             if (!testAssignment(keyspace, receiver).isAssignable())
                 throw new InvalidRequestException(String.format("Invalid %s constant (%s) for \"%s\" of type %s", type, text, receiver.name, receiver.type.asCQL3Type()));
 
-            return new Value(parsedValue(receiver.type));
+            return new TValue(parsedValue(receiver.type));
         }
 
         private ByteBuffer parsedValue(AbstractType<?> validator) throws InvalidRequestException
@@ -360,11 +360,11 @@ public abstract class Constants
     /**
      * A constant value, i.e. a ByteBuffer.
      */
-    public static class Value extends Term.Terminal
+    public static class TValue extends Term.Terminal
     {
         public final ByteBuffer bytes;
 
-        public Value(ByteBuffer bytes)
+        public TValue(ByteBuffer bytes)
         {
             this.bytes = bytes;
         }
@@ -411,14 +411,14 @@ public abstract class Constants
             }
         }
 
-        public Value bind(QueryOptions options) throws InvalidRequestException
+        public TValue bind(QueryOptions options) throws InvalidRequestException
         {
             ByteBuffer bytes = bindAndGet(options);
             if (bytes == null)
                 return null;
             if (bytes == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 return Constants.UNSET_VALUE;
-            return new Constants.Value(bytes);
+            return new TValue(bytes);
         }
     }
 

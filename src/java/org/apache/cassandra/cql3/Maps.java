@@ -196,16 +196,16 @@ public abstract class Maps
         }
     }
 
-    public static class Value extends Term.Terminal
+    public static class TValue extends Term.Terminal
     {
         public final Map<ByteBuffer, ByteBuffer> map;
 
-        public Value(Map<ByteBuffer, ByteBuffer> map)
+        public TValue(Map<ByteBuffer, ByteBuffer> map)
         {
             this.map = map;
         }
 
-        public static Value fromSerialized(ByteBuffer value, MapType type, ProtocolVersion version) throws InvalidRequestException
+        public static TValue fromSerialized(ByteBuffer value, MapType type, ProtocolVersion version) throws InvalidRequestException
         {
             try
             {
@@ -215,7 +215,7 @@ public abstract class Maps
                 Map<ByteBuffer, ByteBuffer> map = new LinkedHashMap<>(m.size());
                 for (Map.Entry<?, ?> entry : m.entrySet())
                     map.put(type.getKeysType().decompose(entry.getKey()), type.getValuesType().decompose(entry.getValue()));
-                return new Value(map);
+                return new TValue(map);
             }
             catch (MarshalException e)
             {
@@ -234,7 +234,7 @@ public abstract class Maps
             return CollectionSerializer.pack(buffers, map.size(), protocolVersion);
         }
 
-        public boolean equals(MapType mt, Value v)
+        public boolean equals(MapType mt, TValue v)
         {
             if (map.size() != v.map.size())
                 return false;
@@ -297,7 +297,7 @@ public abstract class Maps
 
                 buffers.put(keyBytes, valueBytes);
             }
-            return new Value(buffers);
+            return new TValue(buffers);
         }
 
         public void addFunctionsTo(List<Function> functions)
@@ -322,7 +322,7 @@ public abstract class Maps
                 return null;
             if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
                 return UNSET_VALUE;
-            return Value.fromSerialized(value, (MapType)receiver.type, options.getProtocolVersion());
+            return TValue.fromSerialized(value, (MapType)receiver.type, options.getProtocolVersion());
         }
     }
 
@@ -408,7 +408,7 @@ public abstract class Maps
                 if (value == null)
                     return;
 
-                Map<ByteBuffer, ByteBuffer> elements = ((Value) value).map;
+                Map<ByteBuffer, ByteBuffer> elements = ((TValue) value).map;
                 for (Map.Entry<ByteBuffer, ByteBuffer> entry : elements.entrySet())
                     params.addCell(column, CellPath.create(entry.getKey()), entry.getValue());
             }

@@ -82,13 +82,13 @@ public class LongType extends NumberType<Long>
         try
         {
             if (parsed instanceof String)
-                return new Constants.Value(fromString((String) parsed));
+                return new Constants.TValue(fromString((String) parsed));
 
             Number parsedNumber = (Number) parsed;
             if (!(parsedNumber instanceof Integer || parsedNumber instanceof Long))
                 throw new MarshalException(String.format("Expected a bigint value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));
 
-            return new Constants.Value(getSerializer().serialize(parsedNumber.longValue()));
+            return new Constants.TValue(getSerializer().serialize(parsedNumber.longValue()));
         }
         catch (ClassCastException exc)
         {

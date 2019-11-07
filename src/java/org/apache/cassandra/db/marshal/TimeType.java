@@ -19,7 +19,6 @@ package org.apache.cassandra.db.marshal;
 
 import java.nio.ByteBuffer;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 import org.apache.cassandra.cql3.Constants;
@@ -53,7 +52,7 @@ public class TimeType extends TemporalType<Long>
     {
         try
         {
-            return new Constants.Value(fromString((String) parsed));
+            return new Constants.TValue(fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

@@ -71,7 +71,7 @@ public class AsciiType extends AbstractType<String>
     {
         try
         {
-            return new Constants.Value(fromString((String) parsed));
+            return new Constants.TValue(fromString((String) parsed));
         }
         catch (ClassCastException exc)
         {

@@ -56,7 +56,7 @@ public class BytesType extends AbstractType<ByteBuffer>
             if (!parsedString.startsWith("0x"))
                 throw new MarshalException(String.format("String representation of blob is missing 0x prefix: %s", parsedString));
 
-            return new Constants.Value(BytesType.instance.fromString(parsedString.substring(2)));
+            return new Constants.TValue(BytesType.instance.fromString(parsedString.substring(2)));
         }
         catch (ClassCastException | MarshalException exc)
         {
