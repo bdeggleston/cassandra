@@ -37,6 +37,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Value;
 
 public abstract class SimpleBuilders
 {
@@ -370,7 +371,7 @@ public abstract class SimpleBuilders
 
             if (!column.type.isMultiCell())
             {
-                builder.addCell(cell(column, toByteBuffer(value, column.type), null));
+                builder.addCell(cell(column, toValue(value, column.type), null));
                 return this;
             }
 
@@ -391,21 +392,21 @@ public abstract class SimpleBuilders
                     ListType lt = (ListType)column.type;
                     assert value instanceof List;
                     for (Object elt : (List)value)
-                        builder.addCell(cell(column, toByteBuffer(elt, lt.getElementsType()), CellPath.create(ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes()))));
+                        builder.addCell(cell(column, toValue(elt, lt.getElementsType()), CellPath.create(ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes()))));
                     break;
                 case SET:
                     SetType st = (SetType)column.type;
                     assert value instanceof Set;
                     for (Object elt : (Set)value)
-                        builder.addCell(cell(column, ByteBufferUtil.EMPTY_BYTE_BUFFER, CellPath.create(toByteBuffer(elt, st.getElementsType()))));
+                        builder.addCell(cell(column, ByteBufferUtil.EMPTY_BYTE_BUFFER, CellPath.create(toValue(elt, st.getElementsType()))));
                     break;
                 case MAP:
                     MapType mt = (MapType)column.type;
                     assert value instanceof Map;
                     for (Map.Entry entry : ((Map<?, ?>)value).entrySet())
                         builder.addCell(cell(column,
-                                             toByteBuffer(entry.getValue(), mt.getValuesType()),
-                                             CellPath.create(toByteBuffer(entry.getKey(), mt.getKeysType()))));
+                                             toValue(entry.getValue(), mt.getValuesType()),
+                                             CellPath.create(toValue(entry.getKey(), mt.getKeysType()))));
                     break;
                 default:
                     throw new AssertionError();
@@ -446,7 +447,7 @@ public abstract class SimpleBuilders
             return column;
         }
 
-        private Cell cell(ColumnMetadata column, ByteBuffer value, CellPath path)
+        private Cell cell(ColumnMetadata column, Value value, CellPath path)
         {
             if (value == null)
                 return BufferCell.tombstone(column, timestamp, nowInSec, path);
@@ -456,13 +457,13 @@ public abstract class SimpleBuilders
                  : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
         }
 
-        private ByteBuffer toByteBuffer(Object value, AbstractType<?> type)
+        private Value toValue(Object value, AbstractType<?> type)
         {
             if (value == null)
                 return null;
 
-            if (value instanceof ByteBuffer)
-                return (ByteBuffer)value;
+            if (value instanceof Value)
+                return (Value) value;
 
             if (type.isCounter())
             {

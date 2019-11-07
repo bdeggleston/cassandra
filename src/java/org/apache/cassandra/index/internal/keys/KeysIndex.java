@@ -32,6 +32,7 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Value;
 
 public class KeysIndex extends CassandraIndex
 {
@@ -57,9 +58,9 @@ public class KeysIndex extends CassandraIndex
         return builder;
     }
 
-    protected ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                      Clustering clustering,
-                                      CellPath path, ByteBuffer cellValue)
+    protected Value getIndexedValue(ByteBuffer partitionKey,
+                                    Clustering clustering,
+                                    CellPath path, Value cellValue)
     {
         return cellValue;
     }
@@ -69,7 +70,7 @@ public class KeysIndex extends CassandraIndex
         throw new UnsupportedOperationException("KEYS indexes do not use a specialized index entry format");
     }
 
-    public boolean isStale(Row row, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row row, Value indexValue, int nowInSec)
     {
         if (row == null)
             return true;

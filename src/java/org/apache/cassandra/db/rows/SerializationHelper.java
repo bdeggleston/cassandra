@@ -26,6 +26,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.schema.DroppedColumn;
+import org.apache.cassandra.utils.values.Value;
 
 public class SerializationHelper
 {
@@ -140,7 +141,7 @@ public class SerializationHelper
         return currentDroppedComplex != null && complexDeletion.markedForDeleteAt() <= currentDroppedComplex.droppedTime;
     }
 
-    public ByteBuffer maybeClearCounterValue(ByteBuffer value)
+    public Value maybeClearCounterValue(Value value)
     {
         return flag == Flag.FROM_REMOTE || (flag == Flag.LOCAL && CounterContext.instance().shouldClearLocal(value))
              ? CounterContext.instance().clearAllLocal(value)

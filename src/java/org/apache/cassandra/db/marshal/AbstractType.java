@@ -199,9 +199,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     public final int compare(ByteBuffer left, ByteBuffer right)
     {
-        return isByteOrderComparable
-               ? FastByteOperations.compareUnsigned(left, right)
-               : compareCustom(left, right);
+        return compare(left, right, ByteBufferHandle.instance);
+    }
+
+    public final int compare(Value left, Value right)
+    {
+        return compare(left, right, ValueHandle.instance);
     }
 
     protected final <V> int compare(V left, V right, DataHandle<V> handle)

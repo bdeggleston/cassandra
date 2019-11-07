@@ -91,6 +91,11 @@ public class ValueHandle implements DataHandle<Value>
         return value.getByte(offset);
     }
 
+    public short getShort(Value value, int offset)
+    {
+        return value.getShort(offset);
+    }
+
     public int toInt(Value value)
     {
         return value.getInt(0);

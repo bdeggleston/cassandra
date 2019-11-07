@@ -39,6 +39,7 @@ import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Value;
 
 public final class CounterCacheKey extends CacheKey
 {
@@ -91,7 +92,7 @@ public final class CounterCacheKey extends CacheKey
      * @return the value for the counter represented by this key, or {@code null} if there
      * is not such counter.
      */
-    public ByteBuffer readCounterValue(ColumnFamilyStore cfs)
+    public Value readCounterValue(ColumnFamilyStore cfs)
     {
         TableMetadata metadata = cfs.metadata();
         assert metadata.id.equals(tableId) && Objects.equals(metadata.indexName().orElse(null), indexName);
@@ -123,7 +124,7 @@ public final class CounterCacheKey extends CacheKey
         try (ReadExecutionController controller = cmd.executionController();
              RowIterator iter = UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs, controller), nowInSec))
         {
-            ByteBuffer value = null;
+            Value value = null;
             if (column.isStatic())
                 value = iter.staticRow().getCell(column).value();
             else if (iter.hasNext())

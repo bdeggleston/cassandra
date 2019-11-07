@@ -26,6 +26,7 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Index on a REGULAR column definition on a composite type.
@@ -51,10 +52,10 @@ public class RegularColumnIndex extends CassandraIndex
         super(baseCfs, indexDef);
     }
 
-    public ByteBuffer getIndexedValue(ByteBuffer partitionKey,
+    public Value getIndexedValue(ByteBuffer partitionKey,
                                       Clustering clustering,
                                       CellPath path,
-                                      ByteBuffer cellValue)
+                                      Value cellValue)
     {
         return cellValue;
     }
@@ -98,7 +99,7 @@ public class RegularColumnIndex extends CassandraIndex
                                 indexedEntryClustering);
     }
 
-    public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row data, Value indexValue, int nowInSec)
     {
         Cell cell = data.getCell(indexedColumn);
         return cell == null

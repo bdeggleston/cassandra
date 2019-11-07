@@ -33,6 +33,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface Value extends Comparable<Value>
 {
+    // TODO: write to operations
+
     int size();
 
     default int sizeFromOffset(int offset)

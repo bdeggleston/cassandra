@@ -63,6 +63,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.concurrent.Refs;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
 
@@ -130,7 +131,7 @@ public abstract class CassandraIndex implements Index
      * @param nowInSec
      * @return true if the index is out of date and the entry should be dropped
      */
-    public abstract boolean isStale(Row row, ByteBuffer indexValue, int nowInSec);
+    public abstract boolean isStale(Row row, Value indexValue, int nowInSec);
 
     /**
      * Extract the value to be inserted into the index from the components of the base data
@@ -141,10 +142,10 @@ public abstract class CassandraIndex implements Index
      * @return a ByteBuffer containing the value to be inserted in the index. This will be used to make the partition
      * key in the index table
      */
-    protected abstract ByteBuffer getIndexedValue(ByteBuffer partitionKey,
+    protected abstract Value getIndexedValue(ByteBuffer partitionKey,
                                                   Clustering clustering,
                                                   CellPath path,
-                                                  ByteBuffer cellValue);
+                                                  Value cellValue);
 
     public ColumnMetadata getIndexedColumn()
     {
@@ -614,21 +615,21 @@ public abstract class CassandraIndex implements Index
         }
     }
 
-    private void validateIndexedValue(ByteBuffer value)
+    private void validateIndexedValue(Value value)
     {
-        if (value != null && value.remaining() >= FBUtilities.MAX_UNSIGNED_SHORT)
+        if (value != null && value.size() >= FBUtilities.MAX_UNSIGNED_SHORT)
             throw new InvalidRequestException(String.format(
                                                            "Cannot index value of size %d for index %s on %s(%s) (maximum allowed size=%d)",
-                                                           value.remaining(),
+                                                           value.size(),
                                                            metadata.name,
                                                            baseCfs.metadata,
                                                            indexedColumn.name.toString(),
                                                            FBUtilities.MAX_UNSIGNED_SHORT));
     }
 
-    private ByteBuffer getIndexedValue(ByteBuffer rowKey,
-                                       Clustering clustering,
-                                       Cell cell)
+    private Value getIndexedValue(ByteBuffer rowKey,
+                                  Clustering clustering,
+                                  Cell cell)
     {
         return getIndexedValue(rowKey,
                                clustering,
@@ -646,9 +647,9 @@ public abstract class CassandraIndex implements Index
                                           cell == null ? null : cell.path()).build();
     }
 
-    private DecoratedKey getIndexKeyFor(ByteBuffer value)
+    private DecoratedKey getIndexKeyFor(Value value)
     {
-        return indexCfs.decorateKey(value);
+        return indexCfs.decorateKey(value.buffer());  // FIXME: BDE Value partition keys
     }
 
     private PartitionUpdate partitionUpdate(DecoratedKey valueKey, Row row)
