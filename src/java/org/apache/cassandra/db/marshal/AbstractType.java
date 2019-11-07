@@ -34,13 +34,13 @@ import org.apache.cassandra.cql3.AssignmentTestable;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.Term;
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.FastByteOperations;
+import org.apache.cassandra.utils.values.Value;
 import org.github.jamm.Unmetered;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -103,6 +103,14 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         }
     }
 
+    static <V, T extends Comparable<T>> int compareComposed(V left, V right, DataHandle<V> handle, AbstractType<T> type)
+    {
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return handle.size(left) - handle.size(right);
+
+        return type.compose(left, handle).compareTo(type.compose(right, handle));
+    }
+
     public static List<String> asCQLTypeStringList(List<AbstractType<?>> abstractTypes)
     {
         List<String> r = new ArrayList<>(abstractTypes.size());
@@ -116,21 +124,42 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getSerializer().deserialize(bytes);
     }
 
+    public T compose(Value value)
+    {
+        return getSerializer().deserialize(value);
+    }
+
+    <V> T compose(V value, DataHandle<V> handle)
+    {
+        return getSerializer().deserialize(value, handle);
+    }
+
+
     public ByteBuffer decompose(T value)
     {
         return getSerializer().serialize(value);
     }
 
     /** get a string representation of the bytes used for various identifier (NOT just for log messages) */
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V value, DataHandle<V> handle)
     {
-        if (bytes == null)
+        if (value == null)
             return "null";
 
         TypeSerializer<T> serializer = getSerializer();
-        serializer.validate(bytes);
+        serializer.validate(value, handle);
 
-        return serializer.toString(serializer.deserialize(bytes));
+        return serializer.toString(serializer.deserialize(value, handle));
+    }
+
+    public String getString(ByteBuffer bytes)
+    {
+        return getString(bytes, ByteBufferHandle.instance);
+    }
+
+    public String getString(Value value)
+    {
+        return getString(value, ValueHandle.instance);
     }
 
     /** get a byte representation of the given string. */
@@ -162,11 +191,22 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         getSerializer().validate(bytes);
     }
 
+    /* validate that the value is a valid sequence of bytes for the type we are supposed to be comparing */
+    public void validate(Value value) throws MarshalException
+    {
+        getSerializer().validate(value);
+    }
+
     public final int compare(ByteBuffer left, ByteBuffer right)
     {
         return isByteOrderComparable
                ? FastByteOperations.compareUnsigned(left, right)
                : compareCustom(left, right);
+    }
+
+    protected final <V> int compare(V left, V right, DataHandle<V> handle)
+    {
+        return isByteOrderComparable ? handle.compareUnsigned(left, right) : compareCustom(left, right, handle);
     }
 
     /**
@@ -184,6 +224,20 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     }
 
     /**
+     * Implement IFF ComparisonType is CUSTOM
+     *
+     * Compares the byte representation of two instances of this class,
+     * for types where this cannot be done by simple in-order comparison of the
+     * unsigned bytes
+     *
+     * Standard Java compare semantics
+     */
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Validate cell value. Unlike {@linkplain #validate(java.nio.ByteBuffer)},
      * cell value is passed to validate its content.
      * Usually, this is the same as validate except collection.
@@ -191,7 +245,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
      * @param cellValue ByteBuffer representing cell value
      * @throws MarshalException
      */
-    public void validateCellValue(ByteBuffer cellValue) throws MarshalException
+    public void validateCellValue(Value cellValue) throws MarshalException
     {
         validate(cellValue);
     }
@@ -406,32 +460,69 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     // This assumes that no empty values are passed
     public void writeValue(ByteBuffer value, DataOutputPlus out) throws IOException
     {
-        assert value.hasRemaining();
+        writeValue(value, ByteBufferHandle.instance, out);
+    }
+
+    // This assumes that no empty values are passed
+    public void writeValue(Value value, DataOutputPlus out) throws IOException
+    {
+        writeValue(value, ValueHandle.instance, out);
+    }
+
+    // This assumes that no empty values are passed
+    private <T> void writeValue(T value, DataHandle<T> handle, DataOutputPlus out) throws IOException
+    {
+        assert !handle.isEmpty(value);
         if (valueLengthIfFixed() >= 0)
-            out.write(value);
+            handle.write(value, out);
         else
-            ByteBufferUtil.writeWithVIntLength(value, out);
+            handle.writeWithVIntLength(value, out);
     }
 
     public long writtenLength(ByteBuffer value)
     {
-        assert value.hasRemaining();
-        return valueLengthIfFixed() >= 0
-             ? value.remaining()
-             : TypeSizes.sizeofWithVIntLength(value);
+        return writtenLength(value, ByteBufferHandle.instance);
     }
 
-    public ByteBuffer readValue(DataInputPlus in) throws IOException
+    public long writtenLength(Value value)
+    {
+        return writtenLength(value, ValueHandle.instance);
+    }
+
+    public <T> long writtenLength(T value, DataHandle<T> handle)
+    {
+        assert !handle.isEmpty(value);
+        return valueLengthIfFixed() >= 0
+               ? handle.size(value)
+               : handle.sizeWithVIntLength(value);
+    }
+
+    public ByteBuffer readBuffer(DataInputPlus in) throws IOException
+    {
+        return readBuffer(in, Integer.MAX_VALUE);
+    }
+
+    public ByteBuffer readBuffer(DataInputPlus in, int maxValueSize) throws IOException
+    {
+        return read(ByteBufferHandle.instance, in, maxValueSize);
+    }
+
+    public Value readValue(DataInputPlus in) throws IOException
     {
         return readValue(in, Integer.MAX_VALUE);
     }
 
-    public ByteBuffer readValue(DataInputPlus in, int maxValueSize) throws IOException
+    public Value readValue(DataInputPlus in, int maxValueSize) throws IOException
+    {
+        return read(ValueHandle.instance, in, maxValueSize);
+    }
+
+    <T> T read(DataHandle<T> handle, DataInputPlus in, int maxValueSize) throws IOException
     {
         int length = valueLengthIfFixed();
 
         if (length >= 0)
-            return ByteBufferUtil.read(in, length);
+            return handle.read(in, length);
         else
         {
             int l = (int)in.readUnsignedVInt();
@@ -443,7 +534,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
                                                     "which is set via max_value_size_in_mb in cassandra.yaml",
                                                     l, maxValueSize));
 
-            return ByteBufferUtil.read(in, l);
+            return handle.read(in, l);
         }
     }
 

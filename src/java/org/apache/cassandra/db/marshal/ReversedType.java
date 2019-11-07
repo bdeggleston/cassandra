@@ -63,9 +63,9 @@ public class ReversedType<T> extends AbstractType<T>
         return baseType.isEmptyValueMeaningless();
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        return baseType.compare(o2, o1);
+        return baseType.compareCustom(right, left, handle);
     }
 
     @Override

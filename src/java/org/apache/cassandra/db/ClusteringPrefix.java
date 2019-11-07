@@ -375,7 +375,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 {
                     values[offset] = isNull(header, offset)
                                 ? null
-                                : (isEmpty(header, offset) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : types.get(offset).readValue(in, DatabaseDescriptor.getMaxValueSize()));
+                                : (isEmpty(header, offset) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : types.get(offset).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
                     offset++;
                 }
             }
@@ -529,7 +529,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
             int i = deserializedSize++;
             nextValues[i] = Serializer.isNull(nextHeader, i)
                           ? null
-                          : (Serializer.isEmpty(nextHeader, i) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : serializationHeader.clusteringTypes().get(i).readValue(in, DatabaseDescriptor.getMaxValueSize()));
+                          : (Serializer.isEmpty(nextHeader, i) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : serializationHeader.clusteringTypes().get(i).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
             return true;
         }
 

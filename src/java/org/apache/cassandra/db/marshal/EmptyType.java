@@ -38,7 +38,7 @@ public class EmptyType extends AbstractType<Void>
 
     private EmptyType() {super(ComparisonType.CUSTOM);} // singleton
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
         return 0;
     }

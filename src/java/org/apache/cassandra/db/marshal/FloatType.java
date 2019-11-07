@@ -46,12 +46,9 @@ public class FloatType extends NumberType<Float>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
-
-        return compose(o1).compareTo(compose(o2));
+        return compareComposed(left, right, handle, this);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

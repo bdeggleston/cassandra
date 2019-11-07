@@ -43,17 +43,15 @@ public class BooleanType extends AbstractType<Boolean>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return handle.size(left) - handle.size(right);
 
         // False is 0, True is anything else, makes False sort before True.
-        byte b1 = o1.get(o1.position());
-        byte b2 = o2.get(o2.position());
-        if (b1 == 0)
-            return b2 == 0 ? 0 : -1;
-        return b2 == 0 ? 1 : 0;
+        int v1 = handle.getByte(left, 0) == 0 ? 0 : 1;
+        int v2 = handle.getByte(right, 0) == 0 ? 0 : 1;
+        return v1 - v2;
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

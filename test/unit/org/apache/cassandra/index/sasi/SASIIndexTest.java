@@ -1681,6 +1681,11 @@ public class SASIIndexTest
             {
                 return UTF8Type.instance.compare(a, b);
             }
+
+            public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+            {
+                // TODO
+            }
         };
 
         // first let's check that we get 'false' for 'isLiteral' if we don't set the option with special comparator

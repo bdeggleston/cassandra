@@ -30,6 +30,7 @@ import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.ByteType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.db.marshal.DateType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -77,6 +78,11 @@ public class UDHelperTest
         public int compareCustom(ByteBuffer o1, ByteBuffer o2)
         {
             return o1.compareTo(o2);
+        }
+
+        public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+        {
+            // TODO
         }
     }
 

@@ -35,7 +35,22 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class Values
 {
+    public static final Value EMPTY = new ByteBufferValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+    public static final Value UNSET = new ByteBufferValue(ByteBufferUtil.UNSET_BYTE_BUFFER);
+
     private static final Value.Factory FACTORY = ByteBufferValue.FACTORY;
+
+    public static int compareUnsigned(Value left, Value right)
+    {
+        if (left.isBufferBacked() && right.isBufferBacked())
+        {
+            return ByteBufferUtil.compareUnsigned(left.buffer(), right.buffer());
+        }
+        else
+        {
+            return ByteArrayUtil.compare(left.array(), right.array());
+        }
+    }
 
     public static void writeWithShortLength(Value value, DataOutputPlus out) throws IOException
     {

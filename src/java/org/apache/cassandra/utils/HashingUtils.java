@@ -26,6 +26,8 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 
+import org.apache.cassandra.utils.values.Value;
+
 public class HashingUtils
 {
     public static final HashFunction CURRENT_HASH_FUNCTION = Hashing.md5();
@@ -68,6 +70,18 @@ public class HashingUtils
                 hasher.putBytes(tempArray, 0, chunk);
                 len -= chunk;
             }
+        }
+    }
+
+    public static void updateBytes(Hasher hasher, Value value)
+    {
+        if (value.isArrayBacked())
+        {
+            hasher.putBytes(value.array(), 0, value.size());
+        }
+        else
+        {
+            updateBytes(hasher, value.safeBuffer());
         }
     }
 

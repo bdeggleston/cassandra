@@ -42,16 +42,16 @@ public class Int32Type extends NumberType<Integer>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return handle.size(left) - handle.size(right);
 
-        int diff = o1.get(o1.position()) - o2.get(o2.position());
+        int diff = handle.getByte(left, 0) - handle.getByte(right, 0);
         if (diff != 0)
             return diff;
 
-        return ByteBufferUtil.compareUnsigned(o1, o2);
+        return handle.compareUnsigned(left, right);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

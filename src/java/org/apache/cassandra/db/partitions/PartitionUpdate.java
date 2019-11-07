@@ -41,6 +41,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.btree.BTree;
 import org.apache.cassandra.utils.btree.UpdateFunction;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Stores updates made on a partition.
@@ -686,14 +687,14 @@ public class PartitionUpdate extends AbstractBTreePartition
             return path;
         }
 
-        public ByteBuffer value()
+        public Value value()
         {
             return path == null
                  ? row.getCell(column).value()
                  : row.getCell(column, path).value();
         }
 
-        public void setValue(ByteBuffer value)
+        public void setValue(Value value)
         {
             // This is a bit of a giant hack as this is the only place where we mutate a Row object. This makes it more efficient
             // for counters however and this won't be needed post-#6506 so that's probably fine.

@@ -164,6 +164,11 @@ public class ListType<T> extends CollectionType<List<T>>
         return compareListOrSet(elements, o1, o2);
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO
+    }
+
     static int compareListOrSet(AbstractType<?> elementsComparator, ByteBuffer o1, ByteBuffer o2)
     {
         // Note that this is only used if the collection is frozen

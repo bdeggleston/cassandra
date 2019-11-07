@@ -31,6 +31,7 @@ import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.HashingUtils;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Base abstract class for {@code Cell} implementations.
@@ -70,8 +71,8 @@ public abstract class AbstractCell extends Cell
         if (!isCounterCell())
             return this;
 
-        ByteBuffer value = value();
-        ByteBuffer marked = CounterContext.instance().markLocalToBeCleared(value);
+        Value value = value();
+        Value marked = CounterContext.instance().markLocalToBeCleared(value);
         return marked == value ? this : new BufferCell(column, timestamp(), ttl(), localDeletionTime(), marked, path());
     }
 
@@ -116,7 +117,7 @@ public abstract class AbstractCell extends Cell
         return TypeSizes.sizeof(timestamp())
                + TypeSizes.sizeof(ttl())
                + TypeSizes.sizeof(localDeletionTime())
-               + value().remaining()
+               + value().size()
                + (path == null ? 0 : path.dataSize());
     }
 
@@ -128,7 +129,7 @@ public abstract class AbstractCell extends Cell
         }
         else
         {
-            HashingUtils.updateBytes(hasher, value().duplicate());
+            HashingUtils.updateBytes(hasher, value());
         }
 
         HashingUtils.updateWithLong(hasher, timestamp());

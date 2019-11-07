@@ -23,6 +23,7 @@ import java.nio.charset.Charset;
 
 import org.apache.commons.lang3.StringUtils;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class AbstractTextSerializer implements TypeSerializer<String>
@@ -34,15 +35,15 @@ public abstract class AbstractTextSerializer implements TypeSerializer<String>
         this.charset = charset;
     }
 
-    public String deserialize(ByteBuffer bytes)
+    public <V> String deserialize(V value, DataHandle<V> handle)
     {
         try
         {
-            return ByteBufferUtil.string(bytes, charset);
+            return handle.toString(value, charset);
         }
         catch (CharacterCodingException e)
         {
-            throw new MarshalException("Invalid " + charset + " bytes " + ByteBufferUtil.bytesToHex(bytes));
+            throw new MarshalException("Invalid " + charset + " bytes " + handle.toHex(value));
         }
     }
 

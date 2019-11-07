@@ -152,6 +152,11 @@ public class SetType<T> extends CollectionType<Set<T>>
         return ListType.compareListOrSet(elements, o1, o2);
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO
+    }
+
     public SetSerializer<T> getSerializer()
     {
         return serializer;

@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
@@ -42,9 +43,9 @@ public class SimpleDateSerializer implements TypeSerializer<Integer>
     private static final Pattern rawPattern = Pattern.compile("^-?\\d+$");
     public static final SimpleDateSerializer instance = new SimpleDateSerializer();
 
-    public Integer deserialize(ByteBuffer bytes)
+    public <V> Integer deserialize(V value, DataHandle<V> handle)
     {
-        return bytes.remaining() == 0 ? null : ByteBufferUtil.toInt(bytes);
+        return handle.isEmpty(value) ? null : handle.toInt(value);
     }
 
     public ByteBuffer serialize(Integer value)
@@ -106,10 +107,10 @@ public class SimpleDateSerializer implements TypeSerializer<Integer>
         return TimeUnit.DAYS.toMillis(days - Integer.MIN_VALUE);
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
-        if (bytes.remaining() != 4)
-            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", bytes.remaining()));
+        if (handle.size(value) != 4)
+            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", handle.size(value)));
     }
 
     public String toString(Integer value)

@@ -38,6 +38,8 @@ import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.btree.BTree;
 import org.apache.cassandra.utils.btree.BTreeSearchIterator;
 import org.apache.cassandra.utils.btree.UpdateFunction;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Immutable implementation of a Row object.
@@ -470,7 +472,7 @@ public class BTreeRow extends AbstractRow
     // assumption that Row objects are immutable. This method should go away post-#6506 in particular.
     // This method is in particular not exposed by the Row API on purpose.
     // This method also *assumes* that the cell we're setting already exists.
-    public void setValue(ColumnMetadata column, CellPath path, ByteBuffer value)
+    public void setValue(ColumnMetadata column, CellPath path, Value value)
     {
         ColumnData current = (ColumnData) BTree.<Object>find(btree, ColumnMetadata.asymmetricColumnDataComparator, column);
         if (column.isSimple())
@@ -608,7 +610,7 @@ public class BTreeRow extends AbstractRow
         {
             public ComplexColumnDeletion(ColumnMetadata column, DeletionTime deletionTime)
             {
-                super(column, deletionTime.markedForDeleteAt(), 0, deletionTime.localDeletionTime(), ByteBufferUtil.EMPTY_BYTE_BUFFER, CellPath.BOTTOM);
+                super(column, deletionTime.markedForDeleteAt(), 0, deletionTime.localDeletionTime(), Values.EMPTY, CellPath.BOTTOM);
             }
         }
 

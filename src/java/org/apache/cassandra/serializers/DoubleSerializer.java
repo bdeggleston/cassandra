@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.nio.ByteBuffer;
@@ -33,6 +34,13 @@ public class DoubleSerializer implements TypeSerializer<Double>
         return ByteBufferUtil.toDouble(bytes);
     }
 
+    public <V> Double deserialize(V value, DataHandle<V> handle)
+    {
+        if (handle.isEmpty(value))
+            return null;
+        return handle.toDouble(value);
+    }
+
     public ByteBuffer serialize(Double value)
     {
         return (value == null) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
@@ -42,6 +50,12 @@ public class DoubleSerializer implements TypeSerializer<Double>
     {
         if (bytes.remaining() != 8 && bytes.remaining() != 0)
             throw new MarshalException(String.format("Expected 8 or 0 byte value for a double (%d)", bytes.remaining()));
+    }
+
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
+    {
+        if (handle.size(value) != 8 && handle.size(value) != 0)
+            throw new MarshalException(String.format("Expected 8 or 0 byte value for a double (%d)", handle.size(value)));
     }
 
     public String toString(Double value)

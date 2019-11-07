@@ -94,6 +94,11 @@ public class PartitionerDefinedOrder extends AbstractType<ByteBuffer>
         return PartitionPosition.ForKey.get(o1, partitioner).compareTo(PartitionPosition.ForKey.get(o2, partitioner));
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO
+    }
+
     @Override
     public void validate(ByteBuffer bytes) throws MarshalException
     {

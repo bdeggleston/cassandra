@@ -18,7 +18,6 @@
 package org.apache.cassandra.db.rows;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.cassandra.config.*;
@@ -26,8 +25,9 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * A cell is our atomic unit for a single value of a single column.
@@ -73,7 +73,7 @@ public abstract class Cell extends ColumnData
      *
      * @return the cell value.
      */
-    public abstract ByteBuffer value();
+    public abstract Value value();
 
     /**
      * The cell timestamp.
@@ -134,7 +134,7 @@ public abstract class Cell extends ColumnData
 
     public abstract Cell withUpdatedColumn(ColumnMetadata newColumn);
 
-    public abstract Cell withUpdatedValue(ByteBuffer newValue);
+    public abstract Cell withUpdatedValue(Value newValue);
 
     public abstract Cell withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime);
 
@@ -178,7 +178,7 @@ public abstract class Cell extends ColumnData
         public void serialize(Cell cell, ColumnMetadata column, DataOutputPlus out, LivenessInfo rowLiveness, SerializationHeader header) throws IOException
         {
             assert cell != null;
-            boolean hasValue = cell.value().hasRemaining();
+            boolean hasValue = !cell.value().isEmpty();
             boolean isDeleted = cell.isTombstone();
             boolean isExpiring = cell.isExpiring();
             boolean useRowTimestamp = !rowLiveness.isEmpty() && cell.timestamp() == rowLiveness.timestamp();
@@ -235,7 +235,7 @@ public abstract class Cell extends ColumnData
                             ? column.cellPathSerializer().deserialize(in)
                             : null;
 
-            ByteBuffer value = ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            Value value = Values.EMPTY;
             if (hasValue)
             {
                 if (helper.canSkipValue(column) || (path != null && helper.canSkipValue(path)))
@@ -258,7 +258,7 @@ public abstract class Cell extends ColumnData
         public long serializedSize(Cell cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)
         {
             long size = 1; // flags
-            boolean hasValue = cell.value().hasRemaining();
+            boolean hasValue = !cell.value().isEmpty();
             boolean isDeleted = cell.isTombstone();
             boolean isExpiring = cell.isExpiring();
             boolean useRowTimestamp = !rowLiveness.isEmpty() && cell.timestamp() == rowLiveness.timestamp();

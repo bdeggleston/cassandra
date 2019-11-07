@@ -24,6 +24,9 @@ import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.ByteBufferValue;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public abstract class AbstractAllocator
 {
@@ -41,6 +44,11 @@ public abstract class AbstractAllocator
         cloned.put(buffer.duplicate());
         cloned.reset();
         return cloned;
+    }
+
+    public Value clone(Value value)
+    {
+        return Values.valueOf(clone(value.buffer()));
     }
 
     public abstract ByteBuffer allocate(int size);

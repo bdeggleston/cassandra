@@ -25,6 +25,7 @@ import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Static methods to work on cells.
@@ -162,8 +163,8 @@ public abstract class Cells
                 return leftLocalDeletionTime > rightLocalDeletionTime ? left : right;
         }
 
-        ByteBuffer leftValue = left.value();
-        ByteBuffer rightValue = right.value();
+        Value leftValue = left.value();
+        Value rightValue = right.value();
         return leftValue.compareTo(rightValue) >= 0 ? left : right;
     }
 
@@ -182,14 +183,14 @@ public abstract class Cells
             return leftIsTombstone ? left : right;
         }
 
-        ByteBuffer leftValue = left.value();
-        ByteBuffer rightValue = right.value();
+        Value leftValue = left.value();
+        Value rightValue = right.value();
 
         // Handle empty values. Counters can't truly have empty values, but we can have a counter cell that temporarily
         // has one on read if the column for the cell is not queried by the user due to the optimization of #10657. We
         // thus need to handle this (see #11726 too).
-        boolean leftIsEmpty = !leftValue.hasRemaining();
-        boolean rightIsEmpty = !rightValue.hasRemaining();
+        boolean leftIsEmpty = leftValue.isEmpty();
+        boolean rightIsEmpty = !rightValue.isBufferBacked();
         if (leftIsEmpty || rightIsEmpty)
         {
             if (leftIsEmpty != rightIsEmpty)
@@ -197,7 +198,7 @@ public abstract class Cells
             return leftTimestamp > rightTimestamp ? left : right;
         }
 
-        ByteBuffer merged = CounterContext.instance().merge(leftValue, rightValue);
+        Value merged = CounterContext.instance().merge(leftValue, rightValue);
         long timestamp = Math.max(leftTimestamp, rightTimestamp);
 
         // We save allocating a new cell object if it turns out that one cell was

@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.math.BigInteger;
@@ -27,9 +28,9 @@ public class IntegerSerializer implements TypeSerializer<BigInteger>
 {
     public static final IntegerSerializer instance = new IntegerSerializer();
 
-    public BigInteger deserialize(ByteBuffer bytes)
+    public <V> BigInteger deserialize(V value, DataHandle<V> handle)
     {
-        return bytes.hasRemaining() ? new BigInteger(ByteBufferUtil.getArray(bytes)) : null;
+        return !handle.isEmpty(value) ? new BigInteger(handle.toArray(value)) : null;
     }
 
     public ByteBuffer serialize(BigInteger value)
@@ -37,7 +38,7 @@ public class IntegerSerializer implements TypeSerializer<BigInteger>
         return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.toByteArray());
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
         // no invalid integers.
     }

@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.nio.ByteBuffer;
@@ -32,13 +33,13 @@ public class BytesSerializer implements TypeSerializer<ByteBuffer>
         return bytes.duplicate();
     }
 
-    public ByteBuffer deserialize(ByteBuffer value)
+    public <V> ByteBuffer deserialize(V value, DataHandle<V> handle)
     {
         // This is from the DB, so it is not shared with someone else
-        return value;
+        return handle.toBuffer(value);
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
         // all bytes are legal.
     }

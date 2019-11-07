@@ -42,12 +42,11 @@ public class LexicalUUIDType extends AbstractType<UUID>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
-
-        return UUIDGen.getUUID(o1).compareTo(UUIDGen.getUUID(o2));
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return handle.size(left) - handle.size(right);
+        return handle.toUUID(left).compareTo(handle.toUUID(right));
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

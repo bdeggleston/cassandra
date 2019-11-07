@@ -424,6 +424,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
          */
         public abstract boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row);
 
+        // TODO: BDE convert to Value
         protected ByteBuffer getValue(TableMetadata metadata, DecoratedKey partitionKey, Row row)
         {
             switch (column.kind)
@@ -436,7 +437,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                     return row.clustering().get(column.position());
                 default:
                     Cell cell = row.getCell(column);
-                    return cell == null ? null : cell.value();
+                    return cell == null ? null : cell.value().buffer();  // FIXME: buffer
             }
         }
 
@@ -639,7 +640,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                                 }
                                 else
                                 {
-                                    if (type.valueComparator().compare(cell.value(), value) == 0)
+                                    if (type.valueComparator().compare(cell.value().buffer(), value) == 0) // FIXME: buffer
                                         return true;
                                 }
                             }
@@ -762,7 +763,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
             if (column.isComplex())
             {
                 Cell cell = row.getCell(column, CellPath.create(key));
-                return cell != null && mt.valueComparator().compare(cell.value(), value) == 0;
+                return cell != null && mt.valueComparator().compare(cell.value().buffer(), value) == 0;  // FIXME: buffer
             }
             else
             {

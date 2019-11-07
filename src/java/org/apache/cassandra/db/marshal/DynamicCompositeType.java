@@ -370,7 +370,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             this.cmp = cmp;
         }
 
-        public int compareCustom(ByteBuffer v1, ByteBuffer v2)
+        public <V> int compareCustom(V left, V right, DataHandle<V> handle)
         {
             return cmp;
         }

@@ -20,22 +20,48 @@ package org.apache.cassandra.serializers;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.marshal.ByteBufferHandle;
+import org.apache.cassandra.db.marshal.DataHandle;
+import org.apache.cassandra.db.marshal.ValueHandle;
+import org.apache.cassandra.utils.values.Value;
+
 public interface TypeSerializer<T>
 {
     public ByteBuffer serialize(T value);
 
+    public <V> T deserialize(V value, DataHandle<V> handle);
+
     /*
      * Does not modify the position or limit of the buffer even temporarily.
      */
-    public T deserialize(ByteBuffer bytes);
+    default T deserialize(ByteBuffer bytes)
+    {
+        return deserialize(bytes, ByteBufferHandle.instance);
+    }
+
+    default T deserialize(Value value)
+    {
+        return deserialize(value, ValueHandle.instance);
+    }
 
     /*
      * Validate that the byte array is a valid sequence for the type this represents.
      * This guarantees deserialize() can be called without errors.
-     *
-     * Does not modify the position or limit of the buffer even temporarily
      */
-    public void validate(ByteBuffer bytes) throws MarshalException;
+    <T> void validate(T value, DataHandle<T> handle) throws MarshalException;
+
+    /*
+     * Does not modify the position or limit of the buffer even temporarily.
+     */
+    default void validate(ByteBuffer bytes) throws MarshalException
+    {
+        validate(bytes, ByteBufferHandle.instance);
+    }
+
+    default void validate(Value value) throws MarshalException
+    {
+        validate(value, ValueHandle.instance);
+    }
 
     public String toString(T value);
 

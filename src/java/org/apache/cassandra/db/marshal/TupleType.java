@@ -186,6 +186,11 @@ public class TupleType extends AbstractType<ByteBuffer>
         return 0;
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO
+    }
+
     /**
      * Split a tuple value into its component values.
      */

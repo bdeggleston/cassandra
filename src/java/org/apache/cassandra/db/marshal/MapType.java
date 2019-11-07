@@ -176,6 +176,11 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         return compareMaps(keys, values, o1, o2);
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO
+    }
+
     public static int compareMaps(AbstractType<?> keysComparator, AbstractType<?> valuesComparator, ByteBuffer o1, ByteBuffer o2)
     {
          if (!o1.hasRemaining() || !o2.hasRemaining())

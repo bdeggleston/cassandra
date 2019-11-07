@@ -42,6 +42,7 @@ import com.google.common.primitives.Ints;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * The goods are here: www.ietf.org/rfc/rfc4122.txt.
@@ -153,6 +154,11 @@ public class UUIDGen
     public static UUID getUUID(ByteBuffer raw)
     {
         return new UUID(raw.getLong(raw.position()), raw.getLong(raw.position() + 8));
+    }
+
+    public static UUID getUUID(Value value)
+    {
+        return new UUID(value.getLong(0), value.getLong(8));
     }
 
     public static ByteBuffer toByteBuffer(UUID uuid)

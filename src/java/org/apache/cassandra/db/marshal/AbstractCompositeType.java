@@ -88,6 +88,11 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         return 1;
     }
 
+    public <V> int compareCustom(V left, V right, DataHandle<V> handle)
+    {
+        // TODO:
+    }
+
     // Check if the provided BB represents a static name and advance the
     // buffer to the real beginning if so.
     protected abstract boolean readIsStatic(ByteBuffer bb);
