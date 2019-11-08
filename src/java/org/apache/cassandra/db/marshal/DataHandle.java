@@ -57,6 +57,7 @@ public interface DataHandle<V>
 
     byte toByte(V value);
     byte getByte(V value, int offset);
+    short toShort(V value);
     short getShort(V value, int offset);
     int toInt(V value);
     long toLong(V value);

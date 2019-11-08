@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.nio.ByteBuffer;
@@ -28,13 +29,12 @@ public class BooleanSerializer implements TypeSerializer<Boolean>
 
     public static final BooleanSerializer instance = new BooleanSerializer();
 
-    public Boolean deserialize(ByteBuffer bytes)
+    public <V> Boolean deserialize(V value, DataHandle<V> handle)
     {
-        if (bytes == null || bytes.remaining() == 0)
+        if (value == null || handle.isEmpty(value))
             return null;
 
-        byte value = bytes.get(bytes.position());
-        return value != 0;
+        return handle.getByte(value, 0) != 0;
     }
 
     public ByteBuffer serialize(Boolean value)
@@ -43,10 +43,10 @@ public class BooleanSerializer implements TypeSerializer<Boolean>
                 : value ? TRUE : FALSE; // false
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
-        if (bytes.remaining() != 1 && bytes.remaining() != 0)
-            throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", bytes.remaining()));
+        if (handle.size(value) != 1 && handle.size(value) != 0)
+            throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", handle.size(value)));
     }
 
     public String toString(Boolean value)

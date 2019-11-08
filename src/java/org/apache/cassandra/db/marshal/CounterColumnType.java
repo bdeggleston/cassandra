@@ -27,6 +27,8 @@ import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class CounterColumnType extends NumberType<Long>
 {
@@ -47,7 +49,7 @@ public class CounterColumnType extends NumberType<Long>
     @Override
     public Long compose(ByteBuffer bytes)
     {
-        return CounterContext.instance().total(bytes);
+        return CounterContext.instance().total(Values.valueOf(bytes));
     }
 
     @Override
@@ -57,7 +59,7 @@ public class CounterColumnType extends NumberType<Long>
     }
 
     @Override
-    public void validateCellValue(ByteBuffer cellValue) throws MarshalException
+    public void validateCellValue(Value cellValue) throws MarshalException
     {
         CounterContext.instance().validateContext(cellValue);
     }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.cql3.Duration;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBufferFixed;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -57,12 +58,12 @@ public final class DurationSerializer implements TypeSerializer<Duration>
         }
     }
 
-    public Duration deserialize(ByteBuffer bytes)
+    public <V> Duration deserialize(V value, DataHandle<V> handle)
     {
-        if (bytes.remaining() == 0)
+        if (handle.isEmpty(value))
             return null;
 
-        try (DataInputBuffer in = new DataInputBuffer(bytes, true))
+        try (DataInputBuffer in = new DataInputBuffer(handle.toBuffer(value), true))  // FIXME: value input buffer
         {
             int months = (int) in.readVInt();
             int days = (int) in.readVInt();
@@ -76,12 +77,12 @@ public final class DurationSerializer implements TypeSerializer<Duration>
         }
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
-        if (bytes.remaining() < 3)
-            throw new MarshalException(String.format("Expected at least 3 bytes for a duration (%d)", bytes.remaining()));
+        if (handle.size(value) < 3)
+            throw new MarshalException(String.format("Expected at least 3 bytes for a duration (%d)", handle.size(value)));
 
-        try (DataInputBuffer in = new DataInputBuffer(bytes, true))
+        try (DataInputBuffer in = new DataInputBuffer(handle.toBuffer(value), true))  // FIXME: value input buffer
         {
             long monthsAsLong = in.readVInt();
             long daysAsLong = in.readVInt();

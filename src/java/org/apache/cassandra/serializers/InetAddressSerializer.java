@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
@@ -28,14 +29,14 @@ public class InetAddressSerializer implements TypeSerializer<InetAddress>
 {
     public static final InetAddressSerializer instance = new InetAddressSerializer();
 
-    public InetAddress deserialize(ByteBuffer bytes)
+    public <V> InetAddress deserialize(V value, DataHandle<V> handle)
     {
-        if (bytes.remaining() == 0)
+        if (handle.isEmpty(value))
             return null;
 
         try
         {
-            return InetAddress.getByAddress(ByteBufferUtil.getArray(bytes));
+            return InetAddress.getByAddress(handle.toArray(value));
         }
         catch (UnknownHostException e)
         {
@@ -48,18 +49,18 @@ public class InetAddressSerializer implements TypeSerializer<InetAddress>
         return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.getAddress());
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
-        if (bytes.remaining() == 0)
+        if (handle.isEmpty(value))
             return;
 
         try
         {
-            InetAddress.getByAddress(ByteBufferUtil.getArray(bytes));
+            InetAddress.getByAddress(handle.toArray(value));
         }
         catch (UnknownHostException e)
         {
-            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s", ByteBufferUtil.bytesToHex(bytes)));
+            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s", handle.toHex(value)));
         }
     }
 

@@ -18,6 +18,7 @@
 package org.apache.cassandra.serializers;
 
 import io.netty.util.concurrent.FastThreadLocal;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.nio.ByteBuffer;
@@ -125,9 +126,9 @@ public class TimestampSerializer implements TypeSerializer<Date>
 
     public static final TimestampSerializer instance = new TimestampSerializer();
 
-    public Date deserialize(ByteBuffer bytes)
+    public <V> Date deserialize(V value, DataHandle<V> handle)
     {
-        return bytes.remaining() == 0 ? null : new Date(ByteBufferUtil.toLong(bytes));
+        return handle.isEmpty(value) ? null : new Date(handle.toLong(value));
     }
 
     public ByteBuffer serialize(Date value)
@@ -169,10 +170,10 @@ public class TimestampSerializer implements TypeSerializer<Date>
     	return FORMATTER_TO_JSON.get();
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
-        if (bytes.remaining() != 8 && bytes.remaining() != 0)
-            throw new MarshalException(String.format("Expected 8 or 0 byte long for date (%d)", bytes.remaining()));
+        if (handle.size(value) != 8 && handle.size(value) != 0)
+            throw new MarshalException(String.format("Expected 8 or 0 byte long for date (%d)", handle.size(value)));
     }
 
     public String toString(Date value)

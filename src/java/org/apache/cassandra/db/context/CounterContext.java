@@ -702,9 +702,9 @@ public class CounterContext
         return Values.valueOf(cleared);
     }
 
-    public void validateContext(ByteBuffer context) throws MarshalException
+    public void validateContext(Value context) throws MarshalException
     {
-        if ((context.remaining() - headerLength(context)) % STEP_LENGTH != 0)
+        if ((context.size() - headerLength(context)) % STEP_LENGTH != 0)
             throw new MarshalException("Invalid size for a counter context");
     }
 

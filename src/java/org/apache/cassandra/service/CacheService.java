@@ -51,6 +51,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 public class CacheService implements CacheServiceMBean
 {
@@ -364,7 +365,7 @@ public class CacheService implements CacheServiceMBean
             {
                 public Pair<CounterCacheKey, ClockAndCount> call() throws Exception
                 {
-                    ByteBuffer value = cacheKey.readCounterValue(cfs);
+                    Value value = cacheKey.readCounterValue(cfs);
                     return value == null
                          ? null
                          : Pair.create(cacheKey, CounterContext.instance().getLocalClockAndCount(value));

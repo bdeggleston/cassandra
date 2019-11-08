@@ -90,6 +90,11 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
         return value.get(value.position() + offset);
     }
 
+    public short toShort(ByteBuffer value)
+    {
+        return ByteBufferUtil.toShort(value);
+    }
+
     public short getShort(ByteBuffer value, int offset)
     {
         return value.getShort(value.position() + offset);

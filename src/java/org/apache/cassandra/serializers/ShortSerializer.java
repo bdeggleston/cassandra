@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.serializers;
 
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.nio.ByteBuffer;
@@ -26,9 +27,9 @@ public class ShortSerializer implements TypeSerializer<Short>
 {
     public static final ShortSerializer instance = new ShortSerializer();
 
-    public Short deserialize(ByteBuffer bytes)
+    public <V> Short deserialize(V value, DataHandle<V> handle)
     {
-        return bytes.remaining() == 0 ? null : ByteBufferUtil.toShort(bytes);
+        return handle.isEmpty(value) ? null : handle.toShort(value);
     }
 
     public ByteBuffer serialize(Short value)
@@ -40,6 +41,12 @@ public class ShortSerializer implements TypeSerializer<Short>
     {
         if (bytes.remaining() != 2)
             throw new MarshalException(String.format("Expected 2 bytes for a smallint (%d)", bytes.remaining()));
+    }
+
+    public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
+    {
+        if (handle.size(value) != 2)
+            throw new MarshalException(String.format("Expected 2 bytes for a smallint (%d)", handle.size(value)));
     }
 
     public String toString(Short value)

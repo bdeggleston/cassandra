@@ -35,6 +35,7 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * The abstract validator that is the base for maps, sets and lists (both frozen and non-frozen).
@@ -117,7 +118,7 @@ public abstract class CollectionType<T> extends AbstractType<T>
     }
 
     @Override
-    public void validateCellValue(ByteBuffer cellValue) throws MarshalException
+    public void validateCellValue(Value cellValue) throws MarshalException
     {
         if (isMultiCell())
             valueComparator().validateCellValue(cellValue);
