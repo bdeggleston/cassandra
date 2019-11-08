@@ -561,7 +561,7 @@ public class SecondaryIndexTest
     {
         ColumnMetadata cdef = cfs.metadata().getColumn(col);
 
-        ReadCommand rc = Util.cmd(cfs).filterOn(cdef.name.toString(), Operator.EQ, ((AbstractType) cdef.cellValueType()).decompose(val)).build();
+        ReadCommand rc = Util.cmd(cfs).filterOn(cdef.name.toString(), Operator.EQ, ((AbstractType) cdef.cellValueType()).decomposeBuffer(val)).build();
         Index.Searcher searcher = rc.getIndex(cfs).searcherFor(rc);
         if (count != 0)
             assertNotNull(searcher);

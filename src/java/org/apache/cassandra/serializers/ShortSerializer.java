@@ -32,9 +32,9 @@ public class ShortSerializer implements TypeSerializer<Short>
         return handle.isEmpty(value) ? null : handle.toShort(value);
     }
 
-    public ByteBuffer serialize(Short value)
+    public <V> V serialize(Short value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value.shortValue());
+        return value == null ? handle.empty() : handle.valueOf(value.shortValue());
     }
 
     public void validate(ByteBuffer bytes) throws MarshalException

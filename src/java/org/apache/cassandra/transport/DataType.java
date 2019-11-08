@@ -111,7 +111,7 @@ public enum DataType
                 return l;
             case UDT:
                 String ks = CBUtil.readString(cb);
-                ByteBuffer name = UTF8Type.instance.decompose(CBUtil.readString(cb));
+                ByteBuffer name = UTF8Type.instance.decomposeBuffer(CBUtil.readString(cb));
                 int n = cb.readUnsignedShort();
                 List<FieldIdentifier> fieldNames = new ArrayList<>(n);
                 List<AbstractType<?>> fieldTypes = new ArrayList<>(n);

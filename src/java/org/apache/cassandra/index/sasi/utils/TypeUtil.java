@@ -46,7 +46,7 @@ public class TypeUtil
         {
             if (validator instanceof Int32Type && term.remaining() == 2)
             {
-                return Int32Type.instance.decompose((int) term.getShort(term.position()));
+                return Int32Type.instance.decomposeBuffer((int) term.getShort(term.position()));
             }
             else if (validator instanceof LongType)
             {
@@ -66,11 +66,11 @@ public class TypeUtil
                         upcastToken = Long.parseLong(UTF8Type.instance.getString(term));
                 }
 
-                return LongType.instance.decompose(upcastToken);
+                return LongType.instance.decomposeBuffer(upcastToken);
             }
             else if (validator instanceof DoubleType && term.remaining() == 4)
             {
-                return DoubleType.instance.decompose((double) FloatType.instance.compose(term));
+                return DoubleType.instance.decomposeBuffer((double) FloatType.instance.compose(term));
             }
 
             // maybe it was a string after all

@@ -73,7 +73,7 @@ public class LongType extends NumberType<Long>
             throw new MarshalException(String.format("Unable to make long from '%s'", source), e);
         }
 
-        return decompose(longType);
+        return decomposeBuffer(longType);
     }
 
     @Override

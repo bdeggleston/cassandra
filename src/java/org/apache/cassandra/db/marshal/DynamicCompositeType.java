@@ -382,7 +382,7 @@ public class DynamicCompositeType extends AbstractCompositeType
         }
 
         @Override
-        public ByteBuffer decompose(Void value)
+        public ByteBuffer decomposeBuffer(Void value)
         {
             throw new UnsupportedOperationException();
         }

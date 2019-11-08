@@ -236,12 +236,12 @@ public class UnfilteredRowsGenerator
 
     static Clustering clusteringFor(int i)
     {
-        return Clustering.make(Int32Type.instance.decompose(i));
+        return Clustering.make(Int32Type.instance.decomposeBuffer(i));
     }
 
     static ClusteringBound boundFor(int pos, boolean start, boolean inclusive)
     {
-        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decompose(pos)});
+        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decomposeBuffer(pos)});
     }
 
     static void attachBoundaries(List<Unfiltered> content)

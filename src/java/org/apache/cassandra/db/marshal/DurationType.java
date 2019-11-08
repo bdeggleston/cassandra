@@ -48,7 +48,7 @@ public class DurationType extends AbstractType<Duration>
         if (source.isEmpty())
             return ByteBufferUtil.EMPTY_BYTE_BUFFER;
 
-        return decompose(Duration.from(source));
+        return decomposeBuffer(Duration.from(source));
     }
 
     @Override

@@ -19,7 +19,6 @@ package org.apache.cassandra.db.virtual;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
 
@@ -193,6 +192,6 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
     @SuppressWarnings("unchecked")
     private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decompose(value);
+        return ((AbstractType<T>) type).decomposeBuffer(value);
     }
 }

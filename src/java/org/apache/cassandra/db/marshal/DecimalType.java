@@ -74,7 +74,7 @@ public class DecimalType extends NumberType<BigDecimal>
             throw new MarshalException(String.format("unable to make BigDecimal from '%s'", source), e);
         }
 
-        return decompose(decimal);
+        return decomposeBuffer(decimal);
     }
 
     @Override
@@ -144,17 +144,17 @@ public class DecimalType extends NumberType<BigDecimal>
 
     public ByteBuffer add(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigDecimal(left).add(rightType.toBigDecimal(right), MAX_PRECISION));
+        return decomposeBuffer(leftType.toBigDecimal(left).add(rightType.toBigDecimal(right), MAX_PRECISION));
     }
 
     public ByteBuffer substract(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigDecimal(left).subtract(rightType.toBigDecimal(right), MAX_PRECISION));
+        return decomposeBuffer(leftType.toBigDecimal(left).subtract(rightType.toBigDecimal(right), MAX_PRECISION));
     }
 
     public ByteBuffer multiply(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigDecimal(left).multiply(rightType.toBigDecimal(right), MAX_PRECISION));
+        return decomposeBuffer(leftType.toBigDecimal(left).multiply(rightType.toBigDecimal(right), MAX_PRECISION));
     }
 
     public ByteBuffer divide(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
@@ -173,16 +173,16 @@ public class DecimalType extends NumberType<BigDecimal>
         scale = Math.max(scale, MIN_SCALE);
         scale = Math.min(scale, MAX_SCALE);
 
-        return decompose(leftOperand.divide(rightOperand, scale, RoundingMode.HALF_UP).stripTrailingZeros());
+        return decomposeBuffer(leftOperand.divide(rightOperand, scale, RoundingMode.HALF_UP).stripTrailingZeros());
     }
 
     public ByteBuffer mod(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigDecimal(left).remainder(rightType.toBigDecimal(right)));
+        return decomposeBuffer(leftType.toBigDecimal(left).remainder(rightType.toBigDecimal(right)));
     }
 
     public ByteBuffer negate(ByteBuffer input)
     {
-        return decompose(toBigDecimal(input).negate());
+        return decomposeBuffer(toBigDecimal(input).negate());
     }
 }

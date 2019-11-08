@@ -748,7 +748,7 @@ public abstract class PartitionIterator implements Iterator<Row>
         }
         else
         {
-            return seed(type.decompose(object), BytesType.instance, seed);
+            return seed(type.decomposeBuffer(object), BytesType.instance, seed);
         }
     }
 
@@ -766,7 +766,7 @@ public abstract class PartitionIterator implements Iterator<Row>
             if (i > 0)
                 sb.append("|");
             AbstractType type = generator.partitionKey.get(i++).type;
-            sb.append(type.getString(type.decompose(key)));
+            sb.append(type.getString(type.decomposeBuffer(key)));
         }
         return sb.toString();
     }

@@ -214,7 +214,7 @@ public abstract class Maps
                 Map<?, ?> m = type.getSerializer().deserializeForNativeProtocol(value, version);
                 Map<ByteBuffer, ByteBuffer> map = new LinkedHashMap<>(m.size());
                 for (Map.Entry<?, ?> entry : m.entrySet())
-                    map.put(type.getKeysType().decompose(entry.getKey()), type.getValuesType().decompose(entry.getValue()));
+                    map.put(type.getKeysType().decomposeBuffer(entry.getKey()), type.getValuesType().decomposeBuffer(entry.getValue()));
                 return new TValue(map);
             }
             catch (MarshalException e)

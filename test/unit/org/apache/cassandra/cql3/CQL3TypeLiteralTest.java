@@ -105,90 +105,90 @@ public class CQL3TypeLiteralTest
         addNativeValue("''", CQL3Type.Native.VARCHAR, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.VARCHAR, null);
 
-        addNativeValue("0", CQL3Type.Native.BIGINT, LongType.instance.decompose(0L));
+        addNativeValue("0", CQL3Type.Native.BIGINT, LongType.instance.decomposeBuffer(0L));
         for (int i = 0; i < 20; i++)
         {
             long v = randLong();
-            addNativeValue(Long.toString(v), CQL3Type.Native.BIGINT, LongType.instance.decompose(v));
+            addNativeValue(Long.toString(v), CQL3Type.Native.BIGINT, LongType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.BIGINT, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.BIGINT, null);
 
-        addNativeValue("0", CQL3Type.Native.COUNTER, LongType.instance.decompose(0L));
+        addNativeValue("0", CQL3Type.Native.COUNTER, LongType.instance.decomposeBuffer(0L));
         for (int i = 0; i < 20; i++)
         {
             long v = randLong();
-            addNativeValue(Long.toString(v), CQL3Type.Native.COUNTER, LongType.instance.decompose(v));
+            addNativeValue(Long.toString(v), CQL3Type.Native.COUNTER, LongType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.COUNTER, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.COUNTER, null);
 
-        addNativeValue("0", CQL3Type.Native.INT, Int32Type.instance.decompose(0));
+        addNativeValue("0", CQL3Type.Native.INT, Int32Type.instance.decomposeBuffer(0));
         for (int i = 0; i < 20; i++)
         {
             int v = randInt();
-            addNativeValue(Integer.toString(v), CQL3Type.Native.INT, Int32Type.instance.decompose(v));
+            addNativeValue(Integer.toString(v), CQL3Type.Native.INT, Int32Type.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.INT, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.INT, null);
 
-        addNativeValue("0", CQL3Type.Native.SMALLINT, ShortType.instance.decompose((short) 0));
+        addNativeValue("0", CQL3Type.Native.SMALLINT, ShortType.instance.decomposeBuffer((short) 0));
         for (int i = 0; i < 20; i++)
         {
             short v = randShort();
-            addNativeValue(Short.toString(v), CQL3Type.Native.SMALLINT, ShortType.instance.decompose(v));
+            addNativeValue(Short.toString(v), CQL3Type.Native.SMALLINT, ShortType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.SMALLINT, null);
 
-        addNativeValue("0", CQL3Type.Native.TINYINT, ByteType.instance.decompose((byte) 0));
+        addNativeValue("0", CQL3Type.Native.TINYINT, ByteType.instance.decomposeBuffer((byte) 0));
         for (int i = 0; i < 20; i++)
         {
             byte v = randByte();
-            addNativeValue(Short.toString(v), CQL3Type.Native.TINYINT, ByteType.instance.decompose(v));
+            addNativeValue(Short.toString(v), CQL3Type.Native.TINYINT, ByteType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.TINYINT, null);
 
-        addNativeValue("0.0", CQL3Type.Native.FLOAT, FloatType.instance.decompose((float) 0));
+        addNativeValue("0.0", CQL3Type.Native.FLOAT, FloatType.instance.decomposeBuffer((float) 0));
         for (int i = 0; i < 20; i++)
         {
             float v = randFloat();
-            addNativeValue(Float.toString(v), CQL3Type.Native.FLOAT, FloatType.instance.decompose(v));
+            addNativeValue(Float.toString(v), CQL3Type.Native.FLOAT, FloatType.instance.decomposeBuffer(v));
         }
-        addNativeValue("NaN", CQL3Type.Native.FLOAT, FloatType.instance.decompose(Float.NaN));
+        addNativeValue("NaN", CQL3Type.Native.FLOAT, FloatType.instance.decomposeBuffer(Float.NaN));
         addNativeValue("null", CQL3Type.Native.FLOAT, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.FLOAT, null);
 
-        addNativeValue("0.0", CQL3Type.Native.DOUBLE, DoubleType.instance.decompose((double) 0));
+        addNativeValue("0.0", CQL3Type.Native.DOUBLE, DoubleType.instance.decomposeBuffer((double) 0));
         for (int i = 0; i < 20; i++)
         {
             double v = randDouble();
-            addNativeValue(Double.toString(v), CQL3Type.Native.DOUBLE, DoubleType.instance.decompose(v));
+            addNativeValue(Double.toString(v), CQL3Type.Native.DOUBLE, DoubleType.instance.decomposeBuffer(v));
         }
-        addNativeValue("NaN", CQL3Type.Native.DOUBLE, DoubleType.instance.decompose(Double.NaN));
+        addNativeValue("NaN", CQL3Type.Native.DOUBLE, DoubleType.instance.decomposeBuffer(Double.NaN));
         addNativeValue("null", CQL3Type.Native.DOUBLE, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.DOUBLE, null);
 
-        addNativeValue("0", CQL3Type.Native.DECIMAL, DecimalType.instance.decompose(BigDecimal.ZERO));
+        addNativeValue("0", CQL3Type.Native.DECIMAL, DecimalType.instance.decomposeBuffer(BigDecimal.ZERO));
         for (int i = 0; i < 20; i++)
         {
             BigDecimal v = BigDecimal.valueOf(randDouble());
-            addNativeValue(v.toString(), CQL3Type.Native.DECIMAL, DecimalType.instance.decompose(v));
+            addNativeValue(v.toString(), CQL3Type.Native.DECIMAL, DecimalType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.DECIMAL, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.DECIMAL, null);
 
-        addNativeValue("0", CQL3Type.Native.VARINT, IntegerType.instance.decompose(BigInteger.ZERO));
+        addNativeValue("0", CQL3Type.Native.VARINT, IntegerType.instance.decomposeBuffer(BigInteger.ZERO));
         for (int i = 0; i < 20; i++)
         {
             BigInteger v = BigInteger.valueOf(randLong());
-            addNativeValue(v.toString(), CQL3Type.Native.VARINT, IntegerType.instance.decompose(v));
+            addNativeValue(v.toString(), CQL3Type.Native.VARINT, IntegerType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.VARINT, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.VARINT, null);
 
         // boolean doesn't have that many possible values...
-        addNativeValue("false", CQL3Type.Native.BOOLEAN, BooleanType.instance.decompose(false));
-        addNativeValue("true", CQL3Type.Native.BOOLEAN, BooleanType.instance.decompose(true));
+        addNativeValue("false", CQL3Type.Native.BOOLEAN, BooleanType.instance.decomposeBuffer(false));
+        addNativeValue("true", CQL3Type.Native.BOOLEAN, BooleanType.instance.decomposeBuffer(true));
         addNativeValue("null", CQL3Type.Native.BOOLEAN, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.BOOLEAN, null);
 
@@ -226,7 +226,7 @@ public class CQL3TypeLiteralTest
         for (int i = 0; i < 20; i++)
         {
             UUID v = UUIDGen.getTimeUUID(randLong(System.currentTimeMillis()));
-            addNativeValue(v.toString(), CQL3Type.Native.TIMEUUID, TimeUUIDType.instance.decompose(v));
+            addNativeValue(v.toString(), CQL3Type.Native.TIMEUUID, TimeUUIDType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.TIMEUUID, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.TIMEUUID, null);
@@ -234,7 +234,7 @@ public class CQL3TypeLiteralTest
         for (int i = 0; i < 20; i++)
         {
             UUID v = UUID.randomUUID();
-            addNativeValue(v.toString(), CQL3Type.Native.UUID, UUIDType.instance.decompose(v));
+            addNativeValue(v.toString(), CQL3Type.Native.UUID, UUIDType.instance.decomposeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.UUID, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.UUID, null);
@@ -242,7 +242,7 @@ public class CQL3TypeLiteralTest
         for (int i = 0; i < 20; i++)
         {
             ByteBuffer v = randBytes();
-            addNativeValue("0x" + BytesSerializer.instance.toString(v), CQL3Type.Native.BLOB, BytesType.instance.decompose(v));
+            addNativeValue("0x" + BytesSerializer.instance.toString(v), CQL3Type.Native.BLOB, BytesType.instance.decomposeBuffer(v));
         }
         addNativeValue("0x", CQL3Type.Native.BLOB, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.BLOB, null);

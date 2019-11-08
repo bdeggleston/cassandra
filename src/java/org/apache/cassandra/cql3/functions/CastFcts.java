@@ -251,7 +251,7 @@ public final class CastFcts
             if (bb == null)
                 return null;
 
-            return outputType().decompose(converter.apply(compose(bb)));
+            return outputType().decomposeBuffer(converter.apply(compose(bb)));
         }
 
         protected I compose(ByteBuffer bb)
@@ -350,7 +350,7 @@ public final class CastFcts
             if (bb == null)
                 return null;
 
-            return outputType().decompose(inputType().getSerializer().toCQLLiteral(bb));
+            return outputType().decomposeBuffer(inputType().getSerializer().toCQLLiteral(bb));
         }
     }
 

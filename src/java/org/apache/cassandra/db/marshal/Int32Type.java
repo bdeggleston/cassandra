@@ -71,7 +71,7 @@ public class Int32Type extends NumberType<Integer>
             throw new MarshalException(String.format("Unable to make int from '%s'", source), e);
         }
 
-        return decompose(int32Type);
+        return decomposeBuffer(int32Type);
     }
 
     @Override

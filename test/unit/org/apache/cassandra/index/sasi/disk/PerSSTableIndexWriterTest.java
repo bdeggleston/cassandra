@@ -78,7 +78,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
         final long timestamp = System.currentTimeMillis();
 
         ColumnFamilyStore cfs = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
-        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decompose("age"));
+        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeBuffer("age"));
 
         SASIIndex sasi = (SASIIndex) cfs.indexManager.getIndexByName(cfs.name + "_age");
 
@@ -93,7 +93,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
             ByteBuffer key = ByteBufferUtil.bytes(String.format(keyFormat, i));
             expectedKeys.put(cfs.metadata().partitioner.decorateKey(key),
                              BTreeRow.singleCellRow(Clustering.EMPTY,
-                                                    BufferCell.live(column, timestamp, Int32Type.instance.decompose(i))));
+                                                    BufferCell.live(column, timestamp, Int32Type.instance.decomposeBuffer(i))));
         }
 
         indexWriter.begin();
@@ -170,7 +170,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
         final String columnName = "timestamp";
 
         ColumnFamilyStore cfs = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
-        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decompose(columnName));
+        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeBuffer(columnName));
 
         SASIIndex sasi = (SASIIndex) cfs.indexManager.getIndexByName(cfs.name + "_" + columnName);
 
@@ -240,7 +240,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
     {
         for (Map.Entry<Long, Set<Integer>> value : data.entrySet())
         {
-            ByteBuffer term = LongType.instance.decompose(value.getKey());
+            ByteBuffer term = LongType.instance.decomposeBuffer(value.getKey());
             for (Integer keyPos : value.getValue())
             {
                 ByteBuffer key = ByteBufferUtil.bytes(String.format("key%06d", keyPos));

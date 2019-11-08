@@ -58,10 +58,10 @@ public class BooleanType extends AbstractType<Boolean>
     {
 
         if (source.isEmpty()|| source.equalsIgnoreCase(Boolean.FALSE.toString()))
-            return decompose(false);
+            return decomposeBuffer(false);
 
         if (source.equalsIgnoreCase(Boolean.TRUE.toString()))
-            return decompose(true);
+            return decomposeBuffer(true);
 
         throw new MarshalException(String.format("Unable to make boolean from '%s'", source));
     }

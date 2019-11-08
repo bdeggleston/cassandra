@@ -105,7 +105,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return LongType.instance.decompose(count);
+                            return LongType.instance.decomposeBuffer(count);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -142,7 +142,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ((DecimalType) returnType()).decompose(sum);
+                            return ((DecimalType) returnType()).decomposeBuffer(sum);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -181,7 +181,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return DecimalType.instance.decompose(avg);
+                            return DecimalType.instance.decomposeBuffer(avg);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -221,7 +221,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ((IntegerType) returnType()).decompose(sum);
+                            return ((IntegerType) returnType()).decomposeBuffer(sum);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -261,9 +261,9 @@ public abstract class AggregateFcts
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
                             if (count == 0)
-                                return IntegerType.instance.decompose(BigInteger.ZERO);
+                                return IntegerType.instance.decomposeBuffer(BigInteger.ZERO);
 
-                            return IntegerType.instance.decompose(sum.divide(BigInteger.valueOf(count)));
+                            return IntegerType.instance.decomposeBuffer(sum.divide(BigInteger.valueOf(count)));
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -300,7 +300,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ((ByteType) returnType()).decompose(sum);
+                            return ((ByteType) returnType()).decomposeBuffer(sum);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -329,7 +329,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                         {
-                            return ByteType.instance.decompose((byte) computeInternal());
+                            return ByteType.instance.decomposeBuffer((byte) computeInternal());
                         }
                     };
                 }
@@ -354,7 +354,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ((ShortType) returnType()).decompose(sum);
+                            return ((ShortType) returnType()).decomposeBuffer(sum);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -383,7 +383,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ShortType.instance.decompose((short) computeInternal());
+                            return ShortType.instance.decomposeBuffer((short) computeInternal());
                         }
                     };
                 }
@@ -408,7 +408,7 @@ public abstract class AggregateFcts
 
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return ((Int32Type) returnType()).decompose(sum);
+                            return ((Int32Type) returnType()).decomposeBuffer(sum);
                         }
 
                         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -437,7 +437,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return Int32Type.instance.decompose((int) computeInternal());
+                            return Int32Type.instance.decomposeBuffer((int) computeInternal());
                         }
                     };
                 }
@@ -467,7 +467,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion)
                         {
-                            return LongType.instance.decompose(computeInternal());
+                            return LongType.instance.decomposeBuffer(computeInternal());
                         }
                     };
                 }
@@ -485,7 +485,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                         {
-                            return FloatType.instance.decompose((float) computeInternal());
+                            return FloatType.instance.decomposeBuffer((float) computeInternal());
                         }
                     };
                 }
@@ -503,7 +503,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                         {
-                            return FloatType.instance.decompose((float) computeInternal());
+                            return FloatType.instance.decomposeBuffer((float) computeInternal());
                         }
                     };
                 }
@@ -521,7 +521,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                         {
-                            return DoubleType.instance.decompose(computeInternal());
+                            return DoubleType.instance.decomposeBuffer(computeInternal());
                         }
                     };
                 }
@@ -681,7 +681,7 @@ public abstract class AggregateFcts
                     {
                         public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                         {
-                            return DoubleType.instance.decompose(computeInternal());
+                            return DoubleType.instance.decomposeBuffer(computeInternal());
                         }
                     };
                 }
@@ -711,7 +711,7 @@ public abstract class AggregateFcts
             {
                 public ByteBuffer compute(ProtocolVersion protocolVersion) throws InvalidRequestException
                 {
-                    return CounterColumnType.instance.decompose(computeInternal());
+                    return CounterColumnType.instance.decomposeBuffer(computeInternal());
                 }
             };
         }
@@ -736,7 +736,7 @@ public abstract class AggregateFcts
 
                 public ByteBuffer compute(ProtocolVersion protocolVersion)
                 {
-                    return min != null ? LongType.instance.decompose(min) : null;
+                    return min != null ? LongType.instance.decomposeBuffer(min) : null;
                 }
 
                 public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -774,7 +774,7 @@ public abstract class AggregateFcts
 
                 public ByteBuffer compute(ProtocolVersion protocolVersion)
                 {
-                    return max != null ? LongType.instance.decompose(max) : null;
+                    return max != null ? LongType.instance.decomposeBuffer(max) : null;
                 }
 
                 public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -898,7 +898,7 @@ public abstract class AggregateFcts
 
                     public ByteBuffer compute(ProtocolVersion protocolVersion)
                     {
-                        return ((LongType) returnType()).decompose(count);
+                        return ((LongType) returnType()).decomposeBuffer(count);
                     }
 
                     public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)
@@ -926,7 +926,7 @@ public abstract class AggregateFcts
 
         public ByteBuffer compute(ProtocolVersion protocolVersion)
         {
-            return LongType.instance.decompose(sum);
+            return LongType.instance.decomposeBuffer(sum);
         }
 
         public void addInput(ProtocolVersion protocolVersion, List<ByteBuffer> values)

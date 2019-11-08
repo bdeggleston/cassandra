@@ -73,7 +73,7 @@ public class SerDeserTest
 
         List<ByteBuffer> lb = new ArrayList<>(l.size());
         for (Integer i : l)
-            lb.add(Int32Type.instance.decompose(i));
+            lb.add(Int32Type.instance.decomposeBuffer(i));
 
         assertEquals(l, lt.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(lb, lb.size(), version), version));
 
@@ -84,7 +84,7 @@ public class SerDeserTest
 
         List<ByteBuffer> sb = new ArrayList<>(s.size());
         for (String t : s)
-            sb.add(UTF8Type.instance.decompose(t));
+            sb.add(UTF8Type.instance.decomposeBuffer(t));
 
         assertEquals(s, st.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(sb, sb.size(), version), version));
 
@@ -98,8 +98,8 @@ public class SerDeserTest
         List<ByteBuffer> mb = new ArrayList<>(m.size() * 2);
         for (Map.Entry<String, Long> entry : m.entrySet())
         {
-            mb.add(UTF8Type.instance.decompose(entry.getKey()));
-            mb.add(LongType.instance.decompose(entry.getValue()));
+            mb.add(UTF8Type.instance.decomposeBuffer(entry.getKey()));
+            mb.add(LongType.instance.decomposeBuffer(entry.getValue()));
         }
 
         assertEquals(m, mt.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(mb, m.size(), version), version));
@@ -161,7 +161,7 @@ public class SerDeserTest
 
     private static ByteBuffer bb(String str)
     {
-        return UTF8Type.instance.decompose(str);
+        return UTF8Type.instance.decomposeBuffer(str);
     }
 
     private static FieldIdentifier field(String field)

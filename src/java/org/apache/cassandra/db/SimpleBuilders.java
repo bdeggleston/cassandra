@@ -472,7 +472,7 @@ public abstract class SimpleBuilders
                 return CounterContext.instance().createGlobal(CounterId.getLocalId(), 1, (Long)value);
             }
 
-            return ((AbstractType)type).decompose(value);
+            return ((AbstractType)type).decomposeBuffer(value);
         }
     }
 }

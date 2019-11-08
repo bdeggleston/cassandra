@@ -127,7 +127,7 @@ public class BatchlogManager implements BatchlogManagerMBean
     public static void remove(UUID id)
     {
         new Mutation(PartitionUpdate.fullPartitionDelete(SystemKeyspace.Batches,
-                                                         UUIDType.instance.decompose(id),
+                                                         UUIDType.instance.decomposeBuffer(id),
                                                          FBUtilities.timestampMicros(),
                                                          FBUtilities.nowInSeconds()))
             .apply();

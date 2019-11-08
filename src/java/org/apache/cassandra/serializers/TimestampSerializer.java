@@ -131,9 +131,9 @@ public class TimestampSerializer implements TypeSerializer<Date>
         return handle.isEmpty(value) ? null : new Date(handle.toLong(value));
     }
 
-    public ByteBuffer serialize(Date value)
+    public <V> V serialize(Date value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value.getTime());
+        return value == null ? handle.empty() : handle.valueOf(value.getTime());
     }
 
     public static long dateStringToTimestamp(String source) throws MarshalException

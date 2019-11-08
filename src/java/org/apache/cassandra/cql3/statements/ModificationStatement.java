@@ -554,7 +554,7 @@ public abstract class ModificationStatement implements CQLStatement
         boolean success = partition == null;
 
         ResultSet.ResultMetadata metadata = buildCASSuccessMetadata(ksName, tableName);
-        List<List<ByteBuffer>> rows = Collections.singletonList(Collections.singletonList(BooleanType.instance.decompose(success)));
+        List<List<ByteBuffer>> rows = Collections.singletonList(Collections.singletonList(BooleanType.instance.decomposeBuffer(success)));
 
         ResultSet rs = new ResultSet(metadata, rows);
         return success ? rs : merge(rs, buildCasFailureResultSet(partition, columnsWithConditions, isBatch, options, options.getNowInSeconds(state)));

@@ -33,9 +33,9 @@ public class UUIDSerializer implements TypeSerializer<UUID>
         return handle.isEmpty(value) ? null : handle.toUUID(value);
     }
 
-    public ByteBuffer serialize(UUID value)
+    public <V> V serialize(UUID value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : UUIDGen.toByteBuffer(value);
+        return value == null ? handle.empty() : handle.valueOf(value);
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

@@ -33,9 +33,9 @@ public class IntegerSerializer implements TypeSerializer<BigInteger>
         return !handle.isEmpty(value) ? new BigInteger(handle.toArray(value)) : null;
     }
 
-    public ByteBuffer serialize(BigInteger value)
+    public <V> V serialize(BigInteger value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.toByteArray());
+        return value == null ? handle.empty() : handle.valueOf(value.toByteArray());
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

@@ -60,7 +60,7 @@ public class SerializationsTest extends AbstractSerializationsTester
         try (IFilter bf = FilterFactory.getFilter(1000000, 0.0001))
         {
             for (int i = 0; i < 1000; i++)
-                bf.add(Util.dk(Int32Type.instance.decompose(i)));
+                bf.add(Util.dk(Int32Type.instance.decomposeBuffer(i)));
             try (DataOutputStreamPlus out = getOutput(oldBfFormat ? "3.0" : "4.0", "utils.BloomFilter1000.bin"))
             {
                 if (oldBfFormat)
@@ -86,12 +86,12 @@ public class SerializationsTest extends AbstractSerializationsTester
             boolean present;
             for (int i = 0 ; i < 1000 ; i++)
             {
-                present = filter.isPresent(Util.dk(Int32Type.instance.decompose(i)));
+                present = filter.isPresent(Util.dk(Int32Type.instance.decomposeBuffer(i)));
                 Assert.assertTrue(present);
             }
             for (int i = 1000 ; i < 2000 ; i++)
             {
-                present = filter.isPresent(Util.dk(Int32Type.instance.decompose(i)));
+                present = filter.isPresent(Util.dk(Int32Type.instance.decomposeBuffer(i)));
                 Assert.assertFalse(present);
             }
         }
@@ -102,12 +102,12 @@ public class SerializationsTest extends AbstractSerializationsTester
             boolean present;
             for (int i = 0 ; i < 1000 ; i++)
             {
-                present = filter.isPresent(Util.dk(Int32Type.instance.decompose(i)));
+                present = filter.isPresent(Util.dk(Int32Type.instance.decomposeBuffer(i)));
                 Assert.assertTrue(present);
             }
             for (int i = 1000 ; i < 2000 ; i++)
             {
-                present = filter.isPresent(Util.dk(Int32Type.instance.decompose(i)));
+                present = filter.isPresent(Util.dk(Int32Type.instance.decomposeBuffer(i)));
                 Assert.assertFalse(present);
             }
         }
@@ -128,7 +128,7 @@ public class SerializationsTest extends AbstractSerializationsTester
         {
             for (int i = 1; i <= 10; i++)
             {
-                DecoratedKey decoratedKey = partitioner.decorateKey(Int32Type.instance.decompose(i));
+                DecoratedKey decoratedKey = partitioner.decorateKey(Int32Type.instance.decomposeBuffer(i));
                 boolean present = filter.isPresent(decoratedKey);
                 Assert.assertTrue(present);
             }
@@ -136,7 +136,7 @@ public class SerializationsTest extends AbstractSerializationsTester
             int positives = 0;
             for (int i = 11; i <= 1000010; i++)
             {
-                DecoratedKey decoratedKey = partitioner.decorateKey(Int32Type.instance.decompose(i));
+                DecoratedKey decoratedKey = partitioner.decorateKey(Int32Type.instance.decomposeBuffer(i));
                 boolean present = filter.isPresent(decoratedKey);
                 if (present)
                     positives++;

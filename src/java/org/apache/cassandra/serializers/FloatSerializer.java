@@ -35,9 +35,9 @@ public class FloatSerializer implements TypeSerializer<Float>
         return handle.toFloat(value);
     }
 
-    public ByteBuffer serialize(Float value)
+    public <V> V serialize(Float value, DataHandle<V> handle)
     {
-        return (value == null) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        return (value == null) ? handle.empty() : handle.valueOf(value);
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

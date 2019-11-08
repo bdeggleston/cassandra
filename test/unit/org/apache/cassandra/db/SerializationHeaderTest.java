@@ -30,7 +30,6 @@ import org.apache.cassandra.db.rows.BufferCell;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
-import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
@@ -97,7 +96,7 @@ public class SerializationHeaderTest
                 {
                     ColumnMetadata cd = schema.getColumn(v);
                     for (int i = 0 ; i < 5 ; ++i) {
-                        final ByteBuffer value = Int32Type.instance.decompose(i);
+                        final ByteBuffer value = Int32Type.instance.decomposeBuffer(i);
                         Cell cell = BufferCell.live(cd, 1L, value);
                         Clustering clustering = clusteringFunction.apply(value);
                         Row row = BTreeRow.singleCellRow(clustering, cell);

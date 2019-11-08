@@ -40,11 +40,11 @@ public class CollectionTypeTest
 
         ByteBuffer[] lists = new ByteBuffer[] {
             ByteBufferUtil.EMPTY_BYTE_BUFFER,
-            lt.decompose(ImmutableList.<String>of()),
-            lt.decompose(ImmutableList.of("aa")),
-            lt.decompose(ImmutableList.of("bb")),
-            lt.decompose(ImmutableList.of("bb", "cc")),
-            lt.decompose(ImmutableList.of("bb", "dd"))
+            lt.decomposeBuffer(ImmutableList.<String>of()),
+            lt.decomposeBuffer(ImmutableList.of("aa")),
+            lt.decomposeBuffer(ImmutableList.of("bb")),
+            lt.decomposeBuffer(ImmutableList.of("bb", "cc")),
+            lt.decomposeBuffer(ImmutableList.of("bb", "dd"))
         };
 
         for (int i = 0; i < lists.length; i++)
@@ -67,11 +67,11 @@ public class CollectionTypeTest
 
         ByteBuffer[] sets = new ByteBuffer[] {
             ByteBufferUtil.EMPTY_BYTE_BUFFER,
-            st.decompose(ImmutableSet.<String>of()),
-            st.decompose(ImmutableSet.of("aa")),
-            st.decompose(ImmutableSet.of("bb")),
-            st.decompose(ImmutableSet.of("bb", "cc")),
-            st.decompose(ImmutableSet.of("bb", "dd"))
+            st.decomposeBuffer(ImmutableSet.<String>of()),
+            st.decomposeBuffer(ImmutableSet.of("aa")),
+            st.decomposeBuffer(ImmutableSet.of("bb")),
+            st.decomposeBuffer(ImmutableSet.of("bb", "cc")),
+            st.decomposeBuffer(ImmutableSet.of("bb", "dd"))
         };
 
         for (int i = 0; i < sets.length; i++)
@@ -94,13 +94,13 @@ public class CollectionTypeTest
 
         ByteBuffer[] maps = new ByteBuffer[] {
             ByteBufferUtil.EMPTY_BYTE_BUFFER,
-            mt.decompose(ImmutableMap.<String, String>of()),
-            mt.decompose(ImmutableMap.of("aa", "val1")),
-            mt.decompose(ImmutableMap.of("aa", "val2")),
-            mt.decompose(ImmutableMap.of("bb", "val1")),
-            mt.decompose(ImmutableMap.of("bb", "val1", "cc", "val3")),
-            mt.decompose(ImmutableMap.of("bb", "val1", "dd", "val3")),
-            mt.decompose(ImmutableMap.of("bb", "val1", "dd", "val4"))
+            mt.decomposeBuffer(ImmutableMap.<String, String>of()),
+            mt.decomposeBuffer(ImmutableMap.of("aa", "val1")),
+            mt.decomposeBuffer(ImmutableMap.of("aa", "val2")),
+            mt.decomposeBuffer(ImmutableMap.of("bb", "val1")),
+            mt.decomposeBuffer(ImmutableMap.of("bb", "val1", "cc", "val3")),
+            mt.decomposeBuffer(ImmutableMap.of("bb", "val1", "dd", "val3")),
+            mt.decomposeBuffer(ImmutableMap.of("bb", "val1", "dd", "val4"))
         };
 
         for (int i = 0; i < maps.length; i++)

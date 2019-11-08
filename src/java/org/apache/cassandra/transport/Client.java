@@ -204,11 +204,11 @@ public class Client extends SimpleClient
                     try
                     {
                         int v = Integer.parseInt(next);
-                        bb = Int32Type.instance.decompose(v);
+                        bb = Int32Type.instance.decomposeBuffer(v);
                     }
                     catch (NumberFormatException e)
                     {
-                        bb = UTF8Type.instance.decompose(next);
+                        bb = UTF8Type.instance.decomposeBuffer(next);
                     }
                     values.add(bb);
                 }

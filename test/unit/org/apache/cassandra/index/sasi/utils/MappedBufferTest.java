@@ -441,7 +441,7 @@ public class MappedBufferTest
             for (long i = 0; i < numValues * typeSize; i += typeSize)
             {
                 long value = i / typeSize;
-                Assert.assertEquals(0, buffer.comparePageTo(i, typeSize, LongType.instance, LongType.instance.decompose(value)));
+                Assert.assertEquals(0, buffer.comparePageTo(i, typeSize, LongType.instance, LongType.instance.decomposeBuffer(value)));
             }
         }
     }

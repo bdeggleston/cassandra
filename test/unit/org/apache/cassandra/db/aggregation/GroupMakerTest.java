@@ -168,7 +168,7 @@ public class GroupMakerTest
 
         for (int i = 0; i < values.length; i++)
         {
-            buffers[i] = Int32Type.instance.decompose(values[i]);
+            buffers[i] = Int32Type.instance.decomposeBuffer(values[i]);
         }
 
         return buffers;

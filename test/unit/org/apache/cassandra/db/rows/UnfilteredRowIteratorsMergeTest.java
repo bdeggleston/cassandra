@@ -378,12 +378,12 @@ public class UnfilteredRowIteratorsMergeTest
 
     private static ClusteringBound boundFor(int pos, boolean start, boolean inclusive)
     {
-        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decompose(pos)});
+        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decomposeBuffer(pos)});
     }
 
     private static Clustering clusteringFor(int i)
     {
-        return Clustering.make(Int32Type.instance.decompose(i));
+        return Clustering.make(Int32Type.instance.decomposeBuffer(i));
     }
 
     static Row emptyRowAt(int pos, IntUnaryOperator timeGenerator)

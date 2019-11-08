@@ -26,7 +26,6 @@ import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.UUIDSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.UUIDGen;
 
 public class LexicalUUIDType extends AbstractType<UUID>
 {
@@ -57,7 +56,7 @@ public class LexicalUUIDType extends AbstractType<UUID>
 
         try
         {
-            return decompose(UUID.fromString(source));
+            return decomposeBuffer(UUID.fromString(source));
         }
         catch (IllegalArgumentException e)
         {

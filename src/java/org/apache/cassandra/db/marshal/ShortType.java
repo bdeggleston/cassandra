@@ -62,7 +62,7 @@ public class ShortType extends NumberType<Short>
             throw new MarshalException(String.format("Unable to make short from '%s'", source), e);
         }
 
-        return decompose(s);
+        return decomposeBuffer(s);
     }
 
     public Term fromJSONObject(Object parsed) throws MarshalException

@@ -59,7 +59,7 @@ public class ByteType extends NumberType<Byte>
             throw new MarshalException(String.format("Unable to make byte from '%s'", source), e);
         }
 
-        return decompose(b);
+        return decomposeBuffer(b);
     }
 
     public Term fromJSONObject(Object parsed) throws MarshalException

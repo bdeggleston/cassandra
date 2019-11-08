@@ -59,7 +59,7 @@ public class FloatType extends NumberType<Float>
 
       try
       {
-          return decompose(Float.parseFloat(source));
+          return decomposeBuffer(Float.parseFloat(source));
       }
       catch (NumberFormatException e1)
       {

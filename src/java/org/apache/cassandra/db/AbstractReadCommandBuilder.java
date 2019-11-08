@@ -132,7 +132,7 @@ public abstract class AbstractReadCommandBuilder
 
     private ByteBuffer bb(Object value, AbstractType<?> type)
     {
-        return value instanceof ByteBuffer ? (ByteBuffer)value : ((AbstractType)type).decompose(value);
+        return value instanceof ByteBuffer ? (ByteBuffer)value : ((AbstractType)type).decomposeBuffer(value);
     }
 
     private AbstractType<?> forValues(AbstractType<?> collectionType)

@@ -124,11 +124,11 @@ public class ListRolesStatement extends AuthorizationStatement
         INetworkAuthorizer networkAuthorizer = DatabaseDescriptor.getNetworkAuthorizer();
         for (RoleResource role : sortedRoles)
         {
-            result.addColumnValue(UTF8Type.instance.decompose(role.getRoleName()));
-            result.addColumnValue(BooleanType.instance.decompose(roleManager.isSuper(role)));
-            result.addColumnValue(BooleanType.instance.decompose(roleManager.canLogin(role)));
-            result.addColumnValue(optionsType.decompose(roleManager.getCustomOptions(role)));
-            result.addColumnValue(UTF8Type.instance.decompose(networkAuthorizer.authorize(role).toString()));
+            result.addColumnValue(UTF8Type.instance.decomposeBuffer(role.getRoleName()));
+            result.addColumnValue(BooleanType.instance.decomposeBuffer(roleManager.isSuper(role)));
+            result.addColumnValue(BooleanType.instance.decomposeBuffer(roleManager.canLogin(role)));
+            result.addColumnValue(optionsType.decomposeBuffer(roleManager.getCustomOptions(role)));
+            result.addColumnValue(UTF8Type.instance.decomposeBuffer(networkAuthorizer.authorize(role).toString()));
         }
         return new ResultMessage.Rows(result);
     }

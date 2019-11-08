@@ -117,7 +117,7 @@ public class PstmtPersistenceTest extends CQLTester
     {
         assertEquals(5, QueryProcessor.preparedStatementsCount());
         QueryOptions optionsStr = QueryOptions.forInternalCalls(Collections.singletonList(UTF8Type.instance.fromString("foobar")));
-        QueryOptions optionsInt = QueryOptions.forInternalCalls(Collections.singletonList(Int32Type.instance.decompose(42)));
+        QueryOptions optionsInt = QueryOptions.forInternalCalls(Collections.singletonList(Int32Type.instance.decomposeBuffer(42)));
         validatePstmt(handler, stmtIds.get(0), optionsStr);
         validatePstmt(handler, stmtIds.get(1), optionsInt);
         validatePstmt(handler, stmtIds.get(2), optionsStr);

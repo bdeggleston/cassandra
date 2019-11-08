@@ -1488,7 +1488,7 @@ public abstract class CQLTester
 
             try
             {
-                buffers[i] = typeFor(value).decompose(serializeTuples(value));
+                buffers[i] = typeFor(value).decomposeBuffer(serializeTuples(value));
             }
             catch (Exception ex)
             {
@@ -1608,7 +1608,7 @@ public abstract class CQLTester
         }
 
         AbstractType type = typeFor(value);
-        String s = type.getString(type.decompose(value));
+        String s = type.getString(type.decomposeBuffer(value));
 
         if (type instanceof InetAddressType || type instanceof TimestampType)
             return String.format("'%s'", s);
@@ -1631,7 +1631,7 @@ public abstract class CQLTester
         if (value instanceof ByteBuffer)
             return (ByteBuffer)value;
 
-        return type.decompose(serializeTuples(value));
+        return type.decomposeBuffer(serializeTuples(value));
     }
 
     private static String formatValue(ByteBuffer bb, AbstractType<?> type)

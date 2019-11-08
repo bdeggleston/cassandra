@@ -53,7 +53,7 @@ public class CounterColumnType extends NumberType<Long>
     }
 
     @Override
-    public ByteBuffer decompose(Long value)
+    public ByteBuffer decomposeBuffer(Long value)
     {
         return ByteBufferUtil.bytes(value);
     }

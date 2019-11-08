@@ -25,7 +25,6 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +47,6 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
-import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.filter.AbstractClusteringIndexFilter;
 import org.apache.cassandra.db.filter.ClusteringIndexNamesFilter;
@@ -374,7 +372,7 @@ public class SinglePartitionSliceCommandTest
 
     private static ByteBuffer bb(int v)
     {
-        return Int32Type.instance.decompose(v);
+        return Int32Type.instance.decomposeBuffer(v);
     }
 
     /**

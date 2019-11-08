@@ -47,9 +47,9 @@ public abstract class AbstractTextSerializer implements TypeSerializer<String>
         }
     }
 
-    public ByteBuffer serialize(String value)
+    public <V> V serialize(String value, DataHandle<V> handle)
     {
-        return ByteBufferUtil.bytes(value, charset);
+        return handle.valueOf(value, charset);
     }
 
     public String toString(String value)

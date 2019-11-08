@@ -205,7 +205,7 @@ public abstract class Sets
                 Set<?> s = type.getSerializer().deserializeForNativeProtocol(value, version);
                 SortedSet<ByteBuffer> elements = new TreeSet<>(type.getElementsType());
                 for (Object element : s)
-                    elements.add(type.getElementsType().decompose(element));
+                    elements.add(type.getElementsType().decomposeBuffer(element));
                 return new TValue(elements);
             }
             catch (MarshalException e)

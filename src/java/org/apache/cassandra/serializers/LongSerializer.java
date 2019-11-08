@@ -32,9 +32,9 @@ public class LongSerializer implements TypeSerializer<Long>
         return handle.isEmpty(value) ? null : handle.toLong(value);
     }
 
-    public ByteBuffer serialize(Long value)
+    public <V> V serialize(Long value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        return value == null ? handle.empty() : handle.valueOf(value);
     }
 
     public void validate(ByteBuffer bytes) throws MarshalException

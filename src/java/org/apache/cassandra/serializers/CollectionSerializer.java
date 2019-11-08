@@ -80,7 +80,7 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
 
     public static int readCollectionSize(ByteBuffer input, ProtocolVersion version)
     {
-        return readCollectionSize(input, ByteBufferHandle.instance, version)
+        return readCollectionSize(input, ByteBufferHandle.instance, version);
     }
 
     public static <V> int readCollectionSize(V value, DataHandle<V> handle, ProtocolVersion version)

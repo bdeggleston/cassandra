@@ -272,7 +272,7 @@ public class Tuples
                 // type.split(bytes)
                 List<List<ByteBuffer>> elements = new ArrayList<>(l.size());
                 for (Object element : l)
-                    elements.add(Arrays.asList(tupleType.split(type.getElementsType().decompose(element))));
+                    elements.add(Arrays.asList(tupleType.split(type.getElementsType().decomposeBuffer(element))));
                 return new InValue(elements);
             }
             catch (MarshalException e)

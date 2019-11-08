@@ -57,7 +57,7 @@ public class InetAddressType extends AbstractType<InetAddress>
             throw new MarshalException(String.format("Unable to make inet address from '%s'", source), e);
         }
 
-        return decompose(address);
+        return decomposeBuffer(address);
     }
 
     @Override

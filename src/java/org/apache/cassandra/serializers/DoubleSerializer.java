@@ -27,13 +27,6 @@ public class DoubleSerializer implements TypeSerializer<Double>
 {
     public static final DoubleSerializer instance = new DoubleSerializer();
 
-    public Double deserialize(ByteBuffer bytes)
-    {
-        if (bytes.remaining() == 0)
-            return null;
-        return ByteBufferUtil.toDouble(bytes);
-    }
-
     public <V> Double deserialize(V value, DataHandle<V> handle)
     {
         if (handle.isEmpty(value))
@@ -41,9 +34,9 @@ public class DoubleSerializer implements TypeSerializer<Double>
         return handle.toDouble(value);
     }
 
-    public ByteBuffer serialize(Double value)
+    public <V> V serialize(Double value, DataHandle<V> handle)
     {
-        return (value == null) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        return (value == null) ? handle.empty() : handle.valueOf(value);
     }
 
     public void validate(ByteBuffer bytes) throws MarshalException

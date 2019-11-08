@@ -34,6 +34,9 @@ public class ValueHandle implements DataHandle<Value>
 {
     public static final DataHandle<Value> instance = new ValueHandle();
 
+    private static final Value TRUE = Values.valueOf((byte) 1);
+    private static final Value FALSE = Values.valueOf((byte) 0);
+
     private ValueHandle() {}
 
     public int size(Value value)
@@ -76,9 +79,23 @@ public class ValueHandle implements DataHandle<Value>
         return value.array();
     }
 
+    public byte[] toArray(Value value, int offset, int length)
+    {
+        if (length == value.size())
+            return value.array();
+        byte[] out = new byte[length];
+        value.copyTo(out, offset, length);;
+        return out;
+    }
+
     public String toString(Value value, Charset charset) throws CharacterCodingException
     {
         return value.getString(0, charset);
+    }
+
+    public Value valueOf(UUID v)
+    {
+        return UUIDGen.toValue(v);
     }
 
     public String toHex(Value value)
@@ -139,5 +156,60 @@ public class ValueHandle implements DataHandle<Value>
     public UUID toUUID(Value value)
     {
         return UUIDGen.getUUID(value);
+    }
+
+    public Value empty()
+    {
+        return Values.EMPTY;
+    }
+
+    public Value valueOf(byte[] bytes)
+    {
+        return Values.valueOf(bytes);
+    }
+
+    public Value valueOf(ByteBuffer bytes)
+    {
+        return Values.valueOf(bytes);
+    }
+
+    public Value valueOf(String s, Charset charset)
+    {
+        return Values.valueOf(s, charset);
+    }
+
+    public Value valueOf(boolean v)
+    {
+        return v ? TRUE : FALSE;
+    }
+
+    public Value valueOf(byte v)
+    {
+        return Values.valueOf(v);
+    }
+
+    public Value valueOf(short v)
+    {
+        return Values.valueOf(v);
+    }
+
+    public Value valueOf(int v)
+    {
+        return Values.valueOf(v);
+    }
+
+    public Value valueOf(long v)
+    {
+        return Values.valueOf(v);
+    }
+
+    public Value valueOf(float v)
+    {
+        return Values.valueOf(v);
+    }
+
+    public Value valueOf(double v)
+    {
+        return Values.valueOf(v);
     }
 }

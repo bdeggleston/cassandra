@@ -53,6 +53,7 @@ public interface DataHandle<V>
     ByteBuffer toSafeBuffer(V value);
 
     byte[] toArray(V value);
+    byte[] toArray(V value, int offset, int length);
     String toString(V value, Charset charset) throws CharacterCodingException;
     String toHex(V value);
 
@@ -84,4 +85,17 @@ public interface DataHandle<V>
         int size = size(value);
         return TypeSizes.sizeofUnsignedVInt(size) + size;
     }
+
+    V empty();
+    V valueOf(byte[] bytes);
+    V valueOf(ByteBuffer bytes);
+    V valueOf(String s, Charset charset);
+    V valueOf(UUID v);
+    V valueOf(boolean v);
+    V valueOf(byte v);
+    V valueOf(short v);
+    V valueOf(int v);
+    V valueOf(long v);
+    V valueOf(float v);
+    V valueOf(double v);
 }

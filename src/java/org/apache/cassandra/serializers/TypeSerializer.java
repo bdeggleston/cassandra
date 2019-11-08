@@ -27,7 +27,7 @@ import org.apache.cassandra.utils.values.Value;
 
 public interface TypeSerializer<T>
 {
-    public ByteBuffer serialize(T value);
+    public <V> V serialize(T value, DataHandle<V> handle);
 
     public <V> T deserialize(V value, DataHandle<V> handle);
 

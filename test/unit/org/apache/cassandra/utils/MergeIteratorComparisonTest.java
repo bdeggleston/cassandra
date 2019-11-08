@@ -23,7 +23,6 @@ import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
-import org.apache.cassandra.utils.AbstractIterator;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -264,7 +263,7 @@ public class MergeIteratorComparisonTest
             @Override
             public ByteBuffer next()
             {
-                return type.decompose(UUIDGen.getTimeUUID());
+                return type.decomposeBuffer(UUIDGen.getTimeUUID());
             }
         }.result;
         testMergeIterator(reducer, lists, type);
@@ -281,7 +280,7 @@ public class MergeIteratorComparisonTest
             @Override
             public ByteBuffer next()
             {
-                return type.decompose(UUIDGen.getTimeUUID());
+                return type.decomposeBuffer(UUIDGen.getTimeUUID());
             }
         }.result;
         testMergeIterator(reducer, lists, type);

@@ -147,7 +147,7 @@ public final class IntegerType extends NumberType<BigInteger>
             throw new MarshalException(String.format("unable to make int from '%s'", source), e);
         }
 
-        return decompose(integerType);
+        return decomposeBuffer(integerType);
     }
 
     @Override
@@ -224,31 +224,31 @@ public final class IntegerType extends NumberType<BigInteger>
 
     public ByteBuffer add(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigInteger(left).add(rightType.toBigInteger(right)));
+        return decomposeBuffer(leftType.toBigInteger(left).add(rightType.toBigInteger(right)));
     }
 
     public ByteBuffer substract(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigInteger(left).subtract(rightType.toBigInteger(right)));
+        return decomposeBuffer(leftType.toBigInteger(left).subtract(rightType.toBigInteger(right)));
     }
 
     public ByteBuffer multiply(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigInteger(left).multiply(rightType.toBigInteger(right)));
+        return decomposeBuffer(leftType.toBigInteger(left).multiply(rightType.toBigInteger(right)));
     }
 
     public ByteBuffer divide(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigInteger(left).divide(rightType.toBigInteger(right)));
+        return decomposeBuffer(leftType.toBigInteger(left).divide(rightType.toBigInteger(right)));
     }
 
     public ByteBuffer mod(NumberType<?> leftType, ByteBuffer left, NumberType<?> rightType, ByteBuffer right)
     {
-        return decompose(leftType.toBigInteger(left).remainder(rightType.toBigInteger(right)));
+        return decomposeBuffer(leftType.toBigInteger(left).remainder(rightType.toBigInteger(right)));
     }
 
     public ByteBuffer negate(ByteBuffer input)
     {
-        return decompose(toBigInteger(input).negate());
+        return decomposeBuffer(toBigInteger(input).negate());
     }
 }

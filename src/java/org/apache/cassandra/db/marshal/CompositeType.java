@@ -162,7 +162,7 @@ public class CompositeType extends AbstractCompositeType
         ByteBuffer[] serialized = new ByteBuffer[objects.length];
         for (int i = 0; i < objects.length; i++)
         {
-            ByteBuffer buffer = ((AbstractType) types.get(i)).decompose(objects[i]);
+            ByteBuffer buffer = ((AbstractType) types.get(i)).decomposeBuffer(objects[i]);
             serialized[i] = buffer;
         }
         return build(serialized);

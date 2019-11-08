@@ -69,7 +69,7 @@ public class ViewBuilderTaskTest extends CQLTester
         // Retrieve the sorted tokens of the inserted rows
         IPartitioner partitioner = cfs.metadata().partitioner;
         List<Token> tokens = IntStream.range(0, 100)
-                                      .mapToObj(Int32Type.instance::decompose)
+                                      .mapToObj(Int32Type.instance::decomposeBuffer)
                                       .map(partitioner::getToken)
                                       .sorted()
                                       .collect(Collectors.toList());

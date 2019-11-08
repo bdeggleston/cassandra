@@ -39,7 +39,7 @@ public class TimeType extends TemporalType<Long>
 
     public ByteBuffer fromString(String source) throws MarshalException
     {
-        return decompose(TimeSerializer.timeStringToLong(source));
+        return decomposeBuffer(TimeSerializer.timeStringToLong(source));
     }
 
     @Override
@@ -81,6 +81,6 @@ public class TimeType extends TemporalType<Long>
     @Override
     public ByteBuffer now()
     {
-        return decompose(LocalTime.now(ZoneOffset.UTC).toNanoOfDay());
+        return decomposeBuffer(LocalTime.now(ZoneOffset.UTC).toNanoOfDay());
     }
 }

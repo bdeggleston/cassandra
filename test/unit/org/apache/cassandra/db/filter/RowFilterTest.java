@@ -62,7 +62,7 @@ public class RowFilterTest
         ColumnMetadata s = metadata.getColumn(new ColumnIdentifier("s", true));
         ColumnMetadata r = metadata.getColumn(new ColumnIdentifier("r", true));
 
-        ByteBuffer one = Int32Type.instance.decompose(1);
+        ByteBuffer one = Int32Type.instance.decomposeBuffer(1);
         RowFilter filter = RowFilter.NONE.withNewExpressions(new ArrayList<>());
         filter.add(s, Operator.NEQ, one);
         AtomicBoolean closed = new AtomicBoolean();

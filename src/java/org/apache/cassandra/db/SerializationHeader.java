@@ -527,7 +527,7 @@ public class SerializationHeader
         private void writeType(AbstractType<?> type, DataOutputPlus out) throws IOException
         {
             // TODO: we should have a terser serializaion format. Not a big deal though
-            ByteBufferUtil.writeWithVIntLength(UTF8Type.instance.decompose(type.toString()), out);
+            ByteBufferUtil.writeWithVIntLength(UTF8Type.instance.decomposeBuffer(type.toString()), out);
         }
 
         private AbstractType<?> readType(DataInputPlus in) throws IOException
@@ -538,7 +538,7 @@ public class SerializationHeader
 
         private int sizeofType(AbstractType<?> type)
         {
-            return ByteBufferUtil.serializedSizeWithVIntLength(UTF8Type.instance.decompose(type.toString()));
+            return ByteBufferUtil.serializedSizeWithVIntLength(UTF8Type.instance.decomposeBuffer(type.toString()));
         }
     }
 }

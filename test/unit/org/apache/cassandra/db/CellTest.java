@@ -336,7 +336,7 @@ public class CellTest
 
     private static ByteBuffer bb(String str)
     {
-        return UTF8Type.instance.decompose(str);
+        return UTF8Type.instance.decomposeBuffer(str);
     }
 
     private static ByteBuffer udt(ByteBuffer...buffers)

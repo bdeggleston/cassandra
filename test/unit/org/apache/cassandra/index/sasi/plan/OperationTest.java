@@ -88,25 +88,25 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testAnalyze() throws Exception
     {
-        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decompose("first_name"));
-        final ColumnMetadata age = getColumn(UTF8Type.instance.decompose("age"));
-        final ColumnMetadata comment = getColumn(UTF8Type.instance.decompose("comment"));
+        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeBuffer("first_name"));
+        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeBuffer("age"));
+        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeBuffer("comment"));
 
         // age != 5 AND age > 1 AND age != 6 AND age <= 10
         Map<Expression.Op, Expression> expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
-                                                                                Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(5)),
-                                                                                              new SimpleExpression(age, Operator.GT, Int32Type.instance.decompose(1)),
-                                                                                              new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(6)),
-                                                                                              new SimpleExpression(age, Operator.LTE, Int32Type.instance.decompose(10)))));
+                                                                                Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)),
+                                                                                              new SimpleExpression(age, Operator.GT, Int32Type.instance.decomposeBuffer(1)),
+                                                                                              new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(6)),
+                                                                                              new SimpleExpression(age, Operator.LTE, Int32Type.instance.decomposeBuffer(10)))));
 
         Expression expected = new Expression("age", Int32Type.instance)
         {{
             operation = Op.RANGE;
-            lower = new Bound(Int32Type.instance.decompose(1), false);
-            upper = new Bound(Int32Type.instance.decompose(10), true);
+            lower = new Bound(Int32Type.instance.decomposeBuffer(1), false);
+            upper = new Bound(Int32Type.instance.decomposeBuffer(10), true);
 
-            exclusions.add(Int32Type.instance.decompose(5));
-            exclusions.add(Int32Type.instance.decompose(6));
+            exclusions.add(Int32Type.instance.decomposeBuffer(5));
+            exclusions.add(Int32Type.instance.decomposeBuffer(6));
         }};
 
         Assert.assertEquals(1, expressions.size());
@@ -114,104 +114,104 @@ public class OperationTest extends SchemaLoader
 
         // age != 5 OR age >= 7
         expressions = convert(Operation.analyzeGroup(controller, OperationType.OR,
-                                                    Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(5)),
-                                                                  new SimpleExpression(age, Operator.GTE, Int32Type.instance.decompose(7)))));
+                                                    Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)),
+                                                                  new SimpleExpression(age, Operator.GTE, Int32Type.instance.decomposeBuffer(7)))));
         Assert.assertEquals(2, expressions.size());
 
         Assert.assertEquals(new Expression("age", Int32Type.instance)
                             {{
                                     operation = Op.NOT_EQ;
-                                    lower = new Bound(Int32Type.instance.decompose(5), true);
+                                    lower = new Bound(Int32Type.instance.decomposeBuffer(5), true);
                                     upper = lower;
                             }}, expressions.get(Expression.Op.NOT_EQ));
 
         Assert.assertEquals(new Expression("age", Int32Type.instance)
                             {{
                                     operation = Op.RANGE;
-                                    lower = new Bound(Int32Type.instance.decompose(7), true);
+                                    lower = new Bound(Int32Type.instance.decomposeBuffer(7), true);
                             }}, expressions.get(Expression.Op.RANGE));
 
         // age != 5 OR age < 7
         expressions = convert(Operation.analyzeGroup(controller, OperationType.OR,
-                                                    Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(5)),
-                                                                  new SimpleExpression(age, Operator.LT, Int32Type.instance.decompose(7)))));
+                                                    Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)),
+                                                                  new SimpleExpression(age, Operator.LT, Int32Type.instance.decomposeBuffer(7)))));
 
         Assert.assertEquals(2, expressions.size());
         Assert.assertEquals(new Expression("age", Int32Type.instance)
                             {{
                                     operation = Op.RANGE;
-                                    upper = new Bound(Int32Type.instance.decompose(7), false);
+                                    upper = new Bound(Int32Type.instance.decomposeBuffer(7), false);
                             }}, expressions.get(Expression.Op.RANGE));
         Assert.assertEquals(new Expression("age", Int32Type.instance)
                             {{
                                     operation = Op.NOT_EQ;
-                                    lower = new Bound(Int32Type.instance.decompose(5), true);
+                                    lower = new Bound(Int32Type.instance.decomposeBuffer(5), true);
                                     upper = lower;
                             }}, expressions.get(Expression.Op.NOT_EQ));
 
         // age > 1 AND age < 7
         expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
-                                                    Arrays.asList(new SimpleExpression(age, Operator.GT, Int32Type.instance.decompose(1)),
-                                                                  new SimpleExpression(age, Operator.LT, Int32Type.instance.decompose(7)))));
+                                                    Arrays.asList(new SimpleExpression(age, Operator.GT, Int32Type.instance.decomposeBuffer(1)),
+                                                                  new SimpleExpression(age, Operator.LT, Int32Type.instance.decomposeBuffer(7)))));
 
         Assert.assertEquals(1, expressions.size());
         Assert.assertEquals(new Expression("age", Int32Type.instance)
                             {{
                                     operation = Op.RANGE;
-                                    lower = new Bound(Int32Type.instance.decompose(1), false);
-                                    upper = new Bound(Int32Type.instance.decompose(7), false);
+                                    lower = new Bound(Int32Type.instance.decomposeBuffer(1), false);
+                                    upper = new Bound(Int32Type.instance.decomposeBuffer(7), false);
                             }}, expressions.get(Expression.Op.RANGE));
 
         // first_name = 'a' OR first_name != 'b'
         expressions = convert(Operation.analyzeGroup(controller, OperationType.OR,
-                                                    Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("a")),
-                                                                  new SimpleExpression(firstName, Operator.NEQ, UTF8Type.instance.decompose("b")))));
+                                                    Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("a")),
+                                                                  new SimpleExpression(firstName, Operator.NEQ, UTF8Type.instance.decomposeBuffer("b")))));
 
         Assert.assertEquals(2, expressions.size());
         Assert.assertEquals(new Expression("first_name", UTF8Type.instance)
                             {{
                                     operation = Op.NOT_EQ;
-                                    lower = new Bound(UTF8Type.instance.decompose("b"), true);
+                                    lower = new Bound(UTF8Type.instance.decomposeBuffer("b"), true);
                                     upper = lower;
                             }}, expressions.get(Expression.Op.NOT_EQ));
         Assert.assertEquals(new Expression("first_name", UTF8Type.instance)
                             {{
                                     operation = Op.EQ;
-                                    lower = upper = new Bound(UTF8Type.instance.decompose("a"), true);
+                                    lower = upper = new Bound(UTF8Type.instance.decomposeBuffer("a"), true);
                             }}, expressions.get(Expression.Op.EQ));
 
         // comment = 'soft eng' and comment != 'likes do'
         ListMultimap<ColumnMetadata, Expression> e = Operation.analyzeGroup(controller, OperationType.OR,
-                                                                            Arrays.asList(new SimpleExpression(comment, Operator.LIKE_MATCHES, UTF8Type.instance.decompose("soft eng")),
-                                                                  new SimpleExpression(comment, Operator.NEQ, UTF8Type.instance.decompose("likes do"))));
+                                                                            Arrays.asList(new SimpleExpression(comment, Operator.LIKE_MATCHES, UTF8Type.instance.decomposeBuffer("soft eng")),
+                                                                  new SimpleExpression(comment, Operator.NEQ, UTF8Type.instance.decomposeBuffer("likes do"))));
 
         List<Expression> expectedExpressions = new ArrayList<Expression>(2)
         {{
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.MATCH;
-                        lower = new Bound(UTF8Type.instance.decompose("soft"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("soft"), true);
                         upper = lower;
                 }});
 
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.MATCH;
-                        lower = new Bound(UTF8Type.instance.decompose("eng"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("eng"), true);
                         upper = lower;
                 }});
 
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(UTF8Type.instance.decompose("likes"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("likes"), true);
                         upper = lower;
                 }});
 
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(UTF8Type.instance.decompose("do"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("do"), true);
                         upper = lower;
                 }});
         }};
@@ -220,22 +220,22 @@ public class OperationTest extends SchemaLoader
 
         // first_name = 'j' and comment != 'likes do'
         e = Operation.analyzeGroup(controller, OperationType.OR,
-                        Arrays.asList(new SimpleExpression(comment, Operator.NEQ, UTF8Type.instance.decompose("likes do")),
-                                      new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("j"))));
+                        Arrays.asList(new SimpleExpression(comment, Operator.NEQ, UTF8Type.instance.decomposeBuffer("likes do")),
+                                      new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("j"))));
 
         expectedExpressions = new ArrayList<Expression>(2)
         {{
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(UTF8Type.instance.decompose("likes"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("likes"), true);
                         upper = lower;
                 }});
 
                 add(new Expression("comment", UTF8Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(UTF8Type.instance.decompose("do"), true);
+                        lower = new Bound(UTF8Type.instance.decomposeBuffer("do"), true);
                         upper = lower;
                 }});
         }};
@@ -244,23 +244,23 @@ public class OperationTest extends SchemaLoader
 
         // age != 27 first_name = 'j' and age != 25
         e = Operation.analyzeGroup(controller, OperationType.OR,
-                        Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(27)),
-                                      new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("j")),
-                                      new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(25))));
+                        Arrays.asList(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(27)),
+                                      new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("j")),
+                                      new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(25))));
 
         expectedExpressions = new ArrayList<Expression>(2)
         {{
                 add(new Expression("age", Int32Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(Int32Type.instance.decompose(27), true);
+                        lower = new Bound(Int32Type.instance.decomposeBuffer(27), true);
                         upper = lower;
                 }});
 
                 add(new Expression("age", Int32Type.instance)
                 {{
                         operation = Op.NOT_EQ;
-                        lower = new Bound(Int32Type.instance.decompose(25), true);
+                        lower = new Bound(Int32Type.instance.decomposeBuffer(25), true);
                         upper = lower;
                 }});
         }};
@@ -271,38 +271,38 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedBy() throws Exception
     {
-        final ColumnMetadata timestamp = getColumn(UTF8Type.instance.decompose("timestamp"));
-        final ColumnMetadata age = getColumn(UTF8Type.instance.decompose("age"));
+        final ColumnMetadata timestamp = getColumn(UTF8Type.instance.decomposeBuffer("timestamp"));
+        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeBuffer("age"));
 
-        Operation.Builder builder = new Operation.Builder(OperationType.AND, controller, new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(5)));
+        Operation.Builder builder = new Operation.Builder(OperationType.AND, controller, new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)));
         Operation op = builder.complete();
 
-        Unfiltered row = buildRow(buildCell(age, Int32Type.instance.decompose(6), System.currentTimeMillis()));
+        Unfiltered row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(6), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING);
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(5), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(5), System.currentTimeMillis()));
 
         // and reject incorrect value
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(6), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(6), System.currentTimeMillis()));
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
         // range with exclusions - age != 5 AND age > 1 AND age != 6 AND age <= 10
         builder = new Operation.Builder(OperationType.AND, controller,
-                                        new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(5)),
-                                        new SimpleExpression(age, Operator.GT, Int32Type.instance.decompose(1)),
-                                        new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(6)),
-                                        new SimpleExpression(age, Operator.LTE, Int32Type.instance.decompose(10)));
+                                        new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)),
+                                        new SimpleExpression(age, Operator.GT, Int32Type.instance.decomposeBuffer(1)),
+                                        new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(6)),
+                                        new SimpleExpression(age, Operator.LTE, Int32Type.instance.decomposeBuffer(10)));
         op = builder.complete();
 
         Set<Integer> exclusions = Sets.newHashSet(0, 1, 5, 6, 11);
         for (int i = 0; i <= 11; i++)
         {
-            row = buildRow(buildCell(age, Int32Type.instance.decompose(i), System.currentTimeMillis()));
+            row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(i), System.currentTimeMillis()));
 
             boolean result = op.satisfiedBy(row, staticRow, false);
             Assert.assertTrue(exclusions.contains(i) != result);
@@ -310,15 +310,15 @@ public class OperationTest extends SchemaLoader
 
         // now let's do something more complex - age = 5 OR age = 6
         builder = new Operation.Builder(OperationType.OR, controller,
-                                        new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(5)),
-                                        new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(6)));
+                                        new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(5)),
+                                        new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(6)));
 
         op = builder.complete();
 
         exclusions = Sets.newHashSet(0, 1, 2, 3, 4, 7, 8, 9, 10);
         for (int i = 0; i <= 10; i++)
         {
-            row = buildRow(buildCell(age, Int32Type.instance.decompose(i), System.currentTimeMillis()));
+            row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(i), System.currentTimeMillis()));
 
             boolean result = op.satisfiedBy(row, staticRow, false);
             Assert.assertTrue(exclusions.contains(i) != result);
@@ -332,16 +332,16 @@ public class OperationTest extends SchemaLoader
         //logical.setLogicalOp(LogicalIndexOperator.AND);
 
         //builder.add(logical);
-        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decompose(0)));
-        builder.add(new SimpleExpression(age, Operator.LT, Int32Type.instance.decompose(10)));
-        builder.add(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decompose(7)));
+        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decomposeBuffer(0)));
+        builder.add(new SimpleExpression(age, Operator.LT, Int32Type.instance.decomposeBuffer(10)));
+        builder.add(new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(7)));
 
         op = builder.complete();
 
         exclusions = Sets.newHashSet(7);
         for (int i = 0; i < 10; i++)
         {
-            row = buildRow(buildCell(age, Int32Type.instance.decompose(i), System.currentTimeMillis()));
+            row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(i), System.currentTimeMillis()));
 
             boolean result = op.satisfiedBy(row, staticRow, false);
             Assert.assertTrue(exclusions.contains(i) != result);
@@ -349,52 +349,52 @@ public class OperationTest extends SchemaLoader
 
         // multiple analyzed expressions in the Operation timestamp >= 10 AND age = 5
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(timestamp, Operator.GTE, LongType.instance.decompose(10L)));
-        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(5)));
+        builder.add(new SimpleExpression(timestamp, Operator.GTE, LongType.instance.decomposeBuffer(10L)));
+        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(5)));
 
         op = builder.complete();
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(6), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(11L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(6), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(11L), System.currentTimeMillis()));
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(5), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(22L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(5), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(22L), System.currentTimeMillis()));
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(5), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(9L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(5), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(9L), System.currentTimeMillis()));
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
         // operation with internal expressions and right child
         builder = new Operation.Builder(OperationType.OR, controller,
-                                        new SimpleExpression(timestamp, Operator.GT, LongType.instance.decompose(10L)));
+                                        new SimpleExpression(timestamp, Operator.GT, LongType.instance.decomposeBuffer(10L)));
         builder.setRight(new Operation.Builder(OperationType.AND, controller,
-                                               new SimpleExpression(age, Operator.GT, Int32Type.instance.decompose(0)),
-                                               new SimpleExpression(age, Operator.LT, Int32Type.instance.decompose(10))));
+                                               new SimpleExpression(age, Operator.GT, Int32Type.instance.decomposeBuffer(0)),
+                                               new SimpleExpression(age, Operator.LT, Int32Type.instance.decomposeBuffer(10))));
         op = builder.complete();
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(5), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(9L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(5), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(9L), System.currentTimeMillis()));
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(20), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(11L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(20), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(11L), System.currentTimeMillis()));
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
-        row = buildRow(buildCell(age, Int32Type.instance.decompose(0), System.currentTimeMillis()),
-                                  buildCell(timestamp, LongType.instance.decompose(9L), System.currentTimeMillis()));
+        row = buildRow(buildCell(age, Int32Type.instance.decomposeBuffer(0), System.currentTimeMillis()),
+                                  buildCell(timestamp, LongType.instance.decomposeBuffer(9L), System.currentTimeMillis()));
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
         // and for desert let's try out null and deleted rows etc.
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(30)));
+        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(30)));
         op = builder.complete();
 
         Assert.assertFalse(op.satisfiedBy(null, staticRow, false));
@@ -405,7 +405,7 @@ public class OperationTest extends SchemaLoader
 
         row = OperationTest.buildRow(
                 Row.Deletion.regular(new DeletionTime(now - 10, (int) (now / 1000))),
-                          buildCell(age, Int32Type.instance.decompose(6), System.currentTimeMillis()));
+                          buildCell(age, Int32Type.instance.decomposeBuffer(6), System.currentTimeMillis()));
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
@@ -435,71 +435,71 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testAnalyzeNotIndexedButDefinedColumn() throws Exception
     {
-        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decompose("first_name"));
-        final ColumnMetadata height = getColumn(UTF8Type.instance.decompose("height"));
+        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeBuffer("first_name"));
+        final ColumnMetadata height = getColumn(UTF8Type.instance.decomposeBuffer("height"));
 
         // first_name = 'a' AND height != 10
         Map<Expression.Op, Expression> expressions;
         expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
-                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("a")),
-                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decompose(5)))));
+                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("a")),
+                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)))));
 
         Assert.assertEquals(2, expressions.size());
 
         Assert.assertEquals(new Expression("height", Int32Type.instance)
         {{
                 operation = Op.NOT_EQ;
-                lower = new Bound(Int32Type.instance.decompose(5), true);
+                lower = new Bound(Int32Type.instance.decomposeBuffer(5), true);
                 upper = lower;
         }}, expressions.get(Expression.Op.NOT_EQ));
 
         expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
-                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("a")),
-                              new SimpleExpression(height, Operator.GT, Int32Type.instance.decompose(0)),
-                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decompose(5)))));
+                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("a")),
+                              new SimpleExpression(height, Operator.GT, Int32Type.instance.decomposeBuffer(0)),
+                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)))));
 
         Assert.assertEquals(2, expressions.size());
 
         Assert.assertEquals(new Expression("height", Int32Type.instance)
         {{
             operation = Op.RANGE;
-            lower = new Bound(Int32Type.instance.decompose(0), false);
-            exclusions.add(Int32Type.instance.decompose(5));
+            lower = new Bound(Int32Type.instance.decomposeBuffer(0), false);
+            exclusions.add(Int32Type.instance.decomposeBuffer(5));
         }}, expressions.get(Expression.Op.RANGE));
 
         expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
-                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decompose("a")),
-                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decompose(5)),
-                              new SimpleExpression(height, Operator.GTE, Int32Type.instance.decompose(0)),
-                              new SimpleExpression(height, Operator.LT, Int32Type.instance.decompose(10)))));
+                Arrays.asList(new SimpleExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("a")),
+                              new SimpleExpression(height, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)),
+                              new SimpleExpression(height, Operator.GTE, Int32Type.instance.decomposeBuffer(0)),
+                              new SimpleExpression(height, Operator.LT, Int32Type.instance.decomposeBuffer(10)))));
 
         Assert.assertEquals(2, expressions.size());
 
         Assert.assertEquals(new Expression("height", Int32Type.instance)
         {{
                 operation = Op.RANGE;
-                lower = new Bound(Int32Type.instance.decompose(0), true);
-                upper = new Bound(Int32Type.instance.decompose(10), false);
-                exclusions.add(Int32Type.instance.decompose(5));
+                lower = new Bound(Int32Type.instance.decomposeBuffer(0), true);
+                upper = new Bound(Int32Type.instance.decomposeBuffer(10), false);
+                exclusions.add(Int32Type.instance.decomposeBuffer(5));
         }}, expressions.get(Expression.Op.RANGE));
     }
 
     @Test
     public void testSatisfiedByWithMultipleTerms()
     {
-        final ColumnMetadata comment = getColumn(UTF8Type.instance.decompose("comment"));
+        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeBuffer("comment"));
 
-        Unfiltered row = buildRow(buildCell(comment,UTF8Type.instance.decompose("software engineer is working on a project"),System.currentTimeMillis()));
+        Unfiltered row = buildRow(buildCell(comment, UTF8Type.instance.decomposeBuffer("software engineer is working on a project"), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING);
 
         Operation.Builder builder = new Operation.Builder(OperationType.AND, controller,
-                                            new SimpleExpression(comment, Operator.LIKE_CONTAINS, UTF8Type.instance.decompose("eng is a work")));
+                                            new SimpleExpression(comment, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("eng is a work")));
         Operation op = builder.complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller,
-                                            new SimpleExpression(comment, Operator.LIKE_CONTAINS, UTF8Type.instance.decompose("soft works fine")));
+                                            new SimpleExpression(comment, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("soft works fine")));
         op = builder.complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
@@ -508,58 +508,58 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedByWithClustering()
     {
-        ColumnMetadata location = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decompose("location"));
-        ColumnMetadata age = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decompose("age"));
-        ColumnMetadata height = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decompose("height"));
-        ColumnMetadata score = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decompose("score"));
+        ColumnMetadata location = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("location"));
+        ColumnMetadata age = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("age"));
+        ColumnMetadata height = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("height"));
+        ColumnMetadata score = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("score"));
 
-        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("US"), Int32Type.instance.decompose(27)),
-                                  buildCell(height, Int32Type.instance.decompose(182), System.currentTimeMillis()),
-                                  buildCell(score, DoubleType.instance.decompose(1.0d), System.currentTimeMillis()));
+        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("US"), Int32Type.instance.decomposeBuffer(27)),
+                                  buildCell(height, Int32Type.instance.decomposeBuffer(182), System.currentTimeMillis()),
+                                  buildCell(score, DoubleType.instance.decomposeBuffer(1.0d), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING);
 
         Operation.Builder builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(27)));
-        builder.add(new SimpleExpression(height, Operator.EQ, Int32Type.instance.decompose(182)));
+        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(27)));
+        builder.add(new SimpleExpression(height, Operator.EQ, Int32Type.instance.decomposeBuffer(182)));
 
         Assert.assertTrue(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
 
-        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decompose(28)));
-        builder.add(new SimpleExpression(height, Operator.EQ, Int32Type.instance.decompose(182)));
+        builder.add(new SimpleExpression(age, Operator.EQ, Int32Type.instance.decomposeBuffer(28)));
+        builder.add(new SimpleExpression(height, Operator.EQ, Int32Type.instance.decomposeBuffer(182)));
 
         Assert.assertFalse(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decompose("US")));
-        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decompose(27)));
+        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decomposeBuffer("US")));
+        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decomposeBuffer(27)));
 
         Assert.assertTrue(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decompose("BY")));
-        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decompose(28)));
+        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decomposeBuffer("BY")));
+        builder.add(new SimpleExpression(age, Operator.GTE, Int32Type.instance.decomposeBuffer(28)));
 
         Assert.assertFalse(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decompose("US")));
-        builder.add(new SimpleExpression(age, Operator.LTE, Int32Type.instance.decompose(27)));
-        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decompose(182)));
+        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decomposeBuffer("US")));
+        builder.add(new SimpleExpression(age, Operator.LTE, Int32Type.instance.decomposeBuffer(27)));
+        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decomposeBuffer(182)));
 
         Assert.assertTrue(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decompose("US")));
-        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decompose(182)));
-        builder.add(new SimpleExpression(score, Operator.EQ, DoubleType.instance.decompose(1.0d)));
+        builder.add(new SimpleExpression(location, Operator.EQ, UTF8Type.instance.decomposeBuffer("US")));
+        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decomposeBuffer(182)));
+        builder.add(new SimpleExpression(score, Operator.EQ, DoubleType.instance.decomposeBuffer(1.0d)));
 
         Assert.assertTrue(builder.complete().satisfiedBy(row, staticRow, false));
 
         builder = new Operation.Builder(OperationType.AND, controller);
-        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decompose(182)));
-        builder.add(new SimpleExpression(score, Operator.EQ, DoubleType.instance.decompose(1.0d)));
+        builder.add(new SimpleExpression(height, Operator.GTE, Int32Type.instance.decomposeBuffer(182)));
+        builder.add(new SimpleExpression(score, Operator.EQ, DoubleType.instance.decomposeBuffer(1.0d)));
 
         Assert.assertTrue(builder.complete().satisfiedBy(row, staticRow, false));
     }
@@ -580,55 +580,55 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedByWithStatic()
     {
-        final ColumnMetadata sensorType = getColumn(STATIC_BACKEND, UTF8Type.instance.decompose("sensor_type"));
-        final ColumnMetadata value = getColumn(STATIC_BACKEND, UTF8Type.instance.decompose("value"));
+        final ColumnMetadata sensorType = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("sensor_type"));
+        final ColumnMetadata value = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("value"));
 
-        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("date"), LongType.instance.decompose(20160401L)),
-                          buildCell(value, DoubleType.instance.decompose(24.56), System.currentTimeMillis()));
+        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("date"), LongType.instance.decomposeBuffer(20160401L)),
+                          buildCell(value, DoubleType.instance.decomposeBuffer(24.56), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING,
-                         buildCell(sensorType, UTF8Type.instance.decompose("TEMPERATURE"), System.currentTimeMillis()));
+                         buildCell(sensorType, UTF8Type.instance.decomposeBuffer("TEMPERATURE"), System.currentTimeMillis()));
 
         // sensor_type ='TEMPERATURE' AND value = 24.56
         Operation op = new Operation.Builder(OperationType.AND, controller,
-                                        new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("TEMPERATURE")),
-                                        new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(24.56))).complete();
+                                        new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("TEMPERATURE")),
+                                        new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(24.56))).complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
         // sensor_type ='TEMPERATURE' AND value = 30
         op = new Operation.Builder(OperationType.AND, controller,
-                                             new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("TEMPERATURE")),
-                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(30.00))).complete();
+                                             new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("TEMPERATURE")),
+                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(30.00))).complete();
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
         // sensor_type ='PRESSURE' OR value = 24.56
         op = new Operation.Builder(OperationType.OR, controller,
-                                             new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("TEMPERATURE")),
-                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(24.56))).complete();
+                                             new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("TEMPERATURE")),
+                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(24.56))).complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
         // sensor_type ='PRESSURE' OR value = 30
         op = new Operation.Builder(OperationType.AND, controller,
-                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("PRESSURE")),
-                                   new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(30.00))).complete();
+                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("PRESSURE")),
+                                   new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(30.00))).complete();
 
         Assert.assertFalse(op.satisfiedBy(row, staticRow, false));
 
         // (sensor_type = 'TEMPERATURE' OR sensor_type = 'PRESSURE') AND value = 24.56
         op = new Operation.Builder(OperationType.OR, controller,
-                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("TEMPERATURE")),
-                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decompose("PRESSURE")))
+                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("TEMPERATURE")),
+                                   new SimpleExpression(sensorType, Operator.EQ, UTF8Type.instance.decomposeBuffer("PRESSURE")))
              .setRight(new Operation.Builder(OperationType.AND, controller,
-                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(24.56)))).complete();
+                                             new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(24.56)))).complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
 
         // sensor_type = LIKE 'TEMP%'  AND value = 24.56
         op = new Operation.Builder(OperationType.AND, controller,
-                                   new SimpleExpression(sensorType, Operator.LIKE_PREFIX, UTF8Type.instance.decompose("TEMP")),
-                                   new SimpleExpression(value, Operator.EQ, DoubleType.instance.decompose(24.56))).complete();
+                                   new SimpleExpression(sensorType, Operator.LIKE_PREFIX, UTF8Type.instance.decomposeBuffer("TEMP")),
+                                   new SimpleExpression(value, Operator.EQ, DoubleType.instance.decomposeBuffer(24.56))).complete();
 
         Assert.assertTrue(op.satisfiedBy(row, staticRow, false));
     }

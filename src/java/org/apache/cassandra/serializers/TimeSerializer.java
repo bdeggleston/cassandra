@@ -34,9 +34,9 @@ public class TimeSerializer implements TypeSerializer<Long>
         return handle.size(value) == 0 ? null : handle.toLong(value);
     }
 
-    public ByteBuffer serialize(Long value)
+    public <V> V serialize(Long value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        return value == null ? handle.empty() : handle.valueOf(value);
     }
 
     public static Long timeStringToLong(String source) throws MarshalException

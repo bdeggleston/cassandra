@@ -66,7 +66,7 @@ public class FieldIdentifier
     {
         try
         {
-            return UTF8Type.instance.decompose(text);
+            return UTF8Type.instance.decomposeBuffer(text);
         }
         catch (MarshalException e)
         {

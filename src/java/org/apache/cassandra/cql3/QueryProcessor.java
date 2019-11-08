@@ -282,7 +282,7 @@ public class QueryProcessor implements QueryHandler
         {
             Object value = values[i];
             AbstractType type = prepared.getBindVariables().get(i).type;
-            boundValues.add(value instanceof ByteBuffer || value == null ? (ByteBuffer)value : type.decompose(value));
+            boundValues.add(value instanceof ByteBuffer || value == null ? (ByteBuffer)value : type.decomposeBuffer(value));
         }
         return QueryOptions.forInternalCalls(cl, boundValues);
     }

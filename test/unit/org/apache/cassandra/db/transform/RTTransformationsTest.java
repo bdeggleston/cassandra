@@ -401,7 +401,7 @@ public final class RTTransformationsTest
     @SuppressWarnings("unchecked")
     private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decompose(value);
+        return ((AbstractType<T>) type).decomposeBuffer(value);
     }
 
     private UnfilteredPartitionIterator iter(boolean isReversedOrder, Unfiltered... unfiltereds)

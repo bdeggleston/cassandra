@@ -33,6 +33,9 @@ import org.apache.cassandra.utils.UUIDGen;
 public class ByteBufferHandle implements DataHandle<ByteBuffer>
 {
     public static final DataHandle<ByteBuffer> instance = new ByteBufferHandle();
+    private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
+    private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
+
     private ByteBufferHandle() {}
 
     public int size(ByteBuffer value)
@@ -78,9 +81,19 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
         return ByteBufferUtil.getArray(value);
     }
 
+    public byte[] toArray(ByteBuffer value, int offset, int length)
+    {
+        return ByteBufferUtil.getArray(value, value.position() + offset, length);
+    }
+
     public String toString(ByteBuffer value, Charset charset) throws CharacterCodingException
     {
         return ByteBufferUtil.string(value, charset);
+    }
+
+    public ByteBuffer valueOf(UUID v)
+    {
+        return UUIDGen.toByteBuffer(v);
     }
 
     public String toHex(ByteBuffer value)
@@ -141,5 +154,60 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
     public UUID toUUID(ByteBuffer value)
     {
         return UUIDGen.getUUID(value);
+    }
+
+    public ByteBuffer empty()
+    {
+        return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+    }
+
+    public ByteBuffer valueOf(byte[] bytes)
+    {
+        return ByteBuffer.wrap(bytes);
+    }
+
+    public ByteBuffer valueOf(ByteBuffer bytes)
+    {
+        return bytes;
+    }
+
+    public ByteBuffer valueOf(String v, Charset charset)
+    {
+        return ByteBufferUtil.bytes(v, charset);
+    }
+
+    public ByteBuffer valueOf(boolean v)
+    {
+        return v ? TRUE : FALSE;
+    }
+
+    public ByteBuffer valueOf(byte v)
+    {
+        return ByteBufferUtil.bytes(v);
+    }
+
+    public ByteBuffer valueOf(short v)
+    {
+        return ByteBufferUtil.bytes(v);
+    }
+
+    public ByteBuffer valueOf(int v)
+    {
+        return ByteBufferUtil.bytes(v);
+    }
+
+    public ByteBuffer valueOf(long v)
+    {
+        return ByteBufferUtil.bytes(v);
+    }
+
+    public ByteBuffer valueOf(float v)
+    {
+        return ByteBufferUtil.bytes(v);
+    }
+
+    public ByteBuffer valueOf(double v)
+    {
+        return ByteBufferUtil.bytes(v);
     }
 }

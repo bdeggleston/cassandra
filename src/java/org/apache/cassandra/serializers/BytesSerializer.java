@@ -27,10 +27,10 @@ public class BytesSerializer implements TypeSerializer<ByteBuffer>
 {
     public static final BytesSerializer instance = new BytesSerializer();
 
-    public ByteBuffer serialize(ByteBuffer bytes)
+    public <V> V serialize(ByteBuffer value, DataHandle<V> handle)
     {
         // We make a copy in case the user modifies the input
-        return bytes.duplicate();
+        return handle.valueOf(value.duplicate());
     }
 
     public <V> ByteBuffer deserialize(V value, DataHandle<V> handle)

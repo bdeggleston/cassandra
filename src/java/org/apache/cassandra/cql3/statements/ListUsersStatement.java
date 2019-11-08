@@ -56,9 +56,9 @@ public class ListUsersStatement extends ListRolesStatement
         {
             if (!roleManager.canLogin(role))
                 continue;
-            result.addColumnValue(UTF8Type.instance.decompose(role.getRoleName()));
-            result.addColumnValue(BooleanType.instance.decompose(Roles.hasSuperuserStatus(role)));
-            result.addColumnValue(UTF8Type.instance.decompose(networkAuthorizer.authorize(role).toString()));
+            result.addColumnValue(UTF8Type.instance.decomposeBuffer(role.getRoleName()));
+            result.addColumnValue(BooleanType.instance.decomposeBuffer(Roles.hasSuperuserStatus(role)));
+            result.addColumnValue(UTF8Type.instance.decomposeBuffer(networkAuthorizer.authorize(role).toString()));
         }
 
         return new ResultMessage.Rows(result);

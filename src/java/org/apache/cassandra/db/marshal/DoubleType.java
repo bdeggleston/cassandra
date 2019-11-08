@@ -58,7 +58,7 @@ public class DoubleType extends NumberType<Double>
 
       try
       {
-          return decompose(Double.valueOf(source));
+          return decomposeBuffer(Double.valueOf(source));
       }
       catch (NumberFormatException e1)
       {

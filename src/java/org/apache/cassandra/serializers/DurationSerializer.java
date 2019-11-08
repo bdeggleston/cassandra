@@ -31,25 +31,25 @@ public final class DurationSerializer implements TypeSerializer<Duration>
 {
     public static final DurationSerializer instance = new DurationSerializer();
 
-    public ByteBuffer serialize(Duration duration)
+    public <V> V serialize(Duration duration, DataHandle<V> handle)
     {
         if (duration == null)
-            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            return handle.empty();
 
         long months = duration.getMonths();
         long days = duration.getDays();
         long nanoseconds = duration.getNanoseconds();
 
         int size = VIntCoding.computeVIntSize(months)
-                + VIntCoding.computeVIntSize(days)
-                + VIntCoding.computeVIntSize(nanoseconds);
+                   + VIntCoding.computeVIntSize(days)
+                   + VIntCoding.computeVIntSize(nanoseconds);
 
         try (DataOutputBufferFixed output = new DataOutputBufferFixed(size))
         {
             output.writeVInt(months);
             output.writeVInt(days);
             output.writeVInt(nanoseconds);
-            return output.buffer();
+            return handle.valueOf(output.buffer());
         }
         catch (IOException e)
         {

@@ -24,7 +24,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.index.sasi.plan.Expression.Bound;
 
 public class ExpressionTest
 {
@@ -32,9 +31,9 @@ public class ExpressionTest
     @Test
     public void testBoundHashCode()
     {
-        ByteBuffer buf1 = UTF8Type.instance.decompose("blah");
+        ByteBuffer buf1 = UTF8Type.instance.decomposeBuffer("blah");
         Expression.Bound b1 = new Expression.Bound(buf1, true);
-        ByteBuffer buf2 = UTF8Type.instance.decompose("blah");
+        ByteBuffer buf2 = UTF8Type.instance.decomposeBuffer("blah");
         Expression.Bound b2 = new Expression.Bound(buf2, true);
         assertTrue(b1.equals(b2));
         assertTrue(b1.hashCode() == b2.hashCode());
@@ -43,9 +42,9 @@ public class ExpressionTest
     @Test
     public void testNotMatchingBoundHashCode()
     {
-        ByteBuffer buf1 = UTF8Type.instance.decompose("blah");
+        ByteBuffer buf1 = UTF8Type.instance.decomposeBuffer("blah");
         Expression.Bound b1 = new Expression.Bound(buf1, true);
-        ByteBuffer buf2 = UTF8Type.instance.decompose("blah2");
+        ByteBuffer buf2 = UTF8Type.instance.decomposeBuffer("blah2");
         Expression.Bound b2 = new Expression.Bound(buf2, true);
         assertFalse(b1.equals(b2));
         assertFalse(b1.hashCode() == b2.hashCode());

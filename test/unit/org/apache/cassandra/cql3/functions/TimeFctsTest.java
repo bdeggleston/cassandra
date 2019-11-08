@@ -187,7 +187,7 @@ public class TimeFctsTest
                                           .withZone(DateTimeZone.UTC)
                                           .parseDateTime("2015-05-21 11:03:02");
 
-        ByteBuffer input = TimestampType.instance.decompose(dateTime.toDate());
+        ByteBuffer input = TimestampType.instance.decomposeBuffer(dateTime.toDate());
         ByteBuffer output = executeFunction(toUnixTimestamp(TimestampType.instance), input);
         assertEquals(dateTime.getMillis(), LongType.instance.compose(output).longValue());
     }

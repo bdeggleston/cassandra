@@ -467,7 +467,7 @@ public final class SchemaKeyspace
     @SuppressWarnings("unchecked")
     private static DecoratedKey decorate(TableMetadata metadata, Object value)
     {
-        return metadata.partitioner.decorateKey(((AbstractType) metadata.partitionKeyType).decompose(value));
+        return metadata.partitioner.decorateKey(((AbstractType) metadata.partitionKeyType).decomposeBuffer(value));
     }
 
     static Mutation.SimpleBuilder makeCreateKeyspaceMutation(String name, KeyspaceParams params, long timestamp)

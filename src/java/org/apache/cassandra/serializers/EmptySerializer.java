@@ -32,9 +32,9 @@ public class EmptySerializer implements TypeSerializer<Void>
         return null;
     }
 
-    public ByteBuffer serialize(Void value)
+    public <V> V serialize(Void value, DataHandle<V> handle)
     {
-        return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+        return handle.empty();
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

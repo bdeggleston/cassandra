@@ -24,8 +24,6 @@ import java.nio.ByteBuffer;
 
 public class BooleanSerializer implements TypeSerializer<Boolean>
 {
-    private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
-    private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
 
     public static final BooleanSerializer instance = new BooleanSerializer();
 
@@ -37,10 +35,11 @@ public class BooleanSerializer implements TypeSerializer<Boolean>
         return handle.getByte(value, 0) != 0;
     }
 
-    public ByteBuffer serialize(Boolean value)
+    public <V> V serialize(Boolean value, DataHandle<V> handle)
     {
-        return (value == null) ? ByteBufferUtil.EMPTY_BYTE_BUFFER
-                : value ? TRUE : FALSE; // false
+        if (value == null)
+            return handle.empty();
+        return handle.valueOf(value);
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

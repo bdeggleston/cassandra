@@ -44,9 +44,9 @@ public class InetAddressSerializer implements TypeSerializer<InetAddress>
         }
     }
 
-    public ByteBuffer serialize(InetAddress value)
+    public <V> V serialize(InetAddress value, DataHandle<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.getAddress());
+        return value == null ? handle.empty() : handle.valueOf(value.getAddress());
     }
 
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException

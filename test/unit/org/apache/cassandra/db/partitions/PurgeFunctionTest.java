@@ -262,7 +262,7 @@ public final class PurgeFunctionTest
     @SuppressWarnings("unchecked")
     private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decompose(value);
+        return ((AbstractType<T>) type).decomposeBuffer(value);
     }
 
     private void assertIteratorsEqual(UnfilteredPartitionIterator iter1, UnfilteredPartitionIterator iter2)

@@ -40,7 +40,7 @@ public class UTF8Type extends AbstractType<String>
 
     public ByteBuffer fromString(String source)
     {
-        return decompose(source);
+        return decomposeBuffer(source);
     }
 
 
