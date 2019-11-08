@@ -30,6 +30,8 @@ import static org.junit.Assert.fail;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.serializers.*;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class CollectionTypeTest
 {
@@ -125,8 +127,8 @@ public class CollectionTypeTest
         List<String> sl = Arrays.asList("Foo", "Bar");
         List<Integer> il = Arrays.asList(3, 1, 5);
 
-        ByteBuffer sb = sls.serialize(sl);
-        ByteBuffer ib = ils.serialize(il);
+        Value sb = sls.serializeValue(sl);
+        Value ib = ils.serializeValue(il);
 
         assertEquals(sls.deserialize(sb), sl);
         assertEquals(ils.deserialize(ib), il);
@@ -137,7 +139,7 @@ public class CollectionTypeTest
         // string list with integer list type
         assertInvalid(ils, sb);
         // non list value
-        assertInvalid(sls, UTF8Type.instance.getSerializer().serialize("foo"));
+        assertInvalid(sls, UTF8Type.instance.getSerializer().serializeValue("foo"));
     }
 
     @Test
@@ -149,8 +151,8 @@ public class CollectionTypeTest
         Set<String> ss = new HashSet(){{ add("Foo"); add("Bar"); }};
         Set<Integer> is = new HashSet(){{ add(3); add(1); add(5); }};
 
-        ByteBuffer sb = sss.serialize(ss);
-        ByteBuffer ib = iss.serialize(is);
+        Value sb = sss.serializeValue(ss);
+        Value ib = iss.serializeValue(is);
 
         assertEquals(sss.deserialize(sb), ss);
         assertEquals(iss.deserialize(ib), is);
@@ -161,7 +163,7 @@ public class CollectionTypeTest
         // string set with integer set type
         assertInvalid(iss, sb);
         // non set value
-        assertInvalid(sss, UTF8Type.instance.getSerializer().serialize("foo"));
+        assertInvalid(sss, UTF8Type.instance.getSerializer().serializeValue("foo"));
     }
 
     @Test
@@ -173,8 +175,8 @@ public class CollectionTypeTest
         Map<String, String> sm = new HashMap(){{ put("Foo", "xxx"); put("Bar", "yyy"); }};
         Map<Integer, Integer> im = new HashMap(){{ put(3, 0); put(1, 8); put(5, 2); }};
 
-        ByteBuffer sb = sms.serialize(sm);
-        ByteBuffer ib = ims.serialize(im);
+        Value sb = sms.serializeValue(sm);
+        Value ib = ims.serializeValue(im);
 
         assertEquals(sms.deserialize(sb), sm);
         assertEquals(ims.deserialize(ib), im);
@@ -185,7 +187,7 @@ public class CollectionTypeTest
         // string map with integer map type
         assertInvalid(ims, sb);
         // non map value
-        assertInvalid(sms, UTF8Type.instance.getSerializer().serialize("foo"));
+        assertInvalid(sms, UTF8Type.instance.getSerializer().serializeValue("foo"));
 
         MapSerializer<Integer, String> sims = MapType.getInstance(Int32Type.instance, UTF8Type.instance, true).getSerializer();
         MapSerializer<String, Integer> isms = MapType.getInstance(UTF8Type.instance, Int32Type.instance, true).getSerializer();
@@ -196,11 +198,11 @@ public class CollectionTypeTest
         assertInvalid(sims, sb);
     }
 
-    private void assertInvalid(TypeSerializer<?> type, ByteBuffer value)
+    private void assertInvalid(TypeSerializer<?> type, Value value)
     {
         try {
             type.validate(value);
-            fail("Value " + ByteBufferUtil.bytesToHex(value) + " shouldn't be valid for type " + type);
+            fail("Value " + Values.toHex(value) + " shouldn't be valid for type " + type);
         } catch (MarshalException e) {
             // ok, that's what we want
         }

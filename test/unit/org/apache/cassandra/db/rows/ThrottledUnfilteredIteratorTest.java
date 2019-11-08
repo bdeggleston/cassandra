@@ -66,6 +66,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 public class ThrottledUnfilteredIteratorTest extends CQLTester
 {
@@ -601,7 +602,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
                               timestamp,
                               BufferCell.NO_TTL,
                               localDeletionTime,
-                              ByteBufferUtil.bytes(v),
+                              Values.valueOf(v),
                               null);
     }
 

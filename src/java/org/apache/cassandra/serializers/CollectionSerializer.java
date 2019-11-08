@@ -36,6 +36,12 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
     protected abstract int getElementCount(T value);
 
     public abstract <V> T deserializeForNativeProtocol(V value, DataHandle<V> handle, ProtocolVersion version);
+
+    public T deserializeForNativeProtocol(ByteBuffer value, ProtocolVersion version)
+    {
+        return deserializeForNativeProtocol(value, DataHandle.BUFFER, version);
+    }
+
     public abstract <V> void validateForNativeProtocol(V value, DataHandle<V> handle, ProtocolVersion version);
 
     public <V> V serialize(T input, DataHandle<V> handle)

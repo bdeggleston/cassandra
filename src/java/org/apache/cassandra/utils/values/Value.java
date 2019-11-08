@@ -142,4 +142,14 @@ public interface Value extends Comparable<Value>
     }
 
 
+    // FIXME: refactoring help
+    default int remaining()
+    {
+        return size();
+    }
+
+    default int position()
+    {
+        return 0;
+    }
 }

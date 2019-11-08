@@ -166,7 +166,7 @@ public class CommitLogUpgradeTest
                     {
                         for (Cell cell : row.cells())
                         {
-                            hash = hash(hash, cell.value());
+                            hash = hash(hash, cell.value().buffer());
                             ++cells;
                         }
                     }

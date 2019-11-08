@@ -79,6 +79,7 @@ import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -783,7 +784,7 @@ public class SASIIndexTest
                                                 rm1.key(),
                                                 buildRow(buildCell(store.metadata(),
                                                                    UTF8Type.instance.decomposeBuffer("/data/output/id"),
-                                                                   AsciiType.instance.decomposeBuffer("jason"),
+                                                                   AsciiType.instance.decomposeValue("jason"),
                                                                    System.currentTimeMillis()))));
 
         Mutation.PartitionUpdateCollector rm2 = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey(AsciiType.instance.decomposeBuffer("key2")));
@@ -791,7 +792,7 @@ public class SASIIndexTest
                                                 rm2.key(),
                                                 buildRow(buildCell(store.metadata(),
                                                                    UTF8Type.instance.decomposeBuffer("/data/output/id"),
-                                                                   AsciiType.instance.decomposeBuffer("pavel"),
+                                                                   AsciiType.instance.decomposeValue("pavel"),
                                                                    System.currentTimeMillis()))));
 
         Mutation.PartitionUpdateCollector rm3 = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey(AsciiType.instance.decomposeBuffer("key3")));
@@ -799,7 +800,7 @@ public class SASIIndexTest
                                                 rm3.key(),
                                                 buildRow(buildCell(store.metadata(),
                                                                    UTF8Type.instance.decomposeBuffer("/data/output/id"),
-                                                                   AsciiType.instance.decomposeBuffer("Aleksey"),
+                                                                   AsciiType.instance.decomposeValue("Aleksey"),
                                                                    System.currentTimeMillis()))));
 
         rm1.build().apply();
@@ -1184,8 +1185,8 @@ public class SASIIndexTest
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey(AsciiType.instance.decomposeBuffer("key1")));
         update(rm, new ArrayList<Cell>()
         {{
-            add(buildCell(age, LongType.instance.decomposeBuffer(26L), System.currentTimeMillis()));
-            add(buildCell(firstName, AsciiType.instance.decomposeBuffer("pavel"), System.currentTimeMillis()));
+            add(buildCell(age, LongType.instance.decomposeValue(26L), System.currentTimeMillis()));
+            add(buildCell(firstName, AsciiType.instance.decomposeValue("pavel"), System.currentTimeMillis()));
         }});
         rm.build().apply();
 
@@ -1214,23 +1215,23 @@ public class SASIIndexTest
         final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("comment");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("ⓈⓅⒺⒸⒾⒶⓁ ⒞⒣⒜⒭⒮ and normal ones"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("ⓈⓅⒺⒸⒾⒶⓁ ⒞⒣⒜⒭⒮ and normal ones"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key2"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("龍馭鬱"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("龍馭鬱"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key3"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("インディアナ"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("インディアナ"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key4"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("レストラン"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("レストラン"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key5"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("ベンジャミン ウエスト"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("ベンジャミン ウエスト"), System.currentTimeMillis());
         rm.build().apply();
 
         if (forceFlush)
@@ -1290,19 +1291,19 @@ public class SASIIndexTest
         final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("comment_suffix_split");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("龍馭鬱"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("龍馭鬱"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key2"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("インディアナ"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("インディアナ"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key3"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("レストラン"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("レストラン"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key4"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("ベンジャミン ウエスト"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("ベンジャミン ウエスト"), System.currentTimeMillis());
         rm.build().apply();
 
         if (forceFlush)
@@ -1356,7 +1357,7 @@ public class SASIIndexTest
             byte[] randomBytes = new byte[ThreadLocalRandom.current().nextInt(OnDiskIndexBuilder.MAX_TERM_SIZE, 5 * OnDiskIndexBuilder.MAX_TERM_SIZE)];
             ThreadLocalRandom.current().nextBytes(randomBytes);
 
-            final ByteBuffer bigValue = UTF8Type.instance.decomposeBuffer(new String(randomBytes));
+            final Value bigValue = UTF8Type.instance.decomposeValue(new String(randomBytes));
 
             Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
             update(rm, comment, bigValue, System.currentTimeMillis());
@@ -1364,12 +1365,12 @@ public class SASIIndexTest
 
             Set<String> rows;
 
-            rows = getIndexed(store, 10, buildExpression(comment, Operator.LIKE_MATCHES, bigValue.duplicate()));
+            rows = getIndexed(store, 10, buildExpression(comment, Operator.LIKE_MATCHES, bigValue.safeBuffer()));
             Assert.assertEquals(0, rows.size());
 
             store.forceBlockingFlush();
 
-            rows = getIndexed(store, 10, buildExpression(comment, Operator.LIKE_MATCHES, bigValue.duplicate()));
+            rows = getIndexed(store, 10, buildExpression(comment, Operator.LIKE_MATCHES, bigValue.safeBuffer()));
             Assert.assertEquals(0, rows.size());
         }
     }
@@ -1439,35 +1440,35 @@ public class SASIIndexTest
         final ByteBuffer fullName = UTF8Type.instance.decomposeBuffer("/output/full-name/");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("美加 八田"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("美加 八田"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key2"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("仁美 瀧澤"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("仁美 瀧澤"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key3"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("晃宏 高須"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("晃宏 高須"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key4"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("弘孝 大竹"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("弘孝 大竹"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key5"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("満枝 榎本"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("満枝 榎本"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key6"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("飛鳥 上原"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("飛鳥 上原"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key7"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("大輝 鎌田"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("大輝 鎌田"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key8"));
-        update(rm, fullName, UTF8Type.instance.decomposeBuffer("利久 寺地"), System.currentTimeMillis());
+        update(rm, fullName, UTF8Type.instance.decomposeValue("利久 寺地"), System.currentTimeMillis());
         rm.build().apply();
 
         store.forceBlockingFlush();
@@ -1495,15 +1496,15 @@ public class SASIIndexTest
         final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("address");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("577 Rogahn Valleys Apt. 178"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("577 Rogahn Valleys Apt. 178"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key2"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("89809 Beverly Course Suite 089"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("89809 Beverly Course Suite 089"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key3"));
-        update(rm, comment, UTF8Type.instance.decomposeBuffer("165 clydie oval apt. 399"), System.currentTimeMillis());
+        update(rm, comment, UTF8Type.instance.decomposeValue("165 clydie oval apt. 399"), System.currentTimeMillis());
         rm.build().apply();
 
         if (forceFlush)
@@ -1572,38 +1573,38 @@ public class SASIIndexTest
         Mutation.PartitionUpdateCollector rm;
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Pavel"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Pavel"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key2"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Jordan"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Jordan"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key3"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Mikhail"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Mikhail"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key4"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Michael"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Michael"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key5"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Johnny"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Johnny"), System.currentTimeMillis());
         rm.build().apply();
 
         // first flush would make interval for name - 'johnny' -> 'pavel'
         store.forceBlockingFlush();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key6"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Jason"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Jason"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key7"));
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Vijay"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Vijay"), System.currentTimeMillis());
         rm.build().apply();
 
         rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key8")); // this name is going to be tokenized
-        update(rm, name, UTF8Type.instance.decomposeBuffer("Jean-Claude"), System.currentTimeMillis());
+        update(rm, name, UTF8Type.instance.decomposeValue("Jean-Claude"), System.currentTimeMillis());
         rm.build().apply();
 
         // this flush is going to produce range - 'jason' -> 'vijay'
@@ -1677,14 +1678,9 @@ public class SASIIndexTest
                 return UTF8Type.instance.getSerializer();
             }
 
-            public int compareCustom(ByteBuffer a, ByteBuffer b)
-            {
-                return UTF8Type.instance.compare(a, b);
-            }
-
             public <V> int compareCustom(V left, V right, DataHandle<V> handle)
             {
-                // TODO
+                return UTF8Type.instance.compareCustom(left, right, handle);
             }
         };
 
@@ -2587,11 +2583,11 @@ public class SASIIndexTest
         List<Cell> cells = new ArrayList<>(3);
 
         if (age >= 0)
-            cells.add(buildCell(ByteBufferUtil.bytes("age"), Int32Type.instance.decomposeBuffer(age), timestamp));
+            cells.add(buildCell(ByteBufferUtil.bytes("age"), Int32Type.instance.decomposeValue(age), timestamp));
         if (firstName != null)
-            cells.add(buildCell(ByteBufferUtil.bytes("first_name"), UTF8Type.instance.decomposeBuffer(firstName), timestamp));
+            cells.add(buildCell(ByteBufferUtil.bytes("first_name"), UTF8Type.instance.decomposeValue(firstName), timestamp));
         if (lastName != null)
-            cells.add(buildCell(ByteBufferUtil.bytes("last_name"), UTF8Type.instance.decomposeBuffer(lastName), timestamp));
+            cells.add(buildCell(ByteBufferUtil.bytes("last_name"), UTF8Type.instance.decomposeValue(lastName), timestamp));
 
         update(rm, cells);
         return rm.build();
@@ -2669,13 +2665,13 @@ public class SASIIndexTest
         return rowBuilder.build();
     }
 
-    private static Cell buildCell(ByteBuffer name, ByteBuffer value, long timestamp)
+    private static Cell buildCell(ByteBuffer name, Value value, long timestamp)
     {
         TableMetadata cfm = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME).metadata();
         return BufferCell.live(cfm.getColumn(name), timestamp, value);
     }
 
-    private static Cell buildCell(TableMetadata cfm, ByteBuffer name, ByteBuffer value, long timestamp)
+    private static Cell buildCell(TableMetadata cfm, ByteBuffer name, Value value, long timestamp)
     {
         ColumnMetadata column = cfm.getColumn(name);
         assert column != null;
@@ -2687,7 +2683,7 @@ public class SASIIndexTest
         return new Expression(name, op, value);
     }
 
-    private static void update(Mutation.PartitionUpdateCollector rm, ByteBuffer name, ByteBuffer value, long timestamp)
+    private static void update(Mutation.PartitionUpdateCollector rm, ByteBuffer name, Value value, long timestamp)
     {
         TableMetadata metadata = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME).metadata();
         rm.add(PartitionUpdate.singleRowUpdate(metadata, rm.key(), buildRow(buildCell(metadata, name, value, timestamp))));

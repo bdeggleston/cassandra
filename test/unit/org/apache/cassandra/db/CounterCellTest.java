@@ -38,6 +38,8 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.serializers.AsciiSerializer;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.*;
 import static org.apache.cassandra.db.context.CounterContext.ContextState;
@@ -101,21 +103,21 @@ public class CounterCellTest
     private Cell createLegacyCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
-        ByteBuffer val = CounterContext.instance().createLocal(count);
+        Value val = CounterContext.instance().createLocal(count);
         return BufferCell.live(cDef, ts, val);
     }
 
     private Cell createCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, CounterId id, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
-        ByteBuffer val = CounterContext.instance().createGlobal(id, ts, count);
+        Value val = CounterContext.instance().createGlobal(id, ts, count);
         return BufferCell.live(cDef, ts, val);
     }
 
     private Cell createCounterCellFromContext(ColumnFamilyStore cfs, ByteBuffer colName, ContextState context, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
-        return BufferCell.live(cDef, ts, context.context);
+        return BufferCell.live(cDef, ts, Values.valueOf(context.context));
     }
 
     private Cell createDeleted(ColumnFamilyStore cfs, ByteBuffer colName, long ts, int localDeletionTime)
@@ -196,18 +198,18 @@ public class CounterCellTest
         // Equal count
         leftCell = createLegacyCounterCell(cfs, col, 2, 2);
         rightCell = createLegacyCounterCell(cfs, col, 2, 1);
-        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value().buffer(), rightCell.value().buffer()));
 
         // Non-equal count
         leftCell = createLegacyCounterCell(cfs, col, 1, 2);
         rightCell = createLegacyCounterCell(cfs, col, 2, 1);
-        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.value().buffer(), rightCell.value().buffer()));
 
         // timestamp
         CounterId id = CounterId.generate();
         leftCell = createCounterCell(cfs, col, id, 2, 2);
         rightCell = createCounterCell(cfs, col, id, 2, 1);
-        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.value().buffer(), rightCell.value().buffer()));
 
         ContextState leftContext;
         ContextState rightContext;
@@ -221,7 +223,7 @@ public class CounterCellTest
 
         leftCell = createCounterCellFromContext(cfs, col, leftContext, 1);
         rightCell = createCounterCellFromContext(cfs, col, rightContext, 1);
-        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value().buffer(), rightCell.value().buffer()));
 
         // greater than: left has superset of nodes (counts equal)
         leftContext = ContextState.allocate(0, 0, 4);
@@ -290,7 +292,7 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
 
         ColumnMetadata emptyColDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val2"));
-        BufferCell emptyCell = BufferCell.live(emptyColDef, 0, ByteBuffer.allocate(0));
+        BufferCell emptyCell = BufferCell.live(emptyColDef, 0, Values.EMPTY);
 
         Row.Builder builder = BTreeRow.unsortedBuilder();
         builder.newRow(Clustering.make(AsciiSerializer.instance.serializeBuffer("test")));

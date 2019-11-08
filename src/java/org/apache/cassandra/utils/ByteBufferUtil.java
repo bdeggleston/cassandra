@@ -38,6 +38,8 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.compress.BufferType;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Utility methods to make ByteBuffers less painful

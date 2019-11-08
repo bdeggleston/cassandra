@@ -22,6 +22,8 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import com.google.common.base.Preconditions;
@@ -50,6 +52,11 @@ public class Values
         {
             return ByteArrayUtil.compare(left.array(), right.array());
         }
+    }
+
+    public static int compare(Value left, Value right)
+    {
+        return compareUnsigned(left, right);
     }
 
     public static void writeWithShortLength(Value value, DataOutputPlus out) throws IOException
@@ -235,6 +242,5 @@ public class Values
         Preconditions.checkArgument(value.isBufferBacked() && subValue.isBufferBacked(), "TODO");
         return ByteBufferUtil.contains(value.buffer(), subValue.buffer());
     }
-
 
 }

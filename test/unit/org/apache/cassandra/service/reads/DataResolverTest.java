@@ -64,6 +64,8 @@ import org.apache.cassandra.service.reads.repair.RepairedDataTracker;
 import org.apache.cassandra.service.reads.repair.RepairedDataVerifier;
 import org.apache.cassandra.service.reads.repair.TestableReadRepair;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.Util.assertClustering;
 import static org.apache.cassandra.Util.assertColumn;
@@ -705,9 +707,14 @@ public class DataResolverTest extends AbstractReadResponseTest
         return ByteBufferUtil.bytes(b);
     }
 
+    private static Value vv(int b)
+    {
+        return Values.valueOf(b);
+    }
+
     private Cell mapCell(int k, int v, long ts)
     {
-        return BufferCell.live(m, ts, bb(v), CellPath.create(bb(k)));
+        return BufferCell.live(m, ts, vv(v), CellPath.create(bb(k)));
     }
 
     @Test

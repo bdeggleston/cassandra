@@ -75,14 +75,9 @@ public class UDHelperTest
             return UTF8Type.instance.getSerializer();
         }
 
-        public int compareCustom(ByteBuffer o1, ByteBuffer o2)
-        {
-            return o1.compareTo(o2);
-        }
-
         public <V> int compareCustom(V left, V right, DataHandle<V> handle)
         {
-            // TODO
+            return handle.compareUnsigned(left, right);
         }
     }
 

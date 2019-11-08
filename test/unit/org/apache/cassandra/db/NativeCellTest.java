@@ -39,6 +39,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.HeapAllocator;
 import org.apache.cassandra.utils.memory.NativeAllocator;
 import org.apache.cassandra.utils.memory.NativePool;
+import org.apache.cassandra.utils.values.Values;
 
 public class NativeCellTest
 {
@@ -132,7 +133,7 @@ public class NativeCellTest
             path = CellPath.create(ByteBuffer.wrap(pathbytes));
         }
 
-        return new BufferCell(col, timestamp, ttl, localDeletionTime, ByteBuffer.wrap(value), path);
+        return new BufferCell(col, timestamp, ttl, localDeletionTime, Values.valueOf(value), path);
     }
 
     private static int expdecay()

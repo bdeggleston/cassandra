@@ -40,6 +40,8 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.util.Arrays.*;
 
@@ -135,33 +137,33 @@ public class CellTest
 
         // Valid cells
         c = fakeColumn("c", Int32Type.instance);
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4)));
+        assertValid(BufferCell.live(c, 0, Values.EMPTY));
+        assertValid(BufferCell.live(c, 0, Values.valueOf(4)));
 
-        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        assertValid(BufferCell.expiring(c, 0, 4, 4, ByteBufferUtil.bytes(4)));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, Values.EMPTY));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, Values.valueOf(4)));
 
         assertValid(BufferCell.tombstone(c, 0, 4));
 
         // Invalid value (we don't all empty values for smallint)
         c = fakeColumn("c", ShortType.instance);
-        assertInvalid(BufferCell.live(c, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+        assertInvalid(BufferCell.live(c, 0, Values.EMPTY));
         // But this should be valid even though the underlying value is an empty BB (catches bug #11618)
         assertValid(BufferCell.tombstone(c, 0, 4));
         // And of course, this should be valid with a proper value
-        assertValid(BufferCell.live(c, 0, bbs(4)));
+        assertValid(BufferCell.live(c, 0, vs(4)));
 
         // Invalid ttl
-        assertInvalid(BufferCell.expiring(c, 0, -4, 4, bbs(4)));
+        assertInvalid(BufferCell.expiring(c, 0, -4, 4, vs(4)));
         // Cells with overflowed localExpirationTime are valid after CASSANDRA-14092
-        assertValid(BufferCell.expiring(c, 0, 4, -5, bbs(4)));
-        assertValid(BufferCell.expiring(c, 0, 4, Cell.NO_DELETION_TIME, bbs(4)));
+        assertValid(BufferCell.expiring(c, 0, 4, -5, vs(4)));
+        assertValid(BufferCell.expiring(c, 0, 4, Cell.NO_DELETION_TIME, vs(4)));
 
         c = fakeColumn("c", MapType.getInstance(Int32Type.instance, Int32Type.instance, true));
         // Valid cell path
-        assertValid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes(4))));
+        assertValid(BufferCell.live(c, 0, Values.valueOf(4), CellPath.create(ByteBufferUtil.bytes(4))));
         // Invalid cell path (int values should be 0 or 4 bytes)
-        assertInvalid(BufferCell.live(c, 0, ByteBufferUtil.bytes(4), CellPath.create(ByteBufferUtil.bytes((long)4))));
+        assertInvalid(BufferCell.live(c, 0, Values.valueOf(4), CellPath.create(ByteBufferUtil.bytes((long)4))));
     }
 
     @Test
@@ -178,23 +180,23 @@ public class CellTest
 
         // Valid cells
         c = fakeColumn("c", udt);
-        assertValid(BufferCell.live(c, 0, bb(1), CellPath.create(bbs(0))));
-        assertValid(BufferCell.live(c, 0, bb("foo"), CellPath.create(bbs(1))));
-        assertValid(BufferCell.expiring(c, 0, 4, 4, bb(1), CellPath.create(bbs(0))));
-        assertValid(BufferCell.expiring(c, 0, 4, 4, bb("foo"), CellPath.create(bbs(1))));
-        assertValid(BufferCell.tombstone(c, 0, 4, CellPath.create(bbs(0))));
+        assertValid(BufferCell.live(c, 0, v(1), CellPath.create(vs(0))));
+        assertValid(BufferCell.live(c, 0, v("foo"), CellPath.create(vs(1))));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, v(1), CellPath.create(vs(0))));
+        assertValid(BufferCell.expiring(c, 0, 4, 4, v("foo"), CellPath.create(vs(1))));
+        assertValid(BufferCell.tombstone(c, 0, 4, CellPath.create(vs(0))));
 
         // Invalid value (text in an int field)
-        assertInvalid(BufferCell.live(c, 0, bb("foo"), CellPath.create(bbs(0))));
+        assertInvalid(BufferCell.live(c, 0, v("foo"), CellPath.create(vs(0))));
 
         // Invalid ttl
-        assertInvalid(BufferCell.expiring(c, 0, -4, 4, bb(1), CellPath.create(bbs(0))));
+        assertInvalid(BufferCell.expiring(c, 0, -4, 4, v(1), CellPath.create(vs(0))));
         // Cells with overflowed localExpirationTime are valid after CASSANDRA-14092
-        assertValid(BufferCell.expiring(c, 0, 4, -5, bb(1), CellPath.create(bbs(0))));
-        assertValid((BufferCell.expiring(c, 0, 4, Cell.NO_DELETION_TIME, bb(1), CellPath.create(bbs(0)))));
+        assertValid(BufferCell.expiring(c, 0, 4, -5, v(1), CellPath.create(vs(0))));
+        assertValid((BufferCell.expiring(c, 0, 4, Cell.NO_DELETION_TIME, v(1), CellPath.create(vs(0)))));
 
         // Invalid cell path (int values should be 0 or 2 bytes)
-        assertInvalid(BufferCell.live(c, 0, bb(1), CellPath.create(ByteBufferUtil.bytes((long)4))));
+        assertInvalid(BufferCell.live(c, 0, v(1), CellPath.create(ByteBufferUtil.bytes((long)4))));
     }
 
     @Test
@@ -209,7 +211,7 @@ public class CellTest
                                     false);
 
         ColumnMetadata c = fakeColumn("c", udt);
-        ByteBuffer val = udt(bb(1), bb("foo"));
+        Value val = udt(bb(1), bb("foo"));
 
         // Valid cells
         assertValid(BufferCell.live(c, 0, val));
@@ -324,14 +326,19 @@ public class CellTest
         Assert.assertNull(purged);
     }
 
+    private static Value v(int i)
+    {
+        return Values.valueOf(i);
+    }
+
     private static ByteBuffer bb(int i)
     {
         return ByteBufferUtil.bytes(i);
     }
 
-    private static ByteBuffer bbs(int s)
+    private static Value vs(int s)
     {
-        return ByteBufferUtil.bytes((short) s);
+        return Values.valueOf((short) s);
     }
 
     private static ByteBuffer bb(String str)
@@ -339,9 +346,14 @@ public class CellTest
         return UTF8Type.instance.decomposeBuffer(str);
     }
 
-    private static ByteBuffer udt(ByteBuffer...buffers)
+    private static Value v(String str)
     {
-        return UserType.buildValue(buffers);
+        return UTF8Type.instance.decomposeValue(str);
+    }
+
+    private static Value udt(ByteBuffer...buffers)
+    {
+        return Values.valueOf(UserType.buildValue(buffers));
     }
 
     private static FieldIdentifier field(String field)
@@ -357,15 +369,15 @@ public class CellTest
         long ts1 = now1*1000000L;
 
 
-        Cell r1m1 = BufferCell.live(m, ts1, bb(1), CellPath.create(bb(1)));
-        Cell r1m2 = BufferCell.live(m, ts1, bb(2), CellPath.create(bb(2)));
+        Cell r1m1 = BufferCell.live(m, ts1, v(1), CellPath.create(v(1)));
+        Cell r1m2 = BufferCell.live(m, ts1, v(2), CellPath.create(v(2)));
         List<Cell> cells1 = Lists.newArrayList(r1m1, r1m2);
 
         int now2 = now1 + 1;
         long ts2 = now2*1000000L;
-        Cell r2m2 = BufferCell.live(m, ts2, bb(1), CellPath.create(bb(2)));
-        Cell r2m3 = BufferCell.live(m, ts2, bb(2), CellPath.create(bb(3)));
-        Cell r2m4 = BufferCell.live(m, ts2, bb(3), CellPath.create(bb(4)));
+        Cell r2m2 = BufferCell.live(m, ts2, v(1), CellPath.create(v(2)));
+        Cell r2m3 = BufferCell.live(m, ts2, v(2), CellPath.create(v(3)));
+        Cell r2m4 = BufferCell.live(m, ts2, v(3), CellPath.create(v(4)));
         List<Cell> cells2 = Lists.newArrayList(r2m2, r2m3, r2m4);
 
         RowBuilder builder = new RowBuilder();
@@ -394,7 +406,7 @@ public class CellTest
     private Cell regular(TableMetadata cfm, String columnName, String value, long timestamp)
     {
         ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
-        return BufferCell.live(cdef, timestamp, ByteBufferUtil.bytes(value));
+        return BufferCell.live(cdef, timestamp, Values.valueOf(value));
     }
 
     private Cell expiring(TableMetadata cfm, String columnName, String value, long timestamp, int localExpirationTime)
@@ -405,7 +417,7 @@ public class CellTest
     private Cell expiring(TableMetadata cfm, String columnName, String value, long timestamp, int ttl, int localExpirationTime)
     {
         ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
-        return new BufferCell(cdef, timestamp, ttl, localExpirationTime, ByteBufferUtil.bytes(value), null);
+        return new BufferCell(cdef, timestamp, ttl, localExpirationTime, Values.valueOf(value), null);
     }
 
     private Cell deleted(TableMetadata cfm, String columnName, int localDeletionTime, long timestamp)

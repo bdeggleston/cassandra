@@ -45,6 +45,8 @@ import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class RowsTest
 {
@@ -75,6 +77,11 @@ public class RowsTest
     private static final ByteBuffer BB2 = ByteBufferUtil.bytes(2);
     private static final ByteBuffer BB3 = ByteBufferUtil.bytes(3);
     private static final ByteBuffer BB4 = ByteBufferUtil.bytes(4);
+
+    private static final Value V1 = Values.valueOf(1);
+    private static final Value V2 = Values.valueOf(2);
+    private static final Value V3 = Values.valueOf(3);
+    private static final Value V4 = Values.valueOf(4);
 
     private static class MergedPair<T>
     {
@@ -208,7 +215,7 @@ public class RowsTest
         return now * 1000000L;
     }
 
-    private static Row.Builder createBuilder(Clustering c, int now, ByteBuffer vVal, ByteBuffer mKey, ByteBuffer mVal)
+    private static Row.Builder createBuilder(Clustering c, int now, Value vVal, ByteBuffer mKey, Value mVal)
     {
         long ts = secondToTs(now);
         Row.Builder builder = BTreeRow.unsortedBuilder();
@@ -238,9 +245,9 @@ public class RowsTest
         originalBuilder.addPrimaryKeyLivenessInfo(liveness);
         DeletionTime complexDeletion = new DeletionTime(ts-1, now);
         originalBuilder.addComplexDeletion(m, complexDeletion);
-        List<Cell> expectedCells = Lists.newArrayList(BufferCell.live(v, secondToTs(now), BB1),
-                                                      BufferCell.live(m, secondToTs(now), BB1, CellPath.create(BB1)),
-                                                      BufferCell.live(m, secondToTs(now), BB2, CellPath.create(BB2)));
+        List<Cell> expectedCells = Lists.newArrayList(BufferCell.live(v, secondToTs(now), V1),
+                                                      BufferCell.live(m, secondToTs(now), V1, CellPath.create(V1)),
+                                                      BufferCell.live(m, secondToTs(now), V2, CellPath.create(V2)));
         expectedCells.forEach(originalBuilder::addCell);
         // We need to use ts-1 so the deletion doesn't shadow what we've created
         Row.Deletion rowDeletion = new Row.Deletion(new DeletionTime(ts-1, now), false);
@@ -267,9 +274,9 @@ public class RowsTest
         builder.addPrimaryKeyLivenessInfo(liveness);
         DeletionTime complexDeletion = new DeletionTime(ts-1, now);
         builder.addComplexDeletion(m, complexDeletion);
-        List<Cell> expectedCells = Lists.newArrayList(BufferCell.live(v, ts, BB1),
-                                                      BufferCell.live(m, ts, BB1, CellPath.create(BB1)),
-                                                      BufferCell.live(m, ts, BB2, CellPath.create(BB2)));
+        List<Cell> expectedCells = Lists.newArrayList(BufferCell.live(v, ts, V1),
+                                                      BufferCell.live(m, ts, V1, CellPath.create(V1)),
+                                                      BufferCell.live(m, ts, V2, CellPath.create(V2)));
         expectedCells.forEach(builder::addCell);
         // We need to use ts-1 so the deletion doesn't shadow what we've created
         Row.Deletion rowDeletion = new Row.Deletion(new DeletionTime(ts-1, now), false);
@@ -306,9 +313,9 @@ public class RowsTest
         DeletionTime r1ComplexDeletion = new DeletionTime(ts1-1, now1);
         r1Builder.addComplexDeletion(m, r1ComplexDeletion);
 
-        Cell r1v = BufferCell.live(v, ts1, BB1);
-        Cell r1m1 = BufferCell.live(m, ts1, BB1, CellPath.create(BB1));
-        Cell r1m2 = BufferCell.live(m, ts1, BB2, CellPath.create(BB2));
+        Cell r1v = BufferCell.live(v, ts1, V1);
+        Cell r1m1 = BufferCell.live(m, ts1, V1, CellPath.create(V1));
+        Cell r1m2 = BufferCell.live(m, ts1, V2, CellPath.create(V2));
         List<Cell> r1ExpectedCells = Lists.newArrayList(r1v, r1m1, r1m2);
 
         r1ExpectedCells.forEach(r1Builder::addCell);
@@ -319,10 +326,10 @@ public class RowsTest
         r2Builder.newRow(c1);
         LivenessInfo r2Liveness = LivenessInfo.create(ts2, now2);
         r2Builder.addPrimaryKeyLivenessInfo(r2Liveness);
-        Cell r2v = BufferCell.live(v, ts2, BB2);
-        Cell r2m2 = BufferCell.live(m, ts2, BB1, CellPath.create(BB2));
-        Cell r2m3 = BufferCell.live(m, ts2, BB2, CellPath.create(BB3));
-        Cell r2m4 = BufferCell.live(m, ts2, BB3, CellPath.create(BB4));
+        Cell r2v = BufferCell.live(v, ts2, V2);
+        Cell r2m2 = BufferCell.live(m, ts2, V1, CellPath.create(V2));
+        Cell r2m3 = BufferCell.live(m, ts2, V2, CellPath.create(V3));
+        Cell r2m4 = BufferCell.live(m, ts2, V3, CellPath.create(V4));
         List<Cell> r2ExpectedCells = Lists.newArrayList(r2v, r2m2, r2m3, r2m4);
 
         r2ExpectedCells.forEach(r2Builder::addCell);
@@ -389,10 +396,10 @@ public class RowsTest
         r2Builder.addPrimaryKeyLivenessInfo(r2Liveness);
         DeletionTime r2ComplexDeletion = new DeletionTime(ts2-1, now2);
         r2Builder.addComplexDeletion(m, r2ComplexDeletion);
-        Cell r2v = BufferCell.live(v, ts2, BB2);
-        Cell r2m2 = BufferCell.live(m, ts2, BB1, CellPath.create(BB2));
-        Cell r2m3 = BufferCell.live(m, ts2, BB2, CellPath.create(BB3));
-        Cell r2m4 = BufferCell.live(m, ts2, BB3, CellPath.create(BB4));
+        Cell r2v = BufferCell.live(v, ts2, V2);
+        Cell r2m2 = BufferCell.live(m, ts2, V1, CellPath.create(V2));
+        Cell r2m3 = BufferCell.live(m, ts2, V2, CellPath.create(V3));
+        Cell r2m4 = BufferCell.live(m, ts2, V3, CellPath.create(V4));
         List<Cell> r2ExpectedCells = Lists.newArrayList(r2v, r2m2, r2m3, r2m4);
 
         r2ExpectedCells.forEach(r2Builder::addCell);
@@ -443,10 +450,10 @@ public class RowsTest
         r2Builder.addPrimaryKeyLivenessInfo(r2Liveness);
         DeletionTime r2ComplexDeletion = new DeletionTime(ts2-1, now2);
         r2Builder.addComplexDeletion(m, r2ComplexDeletion);
-        Cell r2v = BufferCell.live(v, ts2, BB2);
-        Cell r2m2 = BufferCell.live(m, ts2, BB1, CellPath.create(BB2));
-        Cell r2m3 = BufferCell.live(m, ts2, BB2, CellPath.create(BB3));
-        Cell r2m4 = BufferCell.live(m, ts2, BB3, CellPath.create(BB4));
+        Cell r2v = BufferCell.live(v, ts2, V2);
+        Cell r2m2 = BufferCell.live(m, ts2, V1, CellPath.create(V2));
+        Cell r2m3 = BufferCell.live(m, ts2, V2, CellPath.create(V3));
+        Cell r2m4 = BufferCell.live(m, ts2, V3, CellPath.create(V4));
         List<Cell> r2ExpectedCells = Lists.newArrayList(r2v, r2m2, r2m3, r2m4);
 
         r2ExpectedCells.forEach(r2Builder::addCell);
@@ -479,13 +486,13 @@ public class RowsTest
     public void merge()
     {
         int now1 = FBUtilities.nowInSeconds();
-        Row.Builder existingBuilder = createBuilder(c1, now1, BB1, BB1, BB1);
+        Row.Builder existingBuilder = createBuilder(c1, now1, V1, BB1, V1);
 
         int now2 = now1 + 1;
         long ts2 = secondToTs(now2);
 
-        Cell expectedVCell = BufferCell.live(v, ts2, BB2);
-        Cell expectedMCell = BufferCell.live(m, ts2, BB2, CellPath.create(BB1));
+        Cell expectedVCell = BufferCell.live(v, ts2, V2);
+        Cell expectedMCell = BufferCell.live(m, ts2, V2, CellPath.create(V1));
         DeletionTime expectedComplexDeletionTime = new DeletionTime(ts2 - 1, now2);
 
         Row.Builder updateBuilder = createBuilder(c1, now2, null, null, null);
@@ -512,7 +519,7 @@ public class RowsTest
         Row.Builder existingBuilder = createBuilder(c1, now1, null, null, null);
 
         int now2 = now1 + 1;
-        Row.Builder updateBuilder = createBuilder(c1, now2, null, BB1, BB1);
+        Row.Builder updateBuilder = createBuilder(c1, now2, null, BB1, V1);
         int now3 = now2 + 1;
         Row.Deletion expectedDeletion = new Row.Deletion(new DeletionTime(secondToTs(now3), now3), false);
         updateBuilder.addRowDeletion(expectedDeletion);
@@ -536,7 +543,7 @@ public class RowsTest
         Row.Builder existingBuilder = createBuilder(c1, now1, null, null, null);
 
         int now2 = now1 + 1;
-        Row.Builder updateBuilder = createBuilder(c1, now2, BB1, BB1, BB1);
+        Row.Builder updateBuilder = createBuilder(c1, now2, V1, BB1, V1);
         int now3 = now2 + 1;
         Row.Deletion expectedDeletion = new Row.Deletion(new DeletionTime(secondToTs(now3), now3), false);
         updateBuilder.addRowDeletion(expectedDeletion);
@@ -561,7 +568,7 @@ public class RowsTest
     private static Cell liveCell(ColumnMetadata name, int path)
     {
         CellPath cp = path < 0 ? null : CellPath.create(ByteBufferUtil.bytes(path));
-        return new BufferCell(name, 0L, Cell.NO_TTL, Cell.NO_DELETION_TIME, ByteBuffer.allocate(1), cp);
+        return new BufferCell(name, 0L, Cell.NO_TTL, Cell.NO_DELETION_TIME, Values.valueOf(ByteBuffer.allocate(1)), cp);
     }
 
     // Assert that the cells generated by iterating iterable are the cell of cells (in the same order

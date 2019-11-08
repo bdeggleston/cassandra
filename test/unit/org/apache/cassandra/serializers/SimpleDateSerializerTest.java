@@ -19,6 +19,8 @@
 package org.apache.cassandra.serializers;
 
 import org.apache.cassandra.db.marshal.SimpleDateType;
+import org.apache.cassandra.utils.values.Value;
+
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -63,7 +65,7 @@ public class SimpleDateSerializerTest
             try
             {
                 Integer days = SimpleDateSerializer.dateStringToDays(date);
-                ByteBuffer value = SimpleDateSerializer.instance.serialize(days);
+                Value value = SimpleDateSerializer.instance.serializeValue(days);
                 Integer deserialized = SimpleDateSerializer.instance.deserialize(value);
 
                 String toStringValue = SimpleDateSerializer.instance.toString(deserialized);

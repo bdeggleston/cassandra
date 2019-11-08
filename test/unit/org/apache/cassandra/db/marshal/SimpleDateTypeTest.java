@@ -23,50 +23,51 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.apache.cassandra.serializers.SimpleDateSerializer;
+import org.apache.cassandra.utils.values.Value;
 
 public class SimpleDateTypeTest
 {
     @Test public void TestComparison()
     {
-        ByteBuffer d1 = SimpleDateType.instance.fromString("1970-01-05");
-        ByteBuffer d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(4));
+        Value d1 = SimpleDateType.instance.valueFromString("1970-01-05");
+        Value d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(4));
         assert SimpleDateType.instance.compare(d1, d2) == 0 : "Failed == comparison";
             String.format("Failed == comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1970-01-05");
-        d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(10));
+        d1 = SimpleDateType.instance.valueFromString("1970-01-05");
+        d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(10));
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed comparison of %s and %s, expected <",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1970-01-05"); // 4
-        d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(-10));
+        d1 = SimpleDateType.instance.valueFromString("1970-01-05"); // 4
+        d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(-10));
         assert SimpleDateType.instance.compare(d1, d2) > 0 :
             String.format("Failed comparison of %s and %s, expected > 0",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1");
-        d2 = SimpleDateType.instance.fromString("1000");
+        d1 = SimpleDateType.instance.valueFromString("1");
+        d2 = SimpleDateType.instance.valueFromString("1000");
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
                 String.format("Failed < comparison with string inputs %s and %s",
                         SimpleDateSerializer.instance.deserialize(d1),
                         SimpleDateSerializer.instance.deserialize(d2));
 
         Integer intLimit = Integer.MAX_VALUE;
-        d1 = SimpleDateType.instance.fromString("0");
-        d2 = SimpleDateType.instance.fromString(intLimit.toString());
+        d1 = SimpleDateType.instance.valueFromString("0");
+        d2 = SimpleDateType.instance.valueFromString(intLimit.toString());
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
                 String.format("Failed < comparison with string inputs at integer bounds %s and %s",
                         SimpleDateSerializer.instance.deserialize(d1),
                         SimpleDateSerializer.instance.deserialize(d2));
 
         Long overLimit = (long)(Integer.MAX_VALUE);
-        d1 = SimpleDateType.instance.fromString("0");
-        d2 = SimpleDateType.instance.fromString(overLimit.toString());
+        d1 = SimpleDateType.instance.valueFromString("0");
+        d2 = SimpleDateType.instance.valueFromString(overLimit.toString());
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
                 String.format("Failed < comparison with string inputs at integer bounds %s and %s",
                         SimpleDateSerializer.instance.deserialize(d1),
@@ -74,50 +75,50 @@ public class SimpleDateTypeTest
 
         Long i1 = 0L;
         Long i2 = (long)Math.pow(2,32) - 1;
-        d1 = SimpleDateType.instance.fromString(i1.toString());
-        d2 = SimpleDateType.instance.fromString(i2.toString());
+        d1 = SimpleDateType.instance.valueFromString(i1.toString());
+        d2 = SimpleDateType.instance.valueFromString(i2.toString());
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed limits comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("256");
-        d2 = SimpleDateType.instance.fromString("512");
+        d1 = SimpleDateType.instance.valueFromString("256");
+        d2 = SimpleDateType.instance.valueFromString("512");
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateSerializer.instance.serialize(makeUnsigned(0));
-        d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(Integer.MAX_VALUE));
+        d1 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(0));
+        d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(Integer.MAX_VALUE));
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed neg/pos comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("-10000-10-10");
-        d2 = SimpleDateType.instance.fromString("10000-10-10");
+        d1 = SimpleDateType.instance.valueFromString("-10000-10-10");
+        d2 = SimpleDateType.instance.valueFromString("10000-10-10");
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed neg/pos string comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1969-12-31");
-        d2 = SimpleDateType.instance.fromString("1970-1-1");
+        d1 = SimpleDateType.instance.valueFromString("1969-12-31");
+        d2 = SimpleDateType.instance.valueFromString("1970-1-1");
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed pre/post epoch comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1970-1-1");
-        d2 = SimpleDateType.instance.fromString("1970-1-1");
+        d1 = SimpleDateType.instance.valueFromString("1970-1-1");
+        d2 = SimpleDateType.instance.valueFromString("1970-1-1");
         assert SimpleDateType.instance.compare(d1, d2) == 0 :
             String.format("Failed == date from string comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
                 SimpleDateSerializer.instance.deserialize(d2));
 
-        d1 = SimpleDateType.instance.fromString("1970-1-1");
-        d2 = SimpleDateType.instance.fromString("1970-1-2");
+        d1 = SimpleDateType.instance.valueFromString("1970-1-1");
+        d2 = SimpleDateType.instance.valueFromString("1970-1-2");
         assert SimpleDateType.instance.compare(d1, d2) < 0 :
             String.format("Failed post epoch string comparison with %s and %s",
                 SimpleDateSerializer.instance.deserialize(d1),
@@ -126,8 +127,8 @@ public class SimpleDateTypeTest
         for (int i = 0; i < 32; ++i)
         {
             int offset = (int)Math.pow(2,i);
-            d1 = SimpleDateSerializer.instance.serialize(makeUnsigned(0 - offset));
-            d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(offset));
+            d1 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(0 - offset));
+            d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(offset));
             assert SimpleDateType.instance.compare(d1, d2) < 0 :
                 String.format("Failed < comparison of %s and %s",
                     SimpleDateSerializer.instance.deserialize(d1),
@@ -137,8 +138,8 @@ public class SimpleDateTypeTest
         for (int i = 0; i < 32; ++i)
         {
             int offset = (int)Math.pow(2,i);
-            d1 = SimpleDateSerializer.instance.serialize(makeUnsigned(offset));
-            d2 = SimpleDateSerializer.instance.serialize(makeUnsigned(0 - offset));
+            d1 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(offset));
+            d2 = SimpleDateSerializer.instance.serializeValue(makeUnsigned(0 - offset));
             assert SimpleDateType.instance.compare(d1, d2) > 0 :
                 String.format("Failed > comparison of %s and %s",
                     SimpleDateSerializer.instance.deserialize(d1),

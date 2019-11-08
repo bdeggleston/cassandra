@@ -35,6 +35,8 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.metrics.ClearableHistogram;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
+
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -261,7 +263,7 @@ public class KeyspaceTest extends CQLTester
                     Row row = rowIterator.next();
                     Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                     assertEquals(
-                            String.format("Expected %s, but got %s", ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(expected)), ByteBufferUtil.bytesToHex(cell.value())),
+                            String.format("Expected %s, but got %s", ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(expected)), Values.toHex(cell.value())),
                             ByteBufferUtil.bytes(expected), cell.value());
                 }
                 assertFalse(rowIterator.hasNext());

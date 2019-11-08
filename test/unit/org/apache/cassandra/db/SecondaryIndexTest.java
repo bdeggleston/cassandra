@@ -44,6 +44,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.Util.throwAssert;
 import static org.junit.Assert.assertEquals;
@@ -136,7 +137,7 @@ public class SecondaryIndexTest
             for (Row row : partition)
             {
                 ++rowCount;
-                assert ByteBufferUtil.toLong(Util.cell(cfs, row, "birthdate").value()) > 1L;
+                assert Util.cell(cfs, row, "birthdate").value().getLong(0) > 1L;
             }
         }
         assertEquals(2, rowCount);

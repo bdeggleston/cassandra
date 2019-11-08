@@ -305,6 +305,15 @@ public class CounterContext
         return relationship;
     }
 
+    public Relationship diff(Value left, Value right)
+    {
+        return diff(left.buffer(), right.buffer());
+    }
+
+    public Value merge(ByteBuffer left, ByteBuffer right)
+    {
+        return merge(Values.valueOf(left), Values.valueOf(right));
+    }
     /**
      * Return a context w/ an aggregated count for each counter id.
      *
@@ -596,10 +605,20 @@ public class CounterContext
         return total;
     }
 
+    public long total(ByteBuffer context)
+    {
+        return total(Values.valueOf(context));
+    }
+
     public boolean shouldClearLocal(Value context)
     {
         // #elt being negative means we have to clean local shards.
         return context.getShort(0) < 0;
+    }
+
+    public boolean shouldClearLocal(ByteBuffer context)
+    {
+        return shouldClearLocal(Values.valueOf(context));
     }
 
     /**
@@ -660,6 +679,11 @@ public class CounterContext
         return Values.valueOf(marked);
     }
 
+    public Value markLocalToBeCleared(ByteBuffer context)
+    {
+        return markLocalToBeCleared(Values.valueOf(context));
+    }
+
     /**
      * Remove all the local of a context (but keep global).
      *
@@ -700,6 +724,11 @@ public class CounterContext
                                  contextBuffer.remaining() - origHeaderLength);
 
         return Values.valueOf(cleared);
+    }
+
+    public Value clearAllLocal(ByteBuffer context)
+    {
+        return clearAllLocal(Values.valueOf(context));
     }
 
     public void validateContext(Value context) throws MarshalException
@@ -754,6 +783,12 @@ public class CounterContext
         return ClockAndCount.create(clock, count);
     }
 
+    @VisibleForTesting
+    public ClockAndCount getClockAndCountOf(ByteBuffer context, CounterId id)
+    {
+        return getClockAndCountOf(Values.valueOf(context), id);
+    }
+
     /**
      * Finds the position of a shard with the given id within the context (via binary search).
      */
@@ -780,6 +815,12 @@ public class CounterContext
         }
 
         return -1; // position not found
+    }
+
+    @VisibleForTesting
+    public int findPositionOf(ByteBuffer context, CounterId id)
+    {
+        return findPositionOf(Values.valueOf(context), id);
     }
 
     /**

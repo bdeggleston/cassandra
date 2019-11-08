@@ -41,6 +41,7 @@ import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.FastByteOperations;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 import org.github.jamm.Unmetered;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -174,6 +175,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     /** get a byte representation of the given string. */
     public abstract ByteBuffer fromString(String source) throws MarshalException;
+
+    public Value valueFromString(String source) throws MarshalException
+    {
+        // FIXME: convert to Value or use handle
+        return Values.valueOf(fromString(source));
+    }
 
     /** Given a parsed JSON string, return a byte representation of the object.
      * @param parsed the result of parsing a json string

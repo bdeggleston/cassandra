@@ -30,9 +30,13 @@ import com.google.common.base.Preconditions;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.values.Value;
 
 public interface DataHandle<V>
 {
+    public static final DataHandle<ByteBuffer> BUFFER = ByteBufferHandle.instance;
+    public static final DataHandle<Value> VALUE = ValueHandle.instance;
+
     int size(V value);
 
     default int sizeFromOffset(V value, int offset)

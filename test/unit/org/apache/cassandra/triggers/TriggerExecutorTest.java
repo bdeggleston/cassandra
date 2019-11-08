@@ -36,6 +36,7 @@ import org.apache.cassandra.schema.TriggerMetadata;
 import org.apache.cassandra.schema.Triggers;
 import org.apache.cassandra.triggers.TriggerExecutorTest.SameKeySameCfTrigger;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 import static org.junit.Assert.assertEquals;
@@ -290,9 +291,9 @@ public class TriggerExecutorTest
         builder.newRow(Clustering.EMPTY);
         long ts = FBUtilities.timestampMicros();
         if (columnValue1 != null)
-            builder.addCell(BufferCell.live(metadata.getColumn(bytes("c1")), ts, bytes(columnValue1)));
+            builder.addCell(BufferCell.live(metadata.getColumn(bytes("c1")), ts, Values.valueOf(columnValue1)));
         if (columnValue2 != null)
-            builder.addCell(BufferCell.live(metadata.getColumn(bytes("c2")), ts, bytes(columnValue2)));
+            builder.addCell(BufferCell.live(metadata.getColumn(bytes("c2")), ts, Values.valueOf(columnValue2)));
 
         return PartitionUpdate.singleRowUpdate(metadata, Util.dk(key), builder.build());
     }

@@ -31,6 +31,7 @@ import org.apache.cassandra.db.ClockAndCount;
 import org.apache.cassandra.db.context.CounterContext.Relationship;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -263,7 +264,7 @@ public class CounterContextTest
         right.writeRemote(CounterId.fromInt(5), 5L, 5L);
         right.writeLocal(CounterId.getLocalId(), 2L, 9L);
 
-        ByteBuffer merged = cc.merge(left.context, right.context);
+        Value merged = cc.merge(left.context, right.context);
         int hd = 4;
 
         assertEquals(hd + 5 * stepLength, merged.remaining());
@@ -391,8 +392,8 @@ public class CounterContextTest
     public void testClearLocal()
     {
         ContextState state;
-        ByteBuffer marked;
-        ByteBuffer cleared;
+        Value marked;
+        Value cleared;
 
         // mark/clear for remote-only contexts is a no-op
         state = ContextState.allocate(0, 0, 1);
@@ -551,10 +552,10 @@ public class CounterContextTest
          * a context with just one 'update' shard - a local shard with a hardcoded value of CounterContext.UPDATE_CLOCK_ID
          */
 
-        ByteBuffer updateContext = CounterContext.instance().createUpdate(10L);
+        Value updateContext = CounterContext.instance().createUpdate(10L);
 
         assertEquals(ClockAndCount.create(1L, 10L), cc.getClockAndCountOf(updateContext, CounterContext.UPDATE_CLOCK_ID));
-        assertTrue(cc.isUpdate(updateContext));
+        assertTrue(cc.isUpdate(updateContext.buffer()));
 
 
         /*

@@ -60,6 +60,7 @@ import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.Refs;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.index.internal.CassandraIndex.getFunctions;
 import static org.apache.cassandra.index.internal.CassandraIndex.indexCfsMetadata;
@@ -261,9 +262,9 @@ public class CustomCassandraIndex implements Index
         return builder;
     }
 
-    protected ByteBuffer getIndexedValue(ByteBuffer partitionKey,
+    protected Value getIndexedValue(ByteBuffer partitionKey,
                                       Clustering clustering,
-                                      CellPath path, ByteBuffer cellValue)
+                                      CellPath path, Value cellValue)
     {
         return cellValue;
     }
@@ -273,7 +274,7 @@ public class CustomCassandraIndex implements Index
         throw new UnsupportedOperationException("KEYS indexes do not use a specialized index entry format");
     }
 
-    public boolean isStale(Row row, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row row, Value indexValue, int nowInSec)
     {
         if (row == null)
             return true;
@@ -560,7 +561,12 @@ public class CustomCassandraIndex implements Index
                                                            FBUtilities.MAX_UNSIGNED_SHORT));
     }
 
-    private ByteBuffer getIndexedValue(ByteBuffer rowKey,
+    private void validateIndexedValue(Value value)
+    {
+        validateIndexedValue(value.buffer());
+    }
+
+    private Value getIndexedValue(ByteBuffer rowKey,
                                        Clustering clustering,
                                        Cell cell)
     {
@@ -583,6 +589,11 @@ public class CustomCassandraIndex implements Index
     private DecoratedKey getIndexKeyFor(ByteBuffer value)
     {
         return indexCfs.decorateKey(value);
+    }
+
+    private DecoratedKey getIndexKeyFor(Value value)
+    {
+        return getIndexKeyFor(value.buffer());
     }
 
     private PartitionUpdate partitionUpdate(DecoratedKey valueKey, Row row)

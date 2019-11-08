@@ -36,6 +36,7 @@ import org.apache.cassandra.db.transform.Transformation;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 public class TransformerTest
 {
@@ -46,7 +47,7 @@ public class TransformerTest
 
     static final TableMetadata metadata = metadata();
     static final DecoratedKey partitionKey = new BufferDecoratedKey(new Murmur3Partitioner.LongToken(0L), ByteBufferUtil.EMPTY_BYTE_BUFFER);
-    static final Row staticRow = BTreeRow.singleCellRow(Clustering.STATIC_CLUSTERING, new BufferCell(metadata.regularAndStaticColumns().columns(true).getSimple(0), 0L, 0, 0, ByteBufferUtil.bytes(-1), null));
+    static final Row staticRow = BTreeRow.singleCellRow(Clustering.STATIC_CLUSTERING, new BufferCell(metadata.regularAndStaticColumns().columns(true).getSimple(0), 0L, 0, 0, Values.valueOf(-1), null));
 
     static TableMetadata metadata()
     {
@@ -150,7 +151,7 @@ public class TransformerTest
     private static Row row(int i)
     {
         return BTreeRow.singleCellRow(Util.clustering(metadata.comparator, i),
-                                      new BufferCell(metadata.regularAndStaticColumns().columns(false).getSimple(0), 1L, BufferCell.NO_TTL, BufferCell.NO_DELETION_TIME, ByteBufferUtil.bytes(i), null));
+                                      new BufferCell(metadata.regularAndStaticColumns().columns(false).getSimple(0), 1L, BufferCell.NO_TTL, BufferCell.NO_DELETION_TIME, Values.valueOf(i), null));
     }
 
     // Transformations that check mock data ranges

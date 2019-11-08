@@ -56,6 +56,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FilterFactory;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 import static org.junit.Assert.assertEquals;
@@ -586,7 +587,7 @@ public class SSTableReaderTest
                 public void run()
                 {
                     Row row = Util.getOnlyRowUnfiltered(Util.cmd(store, key).build());
-                    assertEquals(0, ByteBufferUtil.compare(String.format("%3d", index).getBytes(), row.cells().iterator().next().value()));
+                    assertEquals(0, Values.compare(Values.valueOf(String.format("%3d", index).getBytes()), row.cells().iterator().next().value()));
                 }
             }));
 

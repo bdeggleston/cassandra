@@ -63,6 +63,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.btree.BTree;
+import org.apache.cassandra.utils.values.Values;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
@@ -125,7 +126,7 @@ public class RowIndexEntryTest extends CQLTester
 
     private static DecoratedKey partitionKey(long l)
     {
-        ByteBuffer key = LongSerializer.instance.serialize(l);
+        ByteBuffer key = LongSerializer.instance.serializeBuffer(l);
         Token token = Murmur3Partitioner.instance.getToken(key);
         return new BufferDecoratedKey(token, key);
     }
@@ -231,7 +232,7 @@ public class RowIndexEntryTest extends CQLTester
             BTree.Builder<ColumnData> builder = BTree.builder(ColumnData.comparator);
             builder.add(BufferCell.live(metadata.regularAndStaticColumns().iterator().next(),
                                         1L,
-                                        ByteBuffer.allocate(0)));
+                                        Values.EMPTY));
             return BTreeRow.create(clustering, primaryKeyLivenessInfo, deletion, builder.build());
         }
     }

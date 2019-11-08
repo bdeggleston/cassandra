@@ -93,7 +93,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
             ByteBuffer key = ByteBufferUtil.bytes(String.format(keyFormat, i));
             expectedKeys.put(cfs.metadata().partitioner.decorateKey(key),
                              BTreeRow.singleCellRow(Clustering.EMPTY,
-                                                    BufferCell.live(column, timestamp, Int32Type.instance.decomposeBuffer(i))));
+                                                    BufferCell.live(column, timestamp, Int32Type.instance.decomposeValue(i))));
         }
 
         indexWriter.begin();

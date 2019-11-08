@@ -46,6 +46,7 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.btree.BTree;
+import org.apache.cassandra.utils.values.Values;
 
 public class RowFilterTest
 {
@@ -81,7 +82,7 @@ public class RowFilterTest
                 return BTreeRow.create(Clustering.STATIC_CLUSTERING,
                                        LivenessInfo.EMPTY,
                                        Row.Deletion.LIVE,
-                                       BTree.singleton(new BufferCell(s, 1, Cell.NO_TTL, Cell.NO_DELETION_TIME, one, null)));
+                                       BTree.singleton(new BufferCell(s, 1, Cell.NO_TTL, Cell.NO_DELETION_TIME, Values.valueOf(one), null)));
             }
             public void close()
             {
@@ -115,7 +116,7 @@ public class RowFilterTest
                 return BTreeRow.create(Clustering.EMPTY,
                                        LivenessInfo.EMPTY,
                                        Row.Deletion.LIVE,
-                                       BTree.singleton(new BufferCell(r, 1, Cell.NO_TTL, Cell.NO_DELETION_TIME, one, null)));
+                                       BTree.singleton(new BufferCell(r, 1, Cell.NO_TTL, Cell.NO_DELETION_TIME, Values.valueOf(one), null)));
             }
             public void close()
             {

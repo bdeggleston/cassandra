@@ -30,6 +30,8 @@ import java.util.Random;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
+import org.apache.cassandra.utils.values.Value;
+
 public class IntegerTypeTest
 {
     private static void assertSignum(String message, int expected, double value)
@@ -77,7 +79,7 @@ public class IntegerTypeTest
     @Test(expected = NullPointerException.class)
     public void testNullBoth()
     {
-        comparator.compare(null, null);
+        comparator.compare((Value) null, null);
     }
 
     @Test

@@ -50,6 +50,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.SearchIterator;
+import org.apache.cassandra.utils.values.Values;
 
 public class PartitionImplementationTest
 {
@@ -103,7 +104,7 @@ public class PartitionImplementationTest
         ColumnMetadata defCol = metadata.getColumn(new ColumnIdentifier("col", true));
         Row.Builder row = BTreeRow.unsortedBuilder();
         row.newRow(clustering);
-        row.addCell(BufferCell.live(defCol, TIMESTAMP, ByteBufferUtil.bytes(colValue)));
+        row.addCell(BufferCell.live(defCol, TIMESTAMP, Values.valueOf(colValue)));
         return row.build();
     }
 
@@ -112,7 +113,7 @@ public class PartitionImplementationTest
         ColumnMetadata defCol = metadata.getColumn(new ColumnIdentifier("static_col", true));
         Row.Builder row = BTreeRow.unsortedBuilder();
         row.newRow(Clustering.STATIC_CLUSTERING);
-        row.addCell(BufferCell.live(defCol, TIMESTAMP, ByteBufferUtil.bytes("static value")));
+        row.addCell(BufferCell.live(defCol, TIMESTAMP, Values.valueOf("static value")));
         return row.build();
     }
 

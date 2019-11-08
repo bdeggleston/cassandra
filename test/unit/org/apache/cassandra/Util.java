@@ -77,6 +77,8 @@ import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -195,6 +197,11 @@ public class Util
     public static boolean equalsCounterId(CounterId n, ByteBuffer context, int offset)
     {
         return CounterId.wrap(context, context.position() + offset).equals(n);
+    }
+
+    public static boolean equalsCounterId(CounterId n, Value context, int offset)
+    {
+        return equalsCounterId(n, context.buffer(), offset);
     }
 
     /**
@@ -546,7 +553,7 @@ public class Util
     public static void assertColumn(Cell cell, String value, long timestamp)
     {
         assertNotNull(cell);
-        assertEquals(0, ByteBufferUtil.compareUnsigned(cell.value(), ByteBufferUtil.bytes(value)));
+        assertEquals(0, Values.compareUnsigned(cell.value(), Values.valueOf(value)));
         assertEquals(timestamp, cell.timestamp());
     }
 
@@ -727,7 +734,7 @@ public class Util
 
         ColumnMetadata def = metadata.getColumn(new ColumnIdentifier("myCol", false));
         Clustering c = Clustering.make(ByteBufferUtil.bytes("c1"), ByteBufferUtil.bytes(42));
-        Row row = BTreeRow.singleCellRow(c, BufferCell.live(def, 0, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+        Row row = BTreeRow.singleCellRow(c, BufferCell.live(def, 0, Values.EMPTY));
         PagingState.RowMark mark = PagingState.RowMark.create(metadata, row, protocolVersion);
         return new PagingState(pk, mark, 10, remainingInPartition);
     }

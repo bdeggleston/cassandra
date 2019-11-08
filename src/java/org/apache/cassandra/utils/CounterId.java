@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.utils.values.Value;
 
 public class CounterId implements Comparable<CounterId>
 {
@@ -72,6 +73,11 @@ public class CounterId implements Comparable<CounterId>
         dup.position(offset);
         dup.limit(dup.position() + LENGTH);
         return wrap(dup);
+    }
+
+    public static CounterId wrap(Value value, int offset)
+    {
+        return wrap(value.buffer(), offset);
     }
 
     private CounterId(ByteBuffer id)

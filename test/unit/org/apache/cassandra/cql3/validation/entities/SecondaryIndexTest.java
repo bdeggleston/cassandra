@@ -51,6 +51,8 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.MD5Digest;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.lang.String.format;
 
@@ -983,10 +985,10 @@ public class SecondaryIndexTest extends CQLTester
         assertEquals(1, index.rowsUpdated.size());
         Row oldRow = index.rowsUpdated.get(0).left;
         assertEquals(1, oldRow.columnCount());
-        validateCell(oldRow.getCell(v1), v1, ByteBufferUtil.bytes(0), 0);
+        validateCell(oldRow.getCell(v1), v1, Values.valueOf(0), 0);
         Row newRow = index.rowsUpdated.get(0).right;
         assertEquals(1, newRow.columnCount());
-        validateCell(newRow.getCell(v1), v1, ByteBufferUtil.bytes(1), 1);
+        validateCell(newRow.getCell(v1), v1, Values.valueOf(1), 1);
         index.reset();
 
         // Overwrite both values
@@ -994,12 +996,12 @@ public class SecondaryIndexTest extends CQLTester
         assertEquals(1, index.rowsUpdated.size());
         oldRow = index.rowsUpdated.get(0).left;
         assertEquals(2, oldRow.columnCount());
-        validateCell(oldRow.getCell(v1), v1, ByteBufferUtil.bytes(1), 1);
-        validateCell(oldRow.getCell(v2), v2, ByteBufferUtil.bytes(0), 0);
+        validateCell(oldRow.getCell(v1), v1, Values.valueOf(1), 1);
+        validateCell(oldRow.getCell(v2), v2, Values.valueOf(0), 0);
         newRow = index.rowsUpdated.get(0).right;
         assertEquals(2, newRow.columnCount());
-        validateCell(newRow.getCell(v1), v1, ByteBufferUtil.bytes(2), 2);
-        validateCell(newRow.getCell(v2), v2, ByteBufferUtil.bytes(2), 2);
+        validateCell(newRow.getCell(v1), v1, Values.valueOf(2), 2);
+        validateCell(newRow.getCell(v2), v2, Values.valueOf(2), 2);
         index.reset();
 
         // Delete one value
@@ -1007,7 +1009,7 @@ public class SecondaryIndexTest extends CQLTester
         assertEquals(1, index.rowsUpdated.size());
         oldRow = index.rowsUpdated.get(0).left;
         assertEquals(1, oldRow.columnCount());
-        validateCell(oldRow.getCell(v1), v1, ByteBufferUtil.bytes(2), 2);
+        validateCell(oldRow.getCell(v1), v1, Values.valueOf(2), 2);
         newRow = index.rowsUpdated.get(0).right;
         assertEquals(1, newRow.columnCount());
         Cell newCell = newRow.getCell(v1);
@@ -1518,7 +1520,7 @@ public class SecondaryIndexTest extends CQLTester
                                       ClientState.forInternalCalls());
     }
 
-    private void validateCell(Cell cell, ColumnMetadata def, ByteBuffer val, long timestamp)
+    private void validateCell(Cell cell, ColumnMetadata def, Value val, long timestamp)
     {
         assertNotNull(cell);
         assertEquals(0, def.type.compare(cell.value(), val));

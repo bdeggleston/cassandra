@@ -23,6 +23,8 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.utils.values.Value;
+
 public class TimeSerializerTest
 {
     @Test
@@ -152,7 +154,7 @@ public class TimeSerializerTest
         String source = "01:01:01.123123123";
         Long nt = TimeSerializer.timeStringToLong(source);
 
-        ByteBuffer buf = TimeSerializer.instance.serialize(nt);
+        Value buf = TimeSerializer.instance.serializeValue(nt);
         TimeSerializer.instance.validate(buf);
 
         Long result = TimeSerializer.instance.deserialize(buf);

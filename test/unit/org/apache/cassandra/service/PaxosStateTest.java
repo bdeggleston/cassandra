@@ -38,6 +38,8 @@ import org.apache.cassandra.service.paxos.PaxosState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.*;
 
@@ -61,7 +63,7 @@ public class PaxosStateTest
     {
         ColumnFamilyStore cfs = Keyspace.open("PaxosStateTestKeyspace1").getColumnFamilyStore("Standard1");
         String key = "key" + System.nanoTime();
-        ByteBuffer value = ByteBufferUtil.bytes(0);
+        Value value = Values.valueOf(0);
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), FBUtilities.timestampMicros(), key);
         builder.clustering("a").add("val", value);
         PartitionUpdate update = Iterables.getOnlyElement(builder.build().getPartitionUpdates());
@@ -92,11 +94,11 @@ public class PaxosStateTest
         return Commit.newProposal(UUIDGen.getTimeUUID(ballotMillis), update);
     }
 
-    private void assertDataPresent(ColumnFamilyStore cfs, DecoratedKey key, String name, ByteBuffer value)
+    private void assertDataPresent(ColumnFamilyStore cfs, DecoratedKey key, String name, Value value)
     {
         Row row = Util.getOnlyRowUnfiltered(Util.cmd(cfs, key).build());
-        assertEquals(0, ByteBufferUtil.compareUnsigned(value,
-                row.getCell(cfs.metadata().getColumn(ByteBufferUtil.bytes(name))).value()));
+        assertEquals(0, Values.compareUnsigned(value,
+                                               row.getCell(cfs.metadata().getColumn(ByteBufferUtil.bytes(name))).value()));
     }
 
     private void assertNoDataPresent(ColumnFamilyStore cfs, DecoratedKey key)
