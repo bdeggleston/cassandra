@@ -29,6 +29,7 @@ import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.Constants.UNSET_VALUE;
 
@@ -391,7 +392,7 @@ public abstract class UserTypes
             if (value == null)
                 params.addTombstone(column, fieldPath);
             else
-                params.addCell(column, fieldPath, value.get(params.options.getProtocolVersion()));
+                params.addCell(column, fieldPath, Values.valueOf(value.get(params.options.getProtocolVersion())));
         }
     }
 

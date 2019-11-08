@@ -75,7 +75,7 @@ public class FloatType extends NumberType<Float>
             if (parsed instanceof String)
                 return new Constants.TValue(fromString((String) parsed));
             else
-                return new Constants.TValue(getSerializer().serialize(((Number) parsed).floatValue()));
+                return new Constants.TValue(getSerializer().serializeBuffer(((Number) parsed).floatValue()));
         }
         catch (ClassCastException exc)
         {

@@ -29,6 +29,7 @@ import org.apache.cassandra.db.partitions.Partition;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Groups the parameters of an update query, and make building updates easier.
@@ -143,6 +144,16 @@ public class UpdateParameters
     public void addCell(ColumnMetadata column, Value value) throws InvalidRequestException
     {
         addCell(column, null, value);
+    }
+
+    public void addCell(ColumnMetadata column, ByteBuffer value) throws InvalidRequestException
+    {
+        addCell(column, Values.valueOf(value));
+    }
+
+    public void addCell(ColumnMetadata column, CellPath path, ByteBuffer value) throws InvalidRequestException
+    {
+        addCell(column, path, Values.valueOf(value));
     }
 
     public void addCell(ColumnMetadata column, CellPath path, Value value) throws InvalidRequestException

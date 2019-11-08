@@ -34,6 +34,7 @@ import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Static helper methods and classes for maps.
@@ -211,7 +212,7 @@ public abstract class Maps
             {
                 // Collections have this small hack that validate cannot be called on a serialized object,
                 // but compose does the validation (so we're fine).
-                Map<?, ?> m = type.getSerializer().deserializeForNativeProtocol(value, version);
+                Map<?, ?> m = type.getSerializer().deserializeForNativeProtocol(value, ByteBufferHandle.instance, version);
                 Map<ByteBuffer, ByteBuffer> map = new LinkedHashMap<>(m.size());
                 for (Map.Entry<?, ?> entry : m.entrySet())
                     map.put(type.getKeysType().decomposeBuffer(entry.getKey()), type.getValuesType().decomposeBuffer(entry.getValue()));
@@ -410,7 +411,7 @@ public abstract class Maps
 
                 Map<ByteBuffer, ByteBuffer> elements = ((TValue) value).map;
                 for (Map.Entry<ByteBuffer, ByteBuffer> entry : elements.entrySet())
-                    params.addCell(column, CellPath.create(entry.getKey()), entry.getValue());
+                    params.addCell(column, CellPath.create(entry.getKey()), Values.valueOf(entry.getValue()));
             }
             else
             {

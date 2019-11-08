@@ -59,6 +59,7 @@ public interface Term
      * object between the bind and the get (note that we still want to be able
      * to separate bind and get for collections).
      */
+    // TODO: BDE: convert to Value return type
     public ByteBuffer bindAndGet(QueryOptions options) throws InvalidRequestException;
 
     /**

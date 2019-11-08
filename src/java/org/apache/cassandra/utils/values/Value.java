@@ -83,6 +83,7 @@ public interface Value extends Comparable<Value>
     void copyTo(byte[] dst, int srcOffset, int size);
     void copyTo(ByteBuffer dst);
     void copyTo(ByteBuffer dst, int srcPos, int dstPos, int size);
+    void copyTo(long pointer);
     long unsharedHeapSize();
     long unsharedHeapSizeExcludingData();
 
@@ -121,6 +122,7 @@ public interface Value extends Comparable<Value>
     public interface Factory
     {
         Value read(DataInput in, int length) throws IOException;
+        Value read(long pointer, int length);
         Value readWithShortLength(DataInput in) throws IOException;
         Value readWithVIntLength(DataInputPlus in) throws IOException;
         Value empty();

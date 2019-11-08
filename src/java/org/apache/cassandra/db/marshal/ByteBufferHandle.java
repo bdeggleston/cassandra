@@ -48,6 +48,11 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
         out.write(value);
     }
 
+    public void write(ByteBuffer value, ByteBuffer out)
+    {
+        out.put(value.duplicate());
+    }
+
     public ByteBuffer read(DataInputPlus in, int length) throws IOException
     {
         return ByteBufferUtil.read(in, length);

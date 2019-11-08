@@ -155,7 +155,7 @@ public final class IntegerType extends NumberType<BigInteger>
     {
         try
         {
-            return new Constants.TValue(getSerializer().serialize(new BigInteger(parsed.toString())));
+            return new Constants.TValue(getSerializer().serialize(new BigInteger(parsed.toString()), ByteBufferHandle.instance));
         }
         catch (NumberFormatException exc)
         {

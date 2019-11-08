@@ -28,6 +28,8 @@ import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Index on the collection element of the cell name of a collection.
@@ -42,17 +44,17 @@ public class CollectionKeyIndex extends CollectionKeyIndexBase
         super(baseCfs, indexDef);
     }
 
-    public ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                      Clustering clustering,
-                                      CellPath path,
-                                      ByteBuffer cellValue)
+    public Value getIndexedValue(ByteBuffer partitionKey,
+                                 Clustering clustering,
+                                 CellPath path,
+                                 Value cellValue)
     {
-        return path.get(0);
+        return Values.valueOf(path.get(0));
     }
 
-    public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row data, Value indexValue, int nowInSec)
     {
-        Cell cell = data.getCell(indexedColumn, CellPath.create(indexValue));
+        Cell cell = data.getCell(indexedColumn, CellPath.create(indexValue.buffer()));
         return cell == null || !cell.isLive(nowInSec);
     }
 

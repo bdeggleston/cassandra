@@ -172,7 +172,7 @@ public class UserType extends TupleType
             while (fieldPosition < fieldPositionOfCell)
                 components[fieldPosition++] = null;
 
-            components[fieldPosition++] = cell.value();
+            components[fieldPosition++] = cell.value().buffer();
         }
 
         // append trailing nulls for missing cells

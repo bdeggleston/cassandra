@@ -31,6 +31,7 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.CassandraIndexSearcher;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.values.Values;
 
 public class KeysSearcher extends CassandraIndexSearcher
 {
@@ -145,7 +146,7 @@ public class KeysSearcher extends CassandraIndexSearcher
                                                 int nowInSec)
     {
         Row data = iterator.staticRow();
-        if (index.isStale(data, indexedValue, nowInSec))
+        if (index.isStale(data, Values.valueOf(indexedValue), nowInSec))
         {
             // Index is stale, remove the index entry and ignore
             index.deleteStaleEntry(index.getIndexCfs().decorateKey(indexedValue),

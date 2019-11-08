@@ -25,6 +25,8 @@ import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 import org.apache.cassandra.utils.memory.NativeAllocator;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class NativeCell extends AbstractCell
 {
@@ -65,13 +67,14 @@ public class NativeCell extends AbstractCell
                       long timestamp,
                       int ttl,
                       int localDeletionTime,
-                      ByteBuffer value,
+                      Value value,
                       CellPath path)
     {
         super(column);
-        long size = simpleSize(value.remaining());
+        long size = simpleSize(value.size());
 
-        assert value.order() == ByteOrder.BIG_ENDIAN;
+        assert !value.isBufferBacked() || value.buffer().order() == ByteOrder.BIG_ENDIAN;
+
         assert column.isComplex() == (path != null);
         if (path != null)
         {
@@ -88,15 +91,15 @@ public class NativeCell extends AbstractCell
         MemoryUtil.setLong(peer + TIMESTAMP, timestamp);
         MemoryUtil.setInt(peer + TTL, ttl);
         MemoryUtil.setInt(peer + DELETION, localDeletionTime);
-        MemoryUtil.setInt(peer + LENGTH, value.remaining());
-        MemoryUtil.setBytes(peer + VALUE, value);
+        MemoryUtil.setInt(peer + LENGTH, value.size());
+        value.copyTo(peer + VALUE);
 
         if (path != null)
         {
             ByteBuffer pathbuffer = path.get(0);
             assert pathbuffer.order() == ByteOrder.BIG_ENDIAN;
 
-            long offset = peer + VALUE + value.remaining();
+            long offset = peer + VALUE + value.size();
             MemoryUtil.setInt(offset, pathbuffer.remaining());
             MemoryUtil.setBytes(offset + 4, pathbuffer);
         }
@@ -122,10 +125,10 @@ public class NativeCell extends AbstractCell
         return MemoryUtil.getInt(peer + DELETION);
     }
 
-    public ByteBuffer value()
+    public Value value()
     {
         int length = MemoryUtil.getInt(peer + LENGTH);
-        return MemoryUtil.getByteBuffer(peer + VALUE, length, ByteOrder.BIG_ENDIAN);
+        return Values.read(peer + VALUE, length);
     }
 
     public CellPath path()
@@ -138,7 +141,7 @@ public class NativeCell extends AbstractCell
         return CellPath.create(MemoryUtil.getByteBuffer(offset + 4, size, ByteOrder.BIG_ENDIAN));
     }
 
-    public Cell withUpdatedValue(ByteBuffer newValue)
+    public Cell withUpdatedValue(Value newValue)
     {
         throw new UnsupportedOperationException();
     }

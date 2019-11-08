@@ -29,6 +29,8 @@ import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Index on the element and value of cells participating in a collection.
@@ -44,16 +46,16 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
         super(baseCfs, indexDef);
     }
 
-    public ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                      Clustering clustering,
-                                      CellPath path, ByteBuffer cellValue)
+    public Value getIndexedValue(ByteBuffer partitionKey,
+                                 Clustering clustering,
+                                 CellPath path, Value cellValue)
     {
-        return CompositeType.build(path.get(0), cellValue);
+        return Values.valueOf(CompositeType.build(path.get(0), cellValue.buffer()));
     }
 
-    public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row data, Value indexValue, int nowInSec)
     {
-        ByteBuffer[] components = ((CompositeType)functions.getIndexedValueType(indexedColumn)).split(indexValue);
+        ByteBuffer[] components = ((CompositeType)functions.getIndexedValueType(indexedColumn)).split(indexValue.buffer());
         ByteBuffer mapKey = components[0];
         ByteBuffer mapValue = components[1];
 
@@ -63,6 +65,6 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
             return true;
 
         AbstractType<?> valueComparator = ((CollectionType)columnDef.type).valueComparator();
-        return valueComparator.compare(mapValue, cell.value()) != 0;
+        return valueComparator.compare(Values.valueOf(mapValue), cell.value()) != 0;
     }
 }

@@ -110,11 +110,12 @@ public final class ResultSetBuilder
         return remaining >= 0 ? remaining : -1;
     }
 
+    // TODO: BDE: convert to Value return type?
     private ByteBuffer value(Cell c)
     {
         return c.isCounterCell()
              ? ByteBufferUtil.bytes(CounterContext.instance().total(c.value()))
-             : c.value();
+             : c.value().buffer();
     }
 
     /**

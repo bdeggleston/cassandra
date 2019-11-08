@@ -34,6 +34,7 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Static helper methods and classes for sets.
@@ -202,7 +203,7 @@ public abstract class Sets
             {
                 // Collections have this small hack that validate cannot be called on a serialized object,
                 // but compose does the validation (so we're fine).
-                Set<?> s = type.getSerializer().deserializeForNativeProtocol(value, version);
+                Set<?> s = type.getSerializer().deserializeForNativeProtocol(value, ByteBufferHandle.instance, version);
                 SortedSet<ByteBuffer> elements = new TreeSet<>(type.getElementsType());
                 for (Object element : s)
                     elements.add(type.getElementsType().decomposeBuffer(element));
@@ -346,7 +347,7 @@ public abstract class Sets
                     if (bb == ByteBufferUtil.UNSET_BYTE_BUFFER)
                         continue;
 
-                    params.addCell(column, CellPath.create(bb), ByteBufferUtil.EMPTY_BYTE_BUFFER);
+                    params.addCell(column, CellPath.create(bb), Values.EMPTY);
                 }
             }
             else

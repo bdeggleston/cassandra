@@ -177,6 +177,11 @@ public class Values
         return FACTORY.read(in, length);
     }
 
+    public static Value read(long pointer, int length)
+    {
+        return FACTORY.read(pointer, length);
+    }
+
     public static Value slice(Value input, int offset, int size)
     {
         Preconditions.checkArgument(offset + size <= input.size());

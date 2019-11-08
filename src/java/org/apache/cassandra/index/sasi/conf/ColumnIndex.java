@@ -250,7 +250,7 @@ public class ColumnIndex
                     return null;
             case REGULAR:
                 Cell cell = row.getCell(column);
-                return cell == null || !cell.isLive(nowInSecs) ? null : cell.value();
+                return cell == null || !cell.isLive(nowInSecs) ? null : cell.value().buffer();
 
             default:
                 return null;

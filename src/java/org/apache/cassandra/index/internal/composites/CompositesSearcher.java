@@ -35,6 +35,7 @@ import org.apache.cassandra.index.internal.CassandraIndexSearcher;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.utils.btree.BTreeSet;
 import org.apache.cassandra.utils.concurrent.OpOrder;
+import org.apache.cassandra.utils.values.Values;
 
 
 public class CompositesSearcher extends CassandraIndexSearcher
@@ -236,7 +237,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                 throw new AssertionError("A partition should have at most one index within a static column index");
 
             iteratorToReturn = dataIter;
-            if (index.isStale(dataIter.staticRow(), indexValue, nowInSec))
+            if (index.isStale(dataIter.staticRow(), Values.valueOf(indexValue), nowInSec))
             {
                 // The entry is staled, we return no rows in this partition.
                 staleEntries.addAll(entries);
@@ -260,7 +261,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                 public Row applyToRow(Row row)
                 {
                     IndexEntry entry = findEntry(row.clustering());
-                    if (!index.isStale(row, indexValue, nowInSec))
+                    if (!index.isStale(row, Values.valueOf(indexValue), nowInSec))
                         return row;
 
                     staleEntries.add(entry);

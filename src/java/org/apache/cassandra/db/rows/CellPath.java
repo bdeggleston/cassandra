@@ -29,6 +29,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.HashingUtils;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A path for a cell belonging to a complex column type (non-frozen collection or UDT).
@@ -42,6 +43,11 @@ public abstract class CellPath
     public abstract ByteBuffer get(int i);
 
     // The only complex paths we currently have are collections and UDTs, which both have a depth of one
+    public static CellPath create(Value value)
+    {
+        return create(value.buffer());
+    }
+
     public static CellPath create(ByteBuffer value)
     {
         assert value != null;

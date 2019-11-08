@@ -28,6 +28,7 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Index the value of a collection cell.
@@ -47,9 +48,9 @@ public class CollectionValueIndex extends CassandraIndex
         super(baseCfs, indexDef);
     }
 
-    public ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                      Clustering clustering,
-                                      CellPath path, ByteBuffer cellValue)
+    public Value getIndexedValue(ByteBuffer partitionKey,
+                                 Clustering clustering,
+                                 CellPath path, Value cellValue)
     {
         return cellValue;
     }
@@ -99,7 +100,7 @@ public class CollectionValueIndex extends CassandraIndex
         return operator == Operator.CONTAINS && !(indexedColumn.type instanceof SetType);
     }
 
-    public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)
+    public boolean isStale(Row data, Value indexValue, int nowInSec)
     {
         ColumnMetadata columnDef = indexedColumn;
         ComplexColumnData complexData = data.getComplexColumnData(columnDef);

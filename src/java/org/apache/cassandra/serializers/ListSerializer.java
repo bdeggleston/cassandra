@@ -24,7 +24,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteBufferHandle;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.transport.ProtocolVersion;
 
 public class ListSerializer<T> extends CollectionSerializer<List<T>>
@@ -47,12 +50,12 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         this.elements = elements;
     }
 
-    public List<ByteBuffer> serializeValues(List<T> values)
+    protected <V> List<V> serializeValues(List<T> values, DataHandle<V> handle)
     {
-        List<ByteBuffer> buffers = new ArrayList<>(values.size());
-        for (T value : values)
-            buffers.add(elements.serialize(value));
-        return buffers;
+        List<V> output = new ArrayList<>(values.size());
+        for (T value: values)
+            output.add(elements.serialize(value, handle));
+        return output;
     }
 
     public int getElementCount(List<T> value)
@@ -60,16 +63,20 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         return value.size();
     }
 
-    public void validateForNativeProtocol(ByteBuffer bytes, ProtocolVersion version)
+    public <V> void validateForNativeProtocol(V input, DataHandle<V> handle, ProtocolVersion version)
     {
         try
         {
-            ByteBuffer input = bytes.duplicate();
-            int n = readCollectionSize(input, version);
+            int n = readCollectionSize(input, handle, version);
+            int offset = TypeSizes.sizeof(n);
             for (int i = 0; i < n; i++)
-                elements.validate(readValue(input, version));
+            {
+                V value = readValue(input, handle, offset, version);
+                offset += sizeOfValue(value, handle, version);
+                elements.validate(value, handle);
+            }
 
-            if (input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
         }
         catch (BufferUnderflowException e)
@@ -78,12 +85,12 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         }
     }
 
-    public List<T> deserializeForNativeProtocol(ByteBuffer bytes, ProtocolVersion version)
+    public <V> List<T> deserializeForNativeProtocol(V input, DataHandle<V> handle, ProtocolVersion version)
     {
         try
         {
-            ByteBuffer input = bytes.duplicate();
-            int n = readCollectionSize(input, version);
+            int n = readCollectionSize(input, handle, version);
+            int offset = TypeSizes.sizeof(n);
 
             if (n < 0)
                 throw new MarshalException("The data cannot be deserialized as a list");
@@ -96,11 +103,12 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             for (int i = 0; i < n; i++)
             {
                 // We can have nulls in lists that are used for IN values
-                ByteBuffer databb = readValue(input, version);
+                V databb = readValue(input, handle, offset, version);
+                offset += sizeOfValue(databb, handle, version);
                 if (databb != null)
                 {
-                    elements.validate(databb);
-                    l.add(elements.deserialize(databb));
+                    elements.validate(databb, handle);
+                    l.add(elements.deserialize(databb, handle));
                 }
                 else
                 {
@@ -108,7 +116,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
                 }
             }
 
-            if (input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
 
             return l;
@@ -121,25 +129,25 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
 
     /**
      * Returns the element at the given index in a list.
-     * @param serializedList a serialized list
+     * @param input a serialized list
      * @param index the index to get
      * @return the serialized element at the given index, or null if the index exceeds the list size
      */
-    public ByteBuffer getElement(ByteBuffer serializedList, int index)
+    public ByteBuffer getElement(ByteBuffer input, int index)
     {
         try
         {
-            ByteBuffer input = serializedList.duplicate();
             int n = readCollectionSize(input, ProtocolVersion.V3);
+            int offset = TypeSizes.sizeof(n);
             if (n <= index)
                 return null;
 
             for (int i = 0; i < index; i++)
             {
                 int length = input.getInt();
-                input.position(input.position() + length);
+                offset += TypeSizes.sizeof(length) + length;
             }
-            return readValue(input, ProtocolVersion.V3);
+            return readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
         }
         catch (BufferUnderflowException e)
         {

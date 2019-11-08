@@ -586,6 +586,7 @@ public class ViewUpdateGenerator
         return viewMetadata.partitioner.decorateKey(rawKey);
     }
 
+    // TODO: BDE convert to Value return type
     private ByteBuffer getValueForPK(ColumnMetadata column, Row row)
     {
         switch (column.kind)
@@ -596,7 +597,7 @@ public class ViewUpdateGenerator
                 return row.clustering().get(column.position());
             default:
                 // This shouldn't NPE as we shouldn't get there if the value can be null (or there is a bug in updateAction())
-                return row.getCell(column).value();
+                return row.getCell(column).value().buffer();
         }
     }
 }

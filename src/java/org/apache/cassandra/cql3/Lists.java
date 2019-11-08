@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.cassandra.db.marshal.ByteBufferHandle;
 import org.apache.cassandra.schema.ColumnMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.cql3.functions.Function;
@@ -42,6 +43,7 @@ import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Static helper methods and classes for lists.
@@ -184,6 +186,7 @@ public abstract class Lists
 
     public static class TValue extends Term.MultiItemTerminal
     {
+        // TODO: BDE: convert to values?
         public final List<ByteBuffer> elements;
 
         public TValue(List<ByteBuffer> elements)
@@ -197,7 +200,7 @@ public abstract class Lists
             {
                 // Collections have this small hack that validate cannot be called on a serialized object,
                 // but compose does the validation (so we're fine).
-                List<?> l = type.getSerializer().deserializeForNativeProtocol(value, version);
+                List<?> l = type.getSerializer().deserializeForNativeProtocol(value, ByteBufferHandle.instance, version);
                 List<ByteBuffer> elements = new ArrayList<>(l.size());
                 for (Object element : l)
                     // elements can be null in lists that represent a set of IN values
@@ -212,7 +215,7 @@ public abstract class Lists
 
         public ByteBuffer get(ProtocolVersion protocolVersion)
         {
-            return CollectionSerializer.pack(elements, elements.size(), protocolVersion);
+            return CollectionSerializer.pack(elements, ByteBufferHandle.instance, elements.size(), protocolVersion);
         }
 
         public boolean equals(ListType lt, TValue v)
@@ -453,7 +456,7 @@ public abstract class Lists
             if (value == null)
                 params.addTombstone(column, elementPath);
             else if (value != ByteBufferUtil.UNSET_BYTE_BUFFER)
-                params.addCell(column, elementPath, value);
+                params.addCell(column, elementPath, Values.valueOf(value));
         }
     }
 
@@ -483,7 +486,7 @@ public abstract class Lists
                 for (ByteBuffer buffer : ((TValue) value).elements)
                 {
                     ByteBuffer uuid = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
-                    params.addCell(column, CellPath.create(uuid), buffer);
+                    params.addCell(column, CellPath.create(uuid), Values.valueOf(buffer));
                 }
             }
             else
@@ -492,7 +495,7 @@ public abstract class Lists
                 if (value == null)
                     params.addTombstone(column);
                 else
-                    params.addCell(column, value.get(ProtocolVersion.CURRENT));
+                    params.addCell(column, Values.valueOf(value.get(ProtocolVersion.CURRENT)));
             }
         }
     }
@@ -528,7 +531,7 @@ public abstract class Lists
                 }
 
                 ByteBuffer uuid = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(pt.millis, (pt.nanos + remainingInBatch--)));
-                params.addCell(column, CellPath.create(uuid), toAdd.get(i));
+                params.addCell(column, CellPath.create(uuid), Values.valueOf(toAdd.get(i)));
             }
         }
     }

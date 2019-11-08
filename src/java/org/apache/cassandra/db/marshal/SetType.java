@@ -63,7 +63,9 @@ public class SetType<T> extends CollectionType<Set<T>>
     {
         super(ComparisonType.CUSTOM, Kind.SET);
         this.elements = elements;
-        this.serializer = SetSerializer.getInstance(elements.getSerializer(), elements);
+        this.serializer = SetSerializer.getInstance(elements.getSerializer(),
+                                                    (l, r) -> elements.compare(l, r, ValueHandle.instance),
+                                                    (l, r) -> elements.compare(l, r, ByteBufferHandle.instance));
         this.isMultiCell = isMultiCell;
     }
 
@@ -146,15 +148,9 @@ public class SetType<T> extends CollectionType<Set<T>>
         return isCompatibleWithFrozen(previous);
     }
 
-    @Override
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
-    {
-        return ListType.compareListOrSet(elements, o1, o2);
-    }
-
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        // TODO
+        return ListType.compareListOrSet(elements, left, right, handle);
     }
 
     public SetSerializer<T> getSerializer()

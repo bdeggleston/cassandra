@@ -152,7 +152,7 @@ public abstract class CollectionType<T> extends AbstractType<T>
         assert isMultiCell();
         List<ByteBuffer> values = serializedValues(cells);
         int size = collectionSize(values);
-        return CollectionSerializer.pack(values, size, version);
+        return CollectionSerializer.pack(values, ByteBufferHandle.instance, size, version);
     }
 
     @Override

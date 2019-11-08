@@ -30,6 +30,7 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Static helper methods and classes for constants.
@@ -435,7 +436,7 @@ public abstract class Constants
             if (value == null)
                 params.addTombstone(column);
             else if (value != ByteBufferUtil.UNSET_BYTE_BUFFER) // use reference equality and not object equality
-                params.addCell(column, value);
+                params.addCell(column, Values.valueOf(value));
         }
     }
 

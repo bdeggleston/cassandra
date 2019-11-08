@@ -43,6 +43,7 @@ import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkBindValueSet;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
@@ -602,7 +603,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                             if (foundValue == null)
                                 return false;
 
-                            ByteBuffer counterValue = LongType.instance.decomposeBuffer(CounterContext.instance().total(foundValue));
+                            ByteBuffer counterValue = LongType.instance.decomposeBuffer(CounterContext.instance().total(Values.valueOf(foundValue)));
                             return operator.isSatisfiedBy(LongType.instance, counterValue, value);
                         }
                         else

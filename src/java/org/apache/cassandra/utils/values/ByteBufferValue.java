@@ -32,6 +32,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
+import org.apache.cassandra.utils.memory.MemoryUtil;
 
 public class ByteBufferValue implements Value
 {
@@ -127,6 +128,11 @@ public class ByteBufferValue implements Value
         ByteBufferUtil.copyBytes(value, value.position() + srcPos, dst, dstPos, size);
     }
 
+    public void copyTo(long pointer)
+    {
+        MemoryUtil.setBytes(pointer, value);
+    }
+
     public long unsharedHeapSize()
     {
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(value);
@@ -189,6 +195,11 @@ public class ByteBufferValue implements Value
         public Value read(DataInput in, int length) throws IOException
         {
             return new ByteBufferValue(ByteBufferUtil.read(in, length));
+        }
+
+        public Value read(long pointer, int length)
+        {
+            return new ByteBufferValue(MemoryUtil.getByteBuffer(pointer, length, ByteOrder.BIG_ENDIAN));
         }
 
         public Value readWithShortLength(DataInput in) throws IOException

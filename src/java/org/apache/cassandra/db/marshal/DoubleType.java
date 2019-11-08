@@ -74,7 +74,7 @@ public class DoubleType extends NumberType<Double>
             if (parsed instanceof String)
                 return new Constants.TValue(fromString((String) parsed));
             else
-                return new Constants.TValue(getSerializer().serialize(((Number) parsed).doubleValue()));
+                return new Constants.TValue(getSerializer().serializeBuffer(((Number) parsed).doubleValue()));
         }
         catch (ClassCastException exc)
         {

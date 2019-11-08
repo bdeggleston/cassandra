@@ -49,6 +49,11 @@ public class ValueHandle implements DataHandle<Value>
         value.write(out);
     }
 
+    public void write(Value value, ByteBuffer out)
+    {
+        value.copyTo(out);
+    }
+
     public Value read(DataInputPlus in, int length) throws IOException
     {
         return Values.read(in, length);

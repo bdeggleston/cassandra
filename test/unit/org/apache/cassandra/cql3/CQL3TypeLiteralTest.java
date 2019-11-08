@@ -81,27 +81,27 @@ public class CQL3TypeLiteralTest
         for (int i = 0; i < 20; i++)
         {
             String v = randString(true);
-            addNativeValue(quote(v), CQL3Type.Native.ASCII, AsciiSerializer.instance.serialize(v));
+            addNativeValue(quote(v), CQL3Type.Native.ASCII, AsciiSerializer.instance.serializeBuffer(v));
         }
-        addNativeValue("''", CQL3Type.Native.ASCII, AsciiSerializer.instance.serialize(""));
+        addNativeValue("''", CQL3Type.Native.ASCII, AsciiSerializer.instance.serializeBuffer(""));
         addNativeValue("''", CQL3Type.Native.ASCII, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.ASCII, null);
 
         for (int i = 0; i < 20; i++)
         {
             String v = randString(false);
-            addNativeValue(quote(v), CQL3Type.Native.TEXT, UTF8Serializer.instance.serialize(v));
+            addNativeValue(quote(v), CQL3Type.Native.TEXT, UTF8Serializer.instance.serializeBuffer(v));
         }
-        addNativeValue("''", CQL3Type.Native.TEXT, UTF8Serializer.instance.serialize(""));
+        addNativeValue("''", CQL3Type.Native.TEXT, UTF8Serializer.instance.serializeBuffer(""));
         addNativeValue("''", CQL3Type.Native.TEXT, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.TEXT, null);
 
         for (int i = 0; i < 20; i++)
         {
             String v = randString(false);
-            addNativeValue(quote(v), CQL3Type.Native.VARCHAR, UTF8Serializer.instance.serialize(v));
+            addNativeValue(quote(v), CQL3Type.Native.VARCHAR, UTF8Serializer.instance.serializeBuffer(v));
         }
-        addNativeValue("''", CQL3Type.Native.VARCHAR, UTF8Serializer.instance.serialize(""));
+        addNativeValue("''", CQL3Type.Native.VARCHAR, UTF8Serializer.instance.serializeBuffer(""));
         addNativeValue("''", CQL3Type.Native.VARCHAR, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.VARCHAR, null);
 
@@ -196,21 +196,21 @@ public class CQL3TypeLiteralTest
         for (int i = 0; i < 20; i++)
         {
             int v = randInt();
-            addNativeValue(SimpleDateSerializer.instance.toString(v), CQL3Type.Native.DATE, SimpleDateSerializer.instance.serialize(v));
+            addNativeValue(SimpleDateSerializer.instance.toString(v), CQL3Type.Native.DATE, SimpleDateSerializer.instance.serializeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.DATE, null);
 
         for (int i = 0; i < 100; i++)
         {
             long v = randLong(24L * 60 * 60 * 1000 * 1000 * 1000);
-            addNativeValue(TimeSerializer.instance.toString(v), CQL3Type.Native.TIME, TimeSerializer.instance.serialize(v));
+            addNativeValue(TimeSerializer.instance.toString(v), CQL3Type.Native.TIME, TimeSerializer.instance.serializeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.TIME, null);
 
         for (int i = 0; i < 100; i++)
         {
             Duration duration = Duration.newInstance(Math.abs(randInt()), Math.abs(randInt()), Math.abs(randLong()));
-            addNativeValue(DurationSerializer.instance.toString(duration), CQL3Type.Native.DURATION, DurationSerializer.instance.serialize(duration));
+            addNativeValue(DurationSerializer.instance.toString(duration), CQL3Type.Native.DURATION, DurationSerializer.instance.serializeBuffer(duration));
         }
         addNativeValue("null", CQL3Type.Native.DURATION, null);
 
@@ -258,7 +258,7 @@ public class CQL3TypeLiteralTest
             {
                 throw new RuntimeException(e);
             }
-            addNativeValue(v.getHostAddress(), CQL3Type.Native.INET, InetAddressSerializer.instance.serialize(v));
+            addNativeValue(v.getHostAddress(), CQL3Type.Native.INET, InetAddressSerializer.instance.serializeBuffer(v));
         }
         addNativeValue("null", CQL3Type.Native.INET, ByteBufferUtil.EMPTY_BYTE_BUFFER);
         addNativeValue("null", CQL3Type.Native.INET, null);
@@ -738,7 +738,7 @@ public class CQL3TypeLiteralTest
                 sb.append(c);
             }
         }
-        return UTF8Serializer.instance.deserialize(UTF8Serializer.instance.serialize(sb.toString()));
+        return UTF8Serializer.instance.deserialize(UTF8Serializer.instance.serializeBuffer(sb.toString()));
     }
 
     static ByteBuffer randBytes()

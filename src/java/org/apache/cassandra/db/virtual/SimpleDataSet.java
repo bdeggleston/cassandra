@@ -31,6 +31,7 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * A DataSet implementation that is filled on demand and has an easy to use API for adding rows.
@@ -177,7 +178,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
             {
                 Object value = values.get(c);
                 if (null != value)
-                    builder.addCell(BufferCell.live(c, now, decompose(c.type, value)));
+                    builder.addCell(BufferCell.live(c, now, Values.valueOf(decompose(c.type, value))));
             });
 
             return builder.build();

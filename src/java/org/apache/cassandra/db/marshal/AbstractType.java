@@ -370,9 +370,9 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
      *
      * Unless you're doing something very similar to CollectionsType, you shouldn't override this.
      */
-    public int compareCollectionMembers(ByteBuffer v1, ByteBuffer v2, ByteBuffer collectionName)
+    public <V> int compareCollectionMembers(V v1, V v2, V collectionName, DataHandle<V> handle)
     {
-        return compare(v1, v2);
+        return compare(v1, v2, handle);
     }
 
     /**

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import com.google.common.base.Preconditions;
@@ -40,8 +41,19 @@ public interface DataHandle<V>
     }
 
     void write(V value, DataOutputPlus out) throws IOException;
+    void write(V value, ByteBuffer out);
     V read(DataInputPlus in, int length) throws IOException;
     V slice(V input, int offset, int length);
+    default V sliceWithShortLength(V input, int offset)
+    {
+        int size = getShort(input, offset);
+        return slice(input, offset + 2, size);
+    }
+
+    default int sizeWithShortLength(V value)
+    {
+        return 2 + size(value);
+    }
 
     int compareUnsigned(V left, V right);
 
@@ -55,6 +67,10 @@ public interface DataHandle<V>
     byte[] toArray(V value);
     byte[] toArray(V value, int offset, int length);
     String toString(V value, Charset charset) throws CharacterCodingException;
+    default String toString(V value) throws CharacterCodingException
+    {
+        return toString(value, StandardCharsets.UTF_8);
+    }
     String toHex(V value);
 
     byte toByte(V value);

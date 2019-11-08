@@ -84,9 +84,21 @@ public class CompositeType extends AbstractCompositeType
         return getInstance(Arrays.asList(types));
     }
 
-    protected boolean readIsStatic(ByteBuffer bb)
+    protected int startingOffset(boolean isStatic)
     {
-        return readStatic(bb);
+        return isStatic ? 2 : 0;
+    }
+
+    protected <V> boolean readIsStatic(V value, DataHandle<V> handle)
+    {
+        if (handle.size(value) < 2)
+            return false;
+
+        int header = handle.getShort(value, 0);
+        if ((header & 0xFFFF) != STATIC_MARKER)
+            return false;
+
+        return true;
     }
 
     private static boolean readStatic(ByteBuffer bb)
@@ -116,7 +128,7 @@ public class CompositeType extends AbstractCompositeType
         this.types = ImmutableList.copyOf(types);
     }
 
-    protected AbstractType<?> getComparator(int i, ByteBuffer bb)
+    protected <V> AbstractType<?> getComparator(int i, V value, DataHandle<V> handle, int offset)
     {
         try
         {
@@ -133,12 +145,12 @@ public class CompositeType extends AbstractCompositeType
         }
     }
 
-    protected AbstractType<?> getComparator(int i, ByteBuffer bb1, ByteBuffer bb2)
+    protected <V> AbstractType<?> getComparator(int i, V left, V right, DataHandle<V> handle, int offset1, int offset2)
     {
-        return getComparator(i, bb1);
+        return getComparator(i, left, handle, offset1);
     }
 
-    protected AbstractType<?> getAndAppendComparator(int i, ByteBuffer bb, StringBuilder sb)
+    protected <V> AbstractType<?> getAndAppendComparator(int i, V value, DataHandle<V> handle, StringBuilder sb, int offset)
     {
         return types.get(i);
     }
@@ -148,11 +160,16 @@ public class CompositeType extends AbstractCompositeType
         return new StaticParsedComparator(types.get(i), part);
     }
 
-    protected AbstractType<?> validateComparator(int i, ByteBuffer bb) throws MarshalException
+    protected <V> AbstractType<?> validateComparator(int i, V value, DataHandle<V> handle, int offset) throws MarshalException
     {
         if (i >= types.size())
             throw new MarshalException("Too many bytes for comparator");
         return types.get(i);
+    }
+
+    protected <V> int getComparatorSize(int i, V value, DataHandle<V> handle, int offset)
+    {
+        return 0;
     }
 
     public ByteBuffer decompose(Object... objects)

@@ -29,6 +29,16 @@ public interface TypeSerializer<T>
 {
     public <V> V serialize(T value, DataHandle<V> handle);
 
+    default ByteBuffer serializeBuffer(T value)
+    {
+        return serialize(value, ByteBufferHandle.instance);
+    }
+
+    default Value serializeValue(T value)
+    {
+        return serialize(value, ValueHandle.instance);
+    }
+
     public <V> T deserialize(V value, DataHandle<V> handle);
 
     /*

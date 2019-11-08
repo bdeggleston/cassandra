@@ -38,6 +38,7 @@ import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public abstract class SimpleBuilders
 {
@@ -398,7 +399,7 @@ public abstract class SimpleBuilders
                     SetType st = (SetType)column.type;
                     assert value instanceof Set;
                     for (Object elt : (Set)value)
-                        builder.addCell(cell(column, ByteBufferUtil.EMPTY_BYTE_BUFFER, CellPath.create(toValue(elt, st.getElementsType()))));
+                        builder.addCell(cell(column, Values.EMPTY, CellPath.create(toValue(elt, st.getElementsType()))));
                     break;
                 case MAP:
                     MapType mt = (MapType)column.type;
@@ -472,7 +473,7 @@ public abstract class SimpleBuilders
                 return CounterContext.instance().createGlobal(CounterId.getLocalId(), 1, (Long)value);
             }
 
-            return ((AbstractType)type).decomposeBuffer(value);
+            return ((AbstractType)type).decomposeValue(value);
         }
     }
 }

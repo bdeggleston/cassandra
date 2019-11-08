@@ -26,10 +26,13 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteBufferHandle;
 import org.apache.cassandra.db.marshal.DataHandle;
+import org.apache.cassandra.db.marshal.ValueHandle;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 {
@@ -38,37 +41,50 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 
     public final TypeSerializer<K> keys;
     public final TypeSerializer<V> values;
-    private final Comparator<Pair<ByteBuffer, ByteBuffer>> comparator;
+    private final Comparator<Pair<Value, Value>> valueComparator;
+    private final Comparator<Pair<ByteBuffer, ByteBuffer>> bufferComparator;
 
-    public static <K, V> MapSerializer<K, V> getInstance(TypeSerializer<K> keys, TypeSerializer<V> values, Comparator<ByteBuffer> comparator)
+    public static <K, V> MapSerializer<K, V> getInstance(TypeSerializer<K> keys, TypeSerializer<V> values, Comparator<ByteBuffer> bufferComparator, Comparator<Value> valueComparator)
     {
         Pair<TypeSerializer<?>, TypeSerializer<?>> p = Pair.<TypeSerializer<?>, TypeSerializer<?>>create(keys, values);
         MapSerializer<K, V> t = instances.get(p);
         if (t == null)
-            t = instances.computeIfAbsent(p, k -> new MapSerializer<>(k.left, k.right, comparator) );
+            t = instances.computeIfAbsent(p, k -> new MapSerializer<>(k.left, k.right, bufferComparator, valueComparator) );
         return t;
     }
 
-    private MapSerializer(TypeSerializer<K> keys, TypeSerializer<V> values, Comparator<ByteBuffer> comparator)
+    private MapSerializer(TypeSerializer<K> keys, TypeSerializer<V> values, Comparator<ByteBuffer> bufferComparator, Comparator<Value> valueComparator)
     {
         this.keys = keys;
         this.values = values;
-        this.comparator = (p1, p2) -> comparator.compare(p1.left, p2.left);
+        this.bufferComparator = (p1, p2) -> bufferComparator.compare(p1.left, p2.left);
+        this.valueComparator = (p1, p2) -> valueComparator.compare(p1.left, p2.left);
     }
 
-    public List<ByteBuffer> serializeValues(Map<K, V> map)
+    private Comparator getComparatorForHandle(DataHandle handle)
     {
-        List<Pair<ByteBuffer, ByteBuffer>> pairs = new ArrayList<>(map.size());
+        if (handle == ValueHandle.instance)
+            return valueComparator;
+        if (handle == ByteBufferHandle.instance)
+            return bufferComparator;
+
+        throw new AssertionError("Unsupported value handle: " + handle);
+    }
+
+    protected <O> List<O> serializeValues(Map<K, V> map, DataHandle<O> handle)
+    {
+        List<Pair<O, O>> pairs = new ArrayList<>(map.size());
         for (Map.Entry<K, V> entry : map.entrySet())
-            pairs.add(Pair.create(keys.serialize(entry.getKey()), values.serialize(entry.getValue())));
-        Collections.sort(pairs, comparator);
-        List<ByteBuffer> buffers = new ArrayList<>(pairs.size() * 2);
-        for (Pair<ByteBuffer, ByteBuffer> p : pairs)
+            pairs.add(Pair.create(keys.serialize(entry.getKey(), handle), values.serialize(entry.getValue(), handle)));
+
+        Collections.sort(pairs, getComparatorForHandle(handle));
+        List<O> output = new ArrayList<>(pairs.size() * 2);
+        for (Pair<O, O> p : pairs)
         {
-            buffers.add(p.left);
-            buffers.add(p.right);
+            output.add(p.left);
+            output.add(p.right);
         }
-        return buffers;
+        return output;
     }
 
     public int getElementCount(Map<K, V> value)
@@ -127,7 +143,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
                 offset += sizeOfValue(value, handle, version);
                 values.validate(value, handle);
 
-                m.put(keys.deserialize(key), values.deserialize(value));
+                m.put(keys.deserialize(key, handle), values.deserialize(value, handle));
             }
             if (handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Unexpected extraneous bytes after map value");
@@ -146,17 +162,19 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         {
             ByteBuffer input = collection.duplicate();
             int n = readCollectionSize(input, ProtocolVersion.V3);
+            int offset = TypeSizes.sizeof(n);
             for (int i = 0; i < n; i++)
             {
-                ByteBuffer kbb = readValue(input, ProtocolVersion.V3);
+                ByteBuffer kbb = readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
+                offset += sizeOfValue(kbb, ByteBufferHandle.instance, ProtocolVersion.V3);
                 int comparison = comparator.compareForCQL(kbb, key);
                 if (comparison == 0)
-                    return readValue(input, ProtocolVersion.V3);
+                    return readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
                 else if (comparison > 0)
                     // since the map is in sorted order, we know we've gone too far and the element doesn't exist
                     return null;
                 else // comparison < 0
-                    skipValue(input, ProtocolVersion.V3);
+                    offset += skipValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
             }
             return null;
         }
@@ -187,7 +205,8 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             for (int i = 0; i < n; i++)
             {
                 int pos = input.position();
-                ByteBuffer kbb = readValue(input, ProtocolVersion.V3); // key
+                ByteBuffer kbb = readValue(input, ByteBufferHandle.instance, 0, ProtocolVersion.V3); // key
+                input.position(input.position() + sizeOfValue(kbb, ByteBufferHandle.instance, ProtocolVersion.V3));
 
                 // If we haven't passed the start already, check if we have now
                 if (!inSlice)

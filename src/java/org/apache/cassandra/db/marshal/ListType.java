@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.cassandra.cql3.Json;
 import org.apache.cassandra.cql3.Lists;
 import org.apache.cassandra.cql3.Term;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
@@ -31,6 +32,7 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.ListSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.jboss.byteman.agent.adapter.cfg.BBlock;
 
 public class ListType<T> extends CollectionType<List<T>>
 {
@@ -158,34 +160,29 @@ public class ListType<T> extends CollectionType<List<T>>
         return this.elements.isValueCompatibleWithInternal(((ListType) previous).elements);
     }
 
-    @Override
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
-    {
-        return compareListOrSet(elements, o1, o2);
-    }
-
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        // TODO
+        return compareListOrSet(elements, left, right, handle);
     }
 
-    static int compareListOrSet(AbstractType<?> elementsComparator, ByteBuffer o1, ByteBuffer o2)
+    static <V> int compareListOrSet(AbstractType<?> elementsComparator, V left, V right, DataHandle<V> handle)
     {
         // Note that this is only used if the collection is frozen
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
-        ByteBuffer bb1 = o1.duplicate();
-        ByteBuffer bb2 = o2.duplicate();
-
-        int size1 = CollectionSerializer.readCollectionSize(bb1, ProtocolVersion.V3);
-        int size2 = CollectionSerializer.readCollectionSize(bb2, ProtocolVersion.V3);
+        int size1 = CollectionSerializer.readCollectionSize(left, handle, ProtocolVersion.V3);
+        int offset1 = TypeSizes.sizeof(size1);
+        int size2 = CollectionSerializer.readCollectionSize(right, handle, ProtocolVersion.V3);
+        int offset2 = TypeSizes.sizeof(size2);
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {
-            ByteBuffer v1 = CollectionSerializer.readValue(bb1, ProtocolVersion.V3);
-            ByteBuffer v2 = CollectionSerializer.readValue(bb2, ProtocolVersion.V3);
-            int cmp = elementsComparator.compare(v1, v2);
+            V v1 = CollectionSerializer.readValue(left, handle, offset1, ProtocolVersion.V3);
+            offset1 += CollectionSerializer.sizeOfValue(v1, handle, ProtocolVersion.V3);
+            V v2 = CollectionSerializer.readValue(right, handle, offset2, ProtocolVersion.V3);
+            offset2 += CollectionSerializer.sizeOfValue(v2, handle, ProtocolVersion.V3);
+            int cmp = elementsComparator.compare(v1, v2, handle);
             if (cmp != 0)
                 return cmp;
         }
@@ -213,7 +210,7 @@ public class ListType<T> extends CollectionType<List<T>>
         assert isMultiCell;
         List<ByteBuffer> bbs = new ArrayList<ByteBuffer>();
         while (cells.hasNext())
-            bbs.add(cells.next().value());
+            bbs.add(cells.next().value().buffer());
         return bbs;
     }
 
@@ -244,11 +241,14 @@ public class ListType<T> extends CollectionType<List<T>>
         ByteBuffer value = buffer.duplicate();
         StringBuilder sb = new StringBuilder("[");
         int size = CollectionSerializer.readCollectionSize(value, protocolVersion);
+        int offset = TypeSizes.sizeof(size);
         for (int i = 0; i < size; i++)
         {
             if (i > 0)
                 sb.append(", ");
-            sb.append(elementsType.toJSONString(CollectionSerializer.readValue(value, protocolVersion), protocolVersion));
+            ByteBuffer element = CollectionSerializer.readValue(value, ByteBufferHandle.instance, offset, protocolVersion);
+            offset += CollectionSerializer.sizeOfValue(element, ByteBufferHandle.instance, protocolVersion);
+            sb.append(elementsType.toJSONString(element, protocolVersion));
         }
         return sb.append("]").toString();
     }
