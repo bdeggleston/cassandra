@@ -50,6 +50,14 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
         return ByteBufferUtil.read(in, length);
     }
 
+    public ByteBuffer slice(ByteBuffer input, int offset, int length)
+    {
+        ByteBuffer copy = input.duplicate();
+        copy.position(copy.position() + offset);
+        copy.limit(copy.position() + length);
+        return copy;
+    }
+
     public int compareUnsigned(ByteBuffer left, ByteBuffer right)
     {
         return FastByteOperations.compareUnsigned(left, right);
@@ -103,6 +111,11 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
     public int toInt(ByteBuffer value)
     {
         return ByteBufferUtil.toInt(value);
+    }
+
+    public int getInt(ByteBuffer value, int offset)
+    {
+        return value.getInt(value.position() + offset);
     }
 
     public long toLong(ByteBuffer value)

@@ -51,6 +51,11 @@ public class ValueHandle implements DataHandle<Value>
         return Values.read(in, length);
     }
 
+    public Value slice(Value input, int offset, int length)
+    {
+        return Values.slice(input, offset, length);
+    }
+
     public int compareUnsigned(Value left, Value right)
     {
         return Values.compareUnsigned(left, right);
@@ -104,6 +109,11 @@ public class ValueHandle implements DataHandle<Value>
     public int toInt(Value value)
     {
         return value.getInt(0);
+    }
+
+    public int getInt(Value value, int offset)
+    {
+        return value.getInt(offset);
     }
 
     public long toLong(Value value)

@@ -24,7 +24,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
@@ -74,18 +76,23 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         return value.size();
     }
 
-    public void validateForNativeProtocol(ByteBuffer bytes, ProtocolVersion version)
+    public <V> void validateForNativeProtocol(V input, DataHandle<V> handle, ProtocolVersion version)
     {
         try
         {
-            ByteBuffer input = bytes.duplicate();
-            int n = readCollectionSize(input, version);
+            int n = readCollectionSize(input, handle, version);
+            int offset = TypeSizes.sizeof(n);
             for (int i = 0; i < n; i++)
             {
-                keys.validate(readValue(input, version));
-                values.validate(readValue(input, version));
+                V key = readValue(input, handle, offset, version);
+                offset += sizeOfValue(key, handle, version);
+                keys.validate(key, handle);
+
+                V value = readValue(input, handle, offset, version);
+                offset += sizeOfValue(value, handle, version);
+                values.validate(value, handle);
             }
-            if (input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Unexpected extraneous bytes after map value");
         }
         catch (BufferUnderflowException e)
@@ -94,15 +101,16 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         }
     }
 
-    public Map<K, V> deserializeForNativeProtocol(ByteBuffer bytes, ProtocolVersion version)
+    public <I> Map<K, V> deserializeForNativeProtocol(I input, DataHandle<I> handle, ProtocolVersion version)
     {
         try
         {
-            ByteBuffer input = bytes.duplicate();
-            int n = readCollectionSize(input, version);
+            int n = readCollectionSize(input, handle, version);
 
             if (n < 0)
                 throw new MarshalException("The data cannot be deserialized as a map");
+
+            int offset = TypeSizes.sizeof(n);
 
             // If the received bytes are not corresponding to a map, n might be a huge number.
             // In such a case we do not want to initialize the map with that initialCapacity as it can result
@@ -111,15 +119,17 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             Map<K, V> m = new LinkedHashMap<K, V>(Math.min(n, 256));
             for (int i = 0; i < n; i++)
             {
-                ByteBuffer kbb = readValue(input, version);
-                keys.validate(kbb);
+                I key = readValue(input, handle, offset, version);
+                offset += sizeOfValue(key, handle, version);
+                keys.validate(key, handle);
 
-                ByteBuffer vbb = readValue(input, version);
-                values.validate(vbb);
+                I value = readValue(input, handle, offset, version);
+                offset += sizeOfValue(value, handle, version);
+                values.validate(value, handle);
 
-                m.put(keys.deserialize(kbb), values.deserialize(vbb));
+                m.put(keys.deserialize(key), values.deserialize(value));
             }
-            if (input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Unexpected extraneous bytes after map value");
             return m;
         }

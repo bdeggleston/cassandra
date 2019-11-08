@@ -22,17 +22,20 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteBufferHandle;
+import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 
 public abstract class CollectionSerializer<T> implements TypeSerializer<T>
 {
     protected abstract List<ByteBuffer> serializeValues(T value);
     protected abstract int getElementCount(T value);
 
-    public abstract T deserializeForNativeProtocol(ByteBuffer buffer, ProtocolVersion version);
-    public abstract void validateForNativeProtocol(ByteBuffer buffer, ProtocolVersion version);
+    public abstract <V> T deserializeForNativeProtocol(V value, DataHandle<V> handle, ProtocolVersion version);
+    public abstract <V> void validateForNativeProtocol(V value, DataHandle<V> handle, ProtocolVersion version);
 
     public ByteBuffer serialize(T value)
     {
@@ -41,20 +44,20 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         return pack(values, getElementCount(value), ProtocolVersion.V3);
     }
 
-    public T deserialize(ByteBuffer bytes)
+    public <V> T deserialize(V value, DataHandle<V> handle)
     {
         // The only cases we serialize/deserialize collections internally (i.e. not for the protocol sake),
         // is:
         //  1) when collections are frozen
         //  2) for internal calls.
         // In both case, using the protocol 3 version variant is the right thing to do.
-        return deserializeForNativeProtocol(bytes, ProtocolVersion.V3);
+        return deserializeForNativeProtocol(value, handle, ProtocolVersion.V3);
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T1> void validate(T1 value, DataHandle<T1> handle) throws MarshalException
     {
         // Same thing as above
-        validateForNativeProtocol(bytes, ProtocolVersion.V3);
+        validateForNativeProtocol(value, handle, ProtocolVersion.V3);
     }
 
     public static ByteBuffer pack(Collection<ByteBuffer> buffers, int elements, ProtocolVersion version)
@@ -77,7 +80,12 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
 
     public static int readCollectionSize(ByteBuffer input, ProtocolVersion version)
     {
-        return input.getInt();
+        return readCollectionSize(input, ByteBufferHandle.instance, version)
+    }
+
+    public static <V> int readCollectionSize(V value, DataHandle<V> handle, ProtocolVersion version)
+    {
+        return handle.toInt(value);
     }
 
     protected static int sizeOfCollectionSize(int elements, ProtocolVersion version)
@@ -97,13 +105,13 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         output.put(value.duplicate());
     }
 
-    public static ByteBuffer readValue(ByteBuffer input, ProtocolVersion version)
+    public static <V> V readValue(V input, DataHandle<V> handle, int offset, ProtocolVersion version)
     {
-        int size = input.getInt();
+        int size = handle.getInt(input, offset);
         if (size < 0)
             return null;
 
-        return ByteBufferUtil.readBytes(input, size);
+        return handle.slice(input, offset + 4, size);
     }
 
     protected static void skipValue(ByteBuffer input, ProtocolVersion version)
@@ -112,9 +120,9 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         input.position(input.position() + size);
     }
 
-    public static int sizeOfValue(ByteBuffer value, ProtocolVersion version)
+    public static <V> int sizeOfValue(V value, DataHandle<V> handle, ProtocolVersion version)
     {
-        return value == null ? 4 : 4 + value.remaining();
+        return value == null ? 4 : 4 + handle.size(value);
     }
 
     /**

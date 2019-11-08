@@ -41,6 +41,7 @@ public interface DataHandle<V>
 
     void write(V value, DataOutputPlus out) throws IOException;
     V read(DataInputPlus in, int length) throws IOException;
+    V slice(V input, int offset, int length);
 
     int compareUnsigned(V left, V right);
 
@@ -60,6 +61,7 @@ public interface DataHandle<V>
     short toShort(V value);
     short getShort(V value, int offset);
     int toInt(V value);
+    int getInt(V value, int offset);
     long toLong(V value);
     long getLong(V value, int offset);
     float toFloat(V value);
