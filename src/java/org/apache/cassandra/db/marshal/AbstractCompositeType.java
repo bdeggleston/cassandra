@@ -69,7 +69,7 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
 
             V value1 = handle.sliceWithShortLength(left, offset1);
             offset1 += handle.sizeWithShortLength(value1);
-            V value2 = handle.sliceWithShortLength(right, offset1);
+            V value2 = handle.sliceWithShortLength(right, offset2);
             offset2 += handle.sizeWithShortLength(value2);
 
             int cmp = comparator.compareCollectionMembers(value1, value2, previous, handle);

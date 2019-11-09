@@ -182,7 +182,7 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
     public static <V> int compareMaps(AbstractType<?> keysComparator, AbstractType<?> valuesComparator, V left, V right, DataHandle<V> handle)
     {
         if (handle.isEmpty(left) || handle.isEmpty(right))
-            return handle.size(left) - handle.size(right);
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
 
         ProtocolVersion protocolVersion = ProtocolVersion.V3;

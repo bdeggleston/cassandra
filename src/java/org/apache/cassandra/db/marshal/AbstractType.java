@@ -108,7 +108,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     static <V, T extends Comparable<T>> int compareComposed(V left, V right, DataHandle<V> handle, AbstractType<T> type)
     {
         if (handle.isEmpty(left) || handle.isEmpty(right))
-            return handle.size(left) - handle.size(right);
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
         return type.compose(left, handle).compareTo(type.compose(right, handle));
     }

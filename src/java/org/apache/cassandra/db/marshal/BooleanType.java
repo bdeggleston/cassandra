@@ -46,7 +46,7 @@ public class BooleanType extends AbstractType<Boolean>
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
         if (handle.isEmpty(left) || handle.isEmpty(right))
-            return handle.size(left) - handle.size(right);
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
         // False is 0, True is anything else, makes False sort before True.
         int v1 = handle.getByte(left, 0) == 0 ? 0 : 1;

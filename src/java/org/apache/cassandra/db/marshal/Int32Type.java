@@ -45,7 +45,7 @@ public class Int32Type extends NumberType<Integer>
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
         if (handle.isEmpty(left) || handle.isEmpty(right))
-            return handle.size(left) - handle.size(right);
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
         int diff = handle.getByte(left, 0) - handle.getByte(right, 0);
         if (diff != 0)

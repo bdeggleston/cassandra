@@ -44,7 +44,7 @@ public class LexicalUUIDType extends AbstractType<UUID>
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
         if (handle.isEmpty(left) || handle.isEmpty(right))
-            return handle.size(left) - handle.size(right);
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
         return handle.toUUID(left).compareTo(handle.toUUID(right));
     }
 
