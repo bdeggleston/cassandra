@@ -40,6 +40,7 @@ import org.apache.cassandra.serializers.MarshalException;
 
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.FastByteOperations;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 import org.github.jamm.Unmetered;
@@ -92,7 +93,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         reverseComparator = (o1, o2) -> AbstractType.this.compare(o2, o1);
         try
         {
-            Method custom = getClass().getMethod("compareCustom", ByteBuffer.class, ByteBuffer.class);
+            Method custom = getClass().getMethod("compareCustom", Object.class, Object.class, DataHandle.class);
             if ((custom.getDeclaringClass() == AbstractType.class) == (comparisonType == CUSTOM))
                 throw new IllegalStateException((comparisonType == CUSTOM ? "compareCustom must be overridden if ComparisonType is CUSTOM"
                                                                          : "compareCustom should not be overridden if ComparisonType is not CUSTOM")
