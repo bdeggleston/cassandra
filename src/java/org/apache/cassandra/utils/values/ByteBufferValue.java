@@ -45,6 +45,12 @@ public class ByteBufferValue implements Value
         this.value = value;
     }
 
+    private void maybeUnderflow(int offset, int size)
+    {
+        if (offset + size > size())
+            throw new ValueUnderflowException();
+    }
+
     public boolean equals(Object o)
     {
         throw new UnsupportedOperationException("TODO");
@@ -112,7 +118,7 @@ public class ByteBufferValue implements Value
 
     public void copyTo(byte[] dst, int srcOffset, int size)
     {
-        Preconditions.checkArgument(srcOffset + size < size());
+        maybeUnderflow(srcOffset, size);;
         ByteBufferUtil.copyBytes(value, value.position() + srcOffset, dst, 0, size);
     }
 
@@ -124,7 +130,7 @@ public class ByteBufferValue implements Value
     public void copyTo(ByteBuffer dst, int srcPos, int dstPos, int size)
     {
         Preconditions.checkArgument(dst.remaining() >= size - (dstPos - dst.position()));
-        Preconditions.checkArgument(srcPos + size < size());
+        maybeUnderflow(srcPos, size);;
         ByteBufferUtil.copyBytes(value, value.position() + srcPos, dst, dstPos, size);
     }
 
@@ -145,37 +151,44 @@ public class ByteBufferValue implements Value
 
     public long getLong(int offset)
     {
+        maybeUnderflow(offset, 8);
         return value.getLong(value.position() + offset);
     }
 
     public int getInt(int offset)
     {
+        maybeUnderflow(offset, 4);
         return value.getInt(value.position() + offset);
     }
 
     public short getShort(int offset)
     {
+        maybeUnderflow(offset, 2);
         return value.getShort(value.position() + offset);
     }
 
     public byte getByte(int offset)
     {
+        maybeUnderflow(offset, 1);
         return value.get(value.position() + offset);
     }
 
     public float getFloat(int offset)
     {
+        maybeUnderflow(offset, 4);
         return value.getFloat(value.position() + offset);
     }
 
     public double getDouble(int offset)
     {
+        maybeUnderflow(offset, 8);
         return value.getDouble(value.position() + offset);
     }
 
     public String getString(int position, int length, Charset charset) throws CharacterCodingException
     {
-        return null;
+        maybeUnderflow(position, length);
+        return ByteBufferUtil.string(value, value.position() + position, length, charset);
     }
 
     public Value getMinimal()

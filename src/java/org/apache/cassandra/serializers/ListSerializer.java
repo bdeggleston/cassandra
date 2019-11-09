@@ -29,6 +29,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ByteBufferHandle;
 import org.apache.cassandra.db.marshal.DataHandle;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.values.ValueUnderflowException;
 
 public class ListSerializer<T> extends CollectionSerializer<List<T>>
 {
@@ -79,7 +80,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }
@@ -149,7 +150,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             }
             return readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }

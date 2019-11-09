@@ -33,6 +33,7 @@ import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.ValueUnderflowException;
 import org.jboss.byteman.agent.adapter.cfg.BBlock;
 
 public class SetSerializer<T> extends CollectionSerializer<Set<T>>
@@ -98,7 +99,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
             if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after set value");
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -131,7 +132,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
                 throw new MarshalException("Unexpected extraneous bytes after set value");
             return l;
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -185,7 +186,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
             }
             return null;
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -254,7 +255,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
 
             return copyAsNewCollection(collection, count, startPos, input.position(), ProtocolVersion.V3);
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }

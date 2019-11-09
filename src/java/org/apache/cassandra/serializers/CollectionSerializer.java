@@ -39,7 +39,7 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
 
     public T deserializeForNativeProtocol(ByteBuffer value, ProtocolVersion version)
     {
-        return deserializeForNativeProtocol(value, DataHandle.BUFFER, version);
+        return deserializeForNativeProtocol(value, ByteBufferHandle.instance, version);
     }
 
     public abstract <V> void validateForNativeProtocol(V value, DataHandle<V> handle, ProtocolVersion version);

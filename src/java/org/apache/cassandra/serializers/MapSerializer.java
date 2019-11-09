@@ -33,6 +33,7 @@ import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.ValueUnderflowException;
 
 public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 {
@@ -111,7 +112,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             if (handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Unexpected extraneous bytes after map value");
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -149,7 +150,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
                 throw new MarshalException("Unexpected extraneous bytes after map value");
             return m;
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -178,7 +179,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             }
             return null;
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -249,7 +250,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 
             return copyAsNewCollection(collection, count, startPos, input.position(), ProtocolVersion.V3);
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
