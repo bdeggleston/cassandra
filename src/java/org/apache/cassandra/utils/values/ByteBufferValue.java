@@ -53,12 +53,12 @@ public class ByteBufferValue implements Value
 
     public boolean equals(Object o)
     {
-        throw new UnsupportedOperationException("TODO");
+        return Values.equals(this, o);
     }
 
     public int hashCode()
     {
-        throw new UnsupportedOperationException("TODO");
+        return Values.hashCode(this);
     }
 
     public int size()

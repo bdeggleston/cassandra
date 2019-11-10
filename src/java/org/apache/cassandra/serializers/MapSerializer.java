@@ -123,11 +123,10 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         try
         {
             int n = readCollectionSize(input, handle, version);
+            int offset = sizeOfCollectionSize(n, version);
 
             if (n < 0)
                 throw new MarshalException("The data cannot be deserialized as a map");
-
-            int offset = TypeSizes.sizeof(n);
 
             // If the received bytes are not corresponding to a map, n might be a huge number.
             // In such a case we do not want to initialize the map with that initialCapacity as it can result
@@ -163,7 +162,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         {
             ByteBuffer input = collection.duplicate();
             int n = readCollectionSize(input, ProtocolVersion.V3);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, ProtocolVersion.V3);
             for (int i = 0; i < n; i++)
             {
                 ByteBuffer kbb = readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
@@ -199,6 +198,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         {
             ByteBuffer input = collection.duplicate();
             int n = readCollectionSize(input, ProtocolVersion.V3);
+            input.position(input.position() + sizeOfCollectionSize(n, ProtocolVersion.V3));
             int startPos = input.position();
             int count = 0;
             boolean inSlice = from == ByteBufferUtil.UNSET_BYTE_BUFFER;

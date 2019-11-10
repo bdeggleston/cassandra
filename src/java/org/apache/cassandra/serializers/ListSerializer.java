@@ -139,7 +139,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         try
         {
             int n = readCollectionSize(input, ProtocolVersion.V3);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, ProtocolVersion.V3);
             if (n <= index)
                 return null;
 

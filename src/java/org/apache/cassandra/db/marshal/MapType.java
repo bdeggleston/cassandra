@@ -283,7 +283,7 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         ByteBuffer value = buffer.duplicate();
         StringBuilder sb = new StringBuilder("{");
         int size = CollectionSerializer.readCollectionSize(value, protocolVersion);
-        int offset = TypeSizes.sizeof(size);
+        int offset = CollectionSerializer.sizeOfCollectionSize(size, protocolVersion);
         for (int i = 0; i < size; i++)
         {
             if (i > 0)

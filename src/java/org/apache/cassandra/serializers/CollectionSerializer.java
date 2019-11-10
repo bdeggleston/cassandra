@@ -102,7 +102,7 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         return handle.toInt(value);
     }
 
-    protected static int sizeOfCollectionSize(int elements, ProtocolVersion version)
+    public static int sizeOfCollectionSize(int elements, ProtocolVersion version)
     {
         return 4;
     }

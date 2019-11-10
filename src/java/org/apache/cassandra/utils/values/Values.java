@@ -144,6 +144,11 @@ public class Values
         return FACTORY.of(s);
     }
 
+    public static Value valueOf(byte s)
+    {
+        return FACTORY.of(s);
+    }
+
     public static Value valueOf(byte[] s)
     {
         return FACTORY.of(s);
@@ -243,4 +248,21 @@ public class Values
         return ByteBufferUtil.contains(value.buffer(), subValue.buffer());
     }
 
+    static int hashCode(Value value)
+    {
+        int h = 1;
+        for (int i=0, size=value.size(); i<size; i++)
+            h = 31 * h + (int)value.getByte(i);
+
+        return h;
+    }
+
+    static boolean equals(Value left, Object right)
+    {
+        if (left == right)
+            return true;
+        if (!(right instanceof Value))
+            return false;
+        return compare(left, (Value) right) == 0;
+    }
 }

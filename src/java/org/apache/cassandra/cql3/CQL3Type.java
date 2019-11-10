@@ -194,6 +194,7 @@ public interface CQL3Type
             StringBuilder target = new StringBuilder();
             buffer = buffer.duplicate();
             int size = CollectionSerializer.readCollectionSize(buffer, version);
+            buffer.position(buffer.position() + CollectionSerializer.sizeOfCollectionSize(size, version));
 
             switch (type.kind)
             {

@@ -31,6 +31,7 @@ import org.apache.cassandra.serializers.BytesSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A class avoiding class duplication between CompositeType and
@@ -274,40 +275,48 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
     @Override
     public void validate(ByteBuffer bb) throws MarshalException
     {
-        boolean isStatic = readIsStatic(bb, ByteBufferHandle.instance);
+        validate(bb, ByteBufferHandle.instance);
+    }
+
+    public void validate(Value value) throws MarshalException
+    {
+        validate(value, ValueHandle.instance);
+    }
+
+    private <V> void validate(V input, DataHandle<V> handle)
+    {
+        boolean isStatic = readIsStatic(input, handle);
         int offset = startingOffset(isStatic);
 
         int i = 0;
-        ByteBuffer previous = null;
-        while (bb.remaining() > 0)
+        V previous = null;
+        while (handle.sizeFromOffset(input, offset) > 0)
         {
-            AbstractType<?> comparator = validateComparator(i, bb, ByteBufferHandle.instance, offset);
-            offset += getComparatorSize(i, bb, ByteBufferHandle.instance, offset);
+            AbstractType<?> comparator = validateComparator(i, input, handle, offset);
+            offset += getComparatorSize(i, input, handle, offset);
 
-            if (ByteBufferHandle.instance.sizeFromOffset(bb, offset) < 2)
+            if (handle.sizeFromOffset(input, offset) < 2)
                 throw new MarshalException("Not enough bytes to read value size of component " + i);
-            int length = ByteBufferHandle.instance.getShort(bb, offset);
+            int length = handle.getShort(input, offset);
             offset += 2;
 
-            if (ByteBufferHandle.instance.sizeFromOffset(bb, offset) < length)
+            if (handle.sizeFromOffset(input, offset) < length)
                 throw new MarshalException("Not enough bytes to read value of component " + i);
-            ByteBuffer value = ByteBufferHandle.instance.slice(bb, offset, length);
+            V value = handle.slice(input, offset, length);
             offset += length;
 
-            comparator.validateCollectionMember(value, previous);
+            comparator.validateCollectionMember(value, previous, handle);
 
-            if (ByteBufferHandle.instance.sizeFromOffset(bb, offset) == 0)
+            if (handle.sizeFromOffset(input, offset) == 0)
                 throw new MarshalException("Not enough bytes to read the end-of-component byte of component" + i);
-            byte b = ByteBufferHandle.instance.getByte(bb, offset++);
-            if (b != 0 && ByteBufferHandle.instance.sizeFromOffset(bb, offset) != 0)
+            byte b = handle.getByte(input, offset++);
+            if (b != 0 && handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Invalid bytes remaining after an end-of-component at component" + i);
 
             previous = value;
             ++i;
         }
     }
-
-
 
     public abstract ByteBuffer decompose(Object... objects);
 

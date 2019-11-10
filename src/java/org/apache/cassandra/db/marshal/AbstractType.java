@@ -393,6 +393,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         validate(bytes);
     }
 
+    public <V> void validateCollectionMember(V value, V collectionName, DataHandle<V> handle) throws MarshalException
+    {
+        getSerializer().validate(value, handle);
+    }
+
+
     public boolean isCollection()
     {
         return false;
