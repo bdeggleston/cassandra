@@ -32,7 +32,7 @@ import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 
@@ -66,7 +66,7 @@ public class OneCompactionTest
             String key = String.valueOf(j);
             new RowUpdateBuilder(store.metadata(), j, key)
                 .clustering("0")
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build()
                 .applyUnsafe();
 

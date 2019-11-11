@@ -33,8 +33,8 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.sstable.format.SSTableWriter;
-import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static junit.framework.Assert.fail;
 import static org.apache.cassandra.service.ActiveRepairService.NO_PENDING_REPAIR;
@@ -59,7 +59,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer.append(builder.build().unfilteredIterator());
             }
 
@@ -70,7 +70,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer.append(builder.build().unfilteredIterator());
             }
             SSTableReader s2 = writer.setMaxDataAge(1000).openEarly();
@@ -114,7 +114,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer.append(builder.build().unfilteredIterator());
             }
 
@@ -123,7 +123,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer.append(builder.build().unfilteredIterator());
             }
             SSTableReader sstable = writer.finish(true);
@@ -165,7 +165,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer1.append(builder.build().unfilteredIterator());
             }
 
@@ -174,7 +174,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
-                    builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
+                    builder.newRow("" + j).add("val", Values.valueOf(ByteBuffer.allocate(1000)));
                 writer2.append(builder.build().unfilteredIterator());
             }
             SSTableReader sstable = writer1.finish(true);
@@ -218,7 +218,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
         try (SSTableWriter writer1 = getWriter(cfs, dir, txn))
         {
             UpdateBuilder largeValue = UpdateBuilder.create(cfs.metadata(), "large_value").withTimestamp(1);
-            largeValue.newRow("clustering").add("val", ByteBuffer.allocate(2 * 1024 * 1024));
+            largeValue.newRow("clustering").add("val", Values.valueOf(ByteBuffer.allocate(2 * 1024 * 1024)));
             writer1.append(largeValue.build().unfilteredIterator());
 
             SSTableReader sstable = writer1.finish(true);

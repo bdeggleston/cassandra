@@ -68,6 +68,7 @@ import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -171,7 +172,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key1"))
                 .clustering("Column1")
-                .add("val", ByteBufferUtil.bytes("abcd"))
+                .add("val", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -179,7 +180,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key2"))
                 .clustering("Column1")
-                .add("val", ByteBufferUtil.bytes("abcd"))
+                .add("val", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -199,7 +200,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("cc")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -207,7 +208,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("dd")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -230,7 +231,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("cc")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -238,7 +239,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("dd")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -302,7 +303,7 @@ public class ReadCommandTest
                 {
                     new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes(data[1]))
                     .clustering(data[2])
-                    .add(data[3], ByteBufferUtil.bytes("blah"))
+                    .add(data[3], Values.valueOf("blah"))
                     .build()
                     .apply();
                 }
@@ -389,7 +390,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata.get(), 0, ByteBufferUtil.bytes("key"))
         .clustering("dd")
-        .add("a", ByteBufferUtil.bytes("abcd"))
+        .add("a", Values.valueOf("abcd"))
         .build()
         .apply();
 
@@ -470,7 +471,7 @@ public class ReadCommandTest
                 {
                     new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes(data[1]))
                             .clustering(data[2])
-                            .add(data[3], ByteBufferUtil.bytes("blah"))
+                            .add(data[3], Values.valueOf("blah"))
                             .build()
                             .apply();
                 }
@@ -546,7 +547,7 @@ public class ReadCommandTest
                 {
                     new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes(data[1]))
                             .clustering(data[2])
-                            .add(data[3], ByteBufferUtil.bytes("blah"))
+                            .add(data[3], Values.valueOf("blah"))
                             .build()
                             .apply();
                 }
@@ -614,7 +615,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
             .clustering("dd")
-            .add("a", ByteBufferUtil.bytes("abcd"))
+            .add("a", Values.valueOf("abcd"))
             .build()
             .apply();
 
@@ -622,7 +623,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 1, ByteBufferUtil.bytes("key"))
             .clustering("dd")
-            .add("a", ByteBufferUtil.bytes("wxyz"))
+            .add("a", Values.valueOf("wxyz"))
             .build()
             .apply();
 
@@ -662,7 +663,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("cc")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -735,7 +736,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key"))
                 .clustering("cc")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -743,7 +744,7 @@ public class ReadCommandTest
 
         new RowUpdateBuilder(cfs.metadata(), 1, ByteBufferUtil.bytes("key"))
                 .clustering("dd")
-                .add("a", ByteBufferUtil.bytes("abcd"))
+                .add("a", Values.valueOf("abcd"))
                 .build()
                 .apply();
 

@@ -55,6 +55,8 @@ import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -74,12 +76,7 @@ public class CleanupTest
     public static final String CF_STANDARD3 = "Standard3";
 
     public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
-    public static final ByteBuffer VALUE = ByteBuffer.allocate(8);
-    static
-    {
-        VALUE.putLong(20101229);
-        VALUE.flip();
-    }
+    public static final Value VALUE = Values.valueOf(20101229L);
 
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
@@ -160,7 +157,7 @@ public class CleanupTest
             Thread.sleep(10);
 
         RowFilter cf = RowFilter.create();
-        cf.add(cdef, Operator.EQ, VALUE);
+        cf.add(cdef, Operator.EQ, VALUE.buffer());
         assertEquals(LOOPS, Util.getAll(Util.cmd(cfs).filterOn("birthdate", Operator.EQ, VALUE).build()).size());
 
         // we don't allow cleanup when the local host has no range to avoid wipping up all data when a node has not join the ring.

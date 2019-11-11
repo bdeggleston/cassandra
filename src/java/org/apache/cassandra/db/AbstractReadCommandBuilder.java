@@ -32,6 +32,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 public abstract class AbstractReadCommandBuilder
 {
@@ -132,7 +133,11 @@ public abstract class AbstractReadCommandBuilder
 
     private ByteBuffer bb(Object value, AbstractType<?> type)
     {
-        return value instanceof ByteBuffer ? (ByteBuffer)value : ((AbstractType)type).decomposeBuffer(value);
+        if (value instanceof Value)
+            return ((Value) value).buffer();
+        if (value instanceof ByteBuffer)
+            return (ByteBuffer) value;
+        return ((AbstractType)type).decomposeBuffer(value);
     }
 
     private AbstractType<?> forValues(AbstractType<?> collectionType)

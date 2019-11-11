@@ -60,6 +60,8 @@ import org.apache.cassandra.streaming.StreamSummary;
 import org.apache.cassandra.streaming.messages.StreamMessageHeader;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -96,7 +98,7 @@ public class CassandraEntireSSTableStreamWriterTest
         {
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }

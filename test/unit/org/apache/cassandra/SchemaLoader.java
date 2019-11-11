@@ -46,6 +46,7 @@ import org.apache.cassandra.schema.*;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import org.junit.After;
 import org.junit.BeforeClass;
@@ -823,9 +824,9 @@ public static TableMetadata.Builder clusteringSASICFMD(String ksName, String cfN
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfm, FBUtilities.timestampMicros(), ByteBufferUtil.bytes("key"+i));
             if (cfm.clusteringColumns() != null && !cfm.clusteringColumns().isEmpty())
-                builder.clustering(ByteBufferUtil.bytes("col"+ i)).add("val", ByteBufferUtil.bytes("val" + i));
+                builder.clustering(ByteBufferUtil.bytes("col"+ i)).add("val", Values.valueOf("val" + i));
             else
-                builder.add("val", ByteBufferUtil.bytes("val"+i));
+                builder.add("val", Values.valueOf("val"+i));
             builder.build().apply();
         }
     }

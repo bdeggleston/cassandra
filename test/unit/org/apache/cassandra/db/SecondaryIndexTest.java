@@ -166,7 +166,7 @@ public class SecondaryIndexTest
             new RowUpdateBuilder(cfs.metadata(), FBUtilities.timestampMicros(), "key" + i)
                     .clustering("c")
                     .add("birthdate", 34L)
-                    .add("notbirthdate", ByteBufferUtil.bytes((long) (i % 2)))
+                    .add("notbirthdate", Values.valueOf((long) (i % 2)))
                     .build()
                     .applyUnsafe();
         }

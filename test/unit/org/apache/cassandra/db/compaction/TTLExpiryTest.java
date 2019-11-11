@@ -44,7 +44,7 @@ import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.tools.SSTableExpiredBlockers;
-import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -86,34 +86,34 @@ public class TTLExpiryTest
         MigrationManager.announceTableUpdate(cfs.metadata().unbuild().gcGraceSeconds(0).build(), true);
         String key = "ttl";
         new RowUpdateBuilder(cfs.metadata(), 1L, 1, key)
-                    .add("col1", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col1", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
         new RowUpdateBuilder(cfs.metadata(), 3L, 1, key)
-                    .add("col2", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col2", Values.EMPTY)
                     .build()
                     .applyUnsafe();
         cfs.forceBlockingFlush();
         new RowUpdateBuilder(cfs.metadata(), 2L, 1, key)
-                    .add("col1", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col1", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
         new RowUpdateBuilder(cfs.metadata(), 5L, 1, key)
-                    .add("col2", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col2", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
         cfs.forceBlockingFlush();
 
         new RowUpdateBuilder(cfs.metadata(), 4L, 1, key)
-                    .add("col1", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col1", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
         new RowUpdateBuilder(cfs.metadata(), 7L, 1, key)
-                    .add("shadow", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("shadow", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
@@ -121,12 +121,12 @@ public class TTLExpiryTest
 
 
         new RowUpdateBuilder(cfs.metadata(), 6L, 3, key)
-                    .add("shadow", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("shadow", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
         new RowUpdateBuilder(cfs.metadata(), 8L, 1, key)
-                    .add("col2", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col2", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
@@ -168,15 +168,15 @@ public class TTLExpiryTest
         long timestamp = System.currentTimeMillis();
         String key = "ttl";
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-                        .add("col", ByteBufferUtil.EMPTY_BYTE_BUFFER)
-                        .add("col7", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                        .add("col", Values.EMPTY)
+                        .add("col7", Values.EMPTY)
                         .build()
                         .applyUnsafe();
 
         cfs.forceBlockingFlush();
 
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-            .add("col2", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("col2", Values.EMPTY)
             .add("col8", Collections.singletonMap("bar", "foo"))
             .delete("col1")
             .build()
@@ -187,14 +187,14 @@ public class TTLExpiryTest
         // To reproduce #10944, we need to avoid the optimization that get rid of full sstable because everything
         // is known to be gcAble, so keep some data non-expiring in that case.
         new RowUpdateBuilder(cfs.metadata(), timestamp, force10944Bug ? 0 : 1, key)
-                    .add("col3", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("col3", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
 
         cfs.forceBlockingFlush();
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-                            .add("col311", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                            .add("col311", Values.EMPTY)
                             .build()
                             .applyUnsafe();
 
@@ -216,25 +216,25 @@ public class TTLExpiryTest
         long timestamp = System.currentTimeMillis();
         String key = "ttl";
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-            .add("col", ByteBufferUtil.EMPTY_BYTE_BUFFER)
-            .add("col7", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("col", Values.EMPTY)
+            .add("col7", Values.EMPTY)
             .build()
             .applyUnsafe();
 
         cfs.forceBlockingFlush();
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-            .add("col2", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("col2", Values.EMPTY)
             .build()
             .applyUnsafe();
         cfs.forceBlockingFlush();
         new RowUpdateBuilder(cfs.metadata(), timestamp, 1, key)
-            .add("col3", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("col3", Values.EMPTY)
             .build()
             .applyUnsafe();
         cfs.forceBlockingFlush();
         String noTTLKey = "nottl";
         new RowUpdateBuilder(cfs.metadata(), timestamp, noTTLKey)
-            .add("col311", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("col311", Values.EMPTY)
             .build()
             .applyUnsafe();
 
@@ -266,7 +266,7 @@ public class TTLExpiryTest
 
         new RowUpdateBuilder(cfs.metadata(), System.currentTimeMillis(), "test")
                 .noRowMarker()
-                .add("col1", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("col1", Values.EMPTY)
                 .build()
                 .applyUnsafe();
 

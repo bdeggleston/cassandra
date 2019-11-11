@@ -38,6 +38,7 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
@@ -54,7 +55,7 @@ public abstract class AlteredHints
         TableMetadata table = Schema.instance.getTableMetadata(KEYSPACE, TABLE);
         return new RowUpdateBuilder(table, timestamp, bytes(index))
                .clustering(bytes(index))
-               .add("val", bytes(index))
+               .add("val", Values.valueOf(index))
                .build();
     }
 

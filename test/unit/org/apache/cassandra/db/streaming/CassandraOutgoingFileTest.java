@@ -38,6 +38,7 @@ import org.apache.cassandra.schema.CachingParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.streaming.StreamOperation;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -74,7 +75,7 @@ public class CassandraOutgoingFileTest
         {
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }

@@ -78,6 +78,7 @@ import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -134,7 +135,7 @@ public class CompactionsTest
             {
                 new RowUpdateBuilder(cfm, timestamp, j > 0 ? ttl : 0, key.getKey())
                     .clustering(Integer.toString(j))
-                    .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("val", Values.EMPTY)
                     .build()
                     .applyUnsafe();
             }

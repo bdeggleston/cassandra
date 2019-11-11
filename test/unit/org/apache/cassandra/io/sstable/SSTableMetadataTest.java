@@ -37,8 +37,8 @@ import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
-import static org.apache.cassandra.Util.getBytes;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -80,7 +80,7 @@ public class SSTableMetadataTest
             for (int j = 0; j < 10; j++)
                 new RowUpdateBuilder(store.metadata(), timestamp, 10 + j, Integer.toString(i))
                     .clustering(Integer.toString(j))
-                    .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("val", Values.EMPTY)
                     .build()
                     .applyUnsafe();
 
@@ -88,7 +88,7 @@ public class SSTableMetadataTest
 
         new RowUpdateBuilder(store.metadata(), timestamp, 10000, "longttl")
             .clustering("col")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
 
@@ -106,7 +106,7 @@ public class SSTableMetadataTest
 
         new RowUpdateBuilder(store.metadata(), timestamp, 20000, "longttl2")
         .clustering("col")
-        .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+        .add("val", Values.EMPTY)
         .build()
         .applyUnsafe();
 
@@ -155,14 +155,14 @@ public class SSTableMetadataTest
         for (int i = 0; i<5; i++)
             new RowUpdateBuilder(store.metadata(), timestamp, 100, "deletetest")
                 .clustering("deletecolumn" + i)
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build()
                 .applyUnsafe();
 
 
         new RowUpdateBuilder(store.metadata(), timestamp, 1000, "deletetest")
         .clustering("todelete")
-        .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+        .add("val", Values.EMPTY)
         .build()
         .applyUnsafe();
 
@@ -210,7 +210,7 @@ public class SSTableMetadataTest
             {
                 new RowUpdateBuilder(store.metadata(), System.currentTimeMillis(), key)
                     .clustering(j + "col" + i)
-                    .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("val", Values.EMPTY)
                     .build()
                     .applyUnsafe();
             }
@@ -228,7 +228,7 @@ public class SSTableMetadataTest
         {
             new RowUpdateBuilder(store.metadata(), System.currentTimeMillis(), key)
             .clustering(9 + "col" + i)
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }
