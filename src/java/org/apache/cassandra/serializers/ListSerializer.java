@@ -134,26 +134,31 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
      * @param index the index to get
      * @return the serialized element at the given index, or null if the index exceeds the list size
      */
-    public ByteBuffer getElement(ByteBuffer input, int index)
+    public <V> V getElement(V input, DataHandle<V> handle, int index)
     {
         try
         {
-            int n = readCollectionSize(input, ProtocolVersion.V3);
+            int n = readCollectionSize(input, handle, ProtocolVersion.V3);
             int offset = sizeOfCollectionSize(n, ProtocolVersion.V3);
             if (n <= index)
                 return null;
 
             for (int i = 0; i < index; i++)
             {
-                int length = input.getInt();
+                int length = handle.getInt(input, offset);
                 offset += TypeSizes.sizeof(length) + length;
             }
-            return readValue(input, ByteBufferHandle.instance, offset, ProtocolVersion.V3);
+            return readValue(input, handle, offset, ProtocolVersion.V3);
         }
         catch (ValueUnderflowException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }
+    }
+
+    public ByteBuffer getElement(ByteBuffer input, int index)
+    {
+        return getElement(input, ByteBufferHandle.instance, index);
     }
 
     public String toString(List<T> value)

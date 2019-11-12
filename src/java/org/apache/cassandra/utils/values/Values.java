@@ -154,6 +154,11 @@ public class Values
         return FACTORY.of(s);
     }
 
+    public static Value valueOf(short i)
+    {
+        return FACTORY.of(i);
+    }
+
     public static Value valueOf(int i)
     {
         return FACTORY.of(i);
