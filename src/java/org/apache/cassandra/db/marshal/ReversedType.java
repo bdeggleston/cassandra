@@ -65,7 +65,7 @@ public class ReversedType<T> extends AbstractType<T>
 
     public <V> int compareCustom(V left, V right, DataHandle<V> handle)
     {
-        return baseType.compareCustom(right, left, handle);
+        return baseType.compare(right, left, handle);
     }
 
     @Override

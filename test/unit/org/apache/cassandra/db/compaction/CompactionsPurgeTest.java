@@ -40,6 +40,7 @@ import org.apache.cassandra.schema.CachingParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.*;
 import static org.apache.cassandra.Util.dk;
@@ -98,7 +99,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
 
@@ -114,7 +115,7 @@ public class CompactionsPurgeTest
         // resurrect one column
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 2, key);
         builder.clustering(String.valueOf(5))
-               .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+               .add("val", Values.EMPTY)
                .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -143,7 +144,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
         cfs.forceBlockingFlush();
@@ -161,7 +162,7 @@ public class CompactionsPurgeTest
         // resurrect one column
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 2, key);
         builder.clustering(String.valueOf(5))
-               .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+               .add("val", Values.EMPTY)
                .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -188,7 +189,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
         cfs.forceBlockingFlush();
@@ -205,7 +206,7 @@ public class CompactionsPurgeTest
         // resurrect one column
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 2, key);
         builder.clustering(String.valueOf(5))
-               .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+               .add("val", Values.EMPTY)
                .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -232,7 +233,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
         cfs.forceBlockingFlush();
@@ -247,7 +248,7 @@ public class CompactionsPurgeTest
         // resurrect one column
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 2, key);
         builder.clustering(String.valueOf(5))
-               .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+               .add("val", Values.EMPTY)
                .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -275,7 +276,7 @@ public class CompactionsPurgeTest
             {
                 RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
                 builder.clustering(String.valueOf(i))
-                        .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                        .add("val", Values.EMPTY)
                         .build().applyUnsafe();
             }
             cfs.forceBlockingFlush();
@@ -299,7 +300,7 @@ public class CompactionsPurgeTest
 
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 2, "key1");
         builder.clustering(String.valueOf(5))
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -335,12 +336,12 @@ public class CompactionsPurgeTest
         // inserts
         new RowUpdateBuilder(cfs.metadata(), 8, key3)
             .clustering("c1")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build().applyUnsafe();
 
         new RowUpdateBuilder(cfs.metadata(), 8, key3)
         .clustering("c2")
-        .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+        .add("val", Values.EMPTY)
         .build().applyUnsafe();
 
         cfs.forceBlockingFlush();
@@ -384,7 +385,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
 
@@ -421,7 +422,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
 
@@ -432,7 +433,7 @@ public class CompactionsPurgeTest
 
         // Adds another unrelated partition so that the sstable is not considered fully expired. We do not
         // invalidate the row cache in that latter case.
-        new RowUpdateBuilder(cfs.metadata(), 0, "key4").clustering("c").add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+        new RowUpdateBuilder(cfs.metadata(), 0, "key4").clustering("c").add("val", Values.EMPTY).build().applyUnsafe();
 
         // move the key up in row cache (it should not be empty since we have the partition deletion info)
         assertFalse(Util.getOnlyPartitionUnfiltered(Util.cmd(cfs, key).build()).isEmpty());
@@ -461,7 +462,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), i, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
 
@@ -483,7 +484,7 @@ public class CompactionsPurgeTest
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), i, key);
             builder.clustering(String.valueOf(i))
-                   .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                   .add("val", Values.EMPTY)
                    .build().applyUnsafe();
         }
 

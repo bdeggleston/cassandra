@@ -59,6 +59,8 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
@@ -110,8 +112,9 @@ public class LeveledCompactionStrategyTest
      * Ensure that the grouping operation preserves the levels of grouped tables
      */
     @Test
-    public void testGrouperLevels() throws Exception{
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+    public void testGrouperLevels() throws Exception
+    {
+        Value value = Values.valueOf(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
 
         //Need entropy to prevent compression so size is predictable with compression enabled/disabled
         new Random().nextBytes(value.array());
@@ -170,7 +173,7 @@ public class LeveledCompactionStrategyTest
     {
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b); // 100 KB value, make it easy to have multiple files
+        Value value = Values.valueOf(b); // 100 KB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -248,7 +251,7 @@ public class LeveledCompactionStrategyTest
         // make sure we have SSTables in L1
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b);
+        Value value = Values.valueOf(b);
         int rows = 2;
         int columns = 10;
         for (int r = 0; r < rows; r++)
@@ -281,7 +284,7 @@ public class LeveledCompactionStrategyTest
     public void testMutateLevel() throws Exception
     {
         cfs.disableAutoCompaction();
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+        Value value = Values.valueOf(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -322,7 +325,7 @@ public class LeveledCompactionStrategyTest
     {
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b); // 100 KB value, make it easy to have multiple files
+        Value value = Values.valueOf(b); // 100 KB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -396,7 +399,7 @@ public class LeveledCompactionStrategyTest
         // Disable auto compaction so cassandra does not compact
         CompactionManager.instance.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+        Value value = Values.valueOf(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
 
         DecoratedKey key1 = Util.dk(String.valueOf(1));
         DecoratedKey key2 = Util.dk(String.valueOf(2));
@@ -464,7 +467,7 @@ public class LeveledCompactionStrategyTest
         // add some data
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b);
+        Value value = Values.valueOf(b);
         int rows = 4;
         int columns = 10;
         // Just keep sstables in L0 for this test

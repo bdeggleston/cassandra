@@ -233,20 +233,6 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     /**
      * Implement IFF ComparisonType is CUSTOM
      *
-     * Compares the ByteBuffer representation of two instances of this class,
-     * for types where this cannot be done by simple in-order comparison of the
-     * unsigned bytes
-     *
-     * Standard Java compare semantics
-     */
-    public int compareCustom(ByteBuffer left, ByteBuffer right)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Implement IFF ComparisonType is CUSTOM
-     *
      * Compares the byte representation of two instances of this class,
      * for types where this cannot be done by simple in-order comparison of the
      * unsigned bytes
