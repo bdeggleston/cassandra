@@ -32,9 +32,11 @@ import org.apache.cassandra.db.context.CounterContext.Relationship;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -402,7 +404,7 @@ public class CounterContextTest
         assertFalse(cc.shouldClearLocal(state.context));
         marked = cc.markLocalToBeCleared(state.context);
         assertEquals(0, marked.getShort(marked.position()));
-        assertSame(state.context, marked); // should return the original context
+        assertEquals(Values.valueOf(state.context), marked); // should return the original context
 
         cleared = cc.clearAllLocal(marked);
         assertSame(cleared, marked); // shouldn't alter anything either
@@ -415,7 +417,7 @@ public class CounterContextTest
         marked = cc.markLocalToBeCleared(state.context);
         assertTrue(cc.shouldClearLocal(marked));
         assertEquals(-1, marked.getShort(marked.position()));
-        assertNotSame(state.context, marked); // shouldn't alter in place, as it used to do
+        assertNotEquals(Values.valueOf(state.context), marked); // shouldn't alter in place, as it used to do
 
         cleared = cc.clearAllLocal(marked);
         assertFalse(cc.shouldClearLocal(cleared));
@@ -476,7 +478,7 @@ public class CounterContextTest
         assertFalse(cc.shouldClearLocal(state.context));
         marked = cc.markLocalToBeCleared(state.context);
         assertEquals(1, marked.getShort(marked.position()));
-        assertSame(state.context, marked);
+        assertEquals(Values.valueOf(state.context), marked);
 
         cleared = cc.clearAllLocal(marked);
         assertSame(cleared, marked);

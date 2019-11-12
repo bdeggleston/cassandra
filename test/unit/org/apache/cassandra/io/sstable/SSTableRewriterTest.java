@@ -56,6 +56,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.metrics.StorageMetrics;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.values.Values;
@@ -806,7 +807,7 @@ public class SSTableRewriterTest extends SSTableWriterTestBase
                     writer2.append(ci.next());
             }
             for (int i = 0; i < 5000; i++)
-                assertFalse(Util.getOnlyPartition(Util.cmd(cfs, Values.valueOf(i)).build()).isEmpty());
+                assertFalse(Util.getOnlyPartition(Util.cmd(cfs, ByteBufferUtil.bytes(i)).build()).isEmpty());
         }
         truncateCF();
         validateCFS(cfs);
@@ -880,9 +881,9 @@ public class SSTableRewriterTest extends SSTableWriterTestBase
                 int end = f == fileCount - 1 ? partitionCount : ((f + 1) * partitionCount) / fileCount;
                 for ( ; i < end ; i++)
                 {
-                    UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), Values.valueOf(i));
+                    UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), ByteBufferUtil.bytes(i));
                     for (int j = 0; j < cellCount ; j++)
-                        builder.newRow(Integer.toString(i)).add("val", random(0, 1000));
+                        builder.newRow(Integer.toString(i)).add("val", Values.valueOf(random(0, 1000)));
 
                     writer.append(builder.build().unfilteredIterator());
                 }

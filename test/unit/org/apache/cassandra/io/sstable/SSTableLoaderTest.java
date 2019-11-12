@@ -48,6 +48,7 @@ import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.OutputHandler;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -148,9 +149,9 @@ public class SSTableLoaderTest
 
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
-        assertEquals(ByteBufferUtil.bytes("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
-                                                                   .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
-                                                                   .value());
+        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
+                                               .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
+                                               .value());
 
         // The stream future is signalled when the work is complete but before releasing references. Wait for release
         // before cleanup (CASSANDRA-10118).
@@ -246,7 +247,7 @@ public class SSTableLoaderTest
 
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
-        assertEquals(ByteBufferUtil.bytes("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
+        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
                 .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
                 .value());
 

@@ -251,7 +251,7 @@ public class SinglePartitionSliceCommandTest
         Assert.assertTrue(staticRow.toString(metadata, true), cellIterator.hasNext());
         Cell cell = cellIterator.next();
         Assert.assertEquals(s, cell.column());
-        Assert.assertEquals(Values.toHex(cell.value()), ByteBufferUtil.bytes("s"), cell.value());
+        Assert.assertEquals(Values.toHex(cell.value()), Values.valueOf("s"), cell.value());
         Assert.assertFalse(cellIterator.hasNext());
     }
 

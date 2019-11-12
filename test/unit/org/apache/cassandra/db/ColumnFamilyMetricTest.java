@@ -27,6 +27,7 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 
@@ -57,7 +58,7 @@ public class ColumnFamilyMetricTest
         {
             new RowUpdateBuilder(cfs.metadata(), FBUtilities.timestampMicros(), String.valueOf(j))
                     .clustering("0")
-                    .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                    .add("val", Values.EMPTY)
                     .build()
                     .applyUnsafe();
         }
@@ -93,7 +94,7 @@ public class ColumnFamilyMetricTest
 
         new RowUpdateBuilder(store.metadata(), 0, "4242")
             .clustering("0")
-            .add("val", ByteBufferUtil.bytes("0"))
+            .add("val", Values.valueOf("0"))
             .build()
             .applyUnsafe();
 
@@ -103,7 +104,7 @@ public class ColumnFamilyMetricTest
         // smallest time delta that would overflow the histogram if unfiltered
         new RowUpdateBuilder(store.metadata(), 18165375903307L, "4242")
             .clustering("0")
-            .add("val", ByteBufferUtil.bytes("0"))
+            .add("val", Values.valueOf("0"))
             .build()
             .applyUnsafe();
 

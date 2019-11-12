@@ -403,8 +403,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             throw new UnsupportedOperationException();
         }
 
-        @Override
-        public ByteBuffer decomposeBuffer(Void value)
+        <V> V decompose(Void value, DataHandle<V> handle)
         {
             throw new UnsupportedOperationException();
         }

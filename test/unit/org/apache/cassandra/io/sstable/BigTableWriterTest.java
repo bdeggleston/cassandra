@@ -33,6 +33,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.concurrent.AbstractTransactionalTest;
+import org.apache.cassandra.utils.values.Values;
 
 public class BigTableWriterTest extends AbstractTransactionalTest
 {
@@ -86,7 +87,7 @@ public class BigTableWriterTest extends AbstractTransactionalTest
             {
                 UpdateBuilder update = UpdateBuilder.create(cfs.metadata(), i);
                 for (int j = 0; j < 10; j++)
-                    update.newRow(j).add("val", SSTableRewriterTest.random(0, 1000));
+                    update.newRow(j).add("val", Values.valueOf(SSTableRewriterTest.random(0, 1000)));
                 writer.append(update.build().unfilteredIterator());
             }
         }

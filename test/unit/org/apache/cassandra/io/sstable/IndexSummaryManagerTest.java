@@ -58,6 +58,8 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static com.google.common.collect.ImmutableMap.of;
 import static java.util.Arrays.asList;
@@ -181,7 +183,7 @@ public class IndexSummaryManagerTest
         cfs.disableAutoCompaction();
 
         ArrayList<Future> futures = new ArrayList<>(numSSTables);
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(ByteBuffer.wrap(new byte[100]));
         for (int sstable = 0; sstable < numSSTables; sstable++)
         {
             for (int p = 0; p < numPartition; p++)
@@ -506,7 +508,7 @@ public class IndexSummaryManagerTest
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(ByteBuffer.wrap(new byte[100]));
 
         int numRows = 256;
         for (int row = 0; row < numRows; row++)
@@ -569,7 +571,7 @@ public class IndexSummaryManagerTest
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(ByteBuffer.wrap(new byte[100]));
 
         int numSSTables = 2;
         int numRows = 10;

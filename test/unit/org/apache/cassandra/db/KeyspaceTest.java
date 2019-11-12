@@ -103,20 +103,20 @@ public class KeyspaceTest extends CQLTester
         {
             // slice with limit 1
             Row row = Util.getOnlyRow(Util.cmd(cfs, "0").columns("c").withLimit(1).build());
-            assertEquals(ByteBufferUtil.bytes(0), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
+            assertEquals(Values.valueOf(0), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
 
             // fetch each row by name
             for (int i = 0; i < 2; i++)
             {
                 row = Util.getOnlyRow(Util.cmd(cfs, "0").columns("c").includeRow(i).build());
-                assertEquals(ByteBufferUtil.bytes(i), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
+                assertEquals(Values.valueOf(i), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
             }
 
             // fetch each row by slice
             for (int i = 0; i < 2; i++)
             {
                 row = Util.getOnlyRow(Util.cmd(cfs, "0").columns("c").fromIncl(i).toIncl(i).build());
-                assertEquals(ByteBufferUtil.bytes(i), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
+                assertEquals(Values.valueOf(i), row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false))).value());
             }
 
             if (round == 0)
@@ -169,7 +169,7 @@ public class KeyspaceTest extends CQLTester
                     {
                         Row row = rowIterator.next();
                         Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
-                        assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i), cell.value());
+                        assertEquals(Values.valueOf(columnValuePrefix + i), cell.value());
                     }
                 }
                 else
@@ -178,7 +178,7 @@ public class KeyspaceTest extends CQLTester
                     {
                         Row row = rowIterator.next();
                         Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
-                        assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i), cell.value());
+                        assertEquals(Values.valueOf(columnValuePrefix + i), cell.value());
                     }
                 }
                 assertFalse(rowIterator.hasNext());
@@ -238,7 +238,7 @@ public class KeyspaceTest extends CQLTester
                 {
                     Row row = rowIterator.next();
                     Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
-                    assertEquals(ByteBufferUtil.bytes(i), cell.value());
+                    assertEquals(Values.valueOf(i), cell.value());
                 }
             }
         }
@@ -264,7 +264,7 @@ public class KeyspaceTest extends CQLTester
                     Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                     assertEquals(
                             String.format("Expected %s, but got %s", ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(expected)), Values.toHex(cell.value())),
-                            ByteBufferUtil.bytes(expected), cell.value());
+                            Values.valueOf(expected), cell.value());
                 }
                 assertFalse(rowIterator.hasNext());
             }
