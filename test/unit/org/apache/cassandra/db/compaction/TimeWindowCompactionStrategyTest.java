@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.db.compaction;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +44,8 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.db.compaction.TimeWindowCompactionStrategy.getWindowBoundsInMillis;
 import static org.apache.cassandra.db.compaction.TimeWindowCompactionStrategy.newestBucket;
@@ -156,7 +157,7 @@ public class TimeWindowCompactionStrategyTest extends SchemaLoader
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
         Long tstamp = System.currentTimeMillis();
         Long tstamp2 =  tstamp - (2L * 3600L * 1000L);
 
@@ -244,7 +245,7 @@ public class TimeWindowCompactionStrategyTest extends SchemaLoader
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 2 sstables
         DecoratedKey key = Util.dk(String.valueOf("expired"));
@@ -292,7 +293,7 @@ public class TimeWindowCompactionStrategyTest extends SchemaLoader
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 2 sstables
         DecoratedKey key = Util.dk(String.valueOf("expired"));

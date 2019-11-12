@@ -39,6 +39,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.values.Values;
 
 import static junit.framework.Assert.*;
 
@@ -184,7 +185,7 @@ public class HintsBufferTest
         assertEquals(bytes(idx), row.clustering().get(0));
         Cell cell = row.cells().iterator().next();
         assertEquals(TimeUnit.MILLISECONDS.toMicros(baseTimestamp + idx), cell.timestamp());
-        assertEquals(bytes(idx), cell.value());
+        assertEquals(Values.valueOf(idx), cell.value());
 
         return idx;
     }
@@ -200,7 +201,7 @@ public class HintsBufferTest
         TableMetadata table = Schema.instance.getTableMetadata(KEYSPACE, TABLE);
         return new RowUpdateBuilder(table, timestamp, bytes(index))
                    .clustering(bytes(index))
-                   .add("val", bytes(index))
+                   .add("val", Values.valueOf(index))
                    .build();
     }
 

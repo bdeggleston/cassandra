@@ -417,7 +417,7 @@ public class CompactionsTest
                 {
                     Row row = rowIterator.next();
                     Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("val", false)));
-                    assertEquals(ByteBufferUtil.bytes("a"), cell.value());
+                    assertEquals(Values.valueOf("a"), cell.value());
                     assertEquals(3, cell.timestamp());
                     assertNotEquals(ByteBufferUtil.bytes("01"), row.clustering().getRawValues()[0]);
                     assertEquals(ByteBufferUtil.bytes("02"), row.clustering().getRawValues()[0]);

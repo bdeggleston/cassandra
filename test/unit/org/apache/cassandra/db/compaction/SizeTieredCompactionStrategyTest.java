@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.db.compaction;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +35,8 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.metrics.RestorableMeter;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.getBuckets;
 import static org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy.mostInterestingBucket;
@@ -155,7 +156,7 @@ public class SizeTieredCompactionStrategyTest
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 3 sstables
         int numSSTables = 3;

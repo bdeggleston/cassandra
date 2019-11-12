@@ -66,6 +66,7 @@ import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.KillerForTests;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Values;
 import org.apache.cassandra.utils.vint.VIntCoding;
 
 import org.junit.After;
@@ -648,7 +649,7 @@ public abstract class CommitLogTest
             .applyUnsafe();
 
             assertTrue(Util.getOnlyRow(Util.cmd(cfs).columns("val").build())
-                           .cells().iterator().next().value().equals(bytes("abcd")));
+                           .cells().iterator().next().value().equals(Values.valueOf("abcd")));
 
             cfs.truncateBlocking();
 

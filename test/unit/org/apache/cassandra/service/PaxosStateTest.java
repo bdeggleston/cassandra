@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.service;
 
-import java.nio.ByteBuffer;
 import java.util.UUID;
 
 import com.google.common.collect.Iterables;
@@ -111,7 +110,7 @@ public class PaxosStateTest
     {
         ColumnFamilyStore cfs = Keyspace.open("PaxosStateTestKeyspace1").getColumnFamilyStore("Standard1");
         String key = "key" + System.nanoTime();
-        ByteBuffer value = ByteBufferUtil.bytes(0);
+        Value value = Values.valueOf(0);
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), FBUtilities.timestampMicros(), key);
         builder.clustering("a").add("val", value);
         PartitionUpdate update = Iterables.getOnlyElement(builder.build().getPartitionUpdates());

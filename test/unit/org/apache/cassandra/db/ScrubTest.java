@@ -515,7 +515,7 @@ public class ScrubTest
         QueryProcessor.process("CREATE TABLE \"Keyspace1\".test_scrub_validation (a text primary key, b int)", ConsistencyLevel.ONE);
         ColumnFamilyStore cfs2 = keyspace.getColumnFamilyStore("test_scrub_validation");
 
-        new Mutation(UpdateBuilder.create(cfs2.metadata(), "key").newRow().add("b", LongType.instance.decomposeBuffer(1L)).build()).apply();
+        new Mutation(UpdateBuilder.create(cfs2.metadata(), "key").newRow().add("b", LongType.instance.decomposeValue(1L)).build()).apply();
         cfs2.forceBlockingFlush();
 
         CompactionManager.instance.performScrub(cfs2, false, false, 2);

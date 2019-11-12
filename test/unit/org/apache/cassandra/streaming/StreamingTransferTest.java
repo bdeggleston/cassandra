@@ -56,6 +56,7 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.Refs;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.SchemaLoader.compositeIndexCFMD;
 import static org.apache.cassandra.SchemaLoader.createKeyspace;
@@ -304,7 +305,7 @@ public class StreamingTransferTest
                 long val = key.hashCode();
 
                 RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), timestamp, key);
-                builder.clustering(col).add("birthdate", ByteBufferUtil.bytes(val));
+                builder.clustering(col).add("birthdate", Values.valueOf(val));
                 builder.build().applyUnsafe();
             }
         }, transferSSTables);

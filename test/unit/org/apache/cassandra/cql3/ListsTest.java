@@ -39,6 +39,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Values;
 
 public class ListsTest extends CQLTester
 {
@@ -160,8 +161,8 @@ public class ListsTest extends CQLTester
                 Assert.assertTrue(last.compareTo(uuid) < 0);
             last = uuid;
 
-            Assert.assertEquals(String.format("different values found: expected: '%d', found '%d'", ByteBufferUtil.toInt(terms.get(idx)), cell.value().getInt(0)),
-                                terms.get(idx), cell.value());
+            Assert.assertEquals(String.format("different values found: expected: '%d', found '%d'", Values.valueOf(terms.get(idx)).getInt(0), cell.value().getInt(0)),
+                                Values.valueOf(terms.get(idx)), cell.value());
             idx++;
         }
     }

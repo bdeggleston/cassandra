@@ -37,6 +37,8 @@ import org.apache.cassandra.db.commitlog.CommitLogSegment.CDCState;
 import org.apache.cassandra.exceptions.CDCWriteException;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class CommitLogSegmentManagerCDCTest extends CQLTester
 {
@@ -78,7 +80,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
                 for (int i = 0; i < 100; i++)
                 {
                     new RowUpdateBuilder(cfm, 0, i)
-                        .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+                        .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
                         .build().apply();
                 }
                 Assert.fail("Expected CDCWriteException from full CDC but did not receive it.");
@@ -130,7 +132,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
                 for (int i = 0; i < 1000; i++)
                 {
                     new RowUpdateBuilder(ccfm, 0, i)
-                        .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+                        .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
                         .build().apply();
                 }
                 Assert.fail("Expected CDCWriteException from full CDC but did not receive it.");
@@ -164,7 +166,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     {
         createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=true;");
         new RowUpdateBuilder(currentTableMetadata(), 0, 1)
-            .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+            .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
             .build().apply();
 
         CommitLog.instance.sync(true);
@@ -196,7 +198,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
             for (int i = 0; i < 1000; i++)
             {
                 new RowUpdateBuilder(currentTableMetadata(), 0, 1)
-                .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+                .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
                 .build().apply();
             }
         }
@@ -228,7 +230,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     {
         createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=false;");
         new RowUpdateBuilder(currentTableMetadata(), 0, 1)
-            .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+            .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
             .build().apply();
         CommitLogSegment currentSegment = CommitLog.instance.segmentManager.allocatingFrom();
 
@@ -258,7 +260,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
         Assert.assertFalse("Expected no index file before flush but found: " + cdcIndexFile, cdcIndexFile.exists());
 
         new RowUpdateBuilder(currentTableMetadata(), 0, 1)
-            .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+            .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
             .build().apply();
 
         Path linked = new File(DatabaseDescriptor.getCDCLogLocation(), currentSegment.logFile.getName()).toPath();
@@ -290,7 +292,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
             for (int i = 0; i < 1000; i++)
             {
                 new RowUpdateBuilder(ccfm, 0, i)
-                    .add("data", randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
+                    .add("data", randomValue(DatabaseDescriptor.getCommitLogSegmentSize() / 3))
                     .build().apply();
             }
             Assert.fail("Expected CDCWriteException from full CDC but did not receive it.");
@@ -423,11 +425,11 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
         }
     }
 
-    private ByteBuffer randomizeBuffer(int size)
+    private Value randomValue(int size)
     {
         byte[] toWrap = new byte[size];
         random.nextBytes(toWrap);
-        return ByteBuffer.wrap(toWrap);
+        return Values.valueOf(toWrap);
     }
 
     private int getCDCRawCount()

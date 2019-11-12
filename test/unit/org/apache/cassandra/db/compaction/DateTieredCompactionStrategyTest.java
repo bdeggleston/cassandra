@@ -17,15 +17,17 @@
  */
 package org.apache.cassandra.db.compaction;
 
-import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
@@ -38,13 +40,19 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
+import static org.apache.cassandra.db.compaction.DateTieredCompactionStrategy.filterOldSSTables;
 import static org.apache.cassandra.db.compaction.DateTieredCompactionStrategy.getBuckets;
 import static org.apache.cassandra.db.compaction.DateTieredCompactionStrategy.newestBucket;
-import static org.apache.cassandra.db.compaction.DateTieredCompactionStrategy.filterOldSSTables;
 import static org.apache.cassandra.db.compaction.DateTieredCompactionStrategy.validateOptions;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class DateTieredCompactionStrategyTest extends SchemaLoader
 {
@@ -220,7 +228,7 @@ public class DateTieredCompactionStrategyTest extends SchemaLoader
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 3 sstables
         int numSSTables = 3;
@@ -256,7 +264,7 @@ public class DateTieredCompactionStrategyTest extends SchemaLoader
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 3 sstables
         int numSSTables = 3;
@@ -296,7 +304,7 @@ public class DateTieredCompactionStrategyTest extends SchemaLoader
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
 
         // create 2 sstables
         DecoratedKey key = Util.dk(String.valueOf("expired"));
@@ -343,8 +351,8 @@ public class DateTieredCompactionStrategyTest extends SchemaLoader
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD1);
         cfs.disableAutoCompaction();
-        ByteBuffer bigValue = ByteBuffer.wrap(new byte[10000]);
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value bigValue = Values.valueOf(new byte[10000]);
+        Value value = Values.valueOf(new byte[100]);
         int numSSTables = 40;
         // create big sstabels out of half:
         long timestamp = System.currentTimeMillis();

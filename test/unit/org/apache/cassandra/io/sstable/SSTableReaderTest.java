@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -108,7 +107,7 @@ public class SSTableReaderTest
         {
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
                 .clustering("0")
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build()
                 .applyUnsafe();
         }
@@ -154,7 +153,7 @@ public class SSTableReaderTest
             {
                 new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
                 .clustering("0")
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build()
                 .applyUnsafe();
             }
@@ -196,7 +195,7 @@ public class SSTableReaderTest
         {
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }
@@ -224,7 +223,7 @@ public class SSTableReaderTest
         {
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }
@@ -257,7 +256,7 @@ public class SSTableReaderTest
 
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
 
@@ -360,7 +359,7 @@ public class SSTableReaderTest
 
             new RowUpdateBuilder(store.metadata(), timestamp, key.getKey())
                 .clustering("col")
-                .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+                .add("val", Values.EMPTY)
                 .build()
                 .applyUnsafe();
         }
@@ -524,7 +523,7 @@ public class SSTableReaderTest
 
             new RowUpdateBuilder(store.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
 
@@ -756,7 +755,7 @@ public class SSTableReaderTest
         {
             new RowUpdateBuilder(cfs.metadata(), j, String.valueOf(j))
             .clustering("0")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
         }
