@@ -56,6 +56,7 @@ public class TupleSerializer extends BytesSerializer
                 throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
             T field = handle.slice(input, offset, size);
+            offset += size;
             fields.get(i).validate(field, handle);
         }
 
