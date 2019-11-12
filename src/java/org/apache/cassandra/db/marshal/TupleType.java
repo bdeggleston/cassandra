@@ -166,7 +166,7 @@ public class TupleType extends AbstractType<ByteBuffer>
 
             V value1 = handle.slice(left, offset1, size1);
             offset1 += size1;
-            V value2 = handle.slice(left, offset2, size2);
+            V value2 = handle.slice(right, offset2, size2);
             offset2 += size2;
             int cmp = comparator.compare(value1, value2, handle);
             if (cmp != 0)

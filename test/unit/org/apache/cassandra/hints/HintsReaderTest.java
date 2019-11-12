@@ -40,6 +40,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.values.Values;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
@@ -68,7 +69,7 @@ public class HintsReaderTest
         TableMetadata table = Schema.instance.getTableMetadata(ks, tb);
         return new RowUpdateBuilder(table, timestamp, bytes(index))
                .clustering(bytes(index))
-               .add("val", bytes(index))
+               .add("val", Values.valueOf(index))
                .build();
     }
 
@@ -118,7 +119,7 @@ public class HintsReaderTest
                     assertEquals(bytes(i), row.clustering().get(0));
                     Cell cell = row.cells().iterator().next();
                     assertNotNull(cell);
-                    assertEquals(bytes(i), cell.value());
+                    assertEquals(Values.valueOf(i), cell.value());
                     assertEquals(timestamp * 1000, cell.timestamp());
 
                     index++;
