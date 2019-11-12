@@ -75,6 +75,11 @@ public class ValueHandle implements DataHandle<Value>
         return value.buffer();
     }
 
+    public Value toValue(Value value)
+    {
+        return value;
+    }
+
     public ByteBuffer toSafeBuffer(Value value)
     {
         return value.safeBuffer();

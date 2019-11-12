@@ -177,27 +177,27 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         return res;
     }
 
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V input, DataHandle<V> handle)
     {
         StringBuilder sb = new StringBuilder();
-        ByteBuffer bb = bytes.duplicate();
-        boolean isStatic  = readIsStatic(bb, ByteBufferHandle.instance);
+        boolean isStatic  = readIsStatic(input, handle);
         int offset = startingOffset(isStatic);
+        int startOffset = offset;
 
         int i = 0;
-        while (bb.remaining() > 0)
+        while (handle.sizeFromOffset(input, offset) > 0)
         {
-            if (bb.remaining() != bytes.remaining())
+            if (offset != startOffset)
                 sb.append(":");
 
-            AbstractType<?> comparator = getAndAppendComparator(i, bb, ByteBufferHandle.instance, sb, offset);
-            offset += getComparatorSize(i, bb, ByteBufferHandle.instance, offset);
-            ByteBuffer value = ByteBufferHandle.instance.sliceWithShortLength(bb, offset);
-            offset += ByteBufferHandle.instance.sizeWithShortLength(value);
+            AbstractType<?> comparator = getAndAppendComparator(i, input, handle, sb, offset);
+            offset += getComparatorSize(i, input, handle, offset);
+            V value = handle.sliceWithShortLength(input, offset);
+            offset += handle.sizeWithShortLength(value);
 
-            sb.append(escape(comparator.getString(value)));
+            sb.append(escape(comparator.getString(value, handle)));
 
-            byte b = bb.get();
+            byte b = handle.getByte(input, offset++);
             if (b != 0)
             {
                 sb.append(b < 0 ? ":_" : ":!");

@@ -398,7 +398,7 @@ public class DynamicCompositeType extends AbstractCompositeType
         }
 
         @Override
-        public Void compose(ByteBuffer bytes)
+        <V> Void compose(V value, DataHandle<V> handle)
         {
             throw new UnsupportedOperationException();
         }
@@ -408,7 +408,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             throw new UnsupportedOperationException();
         }
 
-        public String getString(ByteBuffer bytes)
+        public <V> String getString(V value, DataHandle<V> handle)
         {
             throw new UnsupportedOperationException();
         }

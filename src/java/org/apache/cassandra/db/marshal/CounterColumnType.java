@@ -46,10 +46,9 @@ public class CounterColumnType extends NumberType<Long>
         return true;
     }
 
-    @Override
-    public Long compose(ByteBuffer bytes)
+    <V> Long compose(V value, DataHandle<V> handle)
     {
-        return CounterContext.instance().total(Values.valueOf(bytes));
+        return CounterContext.instance().total(handle.toValue(value));
     }
 
     @Override
@@ -64,9 +63,9 @@ public class CounterColumnType extends NumberType<Long>
         CounterContext.instance().validateContext(cellValue);
     }
 
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V value, DataHandle<V> handle)
     {
-        return ByteBufferUtil.bytesToHex(bytes);
+        return handle.toHex(value);
     }
 
     public ByteBuffer fromString(String source)

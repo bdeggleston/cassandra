@@ -29,6 +29,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FastByteOperations;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class ByteBufferHandle implements DataHandle<ByteBuffer>
 {
@@ -74,6 +76,11 @@ public class ByteBufferHandle implements DataHandle<ByteBuffer>
     public ByteBuffer toBuffer(ByteBuffer value)
     {
         return value;
+    }
+
+    public Value toValue(ByteBuffer value)
+    {
+        return Values.valueOf(value);
     }
 
     public ByteBuffer toSafeBuffer(ByteBuffer value)

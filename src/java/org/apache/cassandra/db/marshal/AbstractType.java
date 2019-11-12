@@ -121,12 +121,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return r;
     }
 
-    public T compose(ByteBuffer bytes)
+    public final T compose(ByteBuffer bytes)
     {
         return getSerializer().deserialize(bytes);
     }
 
-    public T compose(Value value)
+    public final T compose(Value value)
     {
         return getSerializer().deserialize(value);
     }
@@ -137,12 +137,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     }
 
 
-    public ByteBuffer decomposeBuffer(T value)
+    public final ByteBuffer decomposeBuffer(T value)
     {
         return decompose(value, ByteBufferHandle.instance);
     }
 
-    public Value decomposeValue(T value)
+    public final Value decomposeValue(T value)
     {
         return decompose(value, ValueHandle.instance);
     }
@@ -164,12 +164,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return serializer.toString(serializer.deserialize(value, handle));
     }
 
-    public String getString(ByteBuffer bytes)
+    public final String getString(ByteBuffer bytes)
     {
         return getString(bytes, ByteBufferHandle.instance);
     }
 
-    public String getString(Value value)
+    public final String getString(Value value)
     {
         return getString(value, ValueHandle.instance);
     }

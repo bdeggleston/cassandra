@@ -74,9 +74,9 @@ public class ReversedType<T> extends AbstractType<T>
         return baseType.compare(v1, v2);
     }
 
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V value, DataHandle<V> handle)
     {
-        return baseType.getString(bytes);
+        return baseType.getString(value, handle);
     }
 
     public ByteBuffer fromString(String source)

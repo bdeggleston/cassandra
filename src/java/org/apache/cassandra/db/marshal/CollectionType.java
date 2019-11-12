@@ -95,9 +95,9 @@ public abstract class CollectionType<T> extends AbstractType<T>
         return kind.makeCollectionReceiver(collection, isKey);
     }
 
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V value, DataHandle<V> handle)
     {
-        return BytesType.instance.getString(bytes);
+        return BytesType.instance.getString(value, handle);
     }
 
     public ByteBuffer fromString(String source)

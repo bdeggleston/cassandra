@@ -43,7 +43,7 @@ public class EmptyType extends AbstractType<Void>
         return 0;
     }
 
-    public String getString(ByteBuffer bytes)
+    public <V> String getString(V value, DataHandle<V> handle)
     {
         return "";
     }
