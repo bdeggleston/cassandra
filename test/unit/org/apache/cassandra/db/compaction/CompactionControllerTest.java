@@ -42,6 +42,8 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -189,7 +191,7 @@ public class CompactionControllerTest extends SchemaLoader
 
     private void applyMutation(TableMetadata cfm, DecoratedKey key, long timestamp)
     {
-        ByteBuffer val = ByteBufferUtil.bytes(1L);
+        Value val = Values.valueOf(1L);
 
         new RowUpdateBuilder(cfm, timestamp, key)
         .clustering("ck")

@@ -45,6 +45,7 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 public class ReadMessageTest
 {
@@ -165,7 +166,7 @@ public class ReadMessageTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("key1"))
                 .clustering("Column1")
-                .add("val", ByteBufferUtil.bytes("abcd"))
+                .add("val", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
@@ -175,7 +176,7 @@ public class ReadMessageTest
         {
             for (Row r : partition)
             {
-                if (r.getCell(col).value().equals(ByteBufferUtil.bytes("abcd")))
+                if (r.getCell(col).value().equals(Values.valueOf("abcd")))
                     ++found;
             }
         }
@@ -191,13 +192,13 @@ public class ReadMessageTest
 
         new RowUpdateBuilder(cfs.metadata(), 0, ByteBufferUtil.bytes("row"))
                 .clustering("c")
-                .add("commit1", ByteBufferUtil.bytes("abcd"))
+                .add("commit1", Values.valueOf("abcd"))
                 .build()
                 .apply();
 
         new RowUpdateBuilder(cfsnocommit.metadata(), 0, ByteBufferUtil.bytes("row"))
                 .clustering("c")
-                .add("commit2", ByteBufferUtil.bytes("abcd"))
+                .add("commit2", Values.valueOf("abcd"))
                 .build()
                 .apply();
 

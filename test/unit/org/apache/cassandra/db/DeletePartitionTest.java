@@ -29,7 +29,9 @@ import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Values;
 
+import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 
@@ -72,7 +74,7 @@ public class DeletePartitionTest
         FilteredPartition partition = Util.getOnlyPartition(Util.cmd(store, key).build());
         assertTrue(partition.rowCount() > 0);
         Row r = partition.iterator().next();
-        assertTrue(r.getCell(column).value().equals(ByteBufferUtil.bytes("asdf")));
+        assertEquals(Values.valueOf("asdf"), r.getCell(column).value());
 
         if (flushBeforeRemove)
             store.forceBlockingFlush();

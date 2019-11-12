@@ -127,7 +127,7 @@ public class ColumnConditionTest
         ColumnMetadata definition = ColumnMetadata.regularColumn("ks", "cf", "c", Int32Type.instance);
         ColumnCondition condition = ColumnCondition.condition(definition, op, Terms.of(new Constants.TValue(conditionValue)));
         ColumnCondition.Bound bound = condition.bind(QueryOptions.DEFAULT);
-        return bound.appliesTo(newRow(definition, Values.valueOf(rowValue)));
+        return bound.appliesTo(newRow(definition, rowValue != null ? Values.valueOf(rowValue) : Values.EMPTY));
     }
 
     private static boolean conditionApplies(List<ByteBuffer> rowValue, Operator op, List<ByteBuffer> conditionValue)

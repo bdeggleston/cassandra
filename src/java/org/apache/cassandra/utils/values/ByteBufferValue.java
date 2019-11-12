@@ -51,6 +51,11 @@ public class ByteBufferValue implements Value
             throw new ValueUnderflowException();
     }
 
+    public String toString()
+    {
+        return "ByteBufferValue{" + Values.toHex(this) + '}';
+    }
+
     public boolean equals(Object o)
     {
         return Values.equals(this, o);

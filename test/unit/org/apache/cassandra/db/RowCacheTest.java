@@ -26,6 +26,7 @@ import java.util.TreeSet;
 
 import com.google.common.collect.Lists;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
@@ -50,6 +51,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.*;
 
@@ -102,7 +104,7 @@ public class RowCacheTest
 
         RowUpdateBuilder rub = new RowUpdateBuilder(cachedStore.metadata(), System.currentTimeMillis(), key);
         rub.clustering(String.valueOf(0));
-        rub.add("val", ByteBufferUtil.bytes("val" + 0));
+        rub.add("val", Values.valueOf("val" + 0));
         rub.build().applyUnsafe();
 
         // populate row cache, we should not get a row cache hit;
@@ -121,7 +123,7 @@ public class RowCacheTest
             Row r = (Row) unfiltered;
             for (ColumnData c : r)
             {
-                assertEquals(((Cell)c).value(), ByteBufferUtil.bytes("val" + 0));
+                assertEquals(((Cell)c).value(), Values.valueOf("val" + 0));
             }
         }
         cachedStore.truncateBlocking();
@@ -165,8 +167,8 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
-                assert cell.value().equals(ByteBufferUtil.bytes("val" + i));
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }
 
@@ -192,8 +194,8 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
-                assert cell.value().equals(ByteBufferUtil.bytes("val" + i));
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }
 
@@ -259,8 +261,8 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
-                assert cell.value().equals(ByteBufferUtil.bytes("val" + i));
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }
 
@@ -420,7 +422,7 @@ public class RowCacheTest
             RowUpdateBuilder rub = new RowUpdateBuilder(cachedStore.metadata(), System.currentTimeMillis(), key);
             rub.clustering(String.valueOf(i));
             values[i] = "val" + i;
-            rub.add("val", ByteBufferUtil.bytes(values[i]));
+            rub.add("val", Values.valueOf(values[i]));
             rub.build().applyUnsafe();
         }
         Arrays.sort(values);
@@ -464,7 +466,7 @@ public class RowCacheTest
 
             for (ColumnData c : r)
             {
-                assertEquals(((Cell)c).value(), ByteBufferUtil.bytes(values[i]));
+                assertEquals(((Cell)c).value(), Values.valueOf(values[i]));
             }
             i++;
         }

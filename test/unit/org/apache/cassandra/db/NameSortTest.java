@@ -100,7 +100,7 @@ public class NameSortTest
                         continue;
                     int cellVal = Integer.valueOf(cd.name.toString().substring(cd.name.toString().length() - 1));
                     String expected = cellVal % 2 == 0 ? "a" : "b";
-                    assertEquals(expected, r.getCell(cd).value().toString());
+                    assertEquals(expected, r.getCell(cd).value().getString(0));
                 }
             }
         }

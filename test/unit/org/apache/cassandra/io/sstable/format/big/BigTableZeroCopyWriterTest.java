@@ -57,6 +57,7 @@ import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.io.util.DataInputPlus.DataInputStreamPlus;
 import static org.junit.Assert.assertEquals;
@@ -111,7 +112,7 @@ public class BigTableZeroCopyWriterTest
 
             new RowUpdateBuilder(store.metadata(), timestamp, key.getKey())
             .clustering("col")
-            .add("val", ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            .add("val", Values.EMPTY)
             .build()
             .applyUnsafe();
             expectedRowCount++;

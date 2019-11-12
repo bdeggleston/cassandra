@@ -39,6 +39,8 @@ import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.schema.CachingParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.MigrationManager;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 
@@ -113,7 +115,7 @@ public class IndexSummaryRedistributionTest
         cfs.disableAutoCompaction();
 
         ArrayList<Future> futures = new ArrayList<>(numSSTables);
-        ByteBuffer value = ByteBuffer.wrap(new byte[100]);
+        Value value = Values.valueOf(new byte[100]);
         for (int sstable = 0; sstable < numSSTables; sstable++)
         {
             for (int row = 0; row < numRows; row++)
