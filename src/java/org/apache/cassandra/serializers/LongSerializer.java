@@ -37,12 +37,6 @@ public class LongSerializer implements TypeSerializer<Long>
         return value == null ? handle.empty() : handle.valueOf(value);
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
-    {
-        if (bytes.remaining() != 8 && bytes.remaining() != 0)
-            throw new MarshalException(String.format("Expected 8 or 0 byte long (%d)", bytes.remaining()));
-    }
-
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
         if (handle.size(value) != 8 && handle.size(value) != 0)

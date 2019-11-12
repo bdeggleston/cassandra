@@ -37,12 +37,6 @@ public class ShortSerializer implements TypeSerializer<Short>
         return value == null ? handle.empty() : handle.valueOf(value.shortValue());
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
-    {
-        if (bytes.remaining() != 2)
-            throw new MarshalException(String.format("Expected 2 bytes for a smallint (%d)", bytes.remaining()));
-    }
-
     public <T> void validate(T value, DataHandle<T> handle) throws MarshalException
     {
         if (handle.size(value) != 2)

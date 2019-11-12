@@ -99,7 +99,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
             if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after set value");
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -132,7 +132,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
                 throw new MarshalException("Unexpected extraneous bytes after set value");
             return l;
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -186,7 +186,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
             }
             return null;
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }
@@ -256,7 +256,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
 
             return copyAsNewCollection(collection, count, startPos, input.position(), ProtocolVersion.V3);
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a set");
         }

@@ -112,7 +112,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             if (handle.sizeFromOffset(input, offset) != 0)
                 throw new MarshalException("Unexpected extraneous bytes after map value");
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -149,7 +149,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
                 throw new MarshalException("Unexpected extraneous bytes after map value");
             return m;
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -178,7 +178,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             }
             return null;
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }
@@ -250,7 +250,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 
             return copyAsNewCollection(collection, count, startPos, input.position(), ProtocolVersion.V3);
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a map");
         }

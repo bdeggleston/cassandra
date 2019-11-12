@@ -80,7 +80,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             if (handle.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }
@@ -122,7 +122,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
 
             return l;
         }
-        catch (BufferUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }
@@ -150,7 +150,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             }
             return readValue(input, handle, offset, ProtocolVersion.V3);
         }
-        catch (ValueUnderflowException e)
+        catch (ValueUnderflowException | BufferUnderflowException | IndexOutOfBoundsException e)
         {
             throw new MarshalException("Not enough bytes to read a list");
         }
