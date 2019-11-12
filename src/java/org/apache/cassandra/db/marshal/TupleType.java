@@ -182,9 +182,9 @@ public class TupleType extends AbstractType<ByteBuffer>
                 return 1;
         }
 
-        while (handle.sizeFromOffset(left, offset2) > 0)
+        while (handle.sizeFromOffset(right, offset2) > 0)
         {
-            int size = handle.getInt(left, offset2);
+            int size = handle.getInt(right, offset2);
             offset2 += TypeSizes.sizeof(size);
             if (size > 0) // non-null
                 return -1;

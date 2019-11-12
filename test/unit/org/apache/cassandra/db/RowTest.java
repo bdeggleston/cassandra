@@ -163,7 +163,7 @@ public class RowTest
         // when we read with a nowInSeconds before the cell has expired,
         // the PartitionIterator includes the row we just wrote
         Row row = Util.getOnlyRow(Util.cmd(cfs, dk).includeRow("c1").withNowInSeconds(nowInSeconds).build());
-        assertEquals("a1", row.getCell(def).value().toString());
+        assertEquals("a1", row.getCell(def).value().getString(0));
 
         // when we read with a nowInSeconds after the cell has expired, the row is filtered
         // so the PartitionIterator is empty
