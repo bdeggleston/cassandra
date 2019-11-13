@@ -31,6 +31,8 @@ import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -329,7 +331,11 @@ public abstract class ColumnCondition
         private ByteBuffer rowValue(Row row)
         {
             Cell c = getCell(row, column);
-            return c == null ? null : c.value().buffer();
+            if (c == null)
+                return null;
+
+            Value value = c.value();
+            return value == null ? null : value.buffer();
         }
 
         private boolean isSatisfiedBy(ByteBuffer rowValue)

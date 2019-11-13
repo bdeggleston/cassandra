@@ -749,7 +749,7 @@ public class CounterContext
         // context can be empty due to the optimization from CASSANDRA-10657
         if (context.isEmpty())
             return;
-        HashingUtils.updateBytes(hasher, context);
+        HashingUtils.updateBytes(hasher, context, headerLength(context));
     }
 
     /**

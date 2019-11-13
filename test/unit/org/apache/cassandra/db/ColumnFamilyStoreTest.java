@@ -50,6 +50,9 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.WrappedRunnable;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+
 import static junit.framework.Assert.assertNotNull;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class ColumnFamilyStoreTest
@@ -166,7 +169,7 @@ public class ColumnFamilyStoreTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
         ByteBuffer col = ByteBufferUtil.bytes("val");
-        ByteBuffer val = ByteBufferUtil.bytes("val1");
+        Value val = Values.valueOf("val1");
 
         // insert
         Mutation.SimpleBuilder builder = Mutation.simpleBuilder(keyspaceName, cfs.metadata().partitioner.decorateKey(ByteBufferUtil.bytes("val2")));
@@ -404,12 +407,12 @@ public class ColumnFamilyStoreTest
         verify.run();
     }
 
-    private void assertRangeCount(ColumnFamilyStore cfs, ByteBuffer col, ByteBuffer val, int count)
+    private void assertRangeCount(ColumnFamilyStore cfs, ByteBuffer col, Value val, int count)
     {
         assertRangeCount(cfs, cfs.metadata().getColumn(col), val, count);
     }
 
-    private void assertRangeCount(ColumnFamilyStore cfs, ColumnMetadata col, ByteBuffer val, int count)
+    private void assertRangeCount(ColumnFamilyStore cfs, ColumnMetadata col, Value val, int count)
     {
 
         int found = 0;

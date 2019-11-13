@@ -73,16 +73,23 @@ public class HashingUtils
         }
     }
 
-    public static void updateBytes(Hasher hasher, Value value)
+    public static void updateBytes(Hasher hasher, Value value, int offset)
     {
         if (value.isArrayBacked())
         {
-            hasher.putBytes(value.array(), 0, value.size());
+            hasher.putBytes(value.array(), offset, value.size());
         }
         else
         {
-            updateBytes(hasher, value.safeBuffer());
+            ByteBuffer buffer = value.safeBuffer();
+            buffer.position(buffer.position() + offset);
+            updateBytes(hasher, buffer);
         }
+    }
+
+    public static void updateBytes(Hasher hasher, Value value)
+    {
+        updateBytes(hasher, value, 0);
     }
 
     public static void updateWithShort(Hasher hasher, int val)
