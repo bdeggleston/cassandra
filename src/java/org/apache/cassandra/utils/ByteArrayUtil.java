@@ -18,16 +18,19 @@
 
 package org.apache.cassandra.utils;
 
+import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 
 import org.apache.cassandra.db.TypeSizes;
 
 public class ByteArrayUtil
 {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+    public static final byte[] UNSET_BYTE_ARRAY = new byte[]{};
 
     public static int compare(byte[] o1, byte[] o2)
     {
@@ -46,6 +49,13 @@ public class ByteArrayUtil
         return b;
     }
 
+    public static byte[] bytes(long v)
+    {
+        byte[] b = new byte[TypeSizes.sizeof(v)];
+        putLong(b, 0, v);
+        return b;
+    }
+
     public static byte[] bytes(short v)
     {
         byte[] b = new byte[TypeSizes.sizeof(v)];
@@ -53,9 +63,28 @@ public class ByteArrayUtil
         return b;
     }
 
+    public static byte[] bytes(float v)
+    {
+        byte[] b = new byte[TypeSizes.sizeof(v)];
+        putFloat(b, 0, v);
+        return b;
+    }
+
+    public static byte[] bytes(double v)
+    {
+        byte[] b = new byte[TypeSizes.sizeof(v)];
+        putDouble(b, 0, v);
+        return b;
+    }
+
     public static byte[] bytes(String v)
     {
         return v.getBytes();
+    }
+
+    public static byte[] bytes(String v, Charset charset)
+    {
+        return v.getBytes(charset);
     }
 
     /*
@@ -162,14 +191,41 @@ public class ByteArrayUtil
         return Hex.bytesToHex(bytes, 0, bytes.length);
     }
 
+    public static byte[] hexToBytes(String hex)
+    {
+        return Hex.hexToBytes(hex);
+    }
+
     public static String string(byte[] bytes) throws CharacterCodingException
     {
         return ByteBufferUtil.string(ByteBuffer.wrap(bytes));
     }
+
+    public static String string(byte[] buffer, Charset charset) throws CharacterCodingException
+    {
+        return new String(buffer, charset);
+    }
+
     public static void writeWithLength(byte[] bytes, DataOutput out) throws IOException
     {
         out.writeInt(bytes.length);
         out.write(bytes);
     }
 
+    public static byte[] readWithShortLength(DataInput in) throws IOException
+    {
+        byte[] b = new byte[in.readUnsignedShort()];
+        in.readFully(b);
+        return b;
+    }
+
+    public static void copyBytes(byte[] src, int srcPos, byte[] dst, int dstPos, int length)
+    {
+        System.arraycopy(src, srcPos, dst, dstPos, length);
+    }
+
+    public static void copyBytes(byte[] src, int srcPos, ByteBuffer dst, int dstPos, int length)
+    {
+        FastByteOperations.copy(src, srcPos, dst, dstPos, length);
+    }
 }

@@ -37,10 +37,10 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class Values
 {
-    public static final Value EMPTY = new ByteBufferValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-    public static final Value UNSET = new ByteBufferValue(ByteBufferUtil.UNSET_BYTE_BUFFER);
+    public static final Value EMPTY = new ByteArrayValue(ByteArrayUtil.EMPTY_BYTE_ARRAY);
+    public static final Value UNSET = new ByteArrayValue(ByteArrayUtil.UNSET_BYTE_ARRAY);
 
-    private static final Value.Factory FACTORY = ByteBufferValue.FACTORY;
+    private static final Value.Factory FACTORY = ByteArrayValue.FACTORY;
 
     public static int compareUnsigned(Value left, Value right)
     {
