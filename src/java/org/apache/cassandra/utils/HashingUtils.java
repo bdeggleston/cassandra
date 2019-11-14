@@ -77,7 +77,7 @@ public class HashingUtils
     {
         if (value.isArrayBacked())
         {
-            hasher.putBytes(value.array(), offset, value.size());
+            hasher.putBytes(value.array(), offset, value.size() - offset);
         }
         else
         {

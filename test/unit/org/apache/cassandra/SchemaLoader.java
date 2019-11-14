@@ -824,7 +824,7 @@ public static TableMetadata.Builder clusteringSASICFMD(String ksName, String cfN
         {
             RowUpdateBuilder builder = new RowUpdateBuilder(cfm, FBUtilities.timestampMicros(), ByteBufferUtil.bytes("key"+i));
             if (cfm.clusteringColumns() != null && !cfm.clusteringColumns().isEmpty())
-                builder.clustering(ByteBufferUtil.bytes("col"+ i)).add("val", Values.valueOf("val" + i));
+                builder.clustering(Values.valueOf("col"+ i)).add("val", Values.valueOf("val" + i));
             else
                 builder.add("val", Values.valueOf("val"+i));
             builder.build().apply();

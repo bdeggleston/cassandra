@@ -54,7 +54,7 @@ public abstract class AlteredHints
     {
         TableMetadata table = Schema.instance.getTableMetadata(KEYSPACE, TABLE);
         return new RowUpdateBuilder(table, timestamp, bytes(index))
-               .clustering(bytes(index))
+               .clustering(Values.valueOf(index))
                .add("val", Values.valueOf(index))
                .build();
     }
