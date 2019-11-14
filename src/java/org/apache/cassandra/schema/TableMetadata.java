@@ -1032,7 +1032,7 @@ public final class TableMetadata
             return columns.get(identifier.value);
         }
 
-        public ColumnMetadata getColumn(ByteBuffer name)
+        public ColumnMetadata getColumn(Value name)
         {
             return columns.get(name);
         }

@@ -28,6 +28,9 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+
 import static org.junit.Assert.assertEquals;
 
 public class ColumnIdentifierTest
@@ -50,9 +53,9 @@ public class ColumnIdentifierTest
             System.arraycopy(commonBytes, 0, bBytes, 0, commonLength);
             int aLength = random.nextInt(commonLength, 16);
             int bLength = random.nextInt(commonLength, 16);
-            ColumnIdentifier a = new ColumnIdentifier(ByteBuffer.wrap(aBytes, 0, aLength), BytesType.instance);
-            ColumnIdentifier b = new ColumnIdentifier(ByteBuffer.wrap(bBytes, 0, bLength), BytesType.instance);
-            Assert.assertEquals("" + i, compareResult(a.compareTo(b)), compareResult(ByteBufferUtil.compareUnsigned(a.bytes, b.bytes)));
+            ColumnIdentifier a = new ColumnIdentifier(Values.valueOf(ByteBuffer.wrap(aBytes, 0, aLength)), BytesType.instance);
+            ColumnIdentifier b = new ColumnIdentifier(Values.valueOf(ByteBuffer.wrap(bBytes, 0, bLength)), BytesType.instance);
+            Assert.assertEquals("" + i, compareResult(a.compareTo(b)), compareResult(Values.compareUnsigned(a.value, b.value)));
         }
     }
 
@@ -88,8 +91,8 @@ public class ColumnIdentifierTest
         byte[] bytes = new byte [] { 0x63, (byte) 0x32 };
         String text = "c2"; // the UTF-8 encoding of this string is the same as bytes, 0x630x32
 
-        ColumnIdentifier c1 = ColumnIdentifier.getInterned(ByteBuffer.wrap(bytes), bytesType);
-        ColumnIdentifier c2 = ColumnIdentifier.getInterned(utf8Type, utf8Type.fromString(text), text);
+        ColumnIdentifier c1 = ColumnIdentifier.getInterned(Values.valueOf(bytes), bytesType);
+        ColumnIdentifier c2 = ColumnIdentifier.getInterned(utf8Type, utf8Type.valueFromString(text), text);
         ColumnIdentifier c3 = ColumnIdentifier.getInterned(text, true);
 
         Assert.assertTrue(c1.isInterned());
@@ -109,9 +112,9 @@ public class ColumnIdentifierTest
         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
         byteBuffer.limit(1);
 
-        ColumnIdentifier c1 = ColumnIdentifier.getInterned(byteBuffer, UTF8Type.instance);
+        ColumnIdentifier c1 = ColumnIdentifier.getInterned(Values.valueOf(byteBuffer), UTF8Type.instance);
 
         Assert.assertEquals(2, byteBuffer.capacity());
-        Assert.assertEquals(1, c1.bytes.capacity());
+        Assert.assertEquals(1, c1.value.size());
     }
 }

@@ -172,7 +172,7 @@ public class CellTest
         FieldIdentifier f1 = field("f1");  // has field position 0
         FieldIdentifier f2 = field("f2");  // has field position 1
         UserType udt = new UserType("ks",
-                                    bb("myType"),
+                                    v("myType"),
                                     asList(f1, f2),
                                     asList(Int32Type.instance, UTF8Type.instance),
                                     true);
@@ -205,7 +205,7 @@ public class CellTest
         FieldIdentifier f1 = field("f1");  // has field position 0
         FieldIdentifier f2 = field("f2");  // has field position 1
         UserType udt = new UserType("ks",
-                                    bb("myType"),
+                                    v("myType"),
                                     asList(f1, f2),
                                     asList(Int32Type.instance, UTF8Type.instance),
                                     false);
@@ -405,7 +405,7 @@ public class CellTest
 
     private Cell regular(TableMetadata cfm, String columnName, String value, long timestamp)
     {
-        ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
+        ColumnMetadata cdef = cfm.getColumn(Values.valueOf(columnName));
         return BufferCell.live(cdef, timestamp, Values.valueOf(value));
     }
 
@@ -416,13 +416,13 @@ public class CellTest
 
     private Cell expiring(TableMetadata cfm, String columnName, String value, long timestamp, int ttl, int localExpirationTime)
     {
-        ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
+        ColumnMetadata cdef = cfm.getColumn(Values.valueOf(columnName));
         return new BufferCell(cdef, timestamp, ttl, localExpirationTime, Values.valueOf(value), null);
     }
 
     private Cell deleted(TableMetadata cfm, String columnName, int localDeletionTime, long timestamp)
     {
-        ColumnMetadata cdef = cfm.getColumn(ByteBufferUtil.bytes(columnName));
+        ColumnMetadata cdef = cfm.getColumn(Values.valueOf(columnName));
         return BufferCell.tombstone(cdef, timestamp, localDeletionTime);
     }
 }

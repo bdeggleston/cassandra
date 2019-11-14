@@ -27,8 +27,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 
-import org.apache.cassandra.cql3.ColumnIdentifier;
-import org.apache.cassandra.db.marshal.BytesType;
 import org.junit.AfterClass;
 import org.junit.Test;
 
@@ -43,8 +41,8 @@ import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.MockSchema;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.btree.BTreeSet;
+import org.apache.cassandra.utils.values.Values;
 
-import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
 public class ColumnsTest
 {
@@ -304,7 +302,7 @@ public class ColumnsTest
         if (!columns.hasSimple() || !columns.getSimple(0).kind.isPrimaryKeyKind())
         {
             List<ColumnMetadata> selectOrderDefs = new ArrayList<>(defs);
-            Collections.sort(selectOrderDefs, (a, b) -> a.name.bytes.compareTo(b.name.bytes));
+            Collections.sort(selectOrderDefs, (a, b) -> a.name.value.compareTo(b.name.value));
             List<ColumnMetadata> selectOrderColumns = new ArrayList<>();
             Iterators.addAll(selectOrderColumns, columns.selectOrderIterator());
             Assert.assertEquals(selectOrderDefs, selectOrderColumns);
@@ -471,31 +469,31 @@ public class ColumnsTest
     private static void addPartition(List<String> names, List<ColumnMetadata> results)
     {
         for (String name : names)
-            results.add(ColumnMetadata.partitionKeyColumn(TABLE_METADATA, bytes(name), UTF8Type.instance, 0));
+            results.add(ColumnMetadata.partitionKeyColumn(TABLE_METADATA, Values.valueOf(name), UTF8Type.instance, 0));
     }
 
     private static void addClustering(List<String> names, List<ColumnMetadata> results)
     {
         int i = 0;
         for (String name : names)
-            results.add(ColumnMetadata.clusteringColumn(TABLE_METADATA, bytes(name), UTF8Type.instance, i++));
+            results.add(ColumnMetadata.clusteringColumn(TABLE_METADATA, Values.valueOf(name), UTF8Type.instance, i++));
     }
 
     private static void addRegular(List<String> names, List<ColumnMetadata> results)
     {
         for (String name : names)
-            results.add(ColumnMetadata.regularColumn(TABLE_METADATA, bytes(name), UTF8Type.instance));
+            results.add(ColumnMetadata.regularColumn(TABLE_METADATA, Values.valueOf(name), UTF8Type.instance));
     }
 
     private static void addComplex(List<String> names, List<ColumnMetadata> results)
     {
         for (String name : names)
-            results.add(ColumnMetadata.regularColumn(TABLE_METADATA, bytes(name), SetType.getInstance(UTF8Type.instance, true)));
+            results.add(ColumnMetadata.regularColumn(TABLE_METADATA, Values.valueOf(name), SetType.getInstance(UTF8Type.instance, true)));
     }
 
     private static ColumnMetadata def(String name, AbstractType<?> type, ColumnMetadata.Kind kind)
     {
-        return new ColumnMetadata(TABLE_METADATA, bytes(name), type, ColumnMetadata.NO_POSITION, kind);
+        return new ColumnMetadata(TABLE_METADATA, Values.valueOf(name), type, ColumnMetadata.NO_POSITION, kind);
     }
 
     private static TableMetadata mock(Columns columns)

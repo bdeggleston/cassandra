@@ -29,6 +29,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 
@@ -53,7 +54,7 @@ public class CounterMutationTest
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
-        ColumnMetadata cDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata cDef = cfs.metadata().getColumn(Values.valueOf("val"));
 
         // Do the initial update (+1)
         addAndCheck(cfs, 1, 1);
@@ -67,7 +68,7 @@ public class CounterMutationTest
 
     private void addAndCheck(ColumnFamilyStore cfs, long toAdd, long expected)
     {
-        ColumnMetadata cDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata cDef = cfs.metadata().getColumn(Values.valueOf("val"));
         Mutation m = new RowUpdateBuilder(cfs.metadata(), 5, "key1").clustering("cc").add("val", toAdd).build();
         new CounterMutation(m, ConsistencyLevel.ONE).apply();
 
@@ -93,8 +94,8 @@ public class CounterMutationTest
 
     private void addTwoAndCheck(ColumnFamilyStore cfs, long addOne, long expectedOne, long addTwo, long expectedTwo)
     {
-        ColumnMetadata cDefOne = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
-        ColumnMetadata cDefTwo = cfs.metadata().getColumn(ByteBufferUtil.bytes("val2"));
+        ColumnMetadata cDefOne = cfs.metadata().getColumn(Values.valueOf("val"));
+        ColumnMetadata cDefTwo = cfs.metadata().getColumn(Values.valueOf("val2"));
 
         Mutation m = new RowUpdateBuilder(cfs.metadata(), 5, "key1")
             .clustering("cc")
@@ -133,15 +134,15 @@ public class CounterMutationTest
 
         new CounterMutation(batch.build(), ConsistencyLevel.ONE).apply();
 
-        ColumnMetadata c1cfs1 = cfsOne.metadata().getColumn(ByteBufferUtil.bytes("val"));
-        ColumnMetadata c2cfs1 = cfsOne.metadata().getColumn(ByteBufferUtil.bytes("val2"));
+        ColumnMetadata c1cfs1 = cfsOne.metadata().getColumn(Values.valueOf("val"));
+        ColumnMetadata c2cfs1 = cfsOne.metadata().getColumn(Values.valueOf("val2"));
 
         Row row = Util.getOnlyRow(Util.cmd(cfsOne).includeRow("cc").columns("val", "val2").build());
         assertEquals(1L, CounterContext.instance().total(row.getCell(c1cfs1).value()));
         assertEquals(-1L, CounterContext.instance().total(row.getCell(c2cfs1).value()));
 
-        ColumnMetadata c1cfs2 = cfsTwo.metadata().getColumn(ByteBufferUtil.bytes("val"));
-        ColumnMetadata c2cfs2 = cfsTwo.metadata().getColumn(ByteBufferUtil.bytes("val2"));
+        ColumnMetadata c1cfs2 = cfsTwo.metadata().getColumn(Values.valueOf("val"));
+        ColumnMetadata c2cfs2 = cfsTwo.metadata().getColumn(Values.valueOf("val2"));
         row = Util.getOnlyRow(Util.cmd(cfsTwo).includeRow("cc").columns("val", "val2").build());
         assertEquals(2L, CounterContext.instance().total(row.getCell(c1cfs2).value()));
         assertEquals(-2L, CounterContext.instance().total(row.getCell(c2cfs2).value()));
@@ -162,8 +163,8 @@ public class CounterMutationTest
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF1);
         cfs.truncateBlocking();
-        ColumnMetadata cOne = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
-        ColumnMetadata cTwo = cfs.metadata().getColumn(ByteBufferUtil.bytes("val2"));
+        ColumnMetadata cOne = cfs.metadata().getColumn(Values.valueOf("val"));
+        ColumnMetadata cTwo = cfs.metadata().getColumn(Values.valueOf("val2"));
 
         // Do the initial update (+1, -1)
         new CounterMutation(

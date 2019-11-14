@@ -78,7 +78,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
         final long timestamp = System.currentTimeMillis();
 
         ColumnFamilyStore cfs = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
-        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeBuffer("age"));
+        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeValue("age"));
 
         SASIIndex sasi = (SASIIndex) cfs.indexManager.getIndexByName(cfs.name + "_age");
 
@@ -170,7 +170,7 @@ public class PerSSTableIndexWriterTest extends SchemaLoader
         final String columnName = "timestamp";
 
         ColumnFamilyStore cfs = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
-        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeBuffer(columnName));
+        ColumnMetadata column = cfs.metadata().getColumn(UTF8Type.instance.decomposeValue(columnName));
 
         SASIIndex sasi = (SASIIndex) cfs.indexManager.getIndexByName(cfs.name + "_" + columnName);
 

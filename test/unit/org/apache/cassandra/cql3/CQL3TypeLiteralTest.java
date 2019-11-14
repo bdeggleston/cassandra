@@ -643,7 +643,7 @@ public class CQL3TypeLiteralTest
             names.add(FieldIdentifier.forQuoted('f' + randLetters(i)));
             types.add(randomNestedType(level));
         }
-        return new UserType("ks", UTF8Type.instance.fromString("u" + randInt(1000000)), names, types, true);
+        return new UserType("ks", UTF8Type.instance.valueFromString("u" + randInt(1000000)), names, types, true);
     }
 
     //

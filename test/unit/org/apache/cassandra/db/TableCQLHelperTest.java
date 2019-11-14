@@ -40,6 +40,7 @@ import org.apache.cassandra.index.sasi.*;
 import org.apache.cassandra.schema.*;
 import org.apache.cassandra.service.reads.AlwaysSpeculativeRetryPolicy;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Values;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -61,7 +62,7 @@ public class TableCQLHelperTest extends CQLTester
         String keyspace = "cql_test_keyspace_user_types";
         String table = "test_table_user_types";
 
-        UserType typeA = new UserType(keyspace, ByteBufferUtil.bytes("a"),
+        UserType typeA = new UserType(keyspace, Values.valueOf("a"),
                                       Arrays.asList(FieldIdentifier.forUnquoted("a1"),
                                                     FieldIdentifier.forUnquoted("a2"),
                                                     FieldIdentifier.forUnquoted("a3")),
@@ -70,7 +71,7 @@ public class TableCQLHelperTest extends CQLTester
                                                     IntegerType.instance),
                                       true);
 
-        UserType typeB = new UserType(keyspace, ByteBufferUtil.bytes("b"),
+        UserType typeB = new UserType(keyspace, Values.valueOf("b"),
                                       Arrays.asList(FieldIdentifier.forUnquoted("b1"),
                                                     FieldIdentifier.forUnquoted("b2"),
                                                     FieldIdentifier.forUnquoted("b3")),
@@ -79,7 +80,7 @@ public class TableCQLHelperTest extends CQLTester
                                                     typeA),
                                       true);
 
-        UserType typeC = new UserType(keyspace, ByteBufferUtil.bytes("c"),
+        UserType typeC = new UserType(keyspace, Values.valueOf("c"),
                                       Arrays.asList(FieldIdentifier.forUnquoted("c1"),
                                                     FieldIdentifier.forUnquoted("c2"),
                                                     FieldIdentifier.forUnquoted("c3")),
@@ -121,9 +122,9 @@ public class TableCQLHelperTest extends CQLTester
                          .addRegularColumn("reg2", IntegerType.instance)
                          .addRegularColumn("reg3", IntegerType.instance);
 
-        ColumnMetadata reg1 = builder.getColumn(ByteBufferUtil.bytes("reg1"));
-        ColumnMetadata reg2 = builder.getColumn(ByteBufferUtil.bytes("reg2"));
-        ColumnMetadata reg3 = builder.getColumn(ByteBufferUtil.bytes("reg3"));
+        ColumnMetadata reg1 = builder.getColumn(Values.valueOf("reg1"));
+        ColumnMetadata reg2 = builder.getColumn(Values.valueOf("reg2"));
+        ColumnMetadata reg3 = builder.getColumn(Values.valueOf("reg3"));
 
         builder.removeRegularOrStaticColumn(reg1.name)
                .removeRegularOrStaticColumn(reg2.name)
@@ -166,8 +167,8 @@ public class TableCQLHelperTest extends CQLTester
                          .addStaticColumn("reg2", IntegerType.instance)
                          .addRegularColumn("reg3", IntegerType.instance);
 
-        ColumnMetadata reg1 = builder.getColumn(ByteBufferUtil.bytes("reg1"));
-        ColumnMetadata reg2 = builder.getColumn(ByteBufferUtil.bytes("reg2"));
+        ColumnMetadata reg1 = builder.getColumn(Values.valueOf("reg1"));
+        ColumnMetadata reg2 = builder.getColumn(Values.valueOf("reg2"));
 
         builder.removeRegularOrStaticColumn(reg1.name);
         builder.removeRegularOrStaticColumn(reg2.name);

@@ -80,6 +80,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -146,8 +147,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(data, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows;
 
@@ -196,7 +197,7 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(data, forceFlush);
 
-        Set<String> rows= getIndexed(store, 10, buildExpression(UTF8Type.instance.decomposeBuffer("first_name"), Operator.LIKE_MATCHES, UTF8Type.instance.decomposeBuffer("doesntmatter")));
+        Set<String> rows= getIndexed(store, 10, buildExpression(UTF8Type.instance.decomposeValue("first_name"), Operator.LIKE_MATCHES, UTF8Type.instance.decomposeBuffer("doesntmatter")));
         Assert.assertTrue(rows.toString(), Arrays.equals(new String[]{}, rows.toArray(new String[rows.size()])));
     }
 
@@ -220,8 +221,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(data, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows;
         rows = getIndexed(store, 10,
@@ -325,8 +326,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(part3, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows;
         rows = getIndexed(store, 10, buildExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("Fiona")),
@@ -419,8 +420,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(part1, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows = getIndexed(store, 10,
                 buildExpression(firstName, Operator.LIKE_CONTAINS,
@@ -507,8 +508,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(part3, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows = getIndexed(store, 10,
                                       buildExpression(firstName, Operator.EQ, UTF8Type.instance.decomposeBuffer("Fiona")),
@@ -645,8 +646,8 @@ public class SASIIndexTest
         loadData(part2, forceFlush);
         loadData(part3, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<DecoratedKey> uniqueKeys = getPaged(store, 4,
                 buildExpression(firstName, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("a")),
@@ -783,7 +784,7 @@ public class SASIIndexTest
         rm1.add(PartitionUpdate.singleRowUpdate(store.metadata(),
                                                 rm1.key(),
                                                 buildRow(buildCell(store.metadata(),
-                                                                   UTF8Type.instance.decomposeBuffer("/data/output/id"),
+                                                                   UTF8Type.instance.decomposeValue("/data/output/id"),
                                                                    AsciiType.instance.decomposeValue("jason"),
                                                                    System.currentTimeMillis()))));
 
@@ -791,7 +792,7 @@ public class SASIIndexTest
         rm2.add(PartitionUpdate.singleRowUpdate(store.metadata(),
                                                 rm2.key(),
                                                 buildRow(buildCell(store.metadata(),
-                                                                   UTF8Type.instance.decomposeBuffer("/data/output/id"),
+                                                                   UTF8Type.instance.decomposeValue("/data/output/id"),
                                                                    AsciiType.instance.decomposeValue("pavel"),
                                                                    System.currentTimeMillis()))));
 
@@ -799,7 +800,7 @@ public class SASIIndexTest
         rm3.add(PartitionUpdate.singleRowUpdate(store.metadata(),
                                                 rm3.key(),
                                                 buildRow(buildCell(store.metadata(),
-                                                                   UTF8Type.instance.decomposeBuffer("/data/output/id"),
+                                                                   UTF8Type.instance.decomposeValue("/data/output/id"),
                                                                    AsciiType.instance.decomposeValue("Aleksey"),
                                                                    System.currentTimeMillis()))));
 
@@ -810,7 +811,7 @@ public class SASIIndexTest
         if (forceFlush)
             store.forceBlockingFlush();
 
-        final ByteBuffer dataOutputId = UTF8Type.instance.decomposeBuffer("/data/output/id");
+        final Value dataOutputId = UTF8Type.instance.decomposeValue("/data/output/id");
 
         Set<String> rows = getIndexed(store, 10, buildExpression(dataOutputId, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("a")));
         Assert.assertTrue(rows.toString(), Arrays.equals(new String[] { "key1", "key2" }, rows.toArray(new String[rows.size()])));
@@ -868,8 +869,8 @@ public class SASIIndexTest
 
         ColumnFamilyStore store = loadData(part1, forceFlush);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Set<String> rows = getIndexed(store, 10, buildExpression(firstName, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("a")));
         Assert.assertTrue(rows.toString(), Arrays.equals(new String[]{ "key0", "key3", "key4" }, rows.toArray(new String[rows.size()])));
@@ -942,7 +943,7 @@ public class SASIIndexTest
         loadData(part2, true);
         loadData(part3, true);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
 
         Set<String> rows = getIndexed(store, 100, buildExpression(firstName, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("a")));
         Assert.assertEquals(rows.toString(), 6, rows.size());
@@ -966,7 +967,7 @@ public class SASIIndexTest
         }
     }
 
-    private void redistributeSummaries(int expected, ColumnFamilyStore store, ByteBuffer firstName, int minIndexInterval) throws IOException
+    private void redistributeSummaries(int expected, ColumnFamilyStore store, Value firstName, int minIndexInterval) throws IOException
     {
         setMinIndexInterval(minIndexInterval);
         IndexSummaryManager.instance.redistributeSummaries();
@@ -1026,7 +1027,7 @@ public class SASIIndexTest
         loadData(part2, 2000, true);
         loadData(part3, 3000, true);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
 
         Set<String> rows = getIndexed(store, 100, buildExpression(firstName, Operator.LIKE_CONTAINS, UTF8Type.instance.decomposeBuffer("a")));
         Assert.assertEquals(rows.toString(), 16, rows.size());
@@ -1095,8 +1096,8 @@ public class SASIIndexTest
             });
         }
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         int previousCount = 0;
 
@@ -1124,8 +1125,8 @@ public class SASIIndexTest
     @Test
     public void testSameKeyInMemtableAndSSTables()
     {
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Map<String, Pair<String, Integer>> data1 = new HashMap<String, Pair<String, Integer>>()
         {{
@@ -1179,8 +1180,8 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
-        final ByteBuffer age = UTF8Type.instance.decomposeBuffer("age");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
+        final Value age = UTF8Type.instance.decomposeValue("age");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey(AsciiType.instance.decomposeBuffer("key1")));
         update(rm, new ArrayList<Cell>()
@@ -1212,7 +1213,7 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("comment");
+        final Value comment = UTF8Type.instance.decomposeValue("comment");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
         update(rm, comment, UTF8Type.instance.decomposeValue("ⓈⓅⒺⒸⒾⒶⓁ ⒞⒣⒜⒭⒮ and normal ones"), System.currentTimeMillis());
@@ -1288,7 +1289,7 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("comment_suffix_split");
+        final Value comment = UTF8Type.instance.decomposeValue("comment_suffix_split");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
         update(rm, comment, UTF8Type.instance.decomposeValue("龍馭鬱"), System.currentTimeMillis());
@@ -1350,7 +1351,7 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("comment_suffix_split");
+        final Value comment = UTF8Type.instance.decomposeValue("comment_suffix_split");
 
         for (int i = 0; i < 10; i++)
         {
@@ -1378,7 +1379,7 @@ public class SASIIndexTest
     @Test
     public void testSearchTimeouts() throws Exception
     {
-        final ByteBuffer firstName = UTF8Type.instance.decomposeBuffer("first_name");
+        final Value firstName = UTF8Type.instance.decomposeValue("first_name");
 
         Map<String, Pair<String, Integer>> data1 = new HashMap<String, Pair<String, Integer>>()
         {{
@@ -1437,7 +1438,7 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer fullName = UTF8Type.instance.decomposeBuffer("/output/full-name/");
+        final Value fullName = UTF8Type.instance.decomposeValue("/output/full-name/");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
         update(rm, fullName, UTF8Type.instance.decomposeValue("美加 八田"), System.currentTimeMillis());
@@ -1493,7 +1494,7 @@ public class SASIIndexTest
     {
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer comment = UTF8Type.instance.decomposeBuffer("address");
+        final Value comment = UTF8Type.instance.decomposeValue("address");
 
         Mutation.PartitionUpdateCollector rm = new Mutation.PartitionUpdateCollector(KS_NAME, decoratedKey("key1"));
         update(rm, comment, UTF8Type.instance.decomposeValue("577 Rogahn Valleys Apt. 178"), System.currentTimeMillis());
@@ -1568,7 +1569,7 @@ public class SASIIndexTest
         // when queried on the prefix e.g. "j".
         ColumnFamilyStore store = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
 
-        final ByteBuffer name = UTF8Type.instance.decomposeBuffer("first_name_prefix");
+        final Value name = UTF8Type.instance.decomposeValue("first_name_prefix");
 
         Mutation.PartitionUpdateCollector rm;
 
@@ -2583,11 +2584,11 @@ public class SASIIndexTest
         List<Cell> cells = new ArrayList<>(3);
 
         if (age >= 0)
-            cells.add(buildCell(ByteBufferUtil.bytes("age"), Int32Type.instance.decomposeValue(age), timestamp));
+            cells.add(buildCell(Values.valueOf("age"), Int32Type.instance.decomposeValue(age), timestamp));
         if (firstName != null)
-            cells.add(buildCell(ByteBufferUtil.bytes("first_name"), UTF8Type.instance.decomposeValue(firstName), timestamp));
+            cells.add(buildCell(Values.valueOf("first_name"), UTF8Type.instance.decomposeValue(firstName), timestamp));
         if (lastName != null)
-            cells.add(buildCell(ByteBufferUtil.bytes("last_name"), UTF8Type.instance.decomposeValue(lastName), timestamp));
+            cells.add(buildCell(Values.valueOf("last_name"), UTF8Type.instance.decomposeValue(lastName), timestamp));
 
         update(rm, cells);
         return rm.build();
@@ -2665,25 +2666,25 @@ public class SASIIndexTest
         return rowBuilder.build();
     }
 
-    private static Cell buildCell(ByteBuffer name, Value value, long timestamp)
+    private static Cell buildCell(Value name, Value value, long timestamp)
     {
         TableMetadata cfm = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME).metadata();
         return BufferCell.live(cfm.getColumn(name), timestamp, value);
     }
 
-    private static Cell buildCell(TableMetadata cfm, ByteBuffer name, Value value, long timestamp)
+    private static Cell buildCell(TableMetadata cfm, Value name, Value value, long timestamp)
     {
         ColumnMetadata column = cfm.getColumn(name);
         assert column != null;
         return BufferCell.live(column, timestamp, value);
     }
 
-    private static Expression buildExpression(ByteBuffer name, Operator op, ByteBuffer value)
+    private static Expression buildExpression(Value name, Operator op, ByteBuffer value)
     {
         return new Expression(name, op, value);
     }
 
-    private static void update(Mutation.PartitionUpdateCollector rm, ByteBuffer name, Value value, long timestamp)
+    private static void update(Mutation.PartitionUpdateCollector rm, Value name, Value value, long timestamp)
     {
         TableMetadata metadata = Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME).metadata();
         rm.add(PartitionUpdate.singleRowUpdate(metadata, rm.key(), buildRow(buildCell(metadata, name, value, timestamp))));
@@ -2698,11 +2699,11 @@ public class SASIIndexTest
 
     private static class Expression
     {
-        public final ByteBuffer name;
+        public final Value name;
         public final Operator op;
         public final ByteBuffer value;
 
-        public Expression(ByteBuffer name, Operator op, ByteBuffer value)
+        public Expression(Value name, Operator op, ByteBuffer value)
         {
             this.name = name;
             this.op = op;

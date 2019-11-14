@@ -41,6 +41,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.HashingUtils;
+import org.apache.cassandra.utils.values.Values;
 
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -109,7 +110,7 @@ public class PartitionTest
         assertTrue(deserialized.columns().regulars.getSimple(1).equals(partition.columns().regulars.getSimple(1)));
         assertTrue(deserialized.columns().regulars.getSimple(5).equals(partition.columns().regulars.getSimple(5)));
 
-        ColumnMetadata cDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val8"));
+        ColumnMetadata cDef = cfs.metadata().getColumn(Values.valueOf("val8"));
         assertTrue(partition.lastRow().getCell(cDef).value().equals(deserialized.lastRow().getCell(cDef).value()));
         assert deserialized.partitionKey().equals(partition.partitionKey());
     }

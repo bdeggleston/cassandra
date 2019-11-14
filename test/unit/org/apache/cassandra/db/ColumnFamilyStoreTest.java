@@ -168,7 +168,7 @@ public class ColumnFamilyStoreTest
         Keyspace keyspace = Keyspace.open(keyspaceName);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
-        ByteBuffer col = ByteBufferUtil.bytes("val");
+        Value col = Values.valueOf("val");
         Value val = Values.valueOf("val1");
 
         // insert
@@ -407,7 +407,7 @@ public class ColumnFamilyStoreTest
         verify.run();
     }
 
-    private void assertRangeCount(ColumnFamilyStore cfs, ByteBuffer col, Value val, int count)
+    private void assertRangeCount(ColumnFamilyStore cfs, Value col, Value val, int count)
     {
         assertRangeCount(cfs, cfs.metadata().getColumn(col), val, count);
     }

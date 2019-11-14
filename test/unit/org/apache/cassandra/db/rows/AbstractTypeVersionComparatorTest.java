@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.util.Arrays.asList;
 import static org.apache.cassandra.cql3.FieldIdentifier.forUnquoted;
@@ -41,12 +42,12 @@ public class AbstractTypeVersionComparatorTest
     public void setUp()
     {
         udtWith2Fields = new UserType("ks",
-                                      bytes("myType"),
+                                      Values.valueOf("myType"),
                                       asList(forUnquoted("a"), forUnquoted("b")),
                                       asList(Int32Type.instance, Int32Type.instance),
                                       false);
         udtWith3Fields = new UserType("ks",
-                                      bytes("myType"),
+                                      Values.valueOf("myType"),
                                       asList(forUnquoted("a"), forUnquoted("b"), forUnquoted("c")),
                                       asList(Int32Type.instance, Int32Type.instance, Int32Type.instance),
                                       false);

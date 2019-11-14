@@ -40,6 +40,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Values;
 
 public class DynamicCompositeTypeTest
 {
@@ -199,7 +200,7 @@ public class DynamicCompositeTypeTest
         new RowUpdateBuilder(cfs.metadata(), ts, key).clustering(cname2).add("val", "cname2").build().applyUnsafe();
         new RowUpdateBuilder(cfs.metadata(), ts, key).clustering(cname3).add("val", "cname3").build().applyUnsafe();
 
-        ColumnMetadata cdef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata cdef = cfs.metadata().getColumn(Values.valueOf("val"));
 
         ImmutableBTreePartition readPartition = Util.getOnlyPartitionUnfiltered(Util.cmd(cfs, key).build());
         Iterator<Row> iter = readPartition.iterator();
@@ -236,7 +237,7 @@ public class DynamicCompositeTypeTest
         new RowUpdateBuilder(cfs.metadata(), ts, key).clustering(cname2).add("val", "cname2").build().applyUnsafe();
         new RowUpdateBuilder(cfs.metadata(), ts, key).clustering(cname3).add("val", "cname3").build().applyUnsafe();
 
-        ColumnMetadata cdef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata cdef = cfs.metadata().getColumn(Values.valueOf("val"));
 
         ImmutableBTreePartition readPartition = Util.getOnlyPartitionUnfiltered(Util.cmd(cfs, key).build());
         Iterator<Row> iter = readPartition.iterator();

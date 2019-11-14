@@ -75,7 +75,7 @@ public class CleanupTest
     public static final String KEYSPACE3 = "CleanupSkipSSTables";
     public static final String CF_STANDARD3 = "Standard3";
 
-    public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
+    public static final Value COLUMN = Values.valueOf("birthdate");
     public static final Value VALUE = Values.valueOf(20101229L);
 
     @BeforeClass

@@ -150,7 +150,7 @@ public class SSTableLoaderTest
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
         assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(Values.valueOf("col1")))
-                                               .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
+                                               .getCell(metadata.getColumn(Values.valueOf("val")))
                                                .value());
 
         // The stream future is signalled when the work is complete but before releasing references. Wait for release
@@ -248,7 +248,7 @@ public class SSTableLoaderTest
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
         assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(Values.valueOf("col1")))
-                .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
+                .getCell(metadata.getColumn(Values.valueOf("val")))
                 .value());
 
         // The stream future is signalled when the work is complete but before releasing references. Wait for release

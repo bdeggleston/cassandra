@@ -223,6 +223,6 @@ public class SSTableFlushObserverTest
 
     private static ColumnMetadata getColumn(TableMetadata cfm, String name)
     {
-        return cfm.getColumn(UTF8Type.instance.fromString(name));
+        return cfm.getColumn(UTF8Type.instance.valueFromString(name));
     }
 }

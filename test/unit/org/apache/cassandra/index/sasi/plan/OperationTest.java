@@ -89,9 +89,9 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testAnalyze() throws Exception
     {
-        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeBuffer("first_name"));
-        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeBuffer("age"));
-        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeBuffer("comment"));
+        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeValue("first_name"));
+        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeValue("age"));
+        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeValue("comment"));
 
         // age != 5 AND age > 1 AND age != 6 AND age <= 10
         Map<Expression.Op, Expression> expressions = convert(Operation.analyzeGroup(controller, OperationType.AND,
@@ -272,8 +272,8 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedBy() throws Exception
     {
-        final ColumnMetadata timestamp = getColumn(UTF8Type.instance.decomposeBuffer("timestamp"));
-        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeBuffer("age"));
+        final ColumnMetadata timestamp = getColumn(UTF8Type.instance.decomposeValue("timestamp"));
+        final ColumnMetadata age = getColumn(UTF8Type.instance.decomposeValue("age"));
 
         Operation.Builder builder = new Operation.Builder(OperationType.AND, controller, new SimpleExpression(age, Operator.NEQ, Int32Type.instance.decomposeBuffer(5)));
         Operation op = builder.complete();
@@ -436,8 +436,8 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testAnalyzeNotIndexedButDefinedColumn() throws Exception
     {
-        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeBuffer("first_name"));
-        final ColumnMetadata height = getColumn(UTF8Type.instance.decomposeBuffer("height"));
+        final ColumnMetadata firstName = getColumn(UTF8Type.instance.decomposeValue("first_name"));
+        final ColumnMetadata height = getColumn(UTF8Type.instance.decomposeValue("height"));
 
         // first_name = 'a' AND height != 10
         Map<Expression.Op, Expression> expressions;
@@ -488,7 +488,7 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedByWithMultipleTerms()
     {
-        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeBuffer("comment"));
+        final ColumnMetadata comment = getColumn(UTF8Type.instance.decomposeValue("comment"));
 
         Unfiltered row = buildRow(buildCell(comment, UTF8Type.instance.decomposeValue("software engineer is working on a project"), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING);
@@ -509,10 +509,10 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedByWithClustering()
     {
-        ColumnMetadata location = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("location"));
-        ColumnMetadata age = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("age"));
-        ColumnMetadata height = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("height"));
-        ColumnMetadata score = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("score"));
+        ColumnMetadata location = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeValue("location"));
+        ColumnMetadata age = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeValue("age"));
+        ColumnMetadata height = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeValue("height"));
+        ColumnMetadata score = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeValue("score"));
 
         Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.valueFromString("US"), Int32Type.instance.decomposeValue(27)),
                                   buildCell(height, Int32Type.instance.decomposeValue(182), System.currentTimeMillis()),
@@ -581,8 +581,8 @@ public class OperationTest extends SchemaLoader
     @Test
     public void testSatisfiedByWithStatic()
     {
-        final ColumnMetadata sensorType = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("sensor_type"));
-        final ColumnMetadata value = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("value"));
+        final ColumnMetadata sensorType = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeValue("sensor_type"));
+        final ColumnMetadata value = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeValue("value"));
 
         Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.valueFromString("date"), LongType.instance.decomposeValue(20160401L)),
                           buildCell(value, DoubleType.instance.decomposeValue(24.56), System.currentTimeMillis()));
@@ -692,12 +692,12 @@ public class OperationTest extends SchemaLoader
         return BufferCell.tombstone(column, timestamp, nowInSeconds);
     }
 
-    private static ColumnMetadata getColumn(ByteBuffer name)
+    private static ColumnMetadata getColumn(Value name)
     {
         return getColumn(BACKEND, name);
     }
 
-    private static ColumnMetadata getColumn(ColumnFamilyStore cfs, ByteBuffer name)
+    private static ColumnMetadata getColumn(ColumnFamilyStore cfs, Value name)
     {
         return cfs.metadata().getColumn(name);
     }

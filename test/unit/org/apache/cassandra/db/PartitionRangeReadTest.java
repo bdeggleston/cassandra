@@ -40,6 +40,7 @@ import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 public class PartitionRangeReadTest
@@ -91,7 +92,7 @@ public class PartitionRangeReadTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
         cfs.truncateBlocking();
 
-        ByteBuffer col = ByteBufferUtil.bytes("val");
+        Value col = Values.valueOf("val");
         ColumnMetadata cDef = cfs.metadata().getColumn(col);
 
         // insert two columns that represent the same integer but have different binary forms (the
@@ -162,7 +163,7 @@ public class PartitionRangeReadTest
 
         cfs.forceBlockingFlush();
 
-        ColumnMetadata cDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata cDef = cfs.metadata().getColumn(Values.valueOf("val"));
 
         List<FilteredPartition> partitions;
 

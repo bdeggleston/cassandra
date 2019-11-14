@@ -39,6 +39,7 @@ import org.apache.cassandra.transport.Event.SchemaChange;
 import org.apache.cassandra.transport.Event.StatusChange;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.junit.Assert.assertEquals;
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
@@ -164,6 +165,11 @@ public class SerDeserTest
         return UTF8Type.instance.decomposeBuffer(str);
     }
 
+    private static Value v(String str)
+    {
+        return UTF8Type.instance.decomposeValue(str);
+    }
+
     private static FieldIdentifier field(String field)
     {
         return FieldIdentifier.forQuoted(field);
@@ -204,7 +210,7 @@ public class SerDeserTest
         MapType<?, ?> mt = MapType.getInstance(UTF8Type.instance, LongType.instance, true);
 
         UserType udt = new UserType("ks",
-                                    bb("myType"),
+                                    v("myType"),
                                     Arrays.asList(field("f1"), field("f2"), field("f3"), field("f4")),
                                     Arrays.asList(LongType.instance, lt, st, mt),
                                     true);

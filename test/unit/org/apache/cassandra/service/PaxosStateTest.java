@@ -97,7 +97,7 @@ public class PaxosStateTest
     {
         Row row = Util.getOnlyRowUnfiltered(Util.cmd(cfs, key).build());
         assertEquals(0, Values.compareUnsigned(value,
-                                               row.getCell(cfs.metadata().getColumn(ByteBufferUtil.bytes(name))).value()));
+                                               row.getCell(cfs.metadata().getColumn(Values.valueOf(name))).value()));
     }
 
     private void assertNoDataPresent(ColumnFamilyStore cfs, DecoratedKey key)

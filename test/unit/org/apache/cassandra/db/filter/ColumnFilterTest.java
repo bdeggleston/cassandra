@@ -35,6 +35,8 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
+
 import org.junit.Test;
 
 import org.junit.Assert;
@@ -55,7 +57,7 @@ public class ColumnFilterTest
                                               .addRegularColumn("v3", Int32Type.instance)
                                               .build();
 
-        ColumnMetadata v1 = metadata.getColumn(ByteBufferUtil.bytes("v1"));
+        ColumnMetadata v1 = metadata.getColumn(Values.valueOf("v1"));
 
         ColumnFilter columnFilter;
 
@@ -84,8 +86,8 @@ public class ColumnFilterTest
                                 .addRegularColumn("v3", Int32Type.instance)
                                 .build();
 
-        v1 = metadata.getColumn(ByteBufferUtil.bytes("v1"));
-        ColumnMetadata s1 = metadata.getColumn(ByteBufferUtil.bytes("s1"));
+        v1 = metadata.getColumn(Values.valueOf("v1"));
+        ColumnMetadata s1 = metadata.getColumn(Values.valueOf("s1"));
 
         columnFilter = ColumnFilter.all(metadata);
         testRoundTrip(columnFilter, ColumnFilter.Serializer.maybeUpdateForBackwardCompatility(columnFilter, MessagingService.VERSION_30), metadata, MessagingService.VERSION_30);
@@ -130,7 +132,7 @@ public class ColumnFilterTest
         assertEquals("*", columnFilter.toString());
 
         RegularAndStaticColumns queried = RegularAndStaticColumns.builder()
-                                                                 .add(metadata.getColumn(ByteBufferUtil.bytes("v1"))).build();
+                                                                 .add(metadata.getColumn(Values.valueOf("v1"))).build();
         columnFilter = ColumnFilter.selection(queried);
         assertFalse(columnFilter.fetchAllRegulars);
         assertEquals(queried, columnFilter.fetched);
@@ -154,7 +156,7 @@ public class ColumnFilterTest
         assertEquals("*", columnFilter.toString());
 
         queried = RegularAndStaticColumns.builder()
-                                         .add(metadata.getColumn(ByteBufferUtil.bytes("v1"))).build();
+                                         .add(metadata.getColumn(Values.valueOf("v1"))).build();
         columnFilter = ColumnFilter.selection(metadata, queried);
         assertEquals("v1", columnFilter.toString());
 
@@ -187,8 +189,8 @@ public class ColumnFilterTest
         assertNull(columnFilter.queried);
         assertEquals("*", columnFilter.toString());
 
-        columnFilter = ColumnFilter.selectionBuilder().add(metadata.getColumn(ByteBufferUtil.bytes("v1")))
-                                   .select(metadata.getColumn(ByteBufferUtil.bytes("set")), CellPath.create(ByteBufferUtil.bytes(1)))
+        columnFilter = ColumnFilter.selectionBuilder().add(metadata.getColumn(Values.valueOf("v1")))
+                                   .select(metadata.getColumn(Values.valueOf("set")), CellPath.create(ByteBufferUtil.bytes(1)))
                                    .build();
         assertEquals("set[1], v1", columnFilter.toString());
     }

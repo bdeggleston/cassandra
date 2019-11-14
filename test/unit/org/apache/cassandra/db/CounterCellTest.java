@@ -89,7 +89,7 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
         long delta = 3L;
 
-        Cell cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
+        Cell cell = createLegacyCounterCell(cfs, Values.valueOf("val"), delta, 1);
 
         assertEquals(delta, CounterContext.instance().total(cell.value()));
         assertEquals(1, cell.value().getShort(0));
@@ -100,27 +100,27 @@ public class CounterCellTest
 
     }
 
-    private Cell createLegacyCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, long count, long ts)
+    private Cell createLegacyCounterCell(ColumnFamilyStore cfs, Value colName, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         Value val = CounterContext.instance().createLocal(count);
         return BufferCell.live(cDef, ts, val);
     }
 
-    private Cell createCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, CounterId id, long count, long ts)
+    private Cell createCounterCell(ColumnFamilyStore cfs, Value colName, CounterId id, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         Value val = CounterContext.instance().createGlobal(id, ts, count);
         return BufferCell.live(cDef, ts, val);
     }
 
-    private Cell createCounterCellFromContext(ColumnFamilyStore cfs, ByteBuffer colName, ContextState context, long ts)
+    private Cell createCounterCellFromContext(ColumnFamilyStore cfs, Value colName, ContextState context, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         return BufferCell.live(cDef, ts, Values.valueOf(context.context));
     }
 
-    private Cell createDeleted(ColumnFamilyStore cfs, ByteBuffer colName, long ts, int localDeletionTime)
+    private Cell createDeleted(ColumnFamilyStore cfs, Value colName, long ts, int localDeletionTime)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         return BufferCell.tombstone(cDef, ts, localDeletionTime);
@@ -130,7 +130,7 @@ public class CounterCellTest
     public void testReconcile()
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
-        ByteBuffer col = ByteBufferUtil.bytes("val");
+        Value col = Values.valueOf("val");
 
         Cell left;
         Cell right;
@@ -190,7 +190,7 @@ public class CounterCellTest
     public void testDiff()
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
-        ByteBuffer col = ByteBufferUtil.bytes("val");
+        Value col = Values.valueOf("val");
 
         Cell leftCell;
         Cell rightCell;
@@ -263,7 +263,7 @@ public class CounterCellTest
     public void testUpdateDigest() throws Exception
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
-        ByteBuffer col = ByteBufferUtil.bytes("val");
+        Value col = Values.valueOf("val");
 
         Hasher hasher1 = HashingUtils.CURRENT_HASH_FUNCTION.newHasher();
         Hasher hasher2 = HashingUtils.CURRENT_HASH_FUNCTION.newHasher();
@@ -291,7 +291,7 @@ public class CounterCellTest
         // For DB-1881
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
 
-        ColumnMetadata emptyColDef = cfs.metadata().getColumn(ByteBufferUtil.bytes("val2"));
+        ColumnMetadata emptyColDef = cfs.metadata().getColumn(Values.valueOf("val2"));
         BufferCell emptyCell = BufferCell.live(emptyColDef, 0, Values.EMPTY);
 
         Row.Builder builder = BTreeRow.unsortedBuilder();

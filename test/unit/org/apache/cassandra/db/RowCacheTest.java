@@ -167,7 +167,7 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.value);
                 Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }
@@ -194,7 +194,7 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.value);
                 Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }
@@ -261,7 +261,7 @@ public class RowCacheTest
                 assert(ci.hasNext());
                 Cell cell = ci.next();
 
-                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.bytes);
+                Assert.assertEquals(ByteBufferUtil.bytes("val"), cell.column().name.value);
                 Assert.assertEquals(Values.valueOf("val" + i), cell.value());
             }
         }

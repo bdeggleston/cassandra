@@ -469,7 +469,7 @@ public class RangeTombstoneTest
         Keyspace table = Keyspace.open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
         ByteBuffer key = ByteBufferUtil.bytes("k5");
-        ByteBuffer indexedColumnName = ByteBufferUtil.bytes("val");
+        Value indexedColumnName = Values.valueOf("val");
 
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();
@@ -575,7 +575,7 @@ public class RangeTombstoneTest
         Keyspace table = Keyspace.open(KSNAME);
         ColumnFamilyStore cfs = table.getColumnFamilyStore(CFNAME);
         ByteBuffer key = ByteBufferUtil.bytes("k6");
-        ByteBuffer indexedColumnName = ByteBufferUtil.bytes("val");
+        Value indexedColumnName = Values.valueOf("val");
 
         cfs.truncateBlocking();
         cfs.disableAutoCompaction();

@@ -305,7 +305,7 @@ public class SchemaLoader
     {
         return new ColumnMetadata(ksName,
                                   cfName,
-                                  ColumnIdentifier.getInterned(IntegerType.instance.fromString("42"), IntegerType.instance),
+                                  ColumnIdentifier.getInterned(IntegerType.instance.valueFromString("42"), IntegerType.instance),
                                   UTF8Type.instance,
                                   ColumnMetadata.NO_POSITION,
                                   ColumnMetadata.Kind.REGULAR);

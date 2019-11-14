@@ -44,6 +44,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.Util.throwAssert;
@@ -194,9 +195,9 @@ public class SecondaryIndexTest
     public void testCompositeIndexDeletions() throws IOException
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(WITH_COMPOSITE_INDEX);
-        ByteBuffer bBB = ByteBufferUtil.bytes("birthdate");
+        Value bBB = Values.valueOf("birthdate");
         ColumnMetadata bDef = cfs.metadata().getColumn(bBB);
-        ByteBuffer col = ByteBufferUtil.bytes("birthdate");
+        Value col = Values.valueOf("birthdate");
 
         // Confirm addition works
         new RowUpdateBuilder(cfs.metadata(), 0, "k1").clustering("c").add("birthdate", 1L).build().applyUnsafe();
@@ -240,7 +241,7 @@ public class SecondaryIndexTest
     {
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(WITH_COMPOSITE_INDEX);
-        ByteBuffer col = ByteBufferUtil.bytes("birthdate");
+        Value col = Values.valueOf("birthdate");
 
         // create a row and update the birthdate value, test that the index query fetches the new version
         new RowUpdateBuilder(cfs.metadata(), 1, "testIndexUpdate").clustering("c").add("birthdate", 100L).build().applyUnsafe();
@@ -262,7 +263,7 @@ public class SecondaryIndexTest
     {
         // see CASSANDRA-7268
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(WITH_COMPOSITE_INDEX);
-        ByteBuffer col = ByteBufferUtil.bytes("birthdate");
+        Value col = Values.valueOf("birthdate");
 
         // create a row and update the birthdate value with an expiring column
         new RowUpdateBuilder(cfs.metadata(), 1L, 500, "K100").clustering("c").add("birthdate", 100L).build().applyUnsafe();
@@ -295,7 +296,7 @@ public class SecondaryIndexTest
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(WITH_KEYS_INDEX);
 
-        ByteBuffer col = ByteBufferUtil.bytes("birthdate");
+        Value col = Values.valueOf("birthdate");
 
         // create a row and update the "birthdate" value
         new RowUpdateBuilder(cfs.metadata(), 1, "k1").noRowMarker().add("birthdate", 1L).build().applyUnsafe();
@@ -345,7 +346,7 @@ public class SecondaryIndexTest
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfName);
 
         String colName = isStatic ? "static" : "birthdate";
-        ByteBuffer col = ByteBufferUtil.bytes(colName);
+        Value col = Values.valueOf(colName);
 
         // create a row and update the author value
         RowUpdateBuilder builder = new RowUpdateBuilder(cfs.metadata(), 0, "k1");
@@ -394,7 +395,7 @@ public class SecondaryIndexTest
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(WITH_COMPOSITE_INDEX);
 
-        ByteBuffer colName = ByteBufferUtil.bytes("birthdate");
+        Value colName = Values.valueOf("birthdate");
 
         // Insert indexed value.
         new RowUpdateBuilder(cfs.metadata(), 1, "k1").clustering("c").add("birthdate", 10l).build().applyUnsafe();
@@ -417,7 +418,7 @@ public class SecondaryIndexTest
     {
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(WITH_KEYS_INDEX);
 
-        ByteBuffer colName = ByteBufferUtil.bytes("birthdate");
+        Value colName = Values.valueOf("birthdate");
 
         // Insert indexed value.
         new RowUpdateBuilder(cfs.metadata(), 1, "k1").add("birthdate", 10l).build().applyUnsafe();
@@ -469,7 +470,7 @@ public class SecondaryIndexTest
         new RowUpdateBuilder(cfs.metadata(), 0, "k1").clustering("c").add("birthdate", 1L).build().applyUnsafe();
 
         String indexName = "birthdate_index";
-        ColumnMetadata old = cfs.metadata().getColumn(ByteBufferUtil.bytes("birthdate"));
+        ColumnMetadata old = cfs.metadata().getColumn(Values.valueOf("birthdate"));
         IndexMetadata indexDef =
             IndexMetadata.fromIndexTargets(
             Collections.singletonList(new IndexTarget(old.name, IndexTarget.Type.VALUES)),
@@ -499,7 +500,7 @@ public class SecondaryIndexTest
                                                      .getBackingTable()
                                                      .orElseThrow(throwAssert("Index not found"));
         assertFalse(indexCfs.getLiveSSTables().isEmpty());
-        assertIndexedOne(cfs, ByteBufferUtil.bytes("birthdate"), 1L);
+        assertIndexedOne(cfs, Values.valueOf("birthdate"), 1L);
 
         // validate that drop clears it out & rebuild works (CASSANDRA-2320)
         assertTrue(cfs.getBuiltIndexes().contains(indexName));
@@ -509,7 +510,7 @@ public class SecondaryIndexTest
         // rebuild & re-query
         Future future = cfs.indexManager.addIndex(indexDef, false);
         future.get();
-        assertIndexedOne(cfs, ByteBufferUtil.bytes("birthdate"), 1L);
+        assertIndexedOne(cfs, Values.valueOf("birthdate"), 1L);
     }
 
     @Test
@@ -522,9 +523,9 @@ public class SecondaryIndexTest
         for (int i = 0; i < 10; i++)
             new RowUpdateBuilder(cfs.metadata(), 0, "k" + i).noRowMarker().add("birthdate", 1l).build().applyUnsafe();
 
-        assertIndexedCount(cfs, ByteBufferUtil.bytes("birthdate"), 1l, 10);
+        assertIndexedCount(cfs, Values.valueOf("birthdate"), 1l, 10);
         cfs.forceBlockingFlush();
-        assertIndexedCount(cfs, ByteBufferUtil.bytes("birthdate"), 1l, 10);
+        assertIndexedCount(cfs, Values.valueOf("birthdate"), 1l, 10);
     }
 
     @Test
@@ -550,15 +551,15 @@ public class SecondaryIndexTest
         assertEquals("notbirthdate_key_index", rc.indexMetadata().name);
     }
 
-    private void assertIndexedNone(ColumnFamilyStore cfs, ByteBuffer col, Object val)
+    private void assertIndexedNone(ColumnFamilyStore cfs, Value col, Object val)
     {
         assertIndexedCount(cfs, col, val, 0);
     }
-    private void assertIndexedOne(ColumnFamilyStore cfs, ByteBuffer col, Object val)
+    private void assertIndexedOne(ColumnFamilyStore cfs, Value col, Object val)
     {
         assertIndexedCount(cfs, col, val, 1);
     }
-    private void assertIndexedCount(ColumnFamilyStore cfs, ByteBuffer col, Object val, int count)
+    private void assertIndexedCount(ColumnFamilyStore cfs, Value col, Object val, int count)
     {
         ColumnMetadata cdef = cfs.metadata().getColumn(col);
 

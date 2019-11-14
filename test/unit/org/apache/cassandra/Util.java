@@ -438,7 +438,7 @@ public class Util
 
     public static Cell cell(ColumnFamilyStore cfs, Row row, String columnName)
     {
-        ColumnMetadata def = cfs.metadata().getColumn(ByteBufferUtil.bytes(columnName));
+        ColumnMetadata def = cfs.metadata().getColumn(Values.valueOf(columnName));
         assert def != null;
         return row.getCell(def);
     }

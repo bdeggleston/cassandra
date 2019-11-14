@@ -170,7 +170,7 @@ public class ReadMessageTest
                 .build()
                 .apply();
 
-        ColumnMetadata col = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata col = cfs.metadata().getColumn(Values.valueOf("val"));
         int found = 0;
         for (FilteredPartition partition : Util.getAll(Util.cmd(cfs).build()))
         {
@@ -202,8 +202,8 @@ public class ReadMessageTest
                 .build()
                 .apply();
 
-        Checker checker = new Checker(cfs.metadata().getColumn(ByteBufferUtil.bytes("commit1")),
-                                      cfsnocommit.metadata().getColumn(ByteBufferUtil.bytes("commit2")));
+        Checker checker = new Checker(cfs.metadata().getColumn(Values.valueOf("commit1")),
+                                      cfsnocommit.metadata().getColumn(Values.valueOf("commit2")));
 
         CommitLogTestReplayer replayer = new CommitLogTestReplayer(checker);
         replayer.examineCommitLog();

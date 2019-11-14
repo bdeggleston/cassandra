@@ -136,7 +136,7 @@ public class ListsTest extends CQLTester
         createTable("CREATE TABLE %s (k int PRIMARY KEY, l list<text>)");
         TableMetadata metaData = currentTableMetadata();
 
-        ColumnMetadata columnMetadata = metaData.getColumn(ByteBufferUtil.bytes("l"));
+        ColumnMetadata columnMetadata = metaData.getColumn(Values.valueOf("l"));
         Term term = new Lists.TValue(terms);
         Lists.Prepender prepender = new Lists.Prepender(columnMetadata, term);
 

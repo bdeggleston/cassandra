@@ -49,6 +49,8 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.locator.OldNetworkTopologyStrategy;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.Util.throwAssert;
 import static org.apache.cassandra.cql3.CQLTester.assertRows;
@@ -105,29 +107,29 @@ public class MigrationManagerTest
 
         for (int i = 0; i < 5; i++)
         {
-            ByteBuffer name = ByteBuffer.wrap(new byte[] { (byte)i });
+            Value name = Values.valueOf(new byte[]{ (byte) i });
             builder.addRegularColumn(ColumnIdentifier.getInterned(name, BytesType.instance), ByteType.instance);
         }
 
 
         TableMetadata table = builder.build();
         // we'll be adding this one later. make sure it's not already there.
-        assertNull(table.getColumn(ByteBuffer.wrap(new byte[]{ 5 })));
+        assertNull(table.getColumn(Values.valueOf(new byte[]{ 5 })));
 
         // add one.
-        ColumnMetadata addIndexDef = ColumnMetadata.regularColumn(table, ByteBuffer.wrap(new byte[] { 5 }), BytesType.instance);
+        ColumnMetadata addIndexDef = ColumnMetadata.regularColumn(table, Values.valueOf(new byte[] { 5 }), BytesType.instance);
         builder.addColumn(addIndexDef);
 
         // remove one.
-        ColumnMetadata removeIndexDef = ColumnMetadata.regularColumn(table, ByteBuffer.wrap(new byte[] { 0 }), BytesType.instance);
+        ColumnMetadata removeIndexDef = ColumnMetadata.regularColumn(table, Values.valueOf(new byte[] { 0 }), BytesType.instance);
         builder.removeRegularOrStaticColumn(removeIndexDef.name);
 
         TableMetadata table2 = builder.build();
 
         for (int i = 1; i < table2.columns().size(); i++)
-            assertNotNull(table2.getColumn(ByteBuffer.wrap(new byte[]{ 1 })));
-        assertNull(table2.getColumn(ByteBuffer.wrap(new byte[]{ 0 })));
-        assertNotNull(table2.getColumn(ByteBuffer.wrap(new byte[]{ 5 })));
+            assertNotNull(table2.getColumn(Values.valueOf(new byte[]{ 1 })));
+        assertNull(table2.getColumn(Values.valueOf(new byte[]{ 0 })));
+        assertNotNull(table2.getColumn(Values.valueOf(new byte[]{ 5 })));
     }
 
     @Test

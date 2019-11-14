@@ -61,6 +61,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.security.EncryptionContext;
 import org.apache.cassandra.security.EncryptionContextGenerator;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 
@@ -241,7 +242,7 @@ public class RecoveryManagerTest
 
         int replayed = CommitLog.instance.resetUnsafe(false);
 
-        ColumnMetadata counterCol = cfs.metadata().getColumn(ByteBufferUtil.bytes("val"));
+        ColumnMetadata counterCol = cfs.metadata().getColumn(Values.valueOf("val"));
         Row row = Util.getOnlyRow(Util.cmd(cfs).includeRow("cc").columns("val").build());
         assertEquals(10L, CounterContext.instance().total(row.getCell(counterCol).value()));
     }

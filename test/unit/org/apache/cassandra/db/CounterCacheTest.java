@@ -36,6 +36,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.service.CacheService;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -77,7 +78,7 @@ public class CounterCacheTest
 
         Clustering c1 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(1)).build();
         Clustering c2 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(2)).build();
-        ColumnMetadata cd = cfs.metadata().getColumn(ByteBufferUtil.bytes("c"));
+        ColumnMetadata cd = cfs.metadata().getColumn(Values.valueOf("c"));
 
         assertEquals(0, CacheService.instance.counterCache.size());
         assertNull(cfs.getCachedCounter(bytes(1), c1, cd, null));
@@ -105,7 +106,7 @@ public class CounterCacheTest
 
         Clustering c1 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(1)).build();
         Clustering c2 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(2)).build();
-        ColumnMetadata cd = cfs.metadata().getColumn(ByteBufferUtil.bytes("c"));
+        ColumnMetadata cd = cfs.metadata().getColumn(Values.valueOf("c"));
 
         assertEquals(0, CacheService.instance.counterCache.size());
         assertNull(cfs.getCachedCounter(bytes(1), c1, cd, null));
@@ -166,7 +167,7 @@ public class CounterCacheTest
 
         Clustering c1 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(1)).build();
         Clustering c2 = CBuilder.create(cfs.metadata().comparator).add(ByteBufferUtil.bytes(2)).build();
-        ColumnMetadata cd = cfs.metadata().getColumn(ByteBufferUtil.bytes("c"));
+        ColumnMetadata cd = cfs.metadata().getColumn(Values.valueOf("c"));
 
         assertEquals(1L, cfs.getCachedCounter(bytes(1), c1, cd, null).count);
         assertEquals(2L, cfs.getCachedCounter(bytes(1), c2, cd, null).count);

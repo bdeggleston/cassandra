@@ -33,6 +33,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 public class AutoSavingCacheTest
 {
@@ -70,7 +71,7 @@ public class AutoSavingCacheTest
         cfs.truncateBlocking();
         for (int i = 0; i < 2; i++)
         {
-            ColumnMetadata colDef = ColumnMetadata.regularColumn(cfs.metadata(), ByteBufferUtil.bytes("col1"), AsciiType.instance);
+            ColumnMetadata colDef = ColumnMetadata.regularColumn(cfs.metadata(), Values.valueOf("col1"), AsciiType.instance);
             RowUpdateBuilder rowBuilder = new RowUpdateBuilder(cfs.metadata(), System.currentTimeMillis(), "key1");
             rowBuilder.add(colDef, "val1");
             rowBuilder.build().apply();

@@ -38,6 +38,7 @@ import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -71,7 +72,7 @@ public class SelectionColumnMappingTest extends CQLTester
                                 " v1 int," +
                                 " v2 ascii," +
                                 " v3 frozen<" + typeName + ">)");
-        userType = Schema.instance.getKeyspaceMetadata(KEYSPACE).types.get(ByteBufferUtil.bytes(typeName)).get().freeze();
+        userType = Schema.instance.getKeyspaceMetadata(KEYSPACE).types.get(Values.valueOf(typeName)).get().freeze();
         functionName = createFunction(KEYSPACE, "int, ascii",
                                       "CREATE FUNCTION %s (i int, a ascii) " +
                                       "CALLED ON NULL INPUT " +
@@ -474,7 +475,7 @@ public class SelectionColumnMappingTest extends CQLTester
 
     private void testUDTLitteral() throws Throwable
     {
-        UserType type = new UserType(KEYSPACE, ByteBufferUtil.bytes(typeName),
+        UserType type = new UserType(KEYSPACE, Values.valueOf(typeName),
                                       asList(FieldIdentifier.forUnquoted("f1"),
                                              FieldIdentifier.forUnquoted("f2")),
                                       asList(Int32Type.instance,

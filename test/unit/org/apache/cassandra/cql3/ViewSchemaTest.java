@@ -48,6 +48,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import org.apache.cassandra.utils.values.Values;
 
 
 public class ViewSchemaTest extends CQLTester
@@ -177,7 +178,7 @@ public class ViewSchemaTest extends CQLTester
         //Test alter add
         executeNet(protocolVersion, "ALTER TABLE %s ADD foo text");
         TableMetadata metadata = Schema.instance.getTableMetadata(keyspace(), "mv1_test");
-        Assert.assertNotNull(metadata.getColumn(ByteBufferUtil.bytes("foo")));
+        Assert.assertNotNull(metadata.getColumn(Values.valueOf("foo")));
 
         updateView("INSERT INTO %s(k,asciival,bigintval,foo)VALUES(?,?,?,?)", 0, "foo", 1L, "bar");
         assertRows(execute("SELECT foo from %s"), row("bar"));
@@ -187,7 +188,7 @@ public class ViewSchemaTest extends CQLTester
 
         assertRows(execute("SELECT bar from %s"), row("foo"));
         metadata = Schema.instance.getTableMetadata(keyspace(), "mv1_test");
-        Assert.assertNotNull(metadata.getColumn(ByteBufferUtil.bytes("bar")));
+        Assert.assertNotNull(metadata.getColumn(Values.valueOf("bar")));
     }
 
 
