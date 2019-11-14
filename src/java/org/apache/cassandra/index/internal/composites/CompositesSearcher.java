@@ -137,7 +137,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                         // be relatively small so it's much better than the previous code that was materializing all
                         // *data* for a given partition.
                         BTreeSet.Builder<Clustering> clusterings = BTreeSet.builder(index.baseCfs.getComparator());
-                        while (nextEntry != null && partitionKey.getKey().equals(nextEntry.indexedKey))
+                        while (nextEntry != null && Values.valueOf(partitionKey.getKey()).equals(nextEntry.indexedKey))
                         {
                             // We're queried a slice of the index, but some hits may not match some of the clustering column constraints
                             if (isMatchingEntry(partitionKey, nextEntry, command))

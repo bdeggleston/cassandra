@@ -46,6 +46,7 @@ import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
@@ -216,20 +217,20 @@ public class QueryPagerTest
 
     private static void assertRow(FilteredPartition r, String key, String... names)
     {
-        ByteBuffer[] bbs = new ByteBuffer[names.length];
+        Value[] values = new Value[names.length];
         for (int i = 0; i < names.length; i++)
-            bbs[i] = bytes(names[i]);
-        assertRow(r, key, bbs);
+            values[i] = Values.valueOf(names[i]);
+        assertRow(r, key, values);
     }
 
-    private static void assertRow(FilteredPartition partition, String key, ByteBuffer... names)
+    private static void assertRow(FilteredPartition partition, String key, Value... names)
     {
         assertEquals(key, string(partition.partitionKey().getKey()));
         assertFalse(partition.isEmpty());
         int i = 0;
         for (Row row : Util.once(partition.iterator()))
         {
-            ByteBuffer expected = names[i++];
+            Value expected = names[i++];
             assertEquals("column " + i + " doesn't match "+string(expected)+" vs "+string(row.clustering().get(0)), expected, row.clustering().get(0));
         }
     }
@@ -509,7 +510,7 @@ public class QueryPagerTest
                     Row row = partition.next();
                     int cellIndex = !reversed ? i : 4 - i;
 
-                    assertEquals(row.clustering().get(0), ByteBufferUtil.bytes(cellIndex));
+                    assertEquals(row.clustering().get(0), Values.valueOf(cellIndex));
                     assertCell(row, table.getColumn(new ColumnIdentifier("v1", false)), cellIndex);
                     assertCell(row, table.getColumn(new ColumnIdentifier("v2", false)), cellIndex);
 

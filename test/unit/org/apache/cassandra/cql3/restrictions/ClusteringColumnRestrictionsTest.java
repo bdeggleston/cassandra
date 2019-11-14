@@ -35,7 +35,8 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.ReversedType;
-import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -73,7 +74,7 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC);
 
-        ByteBuffer clustering_0 = ByteBufferUtil.bytes(1);
+        Value clustering_0 = Values.valueOf(1);
         Restriction eq = newSingleEq(tableMetadata, 0, clustering_0);
 
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -96,7 +97,7 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer clustering_0 = ByteBufferUtil.bytes(1);
+        Value clustering_0 = Values.valueOf(1);
         Restriction eq = newSingleEq(tableMetadata, 0, clustering_0);
 
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -117,9 +118,9 @@ public class ClusteringColumnRestrictionsTest
     @Test
     public void testBoundsAsClusteringWithOneInRestrictionsAndOneClusteringColumn()
     {
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
 
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
@@ -149,8 +150,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         Restriction slice = newSingleSlice(tableMetadata, 0, Bound.START, false, value1);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -235,8 +236,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.DESC, Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         Restriction slice = newSingleSlice(tableMetadata, 0, Bound.START, false, value1);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -321,9 +322,9 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
         Restriction eq = newSingleEq(tableMetadata, 0, value1);
         Restriction in = newSingleIN(tableMetadata, 1, value1, value2, value3);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -350,9 +351,9 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
 
         Restriction eq = newSingleEq(tableMetadata, 0, value3);
 
@@ -439,8 +440,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
         Restriction eq = newMultiEq(tableMetadata, 0, value1, value2);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
         restrictions = restrictions.mergeWith(eq);
@@ -462,9 +463,9 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
         Restriction in = newMultiIN(tableMetadata, 0, asList(value1, value2), asList(value2, value3));
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
         restrictions = restrictions.mergeWith(in);
@@ -489,8 +490,8 @@ public class ClusteringColumnRestrictionsTest
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC);
 
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -576,8 +577,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1);
         ClusteringColumnRestrictions restrictions = new ClusteringColumnRestrictions(tableMetadata);
@@ -662,8 +663,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         // (clustering_0, clustering1) > (1, 2)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2);
@@ -754,8 +755,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.DESC, Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         // (clustering_0, clustering1) > (1, 2)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2);
@@ -848,8 +849,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.DESC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         // (clustering_0, clustering1) > (1, 2)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2);
@@ -971,8 +972,8 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
 
         // (clustering_0, clustering1) > (1, 2)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2);
@@ -1078,10 +1079,10 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.DESC, Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
 
         // (clustering_0, clustering1, clustering_2, clustering_3) > (1, 2, 3, 4)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2, value3, value4);
@@ -1238,10 +1239,10 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.DESC, Sort.ASC, Sort.DESC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
 
         // (clustering_0, clustering1, clustering_2, clustering_3) > (1, 2, 3, 4)
         Restriction slice = newMultiSlice(tableMetadata, 0, Bound.START, false, value1, value2, value3, value4);
@@ -1411,10 +1412,10 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
 
         // clustering_0 = 1 AND (clustering_1, clustering_2) = (2, 3)
         Restriction singleEq = newSingleEq(tableMetadata, 0, value1);
@@ -1483,11 +1484,11 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
-        ByteBuffer value5 = ByteBufferUtil.bytes(5);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
+        Value value5 = Values.valueOf(5);
 
         // clustering_0 = 1 AND (clustering_1, clustering_2) IN ((2, 3), (4, 5))
         Restriction singleEq = newSingleEq(tableMetadata, 0, value1);
@@ -1546,11 +1547,11 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
-        ByteBuffer value5 = ByteBufferUtil.bytes(5);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
+        Value value5 = Values.valueOf(5);
 
         // clustering_0 = 1 AND (clustering_1, clustering_2) > (2, 3)
         Restriction singleEq = newSingleEq(tableMetadata, 0, value1);
@@ -1606,9 +1607,9 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
 
         // (clustering_0, clustering_1) = (1, 2) AND clustering_2 > 3
         Restriction multiEq = newMultiEq(tableMetadata, 0, value1, value2);
@@ -1630,11 +1631,11 @@ public class ClusteringColumnRestrictionsTest
     {
         TableMetadata tableMetadata = newTableMetadata(Sort.ASC, Sort.ASC, Sort.ASC, Sort.ASC);
 
-        ByteBuffer value1 = ByteBufferUtil.bytes(1);
-        ByteBuffer value2 = ByteBufferUtil.bytes(2);
-        ByteBuffer value3 = ByteBufferUtil.bytes(3);
-        ByteBuffer value4 = ByteBufferUtil.bytes(4);
-        ByteBuffer value5 = ByteBufferUtil.bytes(5);
+        Value value1 = Values.valueOf(1);
+        Value value2 = Values.valueOf(2);
+        Value value3 = Values.valueOf(3);
+        Value value4 = Values.valueOf(4);
+        Value value5 = Values.valueOf(5);
 
         // (clustering_0, clustering_1) = (1, 2) AND (clustering_2, clustering_3) > (3, 4)
         Restriction multiEq = newMultiEq(tableMetadata, 0, value1, value2);
@@ -1708,7 +1709,7 @@ public class ClusteringColumnRestrictionsTest
      * @param isInclusive if the bound is expected to be inclusive
      * @param elements the expected elements of the clustering
      */
-    private static void assertStartBound(ClusteringBound bound, boolean isInclusive, ByteBuffer... elements)
+    private static void assertStartBound(ClusteringBound bound, boolean isInclusive, Value... elements)
     {
         assertBound(bound, true, isInclusive, elements);
     }
@@ -1720,22 +1721,22 @@ public class ClusteringColumnRestrictionsTest
      * @param isInclusive if the bound is expected to be inclusive
      * @param elements the expected elements of the clustering
      */
-    private static void assertEndBound(ClusteringBound bound, boolean isInclusive, ByteBuffer... elements)
+    private static void assertEndBound(ClusteringBound bound, boolean isInclusive, Value... elements)
     {
         assertBound(bound, false, isInclusive, elements);
     }
 
-    private static void assertBound(ClusteringBound bound, boolean isStart, boolean isInclusive, ByteBuffer... elements)
+    private static void assertBound(ClusteringBound bound, boolean isStart, boolean isInclusive, Value... elements)
     {
         assertEquals("the bound size is not the expected one:", elements.length, bound.size());
         assertEquals("the bound should be a " + (isStart ? "start" : "end") + " but is a " + (bound.isStart() ? "start" : "end"), isStart, bound.isStart());
         assertEquals("the bound inclusiveness is not the expected one", isInclusive, bound.isInclusive());
         for (int i = 0, m = elements.length; i < m; i++)
         {
-            ByteBuffer element = elements[i];
+            Value element = elements[i];
             assertTrue(String.format("the element %s of the bound is not the expected one: expected %s but was %s",
                                      i,
-                                     ByteBufferUtil.toInt(element),
+                                     element.getInt(0),
                                      bound.get(i).getInt(0)),
                        element.equals(bound.get(i)));
         }
@@ -1766,10 +1767,10 @@ public class ClusteringColumnRestrictionsTest
      * @param value the equality value
      * @return a new <code>SingleColumnRestriction.EQ</code> instance for the specified clustering column
      */
-    private static Restriction newSingleEq(TableMetadata tableMetadata, int index, ByteBuffer value)
+    private static Restriction newSingleEq(TableMetadata tableMetadata, int index, Value value)
     {
         ColumnMetadata columnDef = getClusteringColumnDefinition(tableMetadata, index);
-        return new SingleColumnRestriction.EQRestriction(columnDef, toTerm(value));
+        return new SingleColumnRestriction.EQRestriction(columnDef, toTerm(value.buffer()));
     }
 
     /**
@@ -1780,7 +1781,7 @@ public class ClusteringColumnRestrictionsTest
      * @param values the equality value
      * @return a new <code>MultiColumnRestriction.EQ</code> instance for the specified clustering column
      */
-    private static Restriction newMultiEq(TableMetadata tableMetadata, int firstIndex, ByteBuffer... values)
+    private static Restriction newMultiEq(TableMetadata tableMetadata, int firstIndex, Value... values)
     {
         List<ColumnMetadata> columnMetadatas = new ArrayList<>();
         for (int i = 0; i < values.length; i++)
@@ -1799,14 +1800,14 @@ public class ClusteringColumnRestrictionsTest
      * @return a new <code>MultiColumnRestriction.IN</code> instance for the specified clustering column
      */
     @SafeVarargs
-    private static Restriction newMultiIN(TableMetadata tableMetadata, int firstIndex, List<ByteBuffer>... values)
+    private static Restriction newMultiIN(TableMetadata tableMetadata, int firstIndex, List<Value>... values)
     {
         List<ColumnMetadata> columnMetadatas = new ArrayList<>();
         List<Term> terms = new ArrayList<>();
         for (int i = 0; i < values.length; i++)
         {
             columnMetadatas.add(getClusteringColumnDefinition(tableMetadata, firstIndex + i));
-            terms.add(toMultiItemTerminal(values[i].toArray(new ByteBuffer[0])));
+            terms.add(toMultiItemTerminal(values[i].toArray(new Value[0])));
         }
         return new MultiColumnRestriction.InRestrictionWithValues(columnMetadatas, terms);
     }
@@ -1819,7 +1820,7 @@ public class ClusteringColumnRestrictionsTest
      * @param values the in values
      * @return a new <code>SingleColumnRestriction.IN</code> instance for the specified clustering column
      */
-    private static Restriction newSingleIN(TableMetadata tableMetadata, int index, ByteBuffer... values)
+    private static Restriction newSingleIN(TableMetadata tableMetadata, int index, Value... values)
     {
         ColumnMetadata columnDef = getClusteringColumnDefinition(tableMetadata, index);
         return new SingleColumnRestriction.InRestrictionWithValues(columnDef, toTerms(values));
@@ -1847,10 +1848,10 @@ public class ClusteringColumnRestrictionsTest
      * @param value the bound value
      * @return a new <code>SingleColumnRestriction.Slice</code> instance for the specified clustering column
      */
-    private static Restriction newSingleSlice(TableMetadata tableMetadata, int index, Bound bound, boolean inclusive, ByteBuffer value)
+    private static Restriction newSingleSlice(TableMetadata tableMetadata, int index, Bound bound, boolean inclusive, Value value)
     {
         ColumnMetadata columnDef = getClusteringColumnDefinition(tableMetadata, index);
-        return new SingleColumnRestriction.SliceRestriction(columnDef, bound, inclusive, toTerm(value));
+        return new SingleColumnRestriction.SliceRestriction(columnDef, bound, inclusive, toTerm(value.buffer()));
     }
 
     /**
@@ -1863,7 +1864,7 @@ public class ClusteringColumnRestrictionsTest
      * @param values the bound value
      * @return a new <code>SingleColumnRestriction.Slice</code> instance for the specified clustering column
      */
-    private static Restriction newMultiSlice(TableMetadata tableMetadata, int firstIndex, Bound bound, boolean inclusive, ByteBuffer... values)
+    private static Restriction newMultiSlice(TableMetadata tableMetadata, int firstIndex, Bound bound, boolean inclusive, Value... values)
     {
         List<ColumnMetadata> columnMetadatas = new ArrayList<>();
         for (int i = 0; i < values.length; i++)
@@ -1879,9 +1880,12 @@ public class ClusteringColumnRestrictionsTest
      * @param values the values to convert.
      * @return the term corresponding to the specified values.
      */
-    private static MultiItemTerminal toMultiItemTerminal(ByteBuffer... values)
+    private static MultiItemTerminal toMultiItemTerminal(Value... values)
     {
-        return new Tuples.TValue(values);
+        ByteBuffer[] buffers = new ByteBuffer[values.length];
+        for (int i=0; i<values.length; i++)
+            buffers[i] = values[i].buffer();
+        return new Tuples.TValue(buffers);
     }
 
     /**
@@ -1901,11 +1905,11 @@ public class ClusteringColumnRestrictionsTest
      * @param values the values to convert.
      * @return a <code>List</code> of terms corresponding to the specified values.
      */
-    private static List<Term> toTerms(ByteBuffer... values)
+    private static List<Term> toTerms(Value... values)
     {
         List<Term> terms = new ArrayList<>();
-        for (ByteBuffer value : values)
-            terms.add(toTerm(value));
+        for (Value value : values)
+            terms.add(toTerm(value.buffer()));
         return terms;
     }
 
