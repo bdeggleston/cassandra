@@ -68,7 +68,7 @@ public class HintsReaderTest
     {
         TableMetadata table = Schema.instance.getTableMetadata(ks, tb);
         return new RowUpdateBuilder(table, timestamp, bytes(index))
-               .clustering(bytes(index))
+               .clustering(Values.valueOf(index))
                .add("val", Values.valueOf(index))
                .build();
     }
@@ -116,7 +116,7 @@ public class HintsReaderTest
 
                     Row row = mutation.getPartitionUpdates().iterator().next().iterator().next();
                     assertEquals(1, Iterables.size(row.cells()));
-                    assertEquals(bytes(i), row.clustering().get(0));
+                    assertEquals(Values.valueOf(i), row.clustering().get(0));
                     Cell cell = row.cells().iterator().next();
                     assertNotNull(cell);
                     assertEquals(Values.valueOf(i), cell.value());

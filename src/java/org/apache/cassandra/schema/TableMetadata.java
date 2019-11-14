@@ -495,7 +495,7 @@ public final class TableMetadata
 
     public ClusteringComparator partitionKeyAsClusteringComparator()
     {
-        return new ClusteringComparator(partitionKeyColumns.stream().map(c -> c.type).collect(toList()));
+        return new ClusteringComparator.ForPartitionKeys(partitionKeyColumns.stream().map(c -> c.type).collect(toList()));
     }
 
     /**

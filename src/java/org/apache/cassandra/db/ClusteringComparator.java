@@ -31,6 +31,8 @@ import org.apache.cassandra.serializers.MarshalException;
 
 import org.apache.cassandra.io.sstable.IndexInfo;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+import org.jboss.byteman.agent.adapter.cfg.BBlock;
 
 /**
  * A comparator of clustering prefixes (or more generally of {@link Clusterable}}.
@@ -91,6 +93,14 @@ public class ClusteringComparator implements Comparator<Clusterable>
         return clusteringTypes.get(i);
     }
 
+    // FIXME: revert after PK value conversion
+    void addValue(CBuilder builder, Object val)
+    {
+        if (val instanceof Value)
+            builder.add((Value) val);
+        else
+            builder.add(val);
+    }
     /**
      * Creates a row clustering based on the clustering values.
      * <p>
@@ -111,10 +121,7 @@ public class ClusteringComparator implements Comparator<Clusterable>
         CBuilder builder = CBuilder.create(this);
         for (Object val : values)
         {
-            if (val instanceof ByteBuffer)
-                builder.add((ByteBuffer) val);
-            else
-                builder.add(val);
+            addValue(builder, val);
         }
         return builder.build();
     }
@@ -269,5 +276,22 @@ public class ClusteringComparator implements Comparator<Clusterable>
     public int hashCode()
     {
         return Objects.hashCode(clusteringTypes);
+    }
+
+    // FIXME: remove after PK value conversion
+    public static class ForPartitionKeys extends ClusteringComparator
+    {
+        public ForPartitionKeys(Iterable<AbstractType<?>> clusteringTypes)
+        {
+            super(clusteringTypes);
+        }
+
+        void addValue(CBuilder builder, Object val)
+        {
+            if (val instanceof ByteBuffer)
+                builder.add(Values.valueOf((ByteBuffer) val));
+            else
+                super.addValue(builder, val);
+        }
     }
 }

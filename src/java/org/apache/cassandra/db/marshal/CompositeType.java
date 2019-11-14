@@ -395,10 +395,8 @@ public class CompositeType extends AbstractCompositeType
         for (Value v : values)
         {
             ByteBufferUtil.writeShortLength(out, v.remaining());
-            int toCopy = v.remaining();
             v.copyTo(out);
             out.position(out.position() + v.size());
-            out.position(out.position() + toCopy);
             out.put((byte) 0);
         }
         out.flip();

@@ -148,7 +148,7 @@ public abstract class CBuilder
 
         public CBuilder add(Object value)
         {
-            return add(((AbstractType)type.subtype(size)).decomposeBuffer(value));
+            return add(((AbstractType)type.subtype(size)).decomposeValue(value));
         }
 
         private boolean isDone()
