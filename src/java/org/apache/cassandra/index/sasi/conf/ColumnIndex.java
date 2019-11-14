@@ -102,7 +102,8 @@ public class ColumnIndex
 
     public long index(DecoratedKey key, Row row)
     {
-        return getCurrentMemtable().index(key, getValueOf(column, row, FBUtilities.nowInSeconds()).buffer());
+        Value toIndex = getValueOf(column, row, FBUtilities.nowInSeconds());
+        return getCurrentMemtable().index(key, toIndex != null ? toIndex.buffer() : null);
     }
 
     public void switchMemtable()

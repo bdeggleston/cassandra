@@ -70,7 +70,7 @@ public class ClusteringColumnIndex extends CassandraIndex
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
         for (int i = 0; i < Math.min(indexedColumn.position(), prefix.size()); i++)
             builder.add(prefix.get(i));
         for (int i = indexedColumn.position() + 1; i < prefix.size(); i++)
@@ -88,7 +88,7 @@ public class ClusteringColumnIndex extends CassandraIndex
         for (int i = 0; i < indexedColumn.position(); i++)
             builder.add(clustering.get(i + 1));
 
-        builder.add(indexedValue.getKey());
+        builder.add(Values.valueOf(indexedValue.getKey()));
 
         for (int i = indexedColumn.position() + 1; i < ckCount; i++)
             builder.add(clustering.get(i));

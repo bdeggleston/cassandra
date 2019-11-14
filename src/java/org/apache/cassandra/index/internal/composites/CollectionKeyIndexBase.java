@@ -25,6 +25,7 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Common superclass for indexes that capture collection keys, including
@@ -53,7 +54,7 @@ public abstract class CollectionKeyIndexBase extends CassandraIndex
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
 
         // When indexing a static column, prefix will be empty but only the
         // partition key is needed at query time.

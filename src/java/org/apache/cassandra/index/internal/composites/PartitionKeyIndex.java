@@ -71,7 +71,7 @@ public class PartitionKeyIndex extends CassandraIndex
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
         for (int i = 0; i < prefix.size(); i++)
             builder.add(prefix.get(i));
         return builder;

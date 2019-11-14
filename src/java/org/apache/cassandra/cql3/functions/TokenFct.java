@@ -26,6 +26,7 @@ import org.apache.cassandra.db.CBuilder;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.values.Values;
 
 public class TokenFct extends NativeScalarFunction
 {
@@ -54,7 +55,7 @@ public class TokenFct extends NativeScalarFunction
             ByteBuffer bb = parameters.get(i);
             if (bb == null)
                 return null;
-            builder.add(bb);
+            builder.add(Values.valueOf(bb));
         }
         return metadata.partitioner.getTokenFactory().toByteArray(metadata.partitioner.getToken(builder.build().serializeAsPartitionKey()));
     }

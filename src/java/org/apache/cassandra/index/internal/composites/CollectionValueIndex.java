@@ -29,6 +29,7 @@ import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Index the value of a collection cell.
@@ -60,7 +61,7 @@ public class CollectionValueIndex extends CassandraIndex
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
         for (int i = 0; i < prefix.size(); i++)
             builder.add(prefix.get(i));
 
@@ -69,7 +70,7 @@ public class CollectionValueIndex extends CassandraIndex
         // In the non-static case, cell will be present during indexing but
         // not when searching (CASSANDRA-7525).
         if (prefix.size() == baseCfs.metadata().clusteringColumns().size() && path != null)
-            builder.add(path.get(0));
+            builder.add(Values.valueOf(path.get(0)));
 
         return builder;
     }

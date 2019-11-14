@@ -27,6 +27,7 @@ import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.internal.IndexEntry;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Index on a REGULAR column definition on a composite type.
@@ -65,7 +66,7 @@ public class RegularColumnIndex extends CassandraIndex
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
         for (int i = 0; i < prefix.size(); i++)
             builder.add(prefix.get(i));
 
