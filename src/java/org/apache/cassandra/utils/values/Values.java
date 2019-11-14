@@ -71,6 +71,12 @@ public class Values
         value.write(out);
     }
 
+    public static int getShortLength(Value value, int offset)
+    {
+        int length = (value.getByte(offset) & 0xFF) << 8;
+        return length | (value.getByte(offset + 1) & 0xFF);
+    }
+
     public static Value readWithShortLength(DataInput in) throws IOException
     {
         return FACTORY.readWithShortLength(in);
@@ -269,5 +275,41 @@ public class Values
         if (!(right instanceof Value))
             return false;
         return compare(left, (Value) right) == 0;
+    }
+
+    public static long sizeOnHeapOf(Value[] values)
+    {
+        long size = 0;
+        for (Value value: values)
+        {
+            size += value.unsharedHeapSize();
+        }
+        return size;
+    }
+
+    public static long sizeOnHeapExcludingData(Value[] values)
+    {
+        long size = 0;
+        for (Value value: values)
+        {
+            size += value.unsharedHeapSizeExcludingData();
+        }
+        return size;
+    }
+
+    public static Value[] toValues(ByteBuffer[] buffers)
+    {
+        Value[] values = new Value[buffers.length];
+        for (int i=0; i<buffers.length; i++)
+            values[i] = Values.valueOf(buffers[i]);
+        return values;
+    }
+
+    public static List<Value> toValues(List<ByteBuffer> buffers)
+    {
+        List<Value> values = new ArrayList<>(buffers.size());
+        for (int i=0, size=buffers.size(); i<size; i++)
+            values.add(valueOf(buffers.get(i)));
+        return values;
     }
 }

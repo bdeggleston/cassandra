@@ -26,6 +26,7 @@ import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.apache.cassandra.utils.CloseableIterator;
+import org.apache.cassandra.utils.values.Value;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -180,12 +181,12 @@ public class ThrottledUnfilteredIterator extends AbstractIterator<UnfilteredRowI
                 {
                     // it's Row, need to create closeMarker for current batch and openMarker for next batch
                     DeletionTime openDeletion = openMarker.openDeletionTime(isReverseOrder());
-                    ByteBuffer[] buffers = next.clustering().getRawValues();
-                    closeMarker = RangeTombstoneBoundMarker.exclusiveClose(isReverseOrder(), buffers, openDeletion);
+                    Value[] values = next.clustering().getRawValues();
+                    closeMarker = RangeTombstoneBoundMarker.exclusiveClose(isReverseOrder(), values, openDeletion);
 
                     // for next batch
                     overflowed = Arrays.asList(RangeTombstoneBoundMarker.inclusiveOpen(isReverseOrder(),
-                                                                                       buffers,
+                                                                                       values,
                                                                                        openDeletion), next).iterator();
                 }
             }

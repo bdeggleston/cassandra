@@ -23,6 +23,7 @@ import java.util.Objects;
 import com.google.common.hash.Hasher;
 
 import org.apache.cassandra.utils.HashingUtils;
+import org.apache.cassandra.utils.values.Value;
 
 public abstract class AbstractClusteringPrefix implements ClusteringPrefix
 {
@@ -36,8 +37,8 @@ public abstract class AbstractClusteringPrefix implements ClusteringPrefix
         int size = 0;
         for (int i = 0; i < size(); i++)
         {
-            ByteBuffer bb = get(i);
-            size += bb == null ? 0 : bb.remaining();
+            Value v = get(i);
+            size += v == null ? 0 : v.size();
         }
         return size;
     }
@@ -46,9 +47,9 @@ public abstract class AbstractClusteringPrefix implements ClusteringPrefix
     {
         for (int i = 0; i < size(); i++)
         {
-            ByteBuffer bb = get(i);
-            if (bb != null)
-                HashingUtils.updateBytes(hasher, bb.duplicate());
+            Value v = get(i);
+            if (v != null)
+                HashingUtils.updateBytes(hasher, v);
         }
         HashingUtils.updateWithByte(hasher, kind().ordinal());
     }

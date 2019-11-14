@@ -18,7 +18,6 @@
 package org.apache.cassandra.db;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.base.Preconditions;
@@ -29,6 +28,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Represents the selection of multiple range of rows within a partition.
@@ -139,7 +139,7 @@ public abstract class Slices implements Iterable<Slice>
      * @return whether the slices might intersects with the sstable having {@code minClusteringValues} and
      * {@code maxClusteringValues}.
      */
-    public abstract boolean intersects(List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues);
+    public abstract boolean intersects(List<Value> minClusteringValues, List<Value> maxClusteringValues);
 
     public abstract String toCQLString(TableMetadata metadata);
 
@@ -439,7 +439,7 @@ public abstract class Slices implements Iterable<Slice>
             return Slices.NONE;
         }
 
-        public boolean intersects(List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues)
+        public boolean intersects(List<Value> minClusteringValues, List<Value> maxClusteringValues)
         {
             for (Slice slice : this)
             {
@@ -595,7 +595,7 @@ public abstract class Slices implements Iterable<Slice>
 
                     sb.append(column.name);
 
-                    Set<ByteBuffer> values = new LinkedHashSet<>();
+                    Set<Value> values = new LinkedHashSet<>();
                     for (int j = 0; j < componentInfo.size(); j++)
                         values.add(componentInfo.get(j).startValue);
 
@@ -607,7 +607,7 @@ public abstract class Slices implements Iterable<Slice>
                     {
                         sb.append(" IN (");
                         int j = 0;
-                        for (ByteBuffer value : values)
+                        for (Value value : values)
                             sb.append(j++ == 0 ? "" : ", ").append(column.type.getString(value));
                         sb.append(")");
                     }
@@ -639,11 +639,11 @@ public abstract class Slices implements Iterable<Slice>
         private static class ComponentOfSlice
         {
             public final boolean startInclusive;
-            public final ByteBuffer startValue;
+            public final Value startValue;
             public final boolean endInclusive;
-            public final ByteBuffer endValue;
+            public final Value endValue;
 
-            private ComponentOfSlice(boolean startInclusive, ByteBuffer startValue, boolean endInclusive, ByteBuffer endValue)
+            private ComponentOfSlice(boolean startInclusive, Value startValue, boolean endInclusive, Value endValue)
             {
                 this.startInclusive = startInclusive;
                 this.startValue = startValue;
@@ -660,7 +660,7 @@ public abstract class Slices implements Iterable<Slice>
                     return null;
 
                 boolean startInclusive = true, endInclusive = true;
-                ByteBuffer startValue = null, endValue = null;
+                Value startValue = null, endValue = null;
                 if (component < start.size())
                 {
                     startInclusive = start.isInclusive();
@@ -736,7 +736,7 @@ public abstract class Slices implements Iterable<Slice>
             return trivialTester;
         }
 
-        public boolean intersects(List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues)
+        public boolean intersects(List<Value> minClusteringValues, List<Value> maxClusteringValues)
         {
             return true;
         }
@@ -811,7 +811,7 @@ public abstract class Slices implements Iterable<Slice>
             return trivialTester;
         }
 
-        public boolean intersects(List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues)
+        public boolean intersects(List<Value> minClusteringValues, List<Value> maxClusteringValues)
         {
             return false;
         }

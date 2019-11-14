@@ -26,6 +26,8 @@ import com.sun.jna.Native;
 
 import org.apache.cassandra.utils.Architecture;
 
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 import sun.misc.Unsafe;
 
 public abstract class MemoryUtil
@@ -159,6 +161,11 @@ public abstract class MemoryUtil
         ByteBuffer instance = getHollowDirectByteBuffer(order);
         setDirectByteBuffer(instance, address, length);
         return instance;
+    }
+
+    public static Value getValue(long address, int length)
+    {
+        return Values.valueOf(getByteBuffer(address, length, ByteOrder.BIG_ENDIAN));
     }
 
     public static ByteBuffer getHollowDirectByteBuffer()
@@ -352,6 +359,17 @@ public abstract class MemoryUtil
             setBytes(getAddress(buffer) + start, address, count);
         else
             setBytes(address, buffer.array(), buffer.arrayOffset() + start, count);
+    }
+
+    public static void setBytes(long address, Value value)
+    {
+        if (value.size() == 0)
+            return;
+
+        if (value.isArrayBacked())
+            setBytes(address, value.array(), 0, value.size());
+        else
+            setBytes(address, value.buffer());
     }
 
     /**

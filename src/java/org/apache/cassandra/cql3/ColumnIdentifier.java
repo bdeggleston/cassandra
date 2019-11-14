@@ -31,6 +31,8 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Represents an identifer for a CQL column definition.
@@ -41,7 +43,8 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     private static final Pattern PATTERN_DOUBLE_QUOTE = Pattern.compile("\"", Pattern.LITERAL);
     private static final String ESCAPED_DOUBLE_QUOTE = Matcher.quoteReplacement("\"\"");
 
-    public final ByteBuffer bytes;
+    public final ByteBuffer bytes;  // TODO: remove
+    public final Value value;
     private final String text;
     /**
      * since these objects are compared frequently, we stash an efficiently compared prefix of the bytes, in the expectation
@@ -109,6 +112,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     {
         this.text = keepCase ? rawText : rawText.toLowerCase(Locale.US);
         this.bytes = ByteBufferUtil.bytes(this.text);
+        this.value = Values.valueOf(this.bytes);
         this.prefixComparison = prefixComparison(bytes);
         this.interned = false;
     }
@@ -126,6 +130,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     private ColumnIdentifier(ByteBuffer bytes, String text, boolean interned)
     {
         this.bytes = bytes;
+        this.value = Values.valueOf(bytes);
         this.text = text;
         this.interned = interned;
         this.prefixComparison = prefixComparison(bytes);

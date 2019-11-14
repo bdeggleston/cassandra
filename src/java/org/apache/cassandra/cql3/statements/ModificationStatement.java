@@ -56,6 +56,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MD5Digest;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkNull;
@@ -748,9 +749,9 @@ public abstract class ModificationStatement implements CQLStatement
                 {
                     for (Clustering clustering : clusterings)
                     {
-                        for (ByteBuffer c : clustering.getRawValues())
+                        for (Value c : clustering.getRawValues())
                         {
-                            if (c != null && c.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)
+                            if (c != null && c.size() > FBUtilities.MAX_UNSIGNED_SHORT)
                                 throw new InvalidRequestException(String.format("Key length of %d is longer than maximum of %d",
                                                                                 clustering.dataSize(),
                                                                                 FBUtilities.MAX_UNSIGNED_SHORT));

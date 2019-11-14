@@ -50,7 +50,7 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
                                  Clustering clustering,
                                  CellPath path, Value cellValue)
     {
-        return Values.valueOf(CompositeType.build(path.get(0), cellValue.buffer()));
+        return CompositeType.build(Values.valueOf(path.get(0)), cellValue);
     }
 
     public boolean isStale(Row data, Value indexValue, int nowInSec)

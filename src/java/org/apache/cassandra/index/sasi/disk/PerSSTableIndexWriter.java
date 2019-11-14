@@ -43,6 +43,7 @@ import org.apache.cassandra.io.sstable.format.SSTableFlushObserver;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Maps;
@@ -119,14 +120,14 @@ public class PerSSTableIndexWriter implements SSTableFlushObserver
         Row row = (Row) unfiltered;
 
         indexes.forEach((column, index) -> {
-            ByteBuffer value = ColumnIndex.getValueOf(column, row, nowInSec);
+            Value value = ColumnIndex.getValueOf(column, row, nowInSec);
             if (value == null)
                 return;
 
             if (index == null)
                 throw new IllegalArgumentException("No index exists for column " + column.name.toString());
 
-            index.add(value.duplicate(), currentKey, currentKeyPosition);
+            index.add(value.safeBuffer(), currentKey, currentKeyPosition);
         });
     }
 

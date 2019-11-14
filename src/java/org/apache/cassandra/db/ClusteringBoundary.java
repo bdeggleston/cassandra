@@ -23,6 +23,7 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * The threshold between two different ranges, i.e. a shortcut for the combination of two ClusteringBounds -- one
@@ -30,12 +31,12 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  */
 public class ClusteringBoundary extends ClusteringBoundOrBoundary
 {
-    protected ClusteringBoundary(Kind kind, ByteBuffer[] values)
+    protected ClusteringBoundary(Kind kind, Value[] values)
     {
         super(kind, values);
     }
 
-    public static ClusteringBoundary create(Kind kind, ByteBuffer[] values)
+    public static ClusteringBoundary create(Kind kind, Value[] values)
     {
         assert kind.isBoundary();
         return new ClusteringBoundary(kind, values);

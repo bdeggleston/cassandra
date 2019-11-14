@@ -25,6 +25,7 @@ import com.google.common.hash.Hasher;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A range tombstone marker that indicates the bound of a range tombstone (start or end).
@@ -39,25 +40,25 @@ public class RangeTombstoneBoundMarker extends AbstractRangeTombstoneMarker<Clus
         this.deletion = deletion;
     }
 
-    public static RangeTombstoneBoundMarker inclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime deletion)
+    public static RangeTombstoneBoundMarker inclusiveOpen(boolean reversed, Value[] boundValues, DeletionTime deletion)
     {
         ClusteringBound bound = ClusteringBound.inclusiveOpen(reversed, boundValues);
         return new RangeTombstoneBoundMarker(bound, deletion);
     }
 
-    public static RangeTombstoneBoundMarker exclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime deletion)
+    public static RangeTombstoneBoundMarker exclusiveOpen(boolean reversed, Value[] boundValues, DeletionTime deletion)
     {
         ClusteringBound bound = ClusteringBound.exclusiveOpen(reversed, boundValues);
         return new RangeTombstoneBoundMarker(bound, deletion);
     }
 
-    public static RangeTombstoneBoundMarker inclusiveClose(boolean reversed, ByteBuffer[] boundValues, DeletionTime deletion)
+    public static RangeTombstoneBoundMarker inclusiveClose(boolean reversed, Value[] boundValues, DeletionTime deletion)
     {
         ClusteringBound bound = ClusteringBound.inclusiveClose(reversed, boundValues);
         return new RangeTombstoneBoundMarker(bound, deletion);
     }
 
-    public static RangeTombstoneBoundMarker exclusiveClose(boolean reversed, ByteBuffer[] boundValues, DeletionTime deletion)
+    public static RangeTombstoneBoundMarker exclusiveClose(boolean reversed, Value[] boundValues, DeletionTime deletion)
     {
         ClusteringBound bound = ClusteringBound.exclusiveClose(reversed, boundValues);
         return new RangeTombstoneBoundMarker(bound, deletion);

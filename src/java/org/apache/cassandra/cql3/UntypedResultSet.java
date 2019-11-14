@@ -36,6 +36,8 @@ import org.apache.cassandra.service.pager.QueryPager;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /** a utility for doing internal cql-based queries */
 public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
@@ -312,7 +314,7 @@ public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
 
             Clustering clustering = row.clustering();
             for (ColumnMetadata def : metadata.clusteringColumns())
-                data.put(def.name.toString(), clustering.get(def.position()));
+                data.put(def.name.toString(), clustering.get(def.position()).buffer());
 
             for (ColumnMetadata def : metadata.regularAndStaticColumns())
             {

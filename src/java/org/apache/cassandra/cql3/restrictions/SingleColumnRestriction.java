@@ -33,6 +33,7 @@ import org.apache.cassandra.index.Index;
 import org.apache.cassandra.index.IndexRegistry;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkBindValueSet;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
@@ -160,7 +161,7 @@ public abstract class SingleColumnRestriction implements SingleRestriction
         @Override
         public MultiCBuilder appendTo(MultiCBuilder builder, QueryOptions options)
         {
-            builder.addElementToAll(value.bindAndGet(options));
+            builder.addElementToAll(Values.valueOf(value.bindAndGet(options)));
             checkFalse(builder.containsNull(), "Invalid null value in condition for column %s", columnDef.name);
             checkFalse(builder.containsUnset(), "Invalid unset value for column %s", columnDef.name);
             return builder;
@@ -207,7 +208,7 @@ public abstract class SingleColumnRestriction implements SingleRestriction
         @Override
         public MultiCBuilder appendTo(MultiCBuilder builder, QueryOptions options)
         {
-            builder.addEachElementToAll(getValues(options));
+            builder.addEachElementToAll(Values.toValues(getValues(options)));
             checkFalse(builder.containsNull(), "Invalid null value in condition for column %s", columnDef.name);
             checkFalse(builder.containsUnset(), "Invalid unset value for column %s", columnDef.name);
             return builder;
@@ -356,7 +357,7 @@ public abstract class SingleColumnRestriction implements SingleRestriction
 
             ByteBuffer value = slice.bound(b).bindAndGet(options);
             checkBindValueSet(value, "Invalid unset value for column %s", columnDef.name);
-            return builder.addElementToAll(value);
+            return builder.addElementToAll(Values.valueOf(value));
 
         }
 

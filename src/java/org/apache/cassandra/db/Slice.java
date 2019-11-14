@@ -24,6 +24,7 @@ import java.util.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A slice represents the selection of a range of rows.
@@ -46,7 +47,7 @@ public class Slice
         }
 
         @Override
-        public boolean intersects(ClusteringComparator comparator, List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues)
+        public boolean intersects(ClusteringComparator comparator, List<Value> minClusteringValues, List<Value> maxClusteringValues)
         {
             return true;
         }
@@ -93,7 +94,7 @@ public class Slice
     {
         // This doesn't give us what we want with the clustering prefix
         assert clustering != Clustering.STATIC_CLUSTERING;
-        ByteBuffer[] values = extractValues(clustering);
+        Value[] values = extractValues(clustering);
         return new Slice(ClusteringBound.inclusiveStartOf(values), ClusteringBound.inclusiveEndOf(values));
     }
 
@@ -102,15 +103,15 @@ public class Slice
         // This doesn't give us what we want with the clustering prefix
         assert start != Clustering.STATIC_CLUSTERING && end != Clustering.STATIC_CLUSTERING;
 
-        ByteBuffer[] startValues = extractValues(start);
-        ByteBuffer[] endValues = extractValues(end);
+        Value[] startValues = extractValues(start);
+        Value[] endValues = extractValues(end);
 
         return new Slice(ClusteringBound.inclusiveStartOf(startValues), ClusteringBound.inclusiveEndOf(endValues));
     }
 
-    private static ByteBuffer[] extractValues(ClusteringPrefix clustering)
+    private static Value[] extractValues(ClusteringPrefix clustering)
     {
-        ByteBuffer[] values = new ByteBuffer[clustering.size()];
+        Value[] values = new Value[clustering.size()];
         for (int i = 0; i < clustering.size(); i++)
             values[i] = clustering.get(i);
         return values;
@@ -211,7 +212,7 @@ public class Slice
             if (cmp < 0 || (inclusive && cmp == 0))
                 return this;
 
-            ByteBuffer[] values = extractValues(lastReturned);
+            Value[] values = extractValues(lastReturned);
             return new Slice(start, inclusive ? ClusteringBound.inclusiveEndOf(values) : ClusteringBound.exclusiveEndOf(values));
         }
         else
@@ -224,7 +225,7 @@ public class Slice
             if (cmp < 0 || (inclusive && cmp == 0))
                 return this;
 
-            ByteBuffer[] values = extractValues(lastReturned);
+            Value[] values = extractValues(lastReturned);
             return new Slice(inclusive ? ClusteringBound.inclusiveStartOf(values) : ClusteringBound.exclusiveStartOf(values), end);
         }
     }
@@ -240,7 +241,7 @@ public class Slice
      * @return whether the slice might intersects with the sstable having {@code minClusteringValues} and
      * {@code maxClusteringValues}.
      */
-    public boolean intersects(ClusteringComparator comparator, List<ByteBuffer> minClusteringValues, List<ByteBuffer> maxClusteringValues)
+    public boolean intersects(ClusteringComparator comparator, List<Value> minClusteringValues, List<Value> maxClusteringValues)
     {
         // If this slice starts after max clustering or ends before min clustering, it can't intersect
         return start.compareTo(comparator, maxClusteringValues) <= 0 && end.compareTo(comparator, minClusteringValues) >= 0;

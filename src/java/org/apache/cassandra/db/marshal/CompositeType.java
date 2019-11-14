@@ -31,6 +31,8 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
@@ -84,12 +86,17 @@ public class CompositeType extends AbstractCompositeType
         return getInstance(Arrays.asList(types));
     }
 
-    protected int startingOffset(boolean isStatic)
+    protected static int startingOffsetInternal(boolean isStatic)
     {
         return isStatic ? 2 : 0;
     }
 
-    protected <V> boolean readIsStatic(V value, DataHandle<V> handle)
+    protected int startingOffset(boolean isStatic)
+    {
+        return startingOffsetInternal(isStatic);
+    }
+
+    protected static <V> boolean readIsStaticInternal(V value, DataHandle<V> handle)
     {
         if (handle.size(value) < 2)
             return false;
@@ -99,6 +106,16 @@ public class CompositeType extends AbstractCompositeType
             return false;
 
         return true;
+    }
+
+    protected <V> boolean readIsStatic(V value, DataHandle<V> handle)
+    {
+        return readIsStaticInternal(value, handle);
+    }
+
+    private static boolean readStatic(Value value)
+    {
+        return readIsStaticInternal(value, ValueHandle.instance);
     }
 
     private static boolean readStatic(ByteBuffer bb)
@@ -172,14 +189,14 @@ public class CompositeType extends AbstractCompositeType
         return 0;
     }
 
-    public ByteBuffer decompose(Object... objects)
+    public Value decompose(Object... objects)
     {
         assert objects.length == types.size();
 
-        ByteBuffer[] serialized = new ByteBuffer[objects.length];
+        Value[] serialized = new Value[objects.length];
         for (int i = 0; i < objects.length; i++)
         {
-            ByteBuffer buffer = ((AbstractType) types.get(i)).decomposeBuffer(objects[i]);
+            Value buffer = ((AbstractType) types.get(i)).decomposeValue(objects[i]);
             serialized[i] = buffer;
         }
         return build(serialized);
@@ -203,15 +220,17 @@ public class CompositeType extends AbstractCompositeType
         return i == l.length ? l : Arrays.copyOfRange(l, 0, i);
     }
 
-    public static List<ByteBuffer> splitName(ByteBuffer name)
+    public static List<Value> splitName(Value name)
     {
-        List<ByteBuffer> l = new ArrayList<>();
-        ByteBuffer bb = name.duplicate();
-        readStatic(bb);
-        while (bb.remaining() > 0)
+        List<Value> l = new ArrayList<>();
+        boolean isStatic = readStatic(name);
+        int offset = startingOffsetInternal(isStatic);
+        while (name.sizeFromOffset(offset) > 0)
         {
-            l.add(ByteBufferUtil.readBytesWithShortLength(bb));
-            bb.get(); // skip end-of-component
+            Value value = Values.readWithShortLength(name, offset);
+            offset += Values.sizeWithShortLength(value);
+            l.add(value);
+            offset++; // skip end-of-component
         }
         return l;
     }
@@ -234,9 +253,9 @@ public class CompositeType extends AbstractCompositeType
         return null;
     }
 
-    public static boolean isStaticName(ByteBuffer bb)
+    public static boolean isStaticName(Value value)
     {
-        return bb.remaining() >= 2 && (ByteBufferUtil.getShortLength(bb, bb.position()) & 0xFFFF) == STATIC_MARKER;
+        return value.size() >= 2 && (Values.getShortLength(value, 0) & 0xFFFF) == STATIC_MARKER;
     }
 
     @Override
@@ -357,31 +376,32 @@ public class CompositeType extends AbstractCompositeType
         return getClass().getName() + TypeParser.stringifyTypeParameters(types);
     }
 
-    public static ByteBuffer build(ByteBuffer... buffers)
+    public static Value build(Value... values)
     {
-        return build(false, buffers);
+        return build(false, values);
     }
 
-    public static ByteBuffer build(boolean isStatic, ByteBuffer... buffers)
+    public static Value build(boolean isStatic, Value... values)
     {
         int totalLength = isStatic ? 2 : 0;
-        for (ByteBuffer bb : buffers)
-            totalLength += 2 + bb.remaining() + 1;
+        for (Value v : values)
+            totalLength += 2 + v.remaining() + 1;
 
         ByteBuffer out = ByteBuffer.allocate(totalLength);
 
         if (isStatic)
             out.putShort((short)STATIC_MARKER);
 
-        for (ByteBuffer bb : buffers)
+        for (Value v : values)
         {
-            ByteBufferUtil.writeShortLength(out, bb.remaining());
-            int toCopy = bb.remaining();
-            ByteBufferUtil.copyBytes(bb, bb.position(), out, out.position(), toCopy);
+            ByteBufferUtil.writeShortLength(out, v.remaining());
+            int toCopy = v.remaining();
+            v.copyTo(out);
+            out.position(out.position() + v.size());
             out.position(out.position() + toCopy);
             out.put((byte) 0);
         }
         out.flip();
-        return out;
+        return Values.valueOf(out);
     }
 }

@@ -25,6 +25,7 @@ import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 import org.apache.cassandra.utils.memory.NativeAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 public class NativeClustering extends AbstractClusteringPrefix implements Clustering
 {
@@ -56,7 +57,7 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
         {
             MemoryUtil.setShort(peer + 2 + i * 2, (short) dataOffset);
 
-            ByteBuffer value = clustering.get(i);
+            Value value = clustering.get(i);
             if (value == null)
             {
                 long boffset = bitmapStart + (i >>> 3);
@@ -66,7 +67,7 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
                 continue;
             }
 
-            assert value.order() == ByteOrder.BIG_ENDIAN;
+            assert value.isBigEndian();
 
             int size = value.remaining();
             MemoryUtil.setBytes(dataStart + dataOffset, value);
@@ -84,7 +85,7 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
         return MemoryUtil.getShort(peer);
     }
 
-    public ByteBuffer get(int i)
+    public Value get(int i)
     {
         // offset at which we store the dataOffset
         int size = size();
@@ -100,14 +101,12 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
 
         int startOffset = MemoryUtil.getShort(peer + 2 + i * 2);
         int endOffset = MemoryUtil.getShort(peer + 4 + i * 2);
-        return MemoryUtil.getByteBuffer(bitmapStart + bitmapSize + startOffset,
-                                        endOffset - startOffset,
-                                        ByteOrder.BIG_ENDIAN);
+        return MemoryUtil.getValue(bitmapStart + bitmapSize + startOffset, endOffset - startOffset);
     }
 
-    public ByteBuffer[] getRawValues()
+    public Value[] getRawValues()
     {
-        ByteBuffer[] values = new ByteBuffer[size()];
+        Value[] values = new Value[size()];
         for (int i = 0 ; i < values.length ; i++)
             values[i] = get(i);
         return values;

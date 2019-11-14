@@ -40,12 +40,13 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public final class CounterCacheKey extends CacheKey
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new CounterCacheKey(TableMetadata.builder("ks", "tab")
                                                                                                 .addPartitionKeyColumn("pk", UTF8Type.instance)
-                                                                                                .build(), ByteBufferUtil.EMPTY_BYTE_BUFFER, ByteBuffer.allocate(1)));
+                                                                                                .build(), ByteBufferUtil.EMPTY_BYTE_BUFFER, Values.valueOf(ByteBuffer.allocate(1))));
 
     private final byte[] partitionKey;
     private final byte[] cellName;
@@ -57,9 +58,9 @@ public final class CounterCacheKey extends CacheKey
         this.cellName = cellName;
     }
 
-    private CounterCacheKey(TableMetadata tableMetadata, ByteBuffer partitionKey, ByteBuffer cellName)
+    private CounterCacheKey(TableMetadata tableMetadata, ByteBuffer partitionKey, Value cellName)
     {
-        this(tableMetadata, ByteBufferUtil.getArray(partitionKey), ByteBufferUtil.getArray(cellName));
+        this(tableMetadata, ByteBufferUtil.getArray(partitionKey), cellName.array());
     }
 
     public static CounterCacheKey create(TableMetadata tableMetadata, ByteBuffer partitionKey, Clustering clustering, ColumnMetadata c, CellPath path)
@@ -67,16 +68,16 @@ public final class CounterCacheKey extends CacheKey
         return new CounterCacheKey(tableMetadata, partitionKey, makeCellName(clustering, c, path));
     }
 
-    private static ByteBuffer makeCellName(Clustering clustering, ColumnMetadata c, CellPath path)
+    private static Value makeCellName(Clustering clustering, ColumnMetadata c, CellPath path)
     {
         int cs = clustering.size();
-        ByteBuffer[] values = new ByteBuffer[cs + 1 + (path == null ? 0 : path.size())];
+        Value[] values = new Value[cs + 1 + (path == null ? 0 : path.size())];
         for (int i = 0; i < cs; i++)
             values[i] = clustering.get(i);
-        values[cs] = c.name.bytes;
+        values[cs] = c.name.value;
         if (path != null)
             for (int i = 0; i < path.size(); i++)
-                values[cs + 1 + i] = path.get(i);
+                values[cs + 1 + i] = Values.valueOf(path.get(i));
         return CompositeType.build(values);
     }
 
@@ -100,17 +101,17 @@ public final class CounterCacheKey extends CacheKey
         DecoratedKey key = cfs.decorateKey(partitionKey());
 
         int clusteringSize = metadata.comparator.size();
-        List<ByteBuffer> buffers = CompositeType.splitName(ByteBuffer.wrap(cellName));
-        assert buffers.size() >= clusteringSize + 1; // See makeCellName above
+        List<Value> values = CompositeType.splitName(Values.valueOf(cellName));
+        assert values.size() >= clusteringSize + 1; // See makeCellName above
 
-        Clustering clustering = Clustering.make(buffers.subList(0, clusteringSize).toArray(new ByteBuffer[clusteringSize]));
-        ColumnMetadata column = metadata.getColumn(buffers.get(clusteringSize));
+        Clustering clustering = Clustering.make(values.subList(0, clusteringSize).toArray(new Value[clusteringSize]));
+        ColumnMetadata column = metadata.getColumn(values.get(clusteringSize).buffer());
         // This can theoretically happen if a column is dropped after the cache is saved and we
         // try to load it. Not point if failing in any case, just skip the value.
         if (column == null)
             return null;
 
-        CellPath path = column.isComplex() ? CellPath.create(buffers.get(buffers.size() - 1)) : null;
+        CellPath path = column.isComplex() ? CellPath.create(values.get(values.size() - 1)) : null;
 
         int nowInSec = FBUtilities.nowInSeconds();
         ColumnFilter.Builder builder = ColumnFilter.selectionBuilder();

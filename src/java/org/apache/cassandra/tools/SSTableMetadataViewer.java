@@ -70,6 +70,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+
+import org.apache.cassandra.utils.values.Value;
 import org.joda.time.Duration;
 import org.joda.time.format.PeriodFormat;
 
@@ -359,8 +361,8 @@ public class SSTableMetadataViewer
             if (header != null && header.getClusteringTypes().size() == stats.minClusteringValues.size())
             {
                 List<AbstractType<?>> clusteringTypes = header.getClusteringTypes();
-                List<ByteBuffer> minClusteringValues = stats.minClusteringValues;
-                List<ByteBuffer> maxClusteringValues = stats.maxClusteringValues;
+                List<Value> minClusteringValues = stats.minClusteringValues;
+                List<Value> maxClusteringValues = stats.maxClusteringValues;
                 String[] minValues = new String[clusteringTypes.size()];
                 String[] maxValues = new String[clusteringTypes.size()];
                 for (int i = 0; i < clusteringTypes.size(); i++)

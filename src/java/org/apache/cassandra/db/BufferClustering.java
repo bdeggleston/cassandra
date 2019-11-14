@@ -17,7 +17,7 @@
  */
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * The clustering column values for a row.
@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
  */
 public class BufferClustering extends AbstractBufferClusteringPrefix implements Clustering
 {
-    BufferClustering(ByteBuffer... values)
+    BufferClustering(Value... values)
     {
         super(Kind.CLUSTERING, values);
     }

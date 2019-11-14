@@ -50,6 +50,7 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 public class ColumnIndex
 {
@@ -101,7 +102,7 @@ public class ColumnIndex
 
     public long index(DecoratedKey key, Row row)
     {
-        return getCurrentMemtable().index(key, getValueOf(column, row, FBUtilities.nowInSeconds()));
+        return getCurrentMemtable().index(key, getValueOf(column, row, FBUtilities.nowInSeconds()).buffer());
     }
 
     public void switchMemtable()
@@ -229,7 +230,7 @@ public class ColumnIndex
 
     }
 
-    public static ByteBuffer getValueOf(ColumnMetadata column, Row row, int nowInSecs)
+    public static Value getValueOf(ColumnMetadata column, Row row, int nowInSecs)
     {
         if (row == null)
             return null;
@@ -250,7 +251,7 @@ public class ColumnIndex
                     return null;
             case REGULAR:
                 Cell cell = row.getCell(column);
-                return cell == null || !cell.isLive(nowInSecs) ? null : cell.value().buffer();
+                return cell == null || !cell.isLive(nowInSecs) ? null : cell.value();
 
             default:
                 return null;

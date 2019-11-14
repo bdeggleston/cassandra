@@ -31,6 +31,7 @@ import com.google.common.collect.Maps;
 
 import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import com.clearspring.analytics.stream.cardinality.ICardinality;
+import org.apache.cassandra.cql3.Validation;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
@@ -45,11 +46,12 @@ import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.MurmurHash;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.streamhist.StreamingTombstoneHistogramBuilder;
+import org.apache.cassandra.utils.values.Value;
 
 public class MetadataCollector implements PartitionStatisticsCollector
 {
     public static final double NO_COMPRESSION_RATIO = -1.0;
-    private static final ByteBuffer[] EMPTY_CLUSTERING = new ByteBuffer[0];
+    private static final Value[] EMPTY_CLUSTERING = new Value[0];
 
     static EstimatedHistogram defaultCellPerPartitionCountHistogram()
     {
@@ -82,8 +84,8 @@ public class MetadataCollector implements PartitionStatisticsCollector
                                  NO_COMPRESSION_RATIO,
                                  defaultTombstoneDropTimeHistogram(),
                                  0,
-                                 Collections.<ByteBuffer>emptyList(),
-                                 Collections.<ByteBuffer>emptyList(),
+                                 Collections.<Value>emptyList(),
+                                 Collections.<Value>emptyList(),
                                  true,
                                  ActiveRepairService.UNREPAIRED_SSTABLE,
                                  -1,
@@ -274,8 +276,8 @@ public class MetadataCollector implements PartitionStatisticsCollector
     {
         Preconditions.checkState((minClustering == null && maxClustering == null)
                                  || comparator.compare(maxClustering, minClustering) >= 0);
-        ByteBuffer[] minValues = minClustering != null ? minClustering.getRawValues() : EMPTY_CLUSTERING;
-        ByteBuffer[] maxValues = maxClustering != null ? maxClustering.getRawValues() : EMPTY_CLUSTERING;
+        Value[] minValues = minClustering != null ? minClustering.getRawValues() : EMPTY_CLUSTERING;
+        Value[] maxValues = maxClustering != null ? maxClustering.getRawValues() : EMPTY_CLUSTERING;
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
         components.put(MetadataType.VALIDATION, new ValidationMetadata(partitioner, bloomFilterFPChance));
         components.put(MetadataType.STATS, new StatsMetadata(estimatedPartitionSize,
@@ -303,10 +305,10 @@ public class MetadataCollector implements PartitionStatisticsCollector
         return components;
     }
 
-    private static List<ByteBuffer> makeList(ByteBuffer[] values)
+    private static List<Value> makeList(Value[] values)
     {
         // In most case, l will be the same size than values, but it's possible for it to be smaller
-        List<ByteBuffer> l = new ArrayList<ByteBuffer>(values.length);
+        List<Value> l = new ArrayList<>(values.length);
         for (int i = 0; i < values.length; i++)
             if (values[i] == null)
                 break;

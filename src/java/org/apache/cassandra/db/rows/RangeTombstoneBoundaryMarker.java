@@ -25,6 +25,7 @@ import com.google.common.hash.Hasher;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A range tombstone marker that represents a boundary between 2 range tombstones (i.e. it closes one range and open another).
@@ -42,7 +43,7 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
         this.startDeletion = startDeletion;
     }
 
-    public static RangeTombstoneBoundaryMarker exclusiveCloseInclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
+    public static RangeTombstoneBoundaryMarker exclusiveCloseInclusiveOpen(boolean reversed, Value[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
     {
         ClusteringBoundary bound = ClusteringBoundary.exclusiveCloseInclusiveOpen(reversed, boundValues);
         DeletionTime endDeletion = reversed ? openDeletion : closeDeletion;
@@ -50,7 +51,7 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
         return new RangeTombstoneBoundaryMarker(bound, endDeletion, startDeletion);
     }
 
-    public static RangeTombstoneBoundaryMarker inclusiveCloseExclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
+    public static RangeTombstoneBoundaryMarker inclusiveCloseExclusiveOpen(boolean reversed, Value[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
     {
         ClusteringBoundary bound = ClusteringBoundary.inclusiveCloseExclusiveOpen(reversed, boundValues);
         DeletionTime endDeletion = reversed ? openDeletion : closeDeletion;

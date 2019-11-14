@@ -33,6 +33,7 @@ import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 
 import static com.google.common.collect.Iterables.any;
 
@@ -246,7 +247,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             return comparator;
     }
 
-    public ByteBuffer decompose(Object... objects)
+    public Value decompose(Object... objects)
     {
         throw new UnsupportedOperationException();
     }

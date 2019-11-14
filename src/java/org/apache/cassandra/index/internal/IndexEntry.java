@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Entries in indexes on non-compact tables (tables with composite comparators)
@@ -36,13 +37,13 @@ public final class IndexEntry
     public final Clustering indexClustering;
     public final long timestamp;
 
-    public final ByteBuffer indexedKey;
+    public final Value indexedKey;
     public final Clustering indexedEntryClustering;
 
     public IndexEntry(DecoratedKey indexValue,
                       Clustering indexClustering,
                       long timestamp,
-                      ByteBuffer indexedKey,
+                      Value indexedKey,
                       Clustering indexedEntryClustering)
     {
         this.indexValue = indexValue;

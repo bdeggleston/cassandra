@@ -203,6 +203,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return '"' + getSerializer().deserialize(buffer).toString() + '"';
     }
 
+    public String toJSONString(Value value, ProtocolVersion protocolVersion)
+    {
+        return toJSONString(value.buffer(), protocolVersion);  // FIXME
+    }
+
+
     /* validate that the byte array is a valid sequence for the type we are supposed to be comparing */
     public void validate(ByteBuffer bytes) throws MarshalException
     {

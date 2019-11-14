@@ -30,6 +30,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.serializers.MarshalException;
 
 import org.apache.cassandra.io.sstable.IndexInfo;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A comparator of clustering prefixes (or more generally of {@link Clusterable}}.
@@ -167,7 +168,7 @@ public class ClusteringComparator implements Comparator<Clusterable>
         return 0;
     }
 
-    public int compareComponent(int i, ByteBuffer v1, ByteBuffer v2)
+    public int compareComponent(int i, Value v1, Value v2)
     {
         if (v1 == null)
             return v2 == null ? 0 : -1;
@@ -216,7 +217,7 @@ public class ClusteringComparator implements Comparator<Clusterable>
     {
         for (int i = 0; i < clustering.size(); i++)
         {
-            ByteBuffer value = clustering.get(i);
+            Value value = clustering.get(i);
             if (value != null)
                 subtype(i).validate(value);
         }

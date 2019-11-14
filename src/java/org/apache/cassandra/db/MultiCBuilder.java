@@ -26,6 +26,8 @@ import java.util.NavigableSet;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.btree.BTreeSet;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Builder that allow to build multiple Clustering/ClusteringBound at the same time.
@@ -87,7 +89,7 @@ public abstract class MultiCBuilder
      * @param value the value of the next element
      * @return this <code>MulitCBuilder</code>
      */
-    public abstract MultiCBuilder addElementToAll(ByteBuffer value);
+    public abstract MultiCBuilder addElementToAll(Value value);
 
     /**
      * Adds individually each of the specified elements to the end of all of the existing clusterings.
@@ -99,7 +101,7 @@ public abstract class MultiCBuilder
      * @param values the elements to add
      * @return this <code>CompositeBuilder</code>
      */
-    public abstract MultiCBuilder addEachElementToAll(List<ByteBuffer> values);
+    public abstract MultiCBuilder addEachElementToAll(List<Value> values);
 
     /**
      * Adds individually each of the specified list of elements to the end of all of the existing composites.
@@ -111,7 +113,7 @@ public abstract class MultiCBuilder
      * @param values the elements to add
      * @return this <code>CompositeBuilder</code>
      */
-    public abstract MultiCBuilder addAllElementsToAll(List<List<ByteBuffer>> values);
+    public abstract MultiCBuilder addAllElementsToAll(List<List<Value>> values);
 
     protected void checkUpdateable()
     {
@@ -206,28 +208,28 @@ public abstract class MultiCBuilder
         /**
          * The elements of the clusterings
          */
-        private final ByteBuffer[] elements;
+        private final Value[] elements;
 
         public OneClusteringBuilder(ClusteringComparator comparator)
         {
             super(comparator);
-            this.elements = new ByteBuffer[comparator.size()];
+            this.elements = new Value[comparator.size()];
         }
 
-        public MultiCBuilder addElementToAll(ByteBuffer value)
+        public MultiCBuilder addElementToAll(Value value)
         {
             checkUpdateable();
 
             if (value == null)
                 containsNull = true;
-            if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
+            if (value == Values.UNSET)
                 containsUnset = true;
 
             elements[size++] = value;
             return this;
         }
 
-        public MultiCBuilder addEachElementToAll(List<ByteBuffer> values)
+        public MultiCBuilder addEachElementToAll(List<Value> values)
         {
             if (values.isEmpty())
             {
@@ -240,7 +242,7 @@ public abstract class MultiCBuilder
             return addElementToAll(values.get(0));
         }
 
-        public MultiCBuilder addAllElementsToAll(List<List<ByteBuffer>> values)
+        public MultiCBuilder addAllElementsToAll(List<List<Value>> values)
         {
             if (values.isEmpty())
             {
@@ -281,9 +283,9 @@ public abstract class MultiCBuilder
             if (size == 0)
                 return BTreeSet.of(comparator, isStart ? ClusteringBound.BOTTOM : ClusteringBound.TOP);
 
-            ByteBuffer[] newValues = size == elements.length
-                                   ? elements
-                                   : Arrays.copyOf(elements, size);
+            Value[] newValues = size == elements.length
+                                ? elements
+                                : Arrays.copyOf(elements, size);
 
             return BTreeSet.of(comparator, ClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive), newValues));
         }
@@ -297,23 +299,23 @@ public abstract class MultiCBuilder
         /**
          * The elements of the clusterings
          */
-        private final List<List<ByteBuffer>> elementsList = new ArrayList<>();
+        private final List<List<Value>> elementsList = new ArrayList<>();
 
         public MultiClusteringBuilder(ClusteringComparator comparator)
         {
             super(comparator);
         }
 
-        public MultiCBuilder addElementToAll(ByteBuffer value)
+        public MultiCBuilder addElementToAll(Value value)
         {
             checkUpdateable();
 
             if (elementsList.isEmpty())
-                elementsList.add(new ArrayList<ByteBuffer>());
+                elementsList.add(new ArrayList<Value>());
 
             if (value == null)
                 containsNull = true;
-            else if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
+            else if (value == Values.UNSET)
                 containsUnset = true;
 
             for (int i = 0, m = elementsList.size(); i < m; i++)
@@ -323,12 +325,12 @@ public abstract class MultiCBuilder
             return this;
         }
 
-        public MultiCBuilder addEachElementToAll(List<ByteBuffer> values)
+        public MultiCBuilder addEachElementToAll(List<Value> values)
         {
             checkUpdateable();
 
             if (elementsList.isEmpty())
-                elementsList.add(new ArrayList<ByteBuffer>());
+                elementsList.add(new ArrayList<Value>());
 
             if (values.isEmpty())
             {
@@ -338,18 +340,18 @@ public abstract class MultiCBuilder
             {
                 for (int i = 0, m = elementsList.size(); i < m; i++)
                 {
-                    List<ByteBuffer> oldComposite = elementsList.remove(0);
+                    List<Value> oldComposite = elementsList.remove(0);
 
                     for (int j = 0, n = values.size(); j < n; j++)
                     {
-                        List<ByteBuffer> newComposite = new ArrayList<>(oldComposite);
+                        List<Value> newComposite = new ArrayList<>(oldComposite);
                         elementsList.add(newComposite);
 
-                        ByteBuffer value = values.get(j);
+                        Value value = values.get(j);
 
                         if (value == null)
                             containsNull = true;
-                        if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)
+                        if (value == Values.UNSET)
                             containsUnset = true;
 
                         newComposite.add(values.get(j));
@@ -360,12 +362,12 @@ public abstract class MultiCBuilder
             return this;
         }
 
-        public MultiCBuilder addAllElementsToAll(List<List<ByteBuffer>> values)
+        public MultiCBuilder addAllElementsToAll(List<List<Value>> values)
         {
             checkUpdateable();
 
             if (elementsList.isEmpty())
-                elementsList.add(new ArrayList<ByteBuffer>());
+                elementsList.add(new ArrayList<Value>());
 
             if (values.isEmpty())
             {
@@ -375,14 +377,14 @@ public abstract class MultiCBuilder
             {
                 for (int i = 0, m = elementsList.size(); i < m; i++)
                 {
-                    List<ByteBuffer> oldComposite = elementsList.remove(0);
+                    List<Value> oldComposite = elementsList.remove(0);
 
                     for (int j = 0, n = values.size(); j < n; j++)
                     {
-                        List<ByteBuffer> newComposite = new ArrayList<>(oldComposite);
+                        List<Value> newComposite = new ArrayList<>(oldComposite);
                         elementsList.add(newComposite);
 
-                        List<ByteBuffer> value = values.get(j);
+                        List<Value> value = values.get(j);
 
                         if (value.contains(null))
                             containsNull = true;
@@ -412,7 +414,7 @@ public abstract class MultiCBuilder
             BTreeSet.Builder<Clustering> set = BTreeSet.builder(builder.comparator());
             for (int i = 0, m = elementsList.size(); i < m; i++)
             {
-                List<ByteBuffer> elements = elementsList.get(i);
+                List<Value> elements = elementsList.get(i);
                 set.add(builder.buildWith(elements));
             }
             return set.build();
@@ -441,7 +443,7 @@ public abstract class MultiCBuilder
 
             for (int i = 0, m = elementsList.size(); i < m; i++)
             {
-                List<ByteBuffer> elements = elementsList.get(i);
+                List<Value> elements = elementsList.get(i);
 
                 // Handle the no bound case
                 if (elements.size() == offset)
@@ -486,7 +488,7 @@ public abstract class MultiCBuilder
 
             for (int i = 0, m = elementsList.size(); i < m; i++)
             {
-                List<ByteBuffer> elements = elementsList.get(i);
+                List<Value> elements = elementsList.get(i);
                 set.add(builder.buildBoundWith(elements, isStart, isInclusive));
             }
             return set.build();

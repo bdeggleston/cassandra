@@ -29,6 +29,7 @@ import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Data structure holding the range tombstones of a ColumnFamily.
@@ -125,7 +126,7 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
 
     private static ClusteringBound clone(ClusteringBound bound, AbstractAllocator allocator)
     {
-        ByteBuffer[] values = new ByteBuffer[bound.size()];
+        Value[] values = new Value[bound.size()];
         for (int i = 0; i < values.length; i++)
             values[i] = allocator.clone(bound.get(i));
         return new ClusteringBound(bound.kind(), values);

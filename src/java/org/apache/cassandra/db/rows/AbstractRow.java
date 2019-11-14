@@ -32,6 +32,7 @@ import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.HashingUtils;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Base abstract class for {@code Row} implementations.
@@ -78,7 +79,7 @@ public abstract class AbstractRow implements Row
         Clustering clustering = clustering();
         for (int i = 0; i < clustering.size(); i++)
         {
-            ByteBuffer value = clustering.get(i);
+            Value value = clustering.get(i);
             if (value != null)
                 metadata.comparator.subtype(i).validate(value);
         }

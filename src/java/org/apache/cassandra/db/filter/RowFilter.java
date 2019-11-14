@@ -194,7 +194,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
             if (!e.column.isClusteringColumn())
                 continue;
 
-            if (!e.operator().isSatisfiedBy(e.column.type, clustering.get(e.column.position()), e.value))
+            if (!e.operator().isSatisfiedBy(e.column.type, clustering.get(e.column.position()).buffer(), e.value))
             {
                 return false;
             }
@@ -435,7 +435,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                          ? CompositeType.extractComponent(partitionKey.getKey(), column.position())
                          : partitionKey.getKey();
                 case CLUSTERING:
-                    return row.clustering().get(column.position());
+                    return row.clustering().get(column.position()).buffer();  // FIXME: buffer
                 default:
                     Cell cell = row.getCell(column);
                     return cell == null ? null : cell.value().buffer();  // FIXME: buffer
@@ -747,7 +747,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         @Override
         public ByteBuffer getIndexValue()
         {
-            return CompositeType.build(key, value);
+            return CompositeType.build(Values.valueOf(key), Values.valueOf(value)).buffer();
         }
 
         public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)

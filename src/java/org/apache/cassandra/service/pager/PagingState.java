@@ -38,6 +38,8 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.transport.ProtocolException;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 import static org.apache.cassandra.db.TypeSizes.sizeofUnsignedVInt;
@@ -399,7 +401,7 @@ public class PagingState
                     return columnName;
 
                 assert clustering.size() == 1 : "Expected clustering size to be 1, but was " + clustering.size();
-                return clustering.get(0);
+                return clustering.get(0).buffer();
             }
 
             // We use comparator.size() rather than clustering.size() because of static clusterings
@@ -407,20 +409,20 @@ public class PagingState
             int size = clusteringSize + (metadata.isDense() ? 0 : 1) + (collectionElement == null ? 0 : 1);
             if (metadata.isSuper())
                 size = clusteringSize + 1;
-            ByteBuffer[] values = new ByteBuffer[size];
+            Value[] values = new Value[size];
             for (int i = 0; i < clusteringSize; i++)
             {
                 if (isStatic)
                 {
-                    values[i] = EMPTY_BYTE_BUFFER;
+                    values[i] = Values.EMPTY;
                     continue;
                 }
 
-                ByteBuffer v = clustering.get(i);
+                Value v = clustering.get(i);
                 // we can have null (only for dense compound tables for backward compatibility reasons) but that
                 // means we're done and should stop there as far as building the composite is concerned.
                 if (v == null)
-                    return CompositeType.build(Arrays.copyOfRange(values, 0, i));
+                    return CompositeType.build(Arrays.copyOfRange(values, 0, i)).buffer();
 
                 values[i] = v;
             }
@@ -431,23 +433,23 @@ public class PagingState
                 // What it is depends if this a cell for a declared "static" column or a "dynamic" column part of the
                 // super-column internal map.
                 assert columnName != null; // This should never be null for supercolumns, see decodeForSuperColumn() above
-                values[clusteringSize] = columnName.equals(CompactTables.SUPER_COLUMN_MAP_COLUMN)
-                                         ? collectionElement
-                                         : columnName;
+                values[clusteringSize] = Values.valueOf(columnName.equals(CompactTables.SUPER_COLUMN_MAP_COLUMN)
+                                                        ? collectionElement : columnName);
             }
             else
             {
                 if (!metadata.isDense())
-                    values[clusteringSize] = columnName;
+                    values[clusteringSize] = Values.valueOf(columnName);
                 if (collectionElement != null)
-                    values[clusteringSize + 1] = collectionElement;
+                    values[clusteringSize + 1] = Values.valueOf(collectionElement);
             }
 
-            return CompositeType.build(isStatic, values);
+            return CompositeType.build(isStatic, values).buffer();
         }
 
-        private static Clustering decodeClustering(TableMetadata metadata, ByteBuffer value)
+        private static Clustering decodeClustering(TableMetadata metadata, ByteBuffer clusteringBytes)
         {
+            Value value = Values.valueOf(clusteringBytes);
             int csize = metadata.comparator.size();
             if (csize == 0)
                 return Clustering.EMPTY;
@@ -455,11 +457,11 @@ public class PagingState
             if (metadata.isCompound() && CompositeType.isStaticName(value))
                 return Clustering.STATIC_CLUSTERING;
 
-            List<ByteBuffer> components = metadata.isCompound()
+            List<Value> components = metadata.isCompound()
                                           ? CompositeType.splitName(value)
                                           : Collections.singletonList(value);
 
-            return Clustering.make(components.subList(0, Math.min(csize, components.size())).toArray(new ByteBuffer[csize]));
+            return Clustering.make(components.subList(0, Math.min(csize, components.size())).toArray(new Value[csize]));
         }
 
         @Override

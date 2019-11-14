@@ -32,6 +32,8 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Creates the updates to apply to a view given the existing rows in the base
@@ -429,7 +431,7 @@ public class ViewUpdateGenerator
      */
     private void startNewUpdate(Row baseRow)
     {
-        ByteBuffer[] clusteringValues = new ByteBuffer[viewMetadata.clusteringColumns().size()];
+        Value[] clusteringValues = new Value[viewMetadata.clusteringColumns().size()];
         for (ColumnMetadata viewColumn : viewMetadata.primaryKeyColumns())
         {
             ColumnMetadata baseColumn = view.getBaseColumn(viewColumn);
@@ -437,7 +439,7 @@ public class ViewUpdateGenerator
             if (viewColumn.isPartitionKey())
                 currentViewEntryPartitionKey[viewColumn.position()] = value;
             else
-                clusteringValues[viewColumn.position()] = value;
+                clusteringValues[viewColumn.position()] = Values.valueOf(value);
         }
 
         currentViewEntryBuilder.newRow(Clustering.make(clusteringValues));
@@ -577,11 +579,21 @@ public class ViewUpdateGenerator
         update.add(row);
     }
 
+    private static Value[] toValues(ByteBuffer[] buffers)
+    {
+        Value[] values = new Value[buffers.length];
+        for (int i=0; i<buffers.length; i++)
+        {
+            values[i] = Values.valueOf(buffers[i]);
+        }
+        return values;
+    }
+
     private DecoratedKey makeCurrentPartitionKey()
     {
         ByteBuffer rawKey = viewMetadata.partitionKeyColumns().size() == 1
-                          ? currentViewEntryPartitionKey[0]
-                          : CompositeType.build(currentViewEntryPartitionKey);
+                            ? currentViewEntryPartitionKey[0]
+                            : CompositeType.build(toValues(currentViewEntryPartitionKey)).buffer();
 
         return viewMetadata.partitioner.decorateKey(rawKey);
     }
@@ -594,7 +606,7 @@ public class ViewUpdateGenerator
             case PARTITION_KEY:
                 return basePartitionKey[column.position()];
             case CLUSTERING:
-                return row.clustering().get(column.position());
+                return row.clustering().get(column.position()).buffer();
             default:
                 // This shouldn't NPE as we shouldn't get there if the value can be null (or there is a bug in updateAction())
                 return row.getCell(column).value().buffer();

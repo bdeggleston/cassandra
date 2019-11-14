@@ -35,6 +35,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.utils.IteratorWithLowerBound;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * An unfiltered row iterator with a lower bound retrieved from either the global
@@ -245,12 +246,12 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
             return null;
 
         final StatsMetadata m = sstable.getSSTableMetadata();
-        List<ByteBuffer> vals = filter.isReversed() ? m.maxClusteringValues : m.minClusteringValues;
+        List<Value> vals = filter.isReversed() ? m.maxClusteringValues : m.minClusteringValues;
         assert vals.size() <= metadata().comparator.size() :
         String.format("Unexpected number of clustering values %d, expected %d or fewer for %s",
                       vals.size(),
                       metadata().comparator.size(),
                       sstable.getFilename());
-        return  ClusteringBound.inclusiveOpen(filter.isReversed(), vals.toArray(new ByteBuffer[vals.size()]));
+        return  ClusteringBound.inclusiveOpen(filter.isReversed(), vals.toArray(new Value[vals.size()]));
     }
 }

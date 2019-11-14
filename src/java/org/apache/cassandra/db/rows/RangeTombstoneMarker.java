@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A marker for a range tombstone bound.
@@ -125,7 +126,7 @@ public interface RangeTombstoneMarker extends Unfiltered
             if (reversed)
                 isBeforeClustering = !isBeforeClustering;
 
-            ByteBuffer[] values = bound.getRawValues();
+            Value[] values = bound.getRawValues();
             RangeTombstoneMarker merged;
             if (previousDeletionTimeInMerged.isLive())
             {

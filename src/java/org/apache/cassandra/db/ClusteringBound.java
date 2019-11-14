@@ -24,6 +24,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * The start or end of a range of clusterings, either inclusive or exclusive.
@@ -35,12 +37,12 @@ public class ClusteringBound extends ClusteringBoundOrBoundary
     /** The biggest end bound, i.e. the one that ends after any row. */
     public static final ClusteringBound TOP = new ClusteringBound(Kind.INCL_END_BOUND, EMPTY_VALUES_ARRAY);
 
-    protected ClusteringBound(Kind kind, ByteBuffer[] values)
+    protected ClusteringBound(Kind kind, Value[] values)
     {
         super(kind, values);
     }
 
-    public static ClusteringBound create(Kind kind, ByteBuffer[] values)
+    public static ClusteringBound create(Kind kind, Value[] values)
     {
         assert !kind.isBoundary();
         return new ClusteringBound(kind, values);
@@ -53,29 +55,29 @@ public class ClusteringBound extends ClusteringBoundOrBoundary
              : (isInclusive ? Kind.INCL_END_BOUND : Kind.EXCL_END_BOUND);
     }
 
-    public static ClusteringBound inclusiveStartOf(ByteBuffer... values)
+    public static ClusteringBound inclusiveStartOf(Value... values)
     {
         return create(Kind.INCL_START_BOUND, values);
     }
 
-    public static ClusteringBound inclusiveEndOf(ByteBuffer... values)
+    public static ClusteringBound inclusiveEndOf(Value... values)
     {
         return create(Kind.INCL_END_BOUND, values);
     }
 
-    public static ClusteringBound exclusiveStartOf(ByteBuffer... values)
+    public static ClusteringBound exclusiveStartOf(Value... values)
     {
         return create(Kind.EXCL_START_BOUND, values);
     }
 
-    public static ClusteringBound exclusiveEndOf(ByteBuffer... values)
+    public static ClusteringBound exclusiveEndOf(Value... values)
     {
         return create(Kind.EXCL_END_BOUND, values);
     }
 
     public static ClusteringBound inclusiveStartOf(ClusteringPrefix prefix)
     {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
+        Value[] values = new Value[prefix.size()];
         for (int i = 0; i < prefix.size(); i++)
             values[i] = prefix.get(i);
         return inclusiveStartOf(values);
@@ -83,7 +85,7 @@ public class ClusteringBound extends ClusteringBoundOrBoundary
 
     public static ClusteringBound exclusiveStartOf(ClusteringPrefix prefix)
     {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
+        Value[] values = new Value[prefix.size()];
         for (int i = 0; i < prefix.size(); i++)
             values[i] = prefix.get(i);
         return exclusiveStartOf(values);
@@ -91,7 +93,7 @@ public class ClusteringBound extends ClusteringBoundOrBoundary
 
     public static ClusteringBound inclusiveEndOf(ClusteringPrefix prefix)
     {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
+        Value[] values = new Value[prefix.size()];
         for (int i = 0; i < prefix.size(); i++)
             values[i] = prefix.get(i);
         return inclusiveEndOf(values);
@@ -143,7 +145,7 @@ public class ClusteringBound extends ClusteringBoundOrBoundary
 
     // For use by intersects, it's called with the sstable bound opposite to the slice bound
     // (so if the slice bound is a start, it's call with the max sstable bound)
-    int compareTo(ClusteringComparator comparator, List<ByteBuffer> sstableBound)
+    int compareTo(ClusteringComparator comparator, List<Value> sstableBound)
     {
         for (int i = 0; i < sstableBound.size(); i++)
         {

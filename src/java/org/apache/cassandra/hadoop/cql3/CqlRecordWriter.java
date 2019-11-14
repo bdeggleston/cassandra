@@ -35,6 +35,8 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -456,11 +458,11 @@ class CqlRecordWriter extends RecordWriter<Map<String, ByteBuffer>, List<ByteBuf
         ByteBuffer partitionKey;
         if (partitionKeyColumns.size() > 1)
         {
-            ByteBuffer[] keys = new ByteBuffer[partitionKeyColumns.size()];
+            Value[] keys = new Value[partitionKeyColumns.size()];
             for (int i = 0; i< keys.length; i++)
-                keys[i] = keyColumns.get(partitionKeyColumns.get(i).getName());
+                keys[i] = Values.valueOf(keyColumns.get(partitionKeyColumns.get(i).getName()));
 
-            partitionKey = CompositeType.build(keys);
+            partitionKey = CompositeType.build(keys).buffer();
         }
         else
         {

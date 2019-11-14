@@ -29,6 +29,9 @@ import org.apache.cassandra.db.MultiCBuilder;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.index.IndexRegistry;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -179,7 +182,7 @@ public abstract class MultiColumnRestriction implements SingleRestriction
             List<ByteBuffer> values = t.getElements();
             for (int i = 0, m = values.size(); i < m; i++)
             {
-                builder.addElementToAll(values.get(i));
+                builder.addElementToAll(Values.valueOf(values.get(i)));
                 checkFalse(builder.containsNull(), "Invalid null value for column %s", columnDefs.get(i).name);
             }
             return builder;
@@ -199,6 +202,14 @@ public abstract class MultiColumnRestriction implements SingleRestriction
         }
     }
 
+    private static List<List<Value>> toValues(List<List<ByteBuffer>> buffers)
+    {
+        List<List<Value>> values = new ArrayList<>(buffers.size());
+        for (int i=0, size=buffers.size(); i<size; i++)
+            values.add(Values.toValues(buffers.get(i)));
+        return values;
+    }
+
     public abstract static class INRestriction extends MultiColumnRestriction
     {
         public INRestriction(List<ColumnMetadata> columnDefs)
@@ -213,7 +224,7 @@ public abstract class MultiColumnRestriction implements SingleRestriction
         public MultiCBuilder appendTo(MultiCBuilder builder, QueryOptions options)
         {
             List<List<ByteBuffer>> splitInValues = splitValues(options);
-            builder.addAllElementsToAll(splitInValues);
+            builder.addAllElementsToAll(toValues(splitInValues));
 
             if (builder.containsNull())
                 throw invalidRequest("Invalid null value in condition for columns: %s", ColumnMetadata.toIdentifiers(columnDefs));
@@ -412,7 +423,7 @@ public abstract class MultiColumnRestriction implements SingleRestriction
             if (bound.isEnd())
                 Collections.reverse(toAdd);
 
-            return builder.addAllElementsToAll(toAdd);
+            return builder.addAllElementsToAll(toValues(toAdd));
         }
 
         @Override

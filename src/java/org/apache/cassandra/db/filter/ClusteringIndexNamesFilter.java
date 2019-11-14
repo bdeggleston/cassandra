@@ -32,6 +32,7 @@ import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.SearchIterator;
 import org.apache.cassandra.utils.btree.BTreeSet;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A filter selecting rows given their clustering value.
@@ -165,8 +166,8 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
     public boolean shouldInclude(SSTableReader sstable)
     {
         ClusteringComparator comparator = sstable.metadata().comparator;
-        List<ByteBuffer> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
-        List<ByteBuffer> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
+        List<Value> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
+        List<Value> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
 
         // If any of the requested clustering is within the bounds covered by the sstable, we need to include the sstable
         for (Clustering clustering : clusterings)

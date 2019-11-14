@@ -31,6 +31,7 @@ import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 /**
@@ -82,8 +83,8 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
     private DecoratedKey makeDecoratedKey(Object... partitionKeyValues)
     {
         ByteBuffer partitionKey = partitionKeyValues.length == 1
-                                ? decompose(metadata.partitionKeyType, partitionKeyValues[0])
-                                : ((CompositeType) metadata.partitionKeyType).decompose(partitionKeyValues);
+                                ? decompose(metadata.partitionKeyType, partitionKeyValues[0]).buffer()
+                                : ((CompositeType) metadata.partitionKeyType).decompose(partitionKeyValues).buffer();
         return metadata.partitioner.decorateKey(partitionKey);
     }
 
@@ -92,10 +93,10 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
         if (clusteringValues.length == 0)
             return Clustering.EMPTY;
 
-        ByteBuffer[] clusteringByteBuffers = new ByteBuffer[clusteringValues.length];
+        Value[] values = new Value[clusteringValues.length];
         for (int i = 0; i < clusteringValues.length; i++)
-            clusteringByteBuffers[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
-        return Clustering.make(clusteringByteBuffers);
+            values[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
+        return Clustering.make(values);
     }
 
     private static final class SimplePartition implements AbstractVirtualTable.Partition
@@ -178,7 +179,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
             {
                 Object value = values.get(c);
                 if (null != value)
-                    builder.addCell(BufferCell.live(c, now, Values.valueOf(decompose(c.type, value))));
+                    builder.addCell(BufferCell.live(c, now, decompose(c.type, value)));
             });
 
             return builder.build();
@@ -191,8 +192,8 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
+    private static <T> Value decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decomposeBuffer(value);
+        return ((AbstractType<T>) type).decomposeValue(value);
     }
 }

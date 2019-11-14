@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.cql3.Validation;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.sstable.format.Version;
@@ -37,6 +38,8 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.UUIDSerializer;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * SSTable metadata that always stay on heap.
@@ -58,8 +61,8 @@ public class StatsMetadata extends MetadataComponent
     public final double compressionRatio;
     public final TombstoneHistogram estimatedTombstoneDropTime;
     public final int sstableLevel;
-    public final List<ByteBuffer> minClusteringValues;
-    public final List<ByteBuffer> maxClusteringValues;
+    public final List<Value> minClusteringValues;
+    public final List<Value> maxClusteringValues;
     public final boolean hasLegacyCounterShards;
     public final long repairedAt;
     public final long totalColumnsSet;
@@ -81,8 +84,8 @@ public class StatsMetadata extends MetadataComponent
                          double compressionRatio,
                          TombstoneHistogram estimatedTombstoneDropTime,
                          int sstableLevel,
-                         List<ByteBuffer> minClusteringValues,
-                         List<ByteBuffer> maxClusteringValues,
+                         List<Value> minClusteringValues,
+                         List<Value> maxClusteringValues,
                          boolean hasLegacyCounterShards,
                          long repairedAt,
                          long totalColumnsSet,
@@ -259,11 +262,11 @@ public class StatsMetadata extends MetadataComponent
             size += TypeSizes.sizeof(component.sstableLevel);
             // min column names
             size += 4;
-            for (ByteBuffer value : component.minClusteringValues)
+            for (Value value : component.minClusteringValues)
                 size += 2 + value.remaining(); // with short length
             // max column names
             size += 4;
-            for (ByteBuffer value : component.maxClusteringValues)
+            for (Value value : component.maxClusteringValues)
                 size += 2 + value.remaining(); // with short length
             size += TypeSizes.sizeof(component.hasLegacyCounterShards);
             size += 8 + 8; // totalColumnsSet, totalRows
@@ -303,11 +306,11 @@ public class StatsMetadata extends MetadataComponent
             out.writeInt(component.sstableLevel);
             out.writeLong(component.repairedAt);
             out.writeInt(component.minClusteringValues.size());
-            for (ByteBuffer value : component.minClusteringValues)
-                ByteBufferUtil.writeWithShortLength(value, out);
+            for (Value value : component.minClusteringValues)
+                Values.writeWithShortLength(value, out);
             out.writeInt(component.maxClusteringValues.size());
-            for (ByteBuffer value : component.maxClusteringValues)
-                ByteBufferUtil.writeWithShortLength(value, out);
+            for (Value value : component.maxClusteringValues)
+                Values.writeWithShortLength(value, out);
             out.writeBoolean(component.hasLegacyCounterShards);
 
             out.writeLong(component.totalColumnsSet);
@@ -357,19 +360,19 @@ public class StatsMetadata extends MetadataComponent
             // for legacy sstables, we skip deserializing the min and max clustering value
             // to prevent erroneously excluding sstables from reads (see CASSANDRA-14861)
             int colCount = in.readInt();
-            List<ByteBuffer> minClusteringValues = new ArrayList<>(colCount);
+            List<Value> minClusteringValues = new ArrayList<>(colCount);
             for (int i = 0; i < colCount; i++)
             {
-                ByteBuffer val = ByteBufferUtil.readWithShortLength(in);
+                Value val = Values.readWithShortLength(in);
                 if (version.hasAccurateMinMax())
                     minClusteringValues.add(val);
             }
 
             colCount = in.readInt();
-            List<ByteBuffer> maxClusteringValues = new ArrayList<>(colCount);
+            List<Value> maxClusteringValues = new ArrayList<>(colCount);
             for (int i = 0; i < colCount; i++)
             {
-                ByteBuffer val = ByteBufferUtil.readWithShortLength(in);
+                Value val = Values.readWithShortLength(in);
                 if (version.hasAccurateMinMax())
                     maxClusteringValues.add(val);
             }

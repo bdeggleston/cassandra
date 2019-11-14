@@ -62,7 +62,7 @@ public class ClusteringColumnIndex extends CassandraIndex
                                  Clustering clustering,
                                  CellPath path, Value cellValue)
     {
-        return Values.valueOf(clustering.get(indexedColumn.position()));
+        return clustering.get(indexedColumn.position());
     }
 
     public CBuilder buildIndexClusteringPrefix(ByteBuffer partitionKey,

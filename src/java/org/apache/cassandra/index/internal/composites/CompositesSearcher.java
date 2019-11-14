@@ -106,7 +106,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                     }
 
                     SinglePartitionReadCommand dataCmd;
-                    DecoratedKey partitionKey = index.baseCfs.decorateKey(nextEntry.indexedKey);
+                    DecoratedKey partitionKey = index.baseCfs.decorateKey(nextEntry.indexedKey.buffer());
                     List<IndexEntry> entries = new ArrayList<>();
                     if (isStaticColumn())
                     {

@@ -30,6 +30,7 @@ import org.apache.cassandra.db.transform.Transformation;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * A filter over a single partition.
@@ -121,8 +122,8 @@ public class ClusteringIndexSliceFilter extends AbstractClusteringIndexFilter
 
     public boolean shouldInclude(SSTableReader sstable)
     {
-        List<ByteBuffer> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
-        List<ByteBuffer> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
+        List<Value> minClusteringValues = sstable.getSSTableMetadata().minClusteringValues;
+        List<Value> maxClusteringValues = sstable.getSSTableMetadata().maxClusteringValues;
 
         if (minClusteringValues.isEmpty() || maxClusteringValues.isEmpty())
             return true;

@@ -39,6 +39,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 @SuppressWarnings("resource")
 public class Operation extends RangeIterator<Long, Token>
@@ -213,7 +214,7 @@ public class Operation extends RangeIterator<Long, Token>
             if (column.kind == Kind.PARTITION_KEY)
                 continue;
 
-            ByteBuffer value = ColumnIndex.getValueOf(column, column.kind == Kind.STATIC ? staticRow : (Row) currentCluster, now);
+            Value value = ColumnIndex.getValueOf(column, column.kind == Kind.STATIC ? staticRow : (Row) currentCluster, now);
             boolean isMissingColumn = value == null;
 
             if (!allowMissingColumns && isMissingColumn)
@@ -231,7 +232,7 @@ public class Operation extends RangeIterator<Long, Token>
             for (int i = filters.size() - 1; i >= 0; i--)
             {
                 Expression expression = filters.get(i);
-                isMatch = !isMissingColumn && expression.isSatisfiedBy(value);
+                isMatch = !isMissingColumn && expression.isSatisfiedBy(value.buffer());
                 if (expression.getOp() == Op.NOT_EQ)
                 {
                     // since this is NOT_EQ operation we have to

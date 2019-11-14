@@ -29,6 +29,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * This class defines a threshold between ranges of clusterings. It can either be a start or end bound of a range, or
@@ -45,13 +46,13 @@ public abstract class ClusteringBoundOrBoundary extends AbstractBufferClustering
 {
     public static final ClusteringBoundOrBoundary.Serializer serializer = new Serializer();
 
-    protected ClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
+    protected ClusteringBoundOrBoundary(Kind kind, Value[] values)
     {
         super(kind, values);
         assert values.length > 0 || !kind.isBoundary();
     }
 
-    public static ClusteringBoundOrBoundary create(Kind kind, ByteBuffer[] values)
+    public static ClusteringBoundOrBoundary create(Kind kind, Value[] values)
     {
         return kind.isBoundary()
                 ? new ClusteringBoundary(kind, values)
@@ -73,39 +74,39 @@ public abstract class ClusteringBoundOrBoundary extends AbstractBufferClustering
         return kind.isClose(reversed);
     }
 
-    public static ClusteringBound inclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBound inclusiveOpen(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBound(reversed ? Kind.INCL_END_BOUND : Kind.INCL_START_BOUND, boundValues);
     }
 
-    public static ClusteringBound exclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBound exclusiveOpen(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBound(reversed ? Kind.EXCL_END_BOUND : Kind.EXCL_START_BOUND, boundValues);
     }
 
-    public static ClusteringBound inclusiveClose(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBound inclusiveClose(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBound(reversed ? Kind.INCL_START_BOUND : Kind.INCL_END_BOUND, boundValues);
     }
 
-    public static ClusteringBound exclusiveClose(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBound exclusiveClose(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBound(reversed ? Kind.EXCL_START_BOUND : Kind.EXCL_END_BOUND, boundValues);
     }
 
-    public static ClusteringBoundary inclusiveCloseExclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBoundary inclusiveCloseExclusiveOpen(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBoundary(reversed ? Kind.EXCL_END_INCL_START_BOUNDARY : Kind.INCL_END_EXCL_START_BOUNDARY, boundValues);
     }
 
-    public static ClusteringBoundary exclusiveCloseInclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+    public static ClusteringBoundary exclusiveCloseInclusiveOpen(boolean reversed, Value[] boundValues)
     {
         return new ClusteringBoundary(reversed ? Kind.INCL_END_EXCL_START_BOUNDARY : Kind.EXCL_END_INCL_START_BOUNDARY, boundValues);
     }
 
     public ClusteringBoundOrBoundary copy(AbstractAllocator allocator)
     {
-        ByteBuffer[] newValues = new ByteBuffer[size()];
+        Value[] newValues = new Value[size()];
         for (int i = 0; i < size(); i++)
             newValues[i] = allocator.clone(get(i));
         return create(kind(), newValues);
@@ -176,7 +177,7 @@ public abstract class ClusteringBoundOrBoundary extends AbstractBufferClustering
             if (size == 0)
                 return kind.isStart() ? ClusteringBound.BOTTOM : ClusteringBound.TOP;
 
-            ByteBuffer[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types);
+            Value[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types);
             return create(kind, values);
         }
     }

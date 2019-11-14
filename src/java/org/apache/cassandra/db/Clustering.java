@@ -30,6 +30,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.db.AbstractBufferClusteringPrefix.EMPTY_VALUES_ARRAY;
 
@@ -45,10 +46,10 @@ public interface Clustering extends ClusteringPrefix
         if (size() == 0)
             return kind() == Kind.STATIC_CLUSTERING ? this : new BufferClustering(EMPTY_VALUES_ARRAY);
 
-        ByteBuffer[] newValues = new ByteBuffer[size()];
+        Value[] newValues = new Value[size()];
         for (int i = 0; i < size(); i++)
         {
-            ByteBuffer val = get(i);
+            Value val = get(i);
             newValues[i] = val == null ? null : allocator.clone(val);
         }
         return new BufferClustering(newValues);
@@ -76,7 +77,7 @@ public interface Clustering extends ClusteringPrefix
         return sb.toString();
     }
 
-    public static Clustering make(ByteBuffer... values)
+    public static Clustering make(Value... values)
     {
         return new BufferClustering(values);
     }
@@ -160,7 +161,7 @@ public interface Clustering extends ClusteringPrefix
             if (types.isEmpty())
                 return EMPTY;
 
-            ByteBuffer[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types);
+            Value[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types);
             return new BufferClustering(values);
         }
 
