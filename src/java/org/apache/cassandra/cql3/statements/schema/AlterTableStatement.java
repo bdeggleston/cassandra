@@ -161,7 +161,7 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
             if (isStatic && table.clusteringColumns().isEmpty())
                 throw ire("Static columns are only useful (and thus allowed) if the table has at least one clustering column");
 
-            ColumnMetadata droppedColumn = table.getDroppedColumn(name.bytes);
+            ColumnMetadata droppedColumn = table.getDroppedColumn(name.value);
             if (null != droppedColumn)
             {
                 // After #8099, not safe to re-add columns of incompatible types - until *maybe* deser logic with dropped
@@ -198,7 +198,7 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
                 {
                     if (view.includeAllColumns)
                     {
-                        ColumnMetadata viewColumn = ColumnMetadata.regularColumn(view.metadata, name.bytes, type);
+                        ColumnMetadata viewColumn = ColumnMetadata.regularColumn(view.metadata, name.value, type);
                         viewsBuilder.put(viewsBuilder.get(view.name()).withAddedRegularColumn(viewColumn));
                     }
                 }

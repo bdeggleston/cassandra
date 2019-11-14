@@ -84,7 +84,7 @@ public abstract class CompactTables
         if (isSuper)
         {
             for (ColumnMetadata column : columns.regulars)
-                if (column.name.bytes.equals(SUPER_COLUMN_MAP_COLUMN))
+                if (column.name.value.equals(SUPER_COLUMN_MAP_COLUMN))
                     return column;
             throw new AssertionError("Invalid super column table definition, no 'dynamic' map column");
         }
@@ -99,7 +99,7 @@ public abstract class CompactTables
 
     public static boolean isSuperColumnMapColumn(ColumnMetadata column)
     {
-        return column.kind == ColumnMetadata.Kind.REGULAR && column.name.bytes.equals(SUPER_COLUMN_MAP_COLUMN);
+        return column.kind == ColumnMetadata.Kind.REGULAR && column.name.value.equals(SUPER_COLUMN_MAP_COLUMN);
     }
 
     public static DefaultNames defaultNameGenerator(Set<String> usedNames)

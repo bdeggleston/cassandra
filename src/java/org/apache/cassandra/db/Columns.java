@@ -43,6 +43,8 @@ import org.apache.cassandra.utils.btree.BTree;
 import org.apache.cassandra.utils.btree.BTreeSearchIterator;
 import org.apache.cassandra.utils.btree.BTreeRemoval;
 import org.apache.cassandra.utils.btree.UpdateFunction;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * An immutable and sorted list of (non-PK) columns for a given table.
@@ -58,7 +60,7 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
     private static final ColumnMetadata FIRST_COMPLEX_STATIC =
         new ColumnMetadata("",
                            "",
-                           ColumnIdentifier.getInterned(ByteBufferUtil.EMPTY_BYTE_BUFFER, UTF8Type.instance),
+                           ColumnIdentifier.getInterned(Values.EMPTY, UTF8Type.instance),
                            SetType.getInstance(UTF8Type.instance, true),
                            ColumnMetadata.NO_POSITION,
                            ColumnMetadata.Kind.STATIC);
@@ -66,7 +68,7 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
     private static final ColumnMetadata FIRST_COMPLEX_REGULAR =
         new ColumnMetadata("",
                            "",
-                           ColumnIdentifier.getInterned(ByteBufferUtil.EMPTY_BYTE_BUFFER, UTF8Type.instance),
+                           ColumnIdentifier.getInterned(Values.EMPTY, UTF8Type.instance),
                            SetType.getInstance(UTF8Type.instance, true),
                            ColumnMetadata.NO_POSITION,
                            ColumnMetadata.Kind.REGULAR);
@@ -342,7 +344,7 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
                                      (s, c) ->
                                      {
                                          assert !s.kind.isPrimaryKeyKind();
-                                         return s.name.bytes.compareTo(c.name.bytes);
+                                         return s.name.value.compareTo(c.name.value);
                                      });
     }
 
@@ -378,7 +380,7 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
     public void digest(Hasher hasher)
     {
         for (ColumnMetadata c : this)
-            HashingUtils.updateBytes(hasher, c.name.bytes.duplicate());
+            HashingUtils.updateBytes(hasher, c.name.value);
     }
 
     /**
@@ -428,14 +430,14 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
         {
             out.writeUnsignedVInt(columns.size());
             for (ColumnMetadata column : columns)
-                ByteBufferUtil.writeWithVIntLength(column.name.bytes, out);
+                Values.writeWithVIntLength(column.name.value, out);
         }
 
         public long serializedSize(Columns columns)
         {
             long size = TypeSizes.sizeofUnsignedVInt(columns.size());
             for (ColumnMetadata column : columns)
-                size += ByteBufferUtil.serializedSizeWithVIntLength(column.name.bytes);
+                size += Values.serializedSizeWithVIntLength(column.name.value);
             return size;
         }
 
@@ -446,7 +448,7 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
             builder.auto(false);
             for (int i = 0; i < length; i++)
             {
-                ByteBuffer name = ByteBufferUtil.readWithVIntLength(in);
+                Value name = Values.readWithVIntLength(in);
                 ColumnMetadata column = metadata.getColumn(name);
                 if (column == null)
                 {

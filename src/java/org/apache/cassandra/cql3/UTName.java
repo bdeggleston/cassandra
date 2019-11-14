@@ -17,7 +17,7 @@
  */
 package org.apache.cassandra.cql3;
 
-import java.nio.ByteBuffer;
+import org.apache.cassandra.utils.values.Value;
 
 public class UTName
 {
@@ -45,9 +45,9 @@ public class UTName
         return ksName;
     }
 
-    public ByteBuffer getUserTypeName()
+    public Value getUserTypeName()
     {
-        return utName.bytes;
+        return utName.value;
     }
 
     public String getStringTypeName()

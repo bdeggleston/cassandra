@@ -319,7 +319,7 @@ public class CompositeType extends AbstractCompositeType
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return any(types, t -> t.referencesUserType(name));
     }

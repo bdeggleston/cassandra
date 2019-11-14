@@ -43,6 +43,7 @@ import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkBindValueSet;
@@ -486,7 +487,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                     return;
                 }
 
-                ByteBufferUtil.writeWithShortLength(expression.column.name.bytes, out);
+                Values.writeWithShortLength(expression.column.name.value, out);
                 expression.operator.writeTo(out);
 
                 switch (expression.kind())
@@ -517,7 +518,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 if (kind == Kind.USER)
                     return UserExpression.deserialize(in, version, metadata);
 
-                ByteBuffer name = ByteBufferUtil.readWithShortLength(in);
+                Value name = Values.readWithShortLength(in);
                 Operator operator = Operator.readFrom(in);
                 ColumnMetadata column = metadata.getColumn(name);
 
@@ -543,7 +544,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 // Custom expressions include neither a column or operator, but all
                 // other expressions do.
                 if (expression.kind() != Kind.CUSTOM && expression.kind() != Kind.USER)
-                    size += ByteBufferUtil.serializedSizeWithShortLength(expression.column().name.bytes)
+                    size += Values.serializedSizeWithShortLength(expression.column().name.value)
                             + expression.operator.serializedSize();
 
                 switch (expression.kind())
@@ -835,7 +836,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         {
             // Similarly to how we handle non-defined columns in thift, we create a fake column definition to
             // represent the target index. This is definitely something that can be improved though.
-            return ColumnMetadata.regularColumn(table, ByteBuffer.wrap(index.name.getBytes()), BytesType.instance);
+            return ColumnMetadata.regularColumn(table, Values.valueOf(index.name.getBytes()), BytesType.instance);
         }
 
         public IndexMetadata getTargetIndex()

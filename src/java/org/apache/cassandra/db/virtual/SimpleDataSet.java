@@ -164,7 +164,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
 
         private void add(String columnName, Object value)
         {
-            ColumnMetadata column = metadata.getColumn(ByteBufferUtil.bytes(columnName));
+            ColumnMetadata column = metadata.getColumn(Values.valueOf(columnName));
             if (null == column || !column.isRegular())
                 throw new IllegalArgumentException();
             values.put(column, value);

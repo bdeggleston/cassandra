@@ -63,6 +63,7 @@ import org.apache.cassandra.schema.Types;
 import org.apache.cassandra.schema.Views;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Utility to write SSTables.
@@ -315,7 +316,7 @@ public class CQLSSTableWriter implements Closeable
     public com.datastax.driver.core.UserType getUDType(String dataType)
     {
         KeyspaceMetadata ksm = Schema.instance.getKeyspaceMetadata(insert.keyspace());
-        UserType userType = ksm.types.getNullable(ByteBufferUtil.bytes(dataType));
+        UserType userType = ksm.types.getNullable(Values.valueOf(dataType));
         return (com.datastax.driver.core.UserType) UDHelper.driverType(userType);
     }
 

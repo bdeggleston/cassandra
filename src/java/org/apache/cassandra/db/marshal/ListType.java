@@ -32,7 +32,7 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.ListSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
-import org.jboss.byteman.agent.adapter.cfg.BBlock;
+import org.apache.cassandra.utils.values.Value;
 
 public class ListType<T> extends CollectionType<List<T>>
 {
@@ -71,7 +71,7 @@ public class ListType<T> extends CollectionType<List<T>>
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return elements.referencesUserType(name);
     }

@@ -34,6 +34,7 @@ import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.transport.Event.SchemaChange;
 import org.apache.cassandra.transport.Event.SchemaChange.Change;
 import org.apache.cassandra.transport.Event.SchemaChange.Target;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.lang.String.join;
 import static java.util.function.Predicate.isEqual;
@@ -67,7 +68,7 @@ public abstract class AlterTypeStatement extends AlterSchemaStatement
 
         UserType type = null == keyspace
                       ? null
-                      : keyspace.types.getNullable(bytes(typeName));
+                      : keyspace.types.getNullable(Values.valueOf(typeName));
 
         if (null == type)
             throw ire("Type %s.%s doesn't exist", keyspaceName, typeName);

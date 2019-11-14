@@ -39,8 +39,6 @@ import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 
 import org.apache.cassandra.transport.ProtocolVersion;
-import org.apache.cassandra.utils.FastByteOperations;
-import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 import org.github.jamm.Unmetered;
@@ -566,7 +564,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
             ByteBufferUtil.skipWithVIntLength(in);
     }
 
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return false;
     }

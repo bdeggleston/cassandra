@@ -47,7 +47,7 @@ final class RestrictionSet implements Restrictions, Iterable<SingleRestriction>
         public int compare(ColumnMetadata column, ColumnMetadata otherColumn)
         {
             int value = Integer.compare(column.position(), otherColumn.position());
-            return value != 0 ? value : column.name.bytes.compareTo(otherColumn.name.bytes);
+            return value != 0 ? value : column.name.value.compareTo(otherColumn.name.value);
         }
     };
 

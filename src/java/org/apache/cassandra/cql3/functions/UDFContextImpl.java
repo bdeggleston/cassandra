@@ -34,6 +34,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.schema.CQLTypeParser;
 import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Package private implementation of {@link UDFContext}
@@ -72,7 +73,7 @@ public final class UDFContextImpl implements UDFContext
 
     public UDTValue newUDTValue(String udtName)
     {
-        Optional<org.apache.cassandra.db.marshal.UserType> udtType = keyspaceMetadata.types.get(ByteBufferUtil.bytes(udtName));
+        Optional<org.apache.cassandra.db.marshal.UserType> udtType = keyspaceMetadata.types.get(Values.valueOf(udtName));
         DataType dataType = UDHelper.driverType(udtType.orElseThrow(
                 () -> new IllegalArgumentException("No UDT named " + udtName + " in keyspace " + keyspaceMetadata.name)
             ));

@@ -143,7 +143,7 @@ public final class CreateTableStatement extends AlterSchemaStatement
         TableParams params = attrs.asNewTableParams();
 
         // use a TreeMap to preserve ordering across JDK versions (see CASSANDRA-9492) - important for stable unit tests
-        Map<ColumnIdentifier, CQL3Type> columns = new TreeMap<>(comparing(o -> o.bytes));
+        Map<ColumnIdentifier, CQL3Type> columns = new TreeMap<>(comparing(o -> o.value));
         rawColumns.forEach((column, type) -> columns.put(column, type.prepare(keyspaceName, types)));
 
         // check for nested non-frozen UDTs or collections in a non-frozen UDT

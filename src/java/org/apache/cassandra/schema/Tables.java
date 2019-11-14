@@ -30,6 +30,7 @@ import com.google.common.collect.*;
 
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.cassandra.index.internal.CassandraIndex;
+import org.apache.cassandra.utils.values.Value;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
@@ -77,7 +78,7 @@ public final class Tables implements Iterable<TableMetadata>
         return tables.values().iterator();
     }
 
-    public Iterable<TableMetadata> referencingUserType(ByteBuffer name)
+    public Iterable<TableMetadata> referencingUserType(Value name)
     {
         return Iterables.filter(tables.values(), t -> t.referencesUserType(name));
     }

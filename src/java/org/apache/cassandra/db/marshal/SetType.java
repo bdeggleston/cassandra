@@ -30,6 +30,7 @@ import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.SetSerializer;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.values.Value;
 
 public class SetType<T> extends CollectionType<Set<T>>
 {
@@ -70,7 +71,7 @@ public class SetType<T> extends CollectionType<Set<T>>
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return elements.referencesUserType(name);
     }

@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.db.rows;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -53,7 +52,7 @@ public class SerializationHelper
     private ColumnFilter.Tester tester;
 
     private final boolean hasDroppedColumns;
-    private final Map<ByteBuffer, DroppedColumn> droppedColumns;
+    private final Map<Value, DroppedColumn> droppedColumns;
     private DroppedColumn currentDroppedComplex;
 
 
@@ -119,7 +118,7 @@ public class SerializationHelper
     public void startOfComplexColumn(ColumnMetadata column)
     {
         this.tester = columnsToFetch == null ? null : columnsToFetch.newTester(column);
-        this.currentDroppedComplex = droppedColumns.get(column.name.bytes);
+        this.currentDroppedComplex = droppedColumns.get(column.name.value);
     }
 
     public void endOfComplexColumn()
@@ -132,7 +131,7 @@ public class SerializationHelper
         if (!hasDroppedColumns)
             return false;
 
-        DroppedColumn dropped = isComplex ? currentDroppedComplex : droppedColumns.get(cell.column().name.bytes);
+        DroppedColumn dropped = isComplex ? currentDroppedComplex : droppedColumns.get(cell.column().name.value);
         return dropped != null && cell.timestamp() <= dropped.droppedTime;
     }
 

@@ -23,6 +23,7 @@ import java.util.Objects;
 
 import javax.annotation.Nullable;
 
+import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.*;
 
@@ -38,8 +39,10 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.reads.SpeculativeRetryPolicy;
 import org.apache.cassandra.utils.AbstractIterator;
+import org.apache.cassandra.utils.values.Value;
 import org.github.jamm.Unmetered;
 
+import static com.google.common.collect.Iterables.elementsEqual;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -108,8 +111,8 @@ public final class TableMetadata
      * 1) allow easy access to each kind and
      * 2) for the partition key and clustering key ones, those list are ordered by the "component index" of the elements.
      */
-    public final ImmutableMap<ByteBuffer, DroppedColumn> droppedColumns;
-    final ImmutableMap<ByteBuffer, ColumnMetadata> columns;
+    public final ImmutableMap<Value, DroppedColumn> droppedColumns;
+    final ImmutableMap<Value, ColumnMetadata> columns;
 
     private final ImmutableList<ColumnMetadata> partitionKeyColumns;
     private final ImmutableList<ColumnMetadata> clusteringColumns;
@@ -349,7 +352,7 @@ public final class TableMetadata
      */
     public ColumnMetadata getColumn(ColumnIdentifier name)
     {
-        return columns.get(name.bytes);
+        return columns.get(name.value);
     }
 
     /*
@@ -358,12 +361,12 @@ public final class TableMetadata
      * is a few cases where all we have is a ByteBuffer (when dealing with IndexExpression
      * for instance) so...
      */
-    public ColumnMetadata getColumn(ByteBuffer name)
+    public ColumnMetadata getColumn(Value name)
     {
         return columns.get(name);
     }
 
-    public ColumnMetadata getDroppedColumn(ByteBuffer name)
+    public ColumnMetadata getDroppedColumn(Value name)
     {
         DroppedColumn dropped = droppedColumns.get(name);
         return dropped == null ? null : dropped.column;
@@ -376,7 +379,7 @@ public final class TableMetadata
      * @param name - the column name
      * @param isStatic - whether the column was a static column, if known
      */
-    public ColumnMetadata getDroppedColumn(ByteBuffer name, boolean isStatic)
+    public ColumnMetadata getDroppedColumn(Value name, boolean isStatic)
     {
         DroppedColumn dropped = droppedColumns.get(name);
         if (dropped == null)
@@ -520,11 +523,40 @@ public final class TableMetadata
         return clusteringColumns.get(0).type;
     }
 
-    public AbstractType<?> columnDefinitionNameComparator(ColumnMetadata.Kind kind)
+    public AbstractType<?> columnDefinitionNameType(ColumnMetadata.Kind kind)
     {
         return (isSuper() && kind == ColumnMetadata.Kind.REGULAR) || (isStaticCompactTable() && kind == ColumnMetadata.Kind.STATIC)
              ? staticCompactOrSuperTableColumnNameType()
              : UTF8Type.instance;
+    }
+
+    /**
+     * The type to use to compare column names in "static compact"
+     * tables or superColum ones.
+     * <p>
+     * This exists because for historical reasons, "static compact" tables as
+     * well as super column ones can have non-UTF8 column names.
+     * <p>
+     * This method should only be called for superColumn tables and "static
+     * compact" ones. For any other table, all column names are UTF8.
+     */
+    Comparator<Value> staticCompactOrSuperTableColumnNameComparator()
+    {
+        if (isSuper())
+        {
+            assert compactValueColumn != null && compactValueColumn.type instanceof MapType;
+            return ((MapType) compactValueColumn.type).nameComparator();
+        }
+
+        assert isStaticCompactTable();
+        return clusteringColumns.get(0).type::compare;
+    }
+
+    public Comparator<Value> columnDefinitionNameComparator(ColumnMetadata.Kind kind)
+    {
+        return (isSuper() && kind == ColumnMetadata.Kind.REGULAR) || (isStaticCompactTable() && kind == ColumnMetadata.Kind.STATIC)
+               ? staticCompactOrSuperTableColumnNameComparator()
+               : UTF8Type.instance::compare;
     }
 
     /**
@@ -579,7 +611,7 @@ public final class TableMetadata
         return unbuild().params(builder.build()).build();
     }
 
-    boolean referencesUserType(ByteBuffer name)
+    boolean referencesUserType(Value name)
     {
         return any(columns(), c -> c.type.referencesUserType(name));
     }
@@ -635,14 +667,14 @@ public final class TableMetadata
              : Optional.of(Difference.SHALLOW);
     }
 
-    private Optional<Difference> compareColumns(Map<ByteBuffer, ColumnMetadata> other)
+    private Optional<Difference> compareColumns(Map<Value, ColumnMetadata> other)
     {
         if (!columns.keySet().equals(other.keySet()))
             return Optional.of(Difference.SHALLOW);
 
         boolean differsDeeply = false;
 
-        for (Map.Entry<ByteBuffer, ColumnMetadata> entry : columns.entrySet())
+        for (Map.Entry<Value, ColumnMetadata> entry : columns.entrySet())
         {
             ColumnMetadata thisColumn = entry.getValue();
             ColumnMetadata thatColumn = other.get(entry.getKey());
@@ -708,8 +740,8 @@ public final class TableMetadata
         private Triggers triggers = Triggers.none();
         private Indexes indexes = Indexes.none();
 
-        private final Map<ByteBuffer, DroppedColumn> droppedColumns = new HashMap<>();
-        private final Map<ByteBuffer, ColumnMetadata> columns = new HashMap<>();
+        private final Map<Value, DroppedColumn> droppedColumns = new HashMap<>();
+        private final Map<Value, ColumnMetadata> columns = new HashMap<>();
         private final List<ColumnMetadata> partitionKeyColumns = new ArrayList<>();
         private final List<ColumnMetadata> clusteringColumns = new ArrayList<>();
         private final List<ColumnMetadata> regularAndStaticColumns = new ArrayList<>();
@@ -932,7 +964,7 @@ public final class TableMetadata
 
         public Builder addColumn(ColumnMetadata column)
         {
-            if (columns.containsKey(column.name.bytes))
+            if (columns.containsKey(column.name.value))
                 throw new IllegalArgumentException();
 
             switch (column.kind)
@@ -950,7 +982,7 @@ public final class TableMetadata
                     regularAndStaticColumns.add(column);
             }
 
-            columns.put(column.name.bytes, column);
+            columns.put(column.name.value, column);
 
             return this;
         }
@@ -961,7 +993,7 @@ public final class TableMetadata
             return this;
         }
 
-        public Builder droppedColumns(Map<ByteBuffer, DroppedColumn> droppedColumns)
+        public Builder droppedColumns(Map<Value, DroppedColumn> droppedColumns)
         {
             this.droppedColumns.clear();
             this.droppedColumns.putAll(droppedColumns);
@@ -981,7 +1013,7 @@ public final class TableMetadata
 
         public Builder recordColumnDrop(ColumnMetadata column, long timeMicros)
         {
-            droppedColumns.put(column.name.bytes, new DroppedColumn(column.withNewType(column.type.expandUserTypes()), timeMicros));
+            droppedColumns.put(column.name.value, new DroppedColumn(column.withNewType(column.type.expandUserTypes()), timeMicros));
             return this;
         }
 
@@ -997,7 +1029,7 @@ public final class TableMetadata
 
         public ColumnMetadata getColumn(ColumnIdentifier identifier)
         {
-            return columns.get(identifier.bytes);
+            return columns.get(identifier.value);
         }
 
         public ColumnMetadata getColumn(ByteBuffer name)
@@ -1016,11 +1048,11 @@ public final class TableMetadata
 
         public Builder removeRegularOrStaticColumn(ColumnIdentifier identifier)
         {
-            ColumnMetadata column = columns.get(identifier.bytes);
+            ColumnMetadata column = columns.get(identifier.value);
             if (column == null || column.isPrimaryKeyColumn())
                 throw new IllegalArgumentException();
 
-            columns.remove(identifier.bytes);
+            columns.remove(identifier.value);
             regularAndStaticColumns.remove(column);
 
             return this;
@@ -1028,10 +1060,10 @@ public final class TableMetadata
 
         public Builder renamePrimaryKeyColumn(ColumnIdentifier from, ColumnIdentifier to)
         {
-            if (columns.containsKey(to.bytes))
+            if (columns.containsKey(to.value))
                 throw new IllegalArgumentException();
 
-            ColumnMetadata column = columns.get(from.bytes);
+            ColumnMetadata column = columns.get(from.value);
             if (column == null || !column.isPrimaryKeyColumn())
                 throw new IllegalArgumentException();
 
@@ -1041,15 +1073,15 @@ public final class TableMetadata
             else
                 clusteringColumns.set(column.position(), newColumn);
 
-            columns.remove(from.bytes);
-            columns.put(to.bytes, newColumn);
+            columns.remove(from.value);
+            columns.put(to.value, newColumn);
 
             return this;
         }
 
         Builder alterColumnType(ColumnIdentifier name, AbstractType<?> type)
         {
-            ColumnMetadata column = columns.get(name.bytes);
+            ColumnMetadata column = columns.get(name.value);
             if (column == null)
                 throw new IllegalArgumentException();
 
@@ -1070,7 +1102,7 @@ public final class TableMetadata
                     break;
             }
 
-            columns.put(column.name.bytes, newColumn);
+            columns.put(column.name.value, newColumn);
 
             return this;
         }

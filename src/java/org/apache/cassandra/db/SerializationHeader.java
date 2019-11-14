@@ -38,6 +38,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class SerializationHeader
 {
@@ -51,14 +53,14 @@ public class SerializationHeader
     private final RegularAndStaticColumns columns;
     private final EncodingStats stats;
 
-    private final Map<ByteBuffer, AbstractType<?>> typeMap;
+    private final Map<Value, AbstractType<?>> typeMap;
 
     private SerializationHeader(boolean isForSSTable,
                                 AbstractType<?> keyType,
                                 List<AbstractType<?>> clusteringTypes,
                                 RegularAndStaticColumns columns,
                                 EncodingStats stats,
-                                Map<ByteBuffer, AbstractType<?>> typeMap)
+                                Map<Value, AbstractType<?>> typeMap)
     {
         this.isForSSTable = isForSSTable;
         this.keyType = keyType;
@@ -158,7 +160,7 @@ public class SerializationHeader
 
     public AbstractType<?> getType(ColumnMetadata column)
     {
-        return typeMap == null ? column.type : typeMap.get(column.name.bytes);
+        return typeMap == null ? column.type : typeMap.get(column.name.value);
     }
 
     public void writeTimestamp(long timestamp, DataOutputPlus out) throws IOException
@@ -248,12 +250,12 @@ public class SerializationHeader
 
     public Component toComponent()
     {
-        Map<ByteBuffer, AbstractType<?>> staticColumns = new LinkedHashMap<>();
-        Map<ByteBuffer, AbstractType<?>> regularColumns = new LinkedHashMap<>();
+        Map<Value, AbstractType<?>> staticColumns = new LinkedHashMap<>();
+        Map<Value, AbstractType<?>> regularColumns = new LinkedHashMap<>();
         for (ColumnMetadata column : columns.statics)
-            staticColumns.put(column.name.bytes, column.type);
+            staticColumns.put(column.name.value, column.type);
         for (ColumnMetadata column : columns.regulars)
-            regularColumns.put(column.name.bytes, column.type);
+            regularColumns.put(column.name.value, column.type);
         return new Component(keyType, clusteringTypes, staticColumns, regularColumns, stats);
     }
 
@@ -271,14 +273,14 @@ public class SerializationHeader
     {
         private final AbstractType<?> keyType;
         private final List<AbstractType<?>> clusteringTypes;
-        private final Map<ByteBuffer, AbstractType<?>> staticColumns;
-        private final Map<ByteBuffer, AbstractType<?>> regularColumns;
+        private final Map<Value, AbstractType<?>> staticColumns;
+        private final Map<Value, AbstractType<?>> regularColumns;
         private final EncodingStats stats;
 
         private Component(AbstractType<?> keyType,
                           List<AbstractType<?>> clusteringTypes,
-                          Map<ByteBuffer, AbstractType<?>> staticColumns,
-                          Map<ByteBuffer, AbstractType<?>> regularColumns,
+                          Map<Value, AbstractType<?>> staticColumns,
+                          Map<Value, AbstractType<?>> regularColumns,
                           EncodingStats stats)
         {
             this.keyType = keyType;
@@ -295,15 +297,15 @@ public class SerializationHeader
 
         public SerializationHeader toHeader(TableMetadata metadata) throws UnknownColumnException
         {
-            Map<ByteBuffer, AbstractType<?>> typeMap = new HashMap<>(staticColumns.size() + regularColumns.size());
+            Map<Value, AbstractType<?>> typeMap = new HashMap<>(staticColumns.size() + regularColumns.size());
 
             RegularAndStaticColumns.Builder builder = RegularAndStaticColumns.builder();
-            for (Map<ByteBuffer, AbstractType<?>> map : ImmutableList.of(staticColumns, regularColumns))
+            for (Map<Value, AbstractType<?>> map : ImmutableList.of(staticColumns, regularColumns))
             {
                 boolean isStatic = map == staticColumns;
-                for (Map.Entry<ByteBuffer, AbstractType<?>> e : map.entrySet())
+                for (Map.Entry<Value, AbstractType<?>> e : map.entrySet())
                 {
-                    ByteBuffer name = e.getKey();
+                    Value name = e.getKey();
                     AbstractType<?> other = typeMap.put(name, e.getValue());
                     if (other != null && !other.equals(e.getValue()))
                         throw new IllegalStateException("Column " + name + " occurs as both regular and static with types " + other + "and " + e.getValue());
@@ -367,12 +369,12 @@ public class SerializationHeader
             return clusteringTypes;
         }
 
-        public Map<ByteBuffer, AbstractType<?>> getStaticColumns()
+        public Map<Value, AbstractType<?>> getStaticColumns()
         {
             return staticColumns;
         }
 
-        public Map<ByteBuffer, AbstractType<?>> getRegularColumns()
+        public Map<Value, AbstractType<?>> getRegularColumns()
         {
             return regularColumns;
         }
@@ -469,8 +471,8 @@ public class SerializationHeader
             for (int i = 0; i < size; i++)
                 clusteringTypes.add(readType(in));
 
-            Map<ByteBuffer, AbstractType<?>> staticColumns = new LinkedHashMap<>();
-            Map<ByteBuffer, AbstractType<?>> regularColumns = new LinkedHashMap<>();
+            Map<Value, AbstractType<?>> staticColumns = new LinkedHashMap<>();
+            Map<Value, AbstractType<?>> regularColumns = new LinkedHashMap<>();
 
             readColumnsWithType(in, staticColumns);
             readColumnsWithType(in, regularColumns);
@@ -493,33 +495,33 @@ public class SerializationHeader
             return size;
         }
 
-        private void writeColumnsWithTypes(Map<ByteBuffer, AbstractType<?>> columns, DataOutputPlus out) throws IOException
+        private void writeColumnsWithTypes(Map<Value, AbstractType<?>> columns, DataOutputPlus out) throws IOException
         {
             out.writeUnsignedVInt(columns.size());
-            for (Map.Entry<ByteBuffer, AbstractType<?>> entry : columns.entrySet())
+            for (Map.Entry<Value, AbstractType<?>> entry : columns.entrySet())
             {
-                ByteBufferUtil.writeWithVIntLength(entry.getKey(), out);
+                Values.writeWithVIntLength(entry.getKey(), out);
                 writeType(entry.getValue(), out);
             }
         }
 
-        private long sizeofColumnsWithTypes(Map<ByteBuffer, AbstractType<?>> columns)
+        private long sizeofColumnsWithTypes(Map<Value, AbstractType<?>> columns)
         {
             long size = TypeSizes.sizeofUnsignedVInt(columns.size());
-            for (Map.Entry<ByteBuffer, AbstractType<?>> entry : columns.entrySet())
+            for (Map.Entry<Value, AbstractType<?>> entry : columns.entrySet())
             {
-                size += ByteBufferUtil.serializedSizeWithVIntLength(entry.getKey());
+                size += Values.serializedSizeWithVIntLength(entry.getKey());
                 size += sizeofType(entry.getValue());
             }
             return size;
         }
 
-        private void readColumnsWithType(DataInputPlus in, Map<ByteBuffer, AbstractType<?>> typeMap) throws IOException
+        private void readColumnsWithType(DataInputPlus in, Map<Value, AbstractType<?>> typeMap) throws IOException
         {
             int length = (int)in.readUnsignedVInt();
             for (int i = 0; i < length; i++)
             {
-                ByteBuffer name = ByteBufferUtil.readWithVIntLength(in);
+                Value name = Values.readWithVIntLength(in);
                 typeMap.put(name, readType(in));
             }
         }

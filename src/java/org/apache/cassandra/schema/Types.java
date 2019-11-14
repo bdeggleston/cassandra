@@ -30,6 +30,8 @@ import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UserType;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
@@ -46,7 +48,7 @@ public final class Types implements Iterable<UserType>
 {
     private static final Types NONE = new Types(ImmutableMap.of());
 
-    private final Map<ByteBuffer, UserType> types;
+    private final Map<Value, UserType> types;
 
     private Types(Builder builder)
     {
@@ -56,7 +58,7 @@ public final class Types implements Iterable<UserType>
     /*
      * For use in RawBuilder::build only.
      */
-    private Types(Map<ByteBuffer, UserType> types)
+    private Types(Map<Value, UserType> types)
     {
         this.types = types;
     }
@@ -86,7 +88,7 @@ public final class Types implements Iterable<UserType>
         return types.values().iterator();
     }
 
-    public Iterable<UserType> referencingUserType(ByteBuffer name)
+    public Iterable<UserType> referencingUserType(Value name)
     {
         return Iterables.filter(types.values(), t -> t.referencesUserType(name) && !t.name.equals(name));
     }
@@ -97,7 +99,7 @@ public final class Types implements Iterable<UserType>
      * @param name a non-qualified type name
      * @return an empty {@link Optional} if the type name is not found; a non-empty optional of {@link UserType} otherwise
      */
-    public Optional<UserType> get(ByteBuffer name)
+    public Optional<UserType> get(Value name)
     {
         return Optional.ofNullable(types.get(name));
     }
@@ -109,12 +111,12 @@ public final class Types implements Iterable<UserType>
      * @return null if the type name is not found; the found {@link UserType} otherwise
      */
     @Nullable
-    public UserType getNullable(ByteBuffer name)
+    public UserType getNullable(Value name)
     {
         return types.get(name);
     }
 
-    boolean containsType(ByteBuffer name)
+    boolean containsType(Value name)
     {
         return types.containsKey(name);
     }
@@ -140,7 +142,7 @@ public final class Types implements Iterable<UserType>
     /**
      * Creates a Types instance with the type with the provided name removed
      */
-    public Types without(ByteBuffer name)
+    public Types without(Value name)
     {
         UserType type =
             get(name).orElseThrow(() -> new IllegalStateException(format("Type %s doesn't exists", name)));
@@ -174,12 +176,12 @@ public final class Types implements Iterable<UserType>
         if (types.size() != other.types.size())
             return false;
 
-        Iterator<Map.Entry<ByteBuffer, UserType>> thisIter = this.types.entrySet().iterator();
-        Iterator<Map.Entry<ByteBuffer, UserType>> otherIter = other.types.entrySet().iterator();
+        Iterator<Map.Entry<Value, UserType>> thisIter = this.types.entrySet().iterator();
+        Iterator<Map.Entry<Value, UserType>> otherIter = other.types.entrySet().iterator();
         while (thisIter.hasNext())
         {
-            Map.Entry<ByteBuffer, UserType> thisNext = thisIter.next();
-            Map.Entry<ByteBuffer, UserType> otherNext = otherIter.next();
+            Map.Entry<Value, UserType> thisNext = thisIter.next();
+            Map.Entry<Value, UserType> otherNext = otherIter.next();
             if (!thisNext.getKey().equals(otherNext.getKey()))
                 return false;
 
@@ -203,7 +205,7 @@ public final class Types implements Iterable<UserType>
 
     public static final class Builder
     {
-        final ImmutableSortedMap.Builder<ByteBuffer, UserType> types = ImmutableSortedMap.naturalOrder();
+        final ImmutableSortedMap.Builder<Value, UserType> types = ImmutableSortedMap.naturalOrder();
 
         private Builder()
         {
@@ -341,7 +343,7 @@ public final class Types implements Iterable<UserType>
                               .map(t -> t.prepareInternal(keyspace, types).getType())
                               .collect(toList());
 
-                return new UserType(keyspace, bytes(name), preparedFieldNames, preparedFieldTypes, true);
+                return new UserType(keyspace, Values.valueOf(name), preparedFieldNames, preparedFieldTypes, true);
             }
 
             @Override

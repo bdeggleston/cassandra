@@ -31,6 +31,7 @@ import org.apache.cassandra.cql3.statements.schema.IndexTarget;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.schema.*;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Value;
 
 /**
  * Helper methods to represent TableMetadata and related objects in CQL format
@@ -134,7 +135,7 @@ public class TableCQLHelper
 
         if (includeDroppedColumns)
         {
-            for (Map.Entry<ByteBuffer, DroppedColumn> entry: metadata.droppedColumns.entrySet())
+            for (Map.Entry<Value, DroppedColumn> entry: metadata.droppedColumns.entrySet())
             {
                 if (metadata.getColumn(entry.getKey()) != null)
                     continue;
@@ -236,7 +237,7 @@ public class TableCQLHelper
     {
         List<String> droppedColumns = new ArrayList<>();
 
-        for (Map.Entry<ByteBuffer, DroppedColumn> entry: metadata.droppedColumns.entrySet())
+        for (Map.Entry<Value, DroppedColumn> entry: metadata.droppedColumns.entrySet())
         {
             DroppedColumn column = entry.getValue();
             droppedColumns.add(toCQLDrop(metadata, column));

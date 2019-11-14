@@ -25,6 +25,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.cassandra.utils.values.Value;
 
 public final class ViewMetadata
 {
@@ -128,7 +129,7 @@ public final class ViewMetadata
                .toString();
     }
 
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return metadata.referencesUserType(name);
     }

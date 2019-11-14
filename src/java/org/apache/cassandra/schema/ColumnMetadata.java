@@ -34,6 +34,8 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 import org.github.jamm.Unmetered;
 
 @Unmetered
@@ -105,7 +107,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
                | (name.prefixComparison >>> 16);
     }
 
-    public static ColumnMetadata partitionKeyColumn(TableMetadata table, ByteBuffer name, AbstractType<?> type, int position)
+    public static ColumnMetadata partitionKeyColumn(TableMetadata table, Value name, AbstractType<?> type, int position)
     {
         return new ColumnMetadata(table, name, type, position, Kind.PARTITION_KEY);
     }
@@ -115,7 +117,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return new ColumnMetadata(keyspace, table, ColumnIdentifier.getInterned(name, true), type, position, Kind.PARTITION_KEY);
     }
 
-    public static ColumnMetadata clusteringColumn(TableMetadata table, ByteBuffer name, AbstractType<?> type, int position)
+    public static ColumnMetadata clusteringColumn(TableMetadata table, Value name, AbstractType<?> type, int position)
     {
         return new ColumnMetadata(table, name, type, position, Kind.CLUSTERING);
     }
@@ -125,7 +127,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return new ColumnMetadata(keyspace, table, ColumnIdentifier.getInterned(name, true), type, position, Kind.CLUSTERING);
     }
 
-    public static ColumnMetadata regularColumn(TableMetadata table, ByteBuffer name, AbstractType<?> type)
+    public static ColumnMetadata regularColumn(TableMetadata table, Value name, AbstractType<?> type)
     {
         return new ColumnMetadata(table, name, type, NO_POSITION, Kind.REGULAR);
     }
@@ -135,7 +137,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return new ColumnMetadata(keyspace, table, ColumnIdentifier.getInterned(name, true), type, NO_POSITION, Kind.REGULAR);
     }
 
-    public static ColumnMetadata staticColumn(TableMetadata table, ByteBuffer name, AbstractType<?> type)
+    public static ColumnMetadata staticColumn(TableMetadata table, Value name, AbstractType<?> type)
     {
         return new ColumnMetadata(table, name, type, NO_POSITION, Kind.STATIC);
     }
@@ -145,11 +147,11 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return new ColumnMetadata(keyspace, table, ColumnIdentifier.getInterned(name, true), type, NO_POSITION, Kind.STATIC);
     }
 
-    public ColumnMetadata(TableMetadata table, ByteBuffer name, AbstractType<?> type, int position, Kind kind)
+    public ColumnMetadata(TableMetadata table, Value name, AbstractType<?> type, int position, Kind kind)
     {
         this(table.keyspace,
              table.name,
-             ColumnIdentifier.getInterned(name, table.columnDefinitionNameComparator(kind)),
+             ColumnIdentifier.getInterned(name, table.columnDefinitionNameType(kind)),
              type,
              position,
              kind);
@@ -563,10 +565,10 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
                 ByteBuffer bufferName = ByteBufferUtil.bytes(text);
                 for (ColumnMetadata def : table.columns())
                 {
-                    if (def.name.bytes.equals(bufferName))
+                    if (def.name.value.equals(bufferName))
                         return def.name;
                 }
-                return ColumnIdentifier.getInterned(columnNameType, columnNameType.fromString(text), text);
+                return ColumnIdentifier.getInterned(columnNameType, columnNameType.valueFromString(text), text);
             }
 
             public ColumnMetadata prepare(TableMetadata table)
@@ -583,18 +585,18 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
                 ByteBuffer bufferName = ByteBufferUtil.bytes(text);
                 for (ColumnMetadata def : table.columns())
                 {
-                    if (def.name.bytes.equals(bufferName))
+                    if (def.name.value.equals(bufferName))
                         return def;
                 }
-                return find(columnNameType.fromString(text), table);
+                return find(columnNameType.valueFromString(text), table);
             }
 
             private ColumnMetadata find(TableMetadata table)
             {
-                return find(ByteBufferUtil.bytes(text), table);
+                return find(Values.valueOf(text), table);
             }
 
-            private ColumnMetadata find(ByteBuffer id, TableMetadata table)
+            private ColumnMetadata find(Value id, TableMetadata table)
             {
                 ColumnMetadata def = table.getColumn(id);
                 if (def == null)

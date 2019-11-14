@@ -363,12 +363,12 @@ public class PagingState
                     // If the last returned row has no cell, this means in 2.1/2.2 terms that we stopped on the row
                     // marker. Note that this shouldn't happen if the table is COMPACT.
                     assert !metadata.isCompactTable();
-                    mark = encodeCellName(metadata, row.clustering(), EMPTY_BYTE_BUFFER, null);
+                    mark = encodeCellName(metadata, row.clustering(), Values.EMPTY, null);
                 }
                 else
                 {
                     Cell cell = cells.next();
-                    mark = encodeCellName(metadata, row.clustering(), cell.column().name.bytes, cell.column().isComplex() ? cell.path().get(0) : null);
+                    mark = encodeCellName(metadata, row.clustering(), cell.column().name.value, cell.column().isComplex() ? cell.path().get(0) : null);
                 }
             }
             else
@@ -391,14 +391,14 @@ public class PagingState
         }
 
         // Old (pre-3.0) encoding of cells. We need that for the protocol v3 as that is how things where encoded
-        private static ByteBuffer encodeCellName(TableMetadata metadata, Clustering clustering, ByteBuffer columnName, ByteBuffer collectionElement)
+        private static ByteBuffer encodeCellName(TableMetadata metadata, Clustering clustering, Value columnName, ByteBuffer collectionElement)
         {
             boolean isStatic = clustering == Clustering.STATIC_CLUSTERING;
 
             if (!metadata.isCompound())
             {
                 if (isStatic)
-                    return columnName;
+                    return columnName.buffer();
 
                 assert clustering.size() == 1 : "Expected clustering size to be 1, but was " + clustering.size();
                 return clustering.get(0).buffer();
@@ -433,13 +433,13 @@ public class PagingState
                 // What it is depends if this a cell for a declared "static" column or a "dynamic" column part of the
                 // super-column internal map.
                 assert columnName != null; // This should never be null for supercolumns, see decodeForSuperColumn() above
-                values[clusteringSize] = Values.valueOf(columnName.equals(CompactTables.SUPER_COLUMN_MAP_COLUMN)
-                                                        ? collectionElement : columnName);
+                values[clusteringSize] = columnName.equals(CompactTables.SUPER_COLUMN_MAP_COLUMN)
+                                         ? Values.valueOf(collectionElement) : columnName;
             }
             else
             {
                 if (!metadata.isDense())
-                    values[clusteringSize] = Values.valueOf(columnName);
+                    values[clusteringSize] = columnName;
                 if (collectionElement != null)
                     values[clusteringSize + 1] = Values.valueOf(collectionElement);
             }

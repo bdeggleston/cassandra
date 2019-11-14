@@ -725,7 +725,7 @@ public class ResultSet
         {
             for (ColumnSpecification cs : columnSpecifications)
             {
-                md.update(cs.name.bytes.duplicate());
+                md.update(cs.name.value.buffer());
                 md.update((byte) 0);
                 md.update(cs.type.toString().getBytes(StandardCharsets.UTF_8));
                 md.update((byte) 0);

@@ -49,6 +49,8 @@ import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.HashingUtils;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.lang.String.format;
 
@@ -583,7 +585,7 @@ public final class SchemaKeyspace
     {
         addTableToSchemaMutation(newTable, false, builder);
 
-        MapDifference<ByteBuffer, ColumnMetadata> columnDiff = Maps.difference(oldTable.columns, newTable.columns);
+        MapDifference<Value, ColumnMetadata> columnDiff = Maps.difference(oldTable.columns, newTable.columns);
 
         // columns that are no longer needed
         for (ColumnMetadata column : columnDiff.entriesOnlyOnLeft().values())
@@ -594,11 +596,11 @@ public final class SchemaKeyspace
             addColumnToSchemaMutation(newTable, column, builder);
 
         // old columns with updated attributes
-        for (ByteBuffer name : columnDiff.entriesDiffering().keySet())
+        for (Value name : columnDiff.entriesDiffering().keySet())
             addColumnToSchemaMutation(newTable, newTable.getColumn(name), builder);
 
         // dropped columns
-        MapDifference<ByteBuffer, DroppedColumn> droppedColumnDiff =
+        MapDifference<Value, DroppedColumn> droppedColumnDiff =
             Maps.difference(oldTable.droppedColumns, newTable.droppedColumns);
 
         // newly dropped columns
@@ -606,7 +608,7 @@ public final class SchemaKeyspace
             addDroppedColumnToSchemaMutation(newTable, column, builder);
 
         // columns added then dropped again
-        for (ByteBuffer name : droppedColumnDiff.entriesDiffering().keySet())
+        for (Value name : droppedColumnDiff.entriesDiffering().keySet())
             addDroppedColumnToSchemaMutation(newTable, newTable.droppedColumns.get(name), builder);
 
         MapDifference<String, TriggerMetadata> triggerDiff = triggersDiff(oldTable.triggers, newTable.triggers);
@@ -699,7 +701,7 @@ public final class SchemaKeyspace
 
         builder.update(Columns)
                .row(table.name, column.name.toString())
-               .add("column_name_bytes", column.name.bytes)
+               .add("column_name_bytes", column.name.value)
                .add("kind", column.kind.toString().toLowerCase())
                .add("position", column.position())
                .add("clustering_order", column.clusteringOrder().toString().toLowerCase())
@@ -774,7 +776,7 @@ public final class SchemaKeyspace
     {
         addViewToSchemaMutation(after, false, builder);
 
-        MapDifference<ByteBuffer, ColumnMetadata> columnDiff = Maps.difference(before.metadata.columns, after.metadata.columns);
+        MapDifference<Value, ColumnMetadata> columnDiff = Maps.difference(before.metadata.columns, after.metadata.columns);
 
         // columns that are no longer needed
         for (ColumnMetadata column : columnDiff.entriesOnlyOnLeft().values())
@@ -785,7 +787,7 @@ public final class SchemaKeyspace
             addColumnToSchemaMutation(after.metadata, column, builder);
 
         // old columns with updated attributes
-        for (ByteBuffer name : columnDiff.entriesDiffering().keySet())
+        for (Value name : columnDiff.entriesDiffering().keySet())
             addColumnToSchemaMutation(after.metadata, after.metadata.getColumn(name), builder);
     }
 
@@ -817,14 +819,14 @@ public final class SchemaKeyspace
                .add("language", function.language())
                .add("return_type", function.returnType().asCQL3Type().toString())
                .add("called_on_null_input", function.isCalledOnNullInput())
-               .add("argument_names", function.argNames().stream().map((c) -> bbToString(c.bytes)).collect(toList()));
+               .add("argument_names", function.argNames().stream().map((c) -> bbToString(c.value)).collect(toList()));
     }
 
-    private static String bbToString(ByteBuffer bb)
+    private static String bbToString(Value v)
     {
         try
         {
-            return ByteBufferUtil.string(bb);
+            return v.getString(0);
         }
         catch (CharacterCodingException e)
         {
@@ -1032,19 +1034,19 @@ public final class SchemaKeyspace
         if (order == ClusteringOrder.DESC)
             type = ReversedType.getInstance(type);
 
-        ColumnIdentifier name = new ColumnIdentifier(row.getBytes("column_name_bytes"), row.getString("column_name"));
+        ColumnIdentifier name = new ColumnIdentifier(Values.valueOf(row.getBytes("column_name_bytes")), row.getString("column_name"));
 
         return new ColumnMetadata(keyspace, table, name, type, position, kind);
     }
 
-    private static Map<ByteBuffer, DroppedColumn> fetchDroppedColumns(String keyspace, String table)
+    private static Map<Value, DroppedColumn> fetchDroppedColumns(String keyspace, String table)
     {
         String query = format("SELECT * FROM %s.%s WHERE keyspace_name = ? AND table_name = ?", SchemaConstants.SCHEMA_KEYSPACE_NAME, DROPPED_COLUMNS);
-        Map<ByteBuffer, DroppedColumn> columns = new HashMap<>();
+        Map<Value, DroppedColumn> columns = new HashMap<>();
         for (UntypedResultSet.Row row : query(query, keyspace, table))
         {
             DroppedColumn column = createDroppedColumnFromRow(row);
-            columns.put(column.column.name.bytes, column);
+            columns.put(column.column.name.value, column);
         }
         return columns;
     }

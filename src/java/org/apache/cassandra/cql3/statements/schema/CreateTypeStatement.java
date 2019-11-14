@@ -36,6 +36,7 @@ import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.transport.Event.SchemaChange;
 import org.apache.cassandra.transport.Event.SchemaChange.Change;
 import org.apache.cassandra.transport.Event.SchemaChange.Target;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
@@ -67,7 +68,7 @@ public final class CreateTypeStatement extends AlterSchemaStatement
         if (null == keyspace)
             throw ire("Keyspace '%s' doesn't exist", keyspaceName);
 
-        UserType existingType = keyspace.types.getNullable(bytes(typeName));
+        UserType existingType = keyspace.types.getNullable(Values.valueOf(typeName));
         if (null != existingType)
         {
             if (ifNotExists)
@@ -95,7 +96,7 @@ public final class CreateTypeStatement extends AlterSchemaStatement
                          .map(t -> t.prepare(keyspaceName, keyspace.types).getType())
                          .collect(toList());
 
-        UserType udt = new UserType(keyspaceName, bytes(typeName), fieldNames, fieldTypes, true);
+        UserType udt = new UserType(keyspaceName, Values.valueOf(typeName), fieldNames, fieldTypes, true);
         return schema.withAddedOrUpdated(keyspace.withSwapped(keyspace.types.with(udt)));
     }
 

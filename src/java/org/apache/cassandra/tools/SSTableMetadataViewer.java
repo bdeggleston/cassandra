@@ -415,11 +415,11 @@ public class SSTableMetadataViewer
             EncodingStats encodingStats = header.getEncodingStats();
             AbstractType<?> keyType = header.getKeyType();
             List<AbstractType<?>> clusteringTypes = header.getClusteringTypes();
-            Map<ByteBuffer, AbstractType<?>> staticColumns = header.getStaticColumns();
+            Map<Value, AbstractType<?>> staticColumns = header.getStaticColumns();
             Map<String, String> statics = staticColumns.entrySet().stream()
                     .collect(Collectors.toMap(e -> UTF8Type.instance.getString(e.getKey()),
                                               e -> e.getValue().toString()));
-            Map<ByteBuffer, AbstractType<?>> regularColumns = header.getRegularColumns();
+            Map<Value, AbstractType<?>> regularColumns = header.getRegularColumns();
             Map<String, String> regulars = regularColumns.entrySet().stream()
                     .collect(Collectors.toMap(e -> UTF8Type.instance.getString(e.getKey()),
                                               e -> e.getValue().toString()));

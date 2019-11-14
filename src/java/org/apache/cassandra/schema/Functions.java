@@ -27,6 +27,7 @@ import com.google.common.collect.*;
 import org.apache.cassandra.cql3.functions.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.cassandra.utils.values.Value;
 
 import static java.util.stream.Collectors.toList;
 
@@ -106,7 +107,7 @@ public final class Functions implements Iterable<Function>
         return stream().filter(Filter.UDA).map(f -> (UDAggregate) f);
     }
 
-    public Iterable<Function> referencingUserType(ByteBuffer name)
+    public Iterable<Function> referencingUserType(Value name)
     {
         return Iterables.filter(this, f -> f.referencesUserType(name));
     }

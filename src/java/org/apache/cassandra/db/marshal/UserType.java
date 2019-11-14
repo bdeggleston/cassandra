@@ -34,6 +34,8 @@ import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.UserTypeSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
@@ -46,13 +48,13 @@ import static com.google.common.collect.Iterables.transform;
 public class UserType extends TupleType
 {
     public final String keyspace;
-    public final ByteBuffer name;
+    public final Value name;
     private final List<FieldIdentifier> fieldNames;
     private final List<String> stringFieldNames;
     private final boolean isMultiCell;
     private final UserTypeSerializer serializer;
 
-    public UserType(String keyspace, ByteBuffer name, List<FieldIdentifier> fieldNames, List<AbstractType<?>> fieldTypes, boolean isMultiCell)
+    public UserType(String keyspace, Value name, List<FieldIdentifier> fieldNames, List<AbstractType<?>> fieldTypes, boolean isMultiCell)
     {
         super(fieldTypes, false);
         assert fieldNames.size() == fieldTypes.size();
@@ -76,7 +78,7 @@ public class UserType extends TupleType
     {
         Pair<Pair<String, ByteBuffer>, List<Pair<ByteBuffer, AbstractType>>> params = parser.getUserTypeParameters();
         String keyspace = params.left.left;
-        ByteBuffer name = params.left.right;
+        Value name = Values.valueOf(params.left.right);
         List<FieldIdentifier> columnNames = new ArrayList<>(params.right.size());
         List<AbstractType<?>> columnTypes = new ArrayList<>(params.right.size());
         for (Pair<ByteBuffer, AbstractType> p : params.right)
@@ -379,7 +381,7 @@ public class UserType extends TupleType
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return this.name.equals(name) || any(fieldTypes(), t -> t.referencesUserType(name));
     }

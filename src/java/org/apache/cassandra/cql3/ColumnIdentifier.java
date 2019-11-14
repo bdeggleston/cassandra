@@ -43,7 +43,6 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     private static final Pattern PATTERN_DOUBLE_QUOTE = Pattern.compile("\"", Pattern.LITERAL);
     private static final String ESCAPED_DOUBLE_QUOTE = Matcher.quoteReplacement("\"\"");
 
-    public final ByteBuffer bytes;  // TODO: remove
     public final Value value;
     private final String text;
     /**
@@ -55,19 +54,19 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
 
     private static final Pattern UNQUOTED_IDENTIFIER = Pattern.compile("[a-z][a-z0-9_]*");
 
-    private static final long EMPTY_SIZE = ObjectSizes.measure(new ColumnIdentifier(ByteBufferUtil.EMPTY_BYTE_BUFFER, "", false));
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ColumnIdentifier(Values.EMPTY, "", false));
 
     private static final ConcurrentMap<InternedKey, ColumnIdentifier> internedInstances = new MapMaker().weakValues().makeMap();
 
     private static final class InternedKey
     {
         private final AbstractType<?> type;
-        private final ByteBuffer bytes;
+        private final Value value;
 
-        InternedKey(AbstractType<?> type, ByteBuffer bytes)
+        InternedKey(AbstractType<?> type, Value value)
         {
             this.type = type;
-            this.bytes = bytes;
+            this.value = value;
         }
 
         @Override
@@ -80,25 +79,25 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
                 return false;
 
             InternedKey that = (InternedKey) o;
-            return bytes.equals(that.bytes) && type.equals(that.type);
+            return value.equals(that.value) && type.equals(that.type);
         }
 
         @Override
         public int hashCode()
         {
-            return bytes.hashCode() + 31 * type.hashCode();
+            return value.hashCode() + 31 * type.hashCode();
         }
     }
 
-    private static long prefixComparison(ByteBuffer bytes)
+    private static long prefixComparison(Value value)
     {
         long prefix = 0;
-        ByteBuffer read = bytes.duplicate();
         int i = 0;
-        while (read.hasRemaining() && i < 8)
+        int offset = 0;
+        while (value.sizeFromOffset(offset) > 0 && i < 8)
         {
             prefix <<= 8;
-            prefix |= read.get() & 0xFF;
+            prefix |= value.getByte(offset++) & 0xFF;
             i++;
         }
         prefix <<= (8 - i) * 8;
@@ -111,53 +110,51 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     public ColumnIdentifier(String rawText, boolean keepCase)
     {
         this.text = keepCase ? rawText : rawText.toLowerCase(Locale.US);
-        this.bytes = ByteBufferUtil.bytes(this.text);
-        this.value = Values.valueOf(this.bytes);
-        this.prefixComparison = prefixComparison(bytes);
+        this.value = Values.valueOf(rawText);
+        this.prefixComparison = prefixComparison(this.value);
         this.interned = false;
     }
 
-    public ColumnIdentifier(ByteBuffer bytes, AbstractType<?> type)
+    public ColumnIdentifier(Value value, AbstractType<?> type)
     {
-        this(bytes, type.getString(bytes), false);
+        this(value, type.getString(value), false);
     }
 
-    public ColumnIdentifier(ByteBuffer bytes, String text)
+    public ColumnIdentifier(Value value, String text)
     {
-        this(bytes, text, false);
+        this(value, text, false);
     }
 
-    private ColumnIdentifier(ByteBuffer bytes, String text, boolean interned)
+    private ColumnIdentifier(Value value, String text, boolean interned)
     {
-        this.bytes = bytes;
-        this.value = Values.valueOf(bytes);
+        this.value = value;
         this.text = text;
         this.interned = interned;
-        this.prefixComparison = prefixComparison(bytes);
+        this.prefixComparison = prefixComparison(value);
     }
 
-    public static ColumnIdentifier getInterned(ByteBuffer bytes, AbstractType<?> type)
+    public static ColumnIdentifier getInterned(Value value, AbstractType<?> type)
     {
-        return getInterned(type, bytes, type.getString(bytes));
+        return getInterned(type, value, type.getString(value));
     }
 
     public static ColumnIdentifier getInterned(String rawText, boolean keepCase)
     {
         String text = keepCase ? rawText : rawText.toLowerCase(Locale.US);
-        ByteBuffer bytes = ByteBufferUtil.bytes(text);
-        return getInterned(UTF8Type.instance, bytes, text);
+        Value value = Values.valueOf(text);
+        return getInterned(UTF8Type.instance, value, text);
     }
 
-    public static ColumnIdentifier getInterned(AbstractType<?> type, ByteBuffer bytes, String text)
+    public static ColumnIdentifier getInterned(AbstractType<?> type, Value value, String text)
     {
-        bytes = ByteBufferUtil.minimalBufferFor(bytes);
+        value = value.getMinimal();
 
-        InternedKey key = new InternedKey(type, bytes);
+        InternedKey key = new InternedKey(type, value);
         ColumnIdentifier id = internedInstances.get(key);
         if (id != null)
             return id;
 
-        ColumnIdentifier created = new ColumnIdentifier(bytes, text, true);
+        ColumnIdentifier created = new ColumnIdentifier(value, text, true);
         ColumnIdentifier previous = internedInstances.putIfAbsent(key, created);
         return previous == null ? created : previous;
     }
@@ -170,7 +167,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     @Override
     public final int hashCode()
     {
-        return bytes.hashCode();
+        return value.hashCode();
     }
 
     @Override
@@ -182,7 +179,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
         if(!(o instanceof ColumnIdentifier))
             return false;
         ColumnIdentifier that = (ColumnIdentifier)o;
-        return bytes.equals(that.bytes);
+        return value.equals(that.value);
     }
 
     @Override
@@ -203,20 +200,20 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     public long unsharedHeapSize()
     {
         return EMPTY_SIZE
-             + ObjectSizes.sizeOnHeapOf(bytes)
+             + value.unsharedHeapSize()
              + ObjectSizes.sizeOf(text);
     }
 
     public long unsharedHeapSizeExcludingData()
     {
         return EMPTY_SIZE
-             + ObjectSizes.sizeOnHeapExcludingData(bytes)
+             + value.unsharedHeapSizeExcludingData()
              + ObjectSizes.sizeOf(text);
     }
 
     public ColumnIdentifier clone(AbstractAllocator allocator)
     {
-        return interned ? this : new ColumnIdentifier(allocator.clone(bytes), text, false);
+        return interned ? this : new ColumnIdentifier(allocator.clone(value), text, false);
     }
 
     public int compareTo(ColumnIdentifier that)
@@ -226,7 +223,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
             return c;
         if (this == that)
             return 0;
-        return ByteBufferUtil.compareUnsigned(this.bytes, that.bytes);
+        return Values.compareUnsigned(this.value, that.value);
     }
 
     public static String maybeQuote(String text)

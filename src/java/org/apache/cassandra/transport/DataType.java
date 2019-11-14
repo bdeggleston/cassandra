@@ -32,6 +32,7 @@ import org.apache.cassandra.cql3.FieldIdentifier;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
 
 public enum DataType
 {
@@ -111,7 +112,7 @@ public enum DataType
                 return l;
             case UDT:
                 String ks = CBUtil.readString(cb);
-                ByteBuffer name = UTF8Type.instance.decomposeBuffer(CBUtil.readString(cb));
+                Value name = UTF8Type.instance.decomposeValue(CBUtil.readString(cb));
                 int n = cb.readUnsignedShort();
                 List<FieldIdentifier> fieldNames = new ArrayList<>(n);
                 List<AbstractType<?>> fieldTypes = new ArrayList<>(n);

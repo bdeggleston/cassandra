@@ -41,6 +41,8 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.CQLTypeParser;
 import org.apache.cassandra.schema.SchemaKeyspace;
 import org.apache.cassandra.schema.Types;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class NativeSSTableLoaderClient extends SSTableLoader.Client
 {
@@ -197,11 +199,11 @@ public class NativeSSTableLoaderClient extends SSTableLoader.Client
         String droppedColumnsQuery = String.format("SELECT * FROM %s.%s WHERE keyspace_name = ? AND table_name = ?",
                                                    SchemaConstants.SCHEMA_KEYSPACE_NAME,
                                                    SchemaKeyspace.DROPPED_COLUMNS);
-        Map<ByteBuffer, DroppedColumn> droppedColumns = new HashMap<>();
+        Map<Value, DroppedColumn> droppedColumns = new HashMap<>();
         for (Row colRow : session.execute(droppedColumnsQuery, keyspace, name))
         {
             DroppedColumn droppedColumn = createDroppedColumnFromRow(colRow, keyspace, name);
-            droppedColumns.put(droppedColumn.column.name.bytes, droppedColumn);
+            droppedColumns.put(droppedColumn.column.name.value, droppedColumn);
         }
         builder.droppedColumns(droppedColumns);
 
@@ -215,7 +217,7 @@ public class NativeSSTableLoaderClient extends SSTableLoader.Client
         if (order == ClusteringOrder.DESC)
             type = ReversedType.getInstance(type);
 
-        ColumnIdentifier name = new ColumnIdentifier(row.getBytes("column_name_bytes"), row.getString("column_name"));
+        ColumnIdentifier name = new ColumnIdentifier(Values.valueOf(row.getBytes("column_name_bytes")), row.getString("column_name"));
 
         int position = row.getInt("position");
         org.apache.cassandra.schema.ColumnMetadata.Kind kind = ColumnMetadata.Kind.valueOf(row.getString("kind").toUpperCase());

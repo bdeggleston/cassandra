@@ -32,6 +32,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Handles the selection of a subpart of a column.
@@ -168,7 +170,7 @@ public abstract class ColumnSubselection implements Comparable<ColumnSubselectio
         public void serialize(ColumnSubselection subSel, DataOutputPlus out, int version) throws IOException
         {
             ColumnMetadata column = subSel.column();
-            ByteBufferUtil.writeWithShortLength(column.name.bytes, out);
+            Values.writeWithShortLength(column.name.value, out);
             out.writeByte(subSel.kind().ordinal());
             switch (subSel.kind())
             {
@@ -188,7 +190,7 @@ public abstract class ColumnSubselection implements Comparable<ColumnSubselectio
 
         public ColumnSubselection deserialize(DataInputPlus in, int version, TableMetadata metadata) throws IOException
         {
-            ByteBuffer name = ByteBufferUtil.readWithShortLength(in);
+            Value name = Values.readWithShortLength(in);
             ColumnMetadata column = metadata.getColumn(name);
             if (column == null)
             {
@@ -219,7 +221,7 @@ public abstract class ColumnSubselection implements Comparable<ColumnSubselectio
             long size = 0;
 
             ColumnMetadata column = subSel.column();
-            size += TypeSizes.sizeofWithShortLength(column.name.bytes);
+            size += Values.sizeWithShortLength(column.name.value);
             size += 1; // kind
             switch (subSel.kind())
             {

@@ -34,6 +34,8 @@ import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.transport.Event.SchemaChange.Change;
 import org.apache.cassandra.transport.Event.SchemaChange.Target;
 import org.apache.cassandra.transport.Event.SchemaChange;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static java.lang.String.join;
 
@@ -57,7 +59,7 @@ public final class DropTypeStatement extends AlterSchemaStatement
     // TODO: expand types into tuples in all dropped columns of all tables
     public Keyspaces apply(Keyspaces schema)
     {
-        ByteBuffer name = bytes(typeName);
+        Value name = Values.valueOf(typeName);
 
         KeyspaceMetadata keyspace = schema.getNullable(keyspaceName);
 

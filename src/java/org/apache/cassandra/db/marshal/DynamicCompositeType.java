@@ -280,7 +280,7 @@ public class DynamicCompositeType extends AbstractCompositeType
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return any(aliases.values(), t -> t.referencesUserType(name));
     }

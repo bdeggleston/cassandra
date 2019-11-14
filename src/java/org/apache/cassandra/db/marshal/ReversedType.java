@@ -28,6 +28,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.values.Value;
 
 public class ReversedType<T> extends AbstractType<T>
 {
@@ -123,7 +124,7 @@ public class ReversedType<T> extends AbstractType<T>
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return baseType.referencesUserType(name);
     }

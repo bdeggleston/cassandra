@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.cql3.functions;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import com.google.common.base.Objects;
@@ -26,6 +25,7 @@ import org.apache.cassandra.cql3.AssignmentTestable;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.utils.values.Value;
 
 import org.apache.commons.lang3.text.StrBuilder;
 
@@ -87,7 +87,7 @@ public abstract class AbstractFunction implements Function
         functions.add(this);
     }
 
-    public boolean referencesUserType(ByteBuffer name)
+    public boolean referencesUserType(Value name)
     {
         return false;
     }

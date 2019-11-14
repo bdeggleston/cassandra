@@ -274,7 +274,7 @@ public class BTreeRow extends AbstractRow
 
     public Row filter(ColumnFilter filter, DeletionTime activeDeletion, boolean setActiveDeletionToRow, TableMetadata metadata)
     {
-        Map<ByteBuffer, DroppedColumn> droppedColumns = metadata.droppedColumns;
+        Map<Value, DroppedColumn> droppedColumns = metadata.droppedColumns;
 
         boolean mayFilterColumns = !filter.fetchesAllColumns(isStatic());
         boolean mayHaveShadowed = activeDeletion.supersedes(deletion.time());
@@ -304,7 +304,7 @@ public class BTreeRow extends AbstractRow
             if (!inclusionTester.test(column))
                 return null;
 
-            DroppedColumn dropped = droppedColumns.get(column.name.bytes);
+            DroppedColumn dropped = droppedColumns.get(column.name.value);
             if (column.isComplex())
                 return ((ComplexColumnData) cd).filter(filter, mayHaveShadowed ? activeDeletion : DeletionTime.LIVE, dropped, rowLiveness);
 
@@ -517,7 +517,7 @@ public class BTreeRow extends AbstractRow
 
     private class CellInLegacyOrderIterator extends AbstractIterator<Cell>
     {
-        private final Comparator<ByteBuffer> comparator;
+        private final Comparator<Value> comparator;
         private final boolean reversed;
         private final int firstComplexIdx;
         private int simpleIdx;
@@ -527,7 +527,7 @@ public class BTreeRow extends AbstractRow
 
         private CellInLegacyOrderIterator(TableMetadata metadata, boolean reversed)
         {
-            AbstractType<?> nameComparator = metadata.columnDefinitionNameComparator(isStatic() ? ColumnMetadata.Kind.STATIC : ColumnMetadata.Kind.REGULAR);
+            Comparator<Value> nameComparator = metadata.columnDefinitionNameComparator(isStatic() ? ColumnMetadata.Kind.STATIC : ColumnMetadata.Kind.REGULAR);
             this.comparator = reversed ? Collections.reverseOrder(nameComparator) : nameComparator;
             this.reversed = reversed;
 
@@ -594,7 +594,7 @@ public class BTreeRow extends AbstractRow
                     if (complexIdx >= data.length)
                         return (Cell)data[getSimpleIdxAndIncrement()];
 
-                    if (comparator.compare(((ColumnData) data[getSimpleIdx()]).column().name.bytes, ((ColumnData) data[getComplexIdx()]).column().name.bytes) < 0)
+                    if (comparator.compare(((ColumnData) data[getSimpleIdx()]).column().name.value, ((ColumnData) data[getComplexIdx()]).column().name.value) < 0)
                         return (Cell)data[getSimpleIdxAndIncrement()];
                     else
                         complexCells = makeComplexIterator(data[getComplexIdxAndIncrement()]);

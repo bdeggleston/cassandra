@@ -17,13 +17,13 @@
  */
 package org.apache.cassandra.cql3.functions;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.cassandra.cql3.AssignmentTestable;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.schema.Difference;
+import org.apache.cassandra.utils.values.Value;
 import org.github.jamm.Unmetered;
 
 @Unmetered
@@ -49,7 +49,7 @@ public interface Function extends AssignmentTestable
 
     public void addFunctionsTo(List<Function> functions);
 
-    public boolean referencesUserType(ByteBuffer name);
+    public boolean referencesUserType(Value name);
 
     /**
      * Returns the name of the function to use within a ResultSet.

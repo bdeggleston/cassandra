@@ -31,6 +31,8 @@ import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 /**
  * Parse a string containing an Type definition.
@@ -561,11 +563,11 @@ public class TypeParser
         return sb.toString();
     }
 
-    public static String stringifyUserTypeParameters(String keysace, ByteBuffer typeName, List<FieldIdentifier> fields,
+    public static String stringifyUserTypeParameters(String keysace, Value typeName, List<FieldIdentifier> fields,
                                                      List<AbstractType<?>> columnTypes, boolean ignoreFreezing)
     {
         StringBuilder sb = new StringBuilder();
-        sb.append('(').append(keysace).append(",").append(ByteBufferUtil.bytesToHex(typeName));
+        sb.append('(').append(keysace).append(",").append(Values.toHex(typeName));
 
         for (int i = 0; i < fields.size(); i++)
         {

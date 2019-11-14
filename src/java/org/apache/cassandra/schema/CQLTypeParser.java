@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
@@ -46,7 +47,7 @@ public final class CQLTypeParser
             return CQL3Type.Native.valueOf(unparsed.toUpperCase()).getType();
 
         // special-case top-level UDTs
-        UserType udt = userTypes.getNullable(bytes(lowercased));
+        UserType udt = userTypes.getNullable(Values.valueOf(lowercased));
         if (udt != null)
             return udt;
 
