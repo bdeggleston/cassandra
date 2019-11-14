@@ -30,13 +30,15 @@ import com.google.common.base.Preconditions;
 import io.netty.buffer.ByteBuf;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 
 public class ByteBufferValue implements Value
 {
-    private static final ByteBufferValue EMPTY = new ByteBufferValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+    static final ByteBufferValue EMPTY = new ByteBufferValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+    static final ByteBufferValue UNSET = new ByteBufferValue(ByteBufferUtil.UNSET_BYTE_BUFFER);
     private static final long EMPTY_SIZE = ObjectSizes.measure(EMPTY);
     private final ByteBuffer value;
 

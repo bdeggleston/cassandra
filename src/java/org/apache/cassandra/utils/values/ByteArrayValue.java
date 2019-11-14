@@ -37,7 +37,8 @@ import org.apache.cassandra.utils.memory.MemoryUtil;
 
 public class ByteArrayValue implements Value
 {
-    private static final ByteArrayValue EMPTY = new ByteArrayValue(ByteArrayUtil.EMPTY_BYTE_ARRAY);
+    static final ByteArrayValue EMPTY = new ByteArrayValue(ByteArrayUtil.EMPTY_BYTE_ARRAY);
+    static final ByteArrayValue UNSET = new ByteArrayValue(ByteArrayUtil.UNSET_BYTE_ARRAY);
     private static final long EMPTY_SIZE = ObjectSizes.measure(EMPTY);
     private final byte[] value;
 

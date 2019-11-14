@@ -110,7 +110,7 @@ public class ColumnIdentifier implements IMeasurableMemory, Comparable<ColumnIde
     public ColumnIdentifier(String rawText, boolean keepCase)
     {
         this.text = keepCase ? rawText : rawText.toLowerCase(Locale.US);
-        this.value = Values.valueOf(rawText);
+        this.value = Values.valueOf(this.text);
         this.prefixComparison = prefixComparison(this.value);
         this.interned = false;
     }

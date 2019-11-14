@@ -32,12 +32,12 @@ public class ByteArrayUtil
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final byte[] UNSET_BYTE_ARRAY = new byte[]{};
 
-    public static int compare(byte[] o1, byte[] o2)
+    public static int compareUnsigned(byte[] o1, byte[] o2)
     {
-        return FastByteOperations.compareUnsigned(o1, 0, o2.length, o2, 0, o2.length);
+        return FastByteOperations.compareUnsigned(o1, 0, o1.length, o2, 0, o2.length);
     }
 
-    public static int compare(byte[] o1, int off1, byte[] o2, int off2, int len)
+    public static int compareUnsigned(byte[] o1, int off1, byte[] o2, int off2, int len)
     {
         return FastByteOperations.compareUnsigned(o1, off1, len, o2, off2, len);
     }

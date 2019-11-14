@@ -37,8 +37,8 @@ import org.apache.cassandra.utils.UUIDGen;
 
 public class Values
 {
-    public static final Value EMPTY = new ByteArrayValue(ByteArrayUtil.EMPTY_BYTE_ARRAY);
-    public static final Value UNSET = new ByteArrayValue(ByteArrayUtil.UNSET_BYTE_ARRAY);
+    public static final Value EMPTY = ByteArrayValue.EMPTY;
+    public static final Value UNSET = ByteArrayValue.UNSET;
 
     private static final Value.Factory FACTORY = ByteArrayValue.FACTORY;
 
@@ -50,7 +50,7 @@ public class Values
         }
         else
         {
-            return ByteArrayUtil.compare(left.array(), right.array());
+            return ByteArrayUtil.compareUnsigned(left.array(), right.array());
         }
     }
 
@@ -237,7 +237,7 @@ public class Values
         }
         else
         {
-            return ByteArrayUtil.compare(v1.array(), offset1, v2.array(), offset2, len);
+            return ByteArrayUtil.compareUnsigned(v1.array(), offset1, v2.array(), offset2, len);
         }
     }
 

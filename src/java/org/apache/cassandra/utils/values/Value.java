@@ -55,7 +55,7 @@ public interface Value extends Comparable<Value>
         }
         else
         {
-            return ByteArrayUtil.compare(this.array(), that.array());
+            return ByteArrayUtil.compareUnsigned(this.array(), that.array());
         }
     }
 
