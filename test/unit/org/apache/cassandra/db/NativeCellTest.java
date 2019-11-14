@@ -39,6 +39,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.HeapAllocator;
 import org.apache.cassandra.utils.memory.NativeAllocator;
 import org.apache.cassandra.utils.memory.NativePool;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 public class NativeCellTest
@@ -74,7 +75,7 @@ public class NativeCellTest
     private static Clustering rndclustering()
     {
         int count = 1 + rand.nextInt(100);
-        ByteBuffer[] values = new ByteBuffer[count];
+        Value[] values = new Value[count];
         int size = rand.nextInt(65535);
         for (int i = 0 ; i < count ; i++)
         {
@@ -85,7 +86,7 @@ public class NativeCellTest
 
             byte[] bytes = new byte[nextSize];
             rand.nextBytes(bytes);
-            values[i] = ByteBuffer.wrap(bytes);
+            values[i] = Values.valueOf(bytes);
             size -= nextSize;
         }
         return Clustering.make(values);

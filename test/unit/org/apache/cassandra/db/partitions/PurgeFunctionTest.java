@@ -35,6 +35,7 @@ import org.apache.cassandra.db.transform.Transformation;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -237,10 +238,10 @@ public final class PurgeFunctionTest
                                             int localDeletionTime,
                                             Object clusteringValue)
     {
-        ByteBuffer[] clusteringByteBuffers =
-            new ByteBuffer[] { decompose(metadata.clusteringColumns().get(0).type, clusteringValue) };
+        Value[] clusteringValues =
+            new Value[] { decompose(metadata.clusteringColumns().get(0).type, clusteringValue) };
 
-        return new RangeTombstoneBoundMarker(ClusteringBound.create(kind, clusteringByteBuffers),
+        return new RangeTombstoneBoundMarker(ClusteringBound.create(kind, clusteringValues),
                                              new DeletionTime(timestamp, localDeletionTime));
     }
 
@@ -251,18 +252,18 @@ public final class PurgeFunctionTest
                                                   int openDeletionTime,
                                                   Object clusteringValue)
     {
-        ByteBuffer[] clusteringByteBuffers =
-            new ByteBuffer[] { decompose(metadata.clusteringColumns().get(0).type, clusteringValue) };
+        Value[] clusteringValues =
+            new Value[] { decompose(metadata.clusteringColumns().get(0).type, clusteringValue) };
 
-        return new RangeTombstoneBoundaryMarker(ClusteringBoundary.create(kind, clusteringByteBuffers),
+        return new RangeTombstoneBoundaryMarker(ClusteringBoundary.create(kind, clusteringValues),
                                                 new DeletionTime(closeTimestamp, closeLocalDeletionTime),
                                                 new DeletionTime(openTimestamp, openDeletionTime));
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
+    private static <T> Value decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decomposeBuffer(value);
+        return ((AbstractType<T>) type).decomposeValue(value);
     }
 
     private void assertIteratorsEqual(UnfilteredPartitionIterator iter1, UnfilteredPartitionIterator iter2)

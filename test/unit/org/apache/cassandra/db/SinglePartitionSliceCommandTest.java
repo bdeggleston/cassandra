@@ -23,7 +23,6 @@ package org.apache.cassandra.db;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -74,6 +73,7 @@ import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.btree.BTreeSet;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 public class SinglePartitionSliceCommandTest
@@ -321,7 +321,7 @@ public class SinglePartitionSliceCommandTest
         DecoratedKey key = metadata.partitioner.decorateKey(ByteBufferUtil.bytes("k1"));
 
         ColumnFilter columnFilter = ColumnFilter.selection(RegularAndStaticColumns.of(s));
-        Slice slice = Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(ByteBufferUtil.bytes("i1")));
+        Slice slice = Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(Values.valueOf("i1")));
         ClusteringIndexSliceFilter sliceFilter = new ClusteringIndexSliceFilter(Slices.with(metadata.comparator, slice), false);
         ReadCommand cmd = SinglePartitionReadCommand.create(metadata,
                                                             FBUtilities.nowInSeconds(),
@@ -371,9 +371,9 @@ public class SinglePartitionSliceCommandTest
         Assert.assertTrue(((RangeTombstoneMarker) unfiltereds.get(1)).isClose(false));
     }
 
-    private static ByteBuffer bb(int v)
+    private static Value v(int i)
     {
-        return Int32Type.instance.decomposeBuffer(v);
+        return Int32Type.instance.decomposeValue(i);
     }
 
     /**
@@ -397,11 +397,11 @@ public class SinglePartitionSliceCommandTest
         cfs.truncateBlocking();
 
         long nowMillis = System.currentTimeMillis();
-        Slice slice = Slice.make(Clustering.make(bb(2), bb(3)), Clustering.make(bb(10), bb(10)));
+        Slice slice = Slice.make(Clustering.make(v(2), v(3)), Clustering.make(v(10), v(10)));
         RangeTombstone rt = new RangeTombstone(slice, new DeletionTime(TimeUnit.MILLISECONDS.toMicros(nowMillis),
                                                                        Ints.checkedCast(TimeUnit.MILLISECONDS.toSeconds(nowMillis))));
 
-        PartitionUpdate.Builder builder = new PartitionUpdate.Builder(metadata, bb(100), metadata.regularAndStaticColumns(), 1);
+        PartitionUpdate.Builder builder = new PartitionUpdate.Builder(metadata, v(100).buffer(), metadata.regularAndStaticColumns(), 1);
         builder.add(rt);
         new Mutation(builder.build()).apply();
 

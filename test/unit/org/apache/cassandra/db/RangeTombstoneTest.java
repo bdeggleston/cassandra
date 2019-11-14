@@ -49,6 +49,8 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.SchemaLoader.standardCFMD;
 import static org.junit.Assert.assertEquals;
@@ -622,13 +624,13 @@ public class RangeTombstoneTest
         assertEquals(1, index.rowsUpdated.size());
     }
 
-    private static ByteBuffer bb(int i)
+    private static Value bb(int i)
     {
-        return ByteBufferUtil.bytes(i);
+        return Values.valueOf(i);
     }
 
-    private static int i(ByteBuffer bb)
+    private static int i(Value value)
     {
-        return ByteBufferUtil.toInt(bb);
+        return value.getInt(0);
     }
 }

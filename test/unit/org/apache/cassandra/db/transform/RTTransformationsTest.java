@@ -36,6 +36,7 @@ import org.apache.cassandra.db.transform.RTBoundValidator.Stage;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.db.transform.RTBoundCloser.close;
 import static org.junit.Assert.assertEquals;
@@ -371,37 +372,37 @@ public final class RTTransformationsTest
 
     private RangeTombstoneBoundMarker bound(ClusteringPrefix.Kind kind, long timestamp, Object... clusteringValues)
     {
-        ByteBuffer[] clusteringByteBuffers = new ByteBuffer[clusteringValues.length];
+        Value[] values = new Value[clusteringValues.length];
         for (int i = 0; i < clusteringValues.length; i++)
-            clusteringByteBuffers[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
+            values[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
 
-        return new RangeTombstoneBoundMarker(ClusteringBound.create(kind, clusteringByteBuffers), new DeletionTime(timestamp, nowInSec));
+        return new RangeTombstoneBoundMarker(ClusteringBound.create(kind, values), new DeletionTime(timestamp, nowInSec));
     }
 
     private RangeTombstoneBoundaryMarker boundary(ClusteringPrefix.Kind kind, long closeTimestamp, long openTimestamp, Object... clusteringValues)
     {
-        ByteBuffer[] clusteringByteBuffers = new ByteBuffer[clusteringValues.length];
+        Value[] values = new Value[clusteringValues.length];
         for (int i = 0; i < clusteringValues.length; i++)
-            clusteringByteBuffers[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
+            values[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
 
-        return new RangeTombstoneBoundaryMarker(ClusteringBoundary.create(kind, clusteringByteBuffers),
+        return new RangeTombstoneBoundaryMarker(ClusteringBoundary.create(kind, values),
                                                 new DeletionTime(closeTimestamp, nowInSec),
                                                 new DeletionTime(openTimestamp, nowInSec));
     }
 
     private Row row(long timestamp, Object... clusteringValues)
     {
-        ByteBuffer[] clusteringByteBuffers = new ByteBuffer[clusteringValues.length];
+        Value[] values = new Value[clusteringValues.length];
         for (int i = 0; i < clusteringValues.length; i++)
-            clusteringByteBuffers[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
+            values[i] = decompose(metadata.clusteringColumns().get(i).type, clusteringValues[i]);
 
-        return BTreeRow.noCellLiveRow(Clustering.make(clusteringByteBuffers), LivenessInfo.create(timestamp, nowInSec));
+        return BTreeRow.noCellLiveRow(Clustering.make(values), LivenessInfo.create(timestamp, nowInSec));
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> ByteBuffer decompose(AbstractType<?> type, T value)
+    private static <T> Value decompose(AbstractType<?> type, T value)
     {
-        return ((AbstractType<T>) type).decomposeBuffer(value);
+        return ((AbstractType<T>) type).decomposeValue(value);
     }
 
     private UnfilteredPartitionIterator iter(boolean isReversedOrder, Unfiltered... unfiltereds)

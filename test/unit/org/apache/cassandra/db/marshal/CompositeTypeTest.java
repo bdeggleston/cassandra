@@ -39,6 +39,7 @@ import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.values.Value;
 
 public class CompositeTypeTest
 {
@@ -264,11 +265,11 @@ public class CompositeTypeTest
 
         for (String[] input : inputs)
         {
-            ByteBuffer[] bbs = new ByteBuffer[input.length];
+            Value[] values = new Value[input.length];
             for (int i = 0; i < input.length; i++)
-                bbs[i] = UTF8Type.instance.fromString(input[i]);
+                values[i] = UTF8Type.instance.valueFromString(input[i]);
 
-            ByteBuffer value = comp.fromString(comp.getString(CompositeType.build(bbs)));
+            ByteBuffer value = comp.fromString(comp.getString(CompositeType.build(values)));
             ByteBuffer[] splitted = comp.split(value);
             for (int i = 0; i < splitted.length; i++)
                 assertEquals(input[i], UTF8Type.instance.getString(splitted[i]));

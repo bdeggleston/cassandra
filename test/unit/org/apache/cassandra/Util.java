@@ -733,7 +733,7 @@ public class Util
         ByteBuffer pk = ByteBufferUtil.bytes("someKey");
 
         ColumnMetadata def = metadata.getColumn(new ColumnIdentifier("myCol", false));
-        Clustering c = Clustering.make(ByteBufferUtil.bytes("c1"), ByteBufferUtil.bytes(42));
+        Clustering c = Clustering.make(Values.valueOf("c1"), Values.valueOf(42));
         Row row = BTreeRow.singleCellRow(c, BufferCell.live(def, 0, Values.EMPTY));
         PagingState.RowMark mark = PagingState.RowMark.create(metadata, row, protocolVersion);
         return new PagingState(pk, mark, 10, remainingInPartition);

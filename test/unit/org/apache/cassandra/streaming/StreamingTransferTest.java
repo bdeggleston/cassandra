@@ -213,7 +213,7 @@ public class StreamingTransferTest
             assert !Util.getAll(Util.cmd(cfs, key).build()).isEmpty();
             ImmutableBTreePartition partition = partitions.get(i);
             assert ByteBufferUtil.compareUnsigned(partition.partitionKey().getKey(), ByteBufferUtil.bytes(key)) == 0;
-            assert ByteBufferUtil.compareUnsigned(partition.iterator().next().clustering().get(0), ByteBufferUtil.bytes(col)) == 0;
+            assert Values.compareUnsigned(partition.iterator().next().clustering().get(0), Values.valueOf(col)) == 0;
         }
 
         // and that the max timestamp for the file was rediscovered

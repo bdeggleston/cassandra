@@ -41,6 +41,7 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 import org.junit.Assert;
@@ -89,7 +90,7 @@ public class SerializationHeaderTest
         File dir = Files.createTempDir();
         try
         {
-            BiFunction<TableMetadata, Function<ByteBuffer, Clustering>, Callable<Descriptor>> writer = (schema, clusteringFunction) -> () -> {
+            BiFunction<TableMetadata, Function<Value, Clustering>, Callable<Descriptor>> writer = (schema, clusteringFunction) -> () -> {
                 Descriptor descriptor = new Descriptor(BigFormat.latestVersion, dir, schema.keyspace, schema.name, generation.incrementAndGet(), SSTableFormat.Type.BIG);
 
                 SerializationHeader header = SerializationHeader.makeWithoutStats(schema);
@@ -98,11 +99,11 @@ public class SerializationHeaderTest
                 {
                     ColumnMetadata cd = schema.getColumn(v);
                     for (int i = 0 ; i < 5 ; ++i) {
-                        final ByteBuffer value = Int32Type.instance.decomposeBuffer(i);
-                        Cell cell = BufferCell.live(cd, 1L, Values.valueOf(value));
+                        final Value value = Int32Type.instance.decomposeValue(i);
+                        Cell cell = BufferCell.live(cd, 1L, value);
                         Clustering clustering = clusteringFunction.apply(value);
                         Row row = BTreeRow.singleCellRow(clustering, cell);
-                        sstableWriter.append(PartitionUpdate.singleRowUpdate(schema, value, row).unfilteredIterator());
+                        sstableWriter.append(PartitionUpdate.singleRowUpdate(schema, value.buffer(), row).unfilteredIterator());
                     }
                     sstableWriter.finish(false);
                     txn.finish();

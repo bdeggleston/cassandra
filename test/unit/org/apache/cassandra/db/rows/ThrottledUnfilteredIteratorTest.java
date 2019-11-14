@@ -21,7 +21,6 @@ package org.apache.cassandra.db.rows;
 import static org.apache.cassandra.SchemaLoader.standardCFMD;
 import static org.junit.Assert.*;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -66,6 +65,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 public class ThrottledUnfilteredIteratorTest extends CQLTester
@@ -320,13 +320,13 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
                 }
                 else
                 {
-                    ByteBuffer[] byteBuffers = expected.clustering().getRawValues();
+                    Value[] values = expected.clustering().getRawValues();
                     RangeTombstoneBoundMarker closeMarker = RangeTombstoneBoundMarker.exclusiveClose(isRevered,
-                                                                                                     byteBuffers,
+                                                                                                     values,
                                                                                                      openDeletionTime);
 
                     RangeTombstoneBoundMarker nextOpenMarker = RangeTombstoneBoundMarker.inclusiveOpen(isRevered,
-                                                                                                       byteBuffers,
+                                                                                                       values,
                                                                                                        openDeletionTime);
                     assertEquals(closeMarker, data);
                     assertEquals(nextOpenMarker, output.get(index + 1));
@@ -688,9 +688,9 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
             int nowInSec = FBUtilities.nowInSeconds();
 
             for (int i : live)
-                assertTrue("Row " + i + " should be live", partition.getRow(Clustering.make(ByteBufferUtil.bytes((i)))).hasLiveData(nowInSec, cfs.metadata().enforceStrictLiveness()));
+                assertTrue("Row " + i + " should be live", partition.getRow(Clustering.make(Values.valueOf((i)))).hasLiveData(nowInSec, cfs.metadata().enforceStrictLiveness()));
             for (int i : dead)
-                assertFalse("Row " + i + " shouldn't be live", partition.getRow(Clustering.make(ByteBufferUtil.bytes((i)))).hasLiveData(nowInSec, cfs.metadata().enforceStrictLiveness()));
+                assertFalse("Row " + i + " shouldn't be live", partition.getRow(Clustering.make(Values.valueOf((i)))).hasLiveData(nowInSec, cfs.metadata().enforceStrictLiveness()));
         }
     }
 }

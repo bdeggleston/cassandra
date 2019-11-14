@@ -219,8 +219,8 @@ public class SSTableMetadataTest
         assertEquals(1, store.getLiveSSTables().size());
         for (SSTableReader sstable : store.getLiveSSTables())
         {
-            assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minClusteringValues.get(0)), "0col100");
-            assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxClusteringValues.get(0)), "7col149");
+            assertEquals(sstable.getSSTableMetadata().minClusteringValues.get(0).getString(0), "0col100");
+            assertEquals(sstable.getSSTableMetadata().maxClusteringValues.get(0).getString(0), "7col149");
         }
         String key = "row2";
 
@@ -238,8 +238,8 @@ public class SSTableMetadataTest
         assertEquals(1, store.getLiveSSTables().size());
         for (SSTableReader sstable : store.getLiveSSTables())
         {
-            assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minClusteringValues.get(0)), "0col100");
-            assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxClusteringValues.get(0)), "9col298");
+            assertEquals(sstable.getSSTableMetadata().minClusteringValues.get(0).getString(0), "0col100");
+            assertEquals(sstable.getSSTableMetadata().maxClusteringValues.get(0).getString(0), "9col298");
         }
     }
 

@@ -295,7 +295,7 @@ public class CounterCellTest
         BufferCell emptyCell = BufferCell.live(emptyColDef, 0, Values.EMPTY);
 
         Row.Builder builder = BTreeRow.unsortedBuilder();
-        builder.newRow(Clustering.make(AsciiSerializer.instance.serializeBuffer("test")));
+        builder.newRow(Clustering.make(AsciiSerializer.instance.serializeValue("test")));
         builder.addCell(emptyCell);
         Row row = builder.build();
 

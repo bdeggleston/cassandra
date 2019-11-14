@@ -149,7 +149,7 @@ public class SSTableLoaderTest
 
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
-        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
+        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(Values.valueOf("col1")))
                                                .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
                                                .value());
 
@@ -247,7 +247,7 @@ public class SSTableLoaderTest
 
         assertEquals(1, partitions.size());
         assertEquals("key1", AsciiType.instance.getString(partitions.get(0).partitionKey().getKey()));
-        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(ByteBufferUtil.bytes("col1")))
+        assertEquals(Values.valueOf("100"), partitions.get(0).getRow(Clustering.make(Values.valueOf("col1")))
                 .getCell(metadata.getColumn(ByteBufferUtil.bytes("val")))
                 .value());
 

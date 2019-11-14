@@ -514,7 +514,7 @@ public class OperationTest extends SchemaLoader
         ColumnMetadata height = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("height"));
         ColumnMetadata score = getColumn(CLUSTERING_BACKEND, UTF8Type.instance.decomposeBuffer("score"));
 
-        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("US"), Int32Type.instance.decomposeBuffer(27)),
+        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.valueFromString("US"), Int32Type.instance.decomposeValue(27)),
                                   buildCell(height, Int32Type.instance.decomposeValue(182), System.currentTimeMillis()),
                                   buildCell(score, DoubleType.instance.decomposeValue(1.0d), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING);
@@ -584,7 +584,7 @@ public class OperationTest extends SchemaLoader
         final ColumnMetadata sensorType = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("sensor_type"));
         final ColumnMetadata value = getColumn(STATIC_BACKEND, UTF8Type.instance.decomposeBuffer("value"));
 
-        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.fromString("date"), LongType.instance.decomposeBuffer(20160401L)),
+        Unfiltered row = buildRow(Clustering.make(UTF8Type.instance.valueFromString("date"), LongType.instance.decomposeValue(20160401L)),
                           buildCell(value, DoubleType.instance.decomposeValue(24.56), System.currentTimeMillis()));
         Row staticRow = buildRow(Clustering.STATIC_CLUSTERING,
                          buildCell(sensorType, UTF8Type.instance.decomposeValue("TEMPERATURE"), System.currentTimeMillis()));

@@ -45,6 +45,7 @@ import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
@@ -84,6 +85,18 @@ public class QueryPagerTest
                                                                + "v2 int, "
                                                                + "PRIMARY KEY(pk, ck))", KEYSPACE_CQL));
         addData();
+    }
+
+    private static String string(Value value)
+    {
+        try
+        {
+            return value.getString(0);
+        }
+        catch (CharacterCodingException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private static String string(ByteBuffer bb)

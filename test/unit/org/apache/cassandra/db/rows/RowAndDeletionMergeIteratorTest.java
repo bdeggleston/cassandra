@@ -46,6 +46,9 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+
 import static org.junit.Assert.*;
 
 public class RowAndDeletionMergeIteratorTest
@@ -234,7 +237,7 @@ public class RowAndDeletionMergeIteratorTest
     {
         assertEquals(Unfiltered.Kind.RANGE_TOMBSTONE_MARKER, unfiltered.kind());
         assertEquals(kind, unfiltered.clustering().kind());
-        assertEquals(bb(col1), unfiltered.clustering().get(0));
+        assertEquals(v(col1), unfiltered.clustering().get(0));
     }
 
     @Test
@@ -434,28 +437,28 @@ public class RowAndDeletionMergeIteratorTest
 
     private static RangeTombstone atLeast(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(v(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone atMost(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone lessThan(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.exclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.exclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone greaterThan(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(v(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone rt(int start, boolean startInclusive, int end, boolean endInclusive, long tstamp, int delTime)
     {
-        ClusteringBound startBound = startInclusive ? ClusteringBound.inclusiveStartOf(bb(start)) : ClusteringBound.exclusiveStartOf(bb(start));
-        ClusteringBound endBound = endInclusive ? ClusteringBound.inclusiveEndOf(bb(end)) : ClusteringBound.exclusiveEndOf(bb(end));
+        ClusteringBound startBound = startInclusive ? ClusteringBound.inclusiveStartOf(v(start)) : ClusteringBound.exclusiveStartOf(v(start));
+        ClusteringBound endBound = endInclusive ? ClusteringBound.inclusiveEndOf(v(end)) : ClusteringBound.exclusiveEndOf(v(end));
 
         return new RangeTombstone(Slice.make(startBound, endBound), new DeletionTime(tstamp, delTime));
     }
@@ -465,9 +468,9 @@ public class RowAndDeletionMergeIteratorTest
         return rt(start, true, end, true, tstamp, delTime);
     }
 
-    private static ByteBuffer bb(int i)
+    private static Value v(int i)
     {
-        return ByteBufferUtil.bytes(i);
+        return Values.valueOf(i);
     }
 
     private long toMillis(int timeInSeconds)

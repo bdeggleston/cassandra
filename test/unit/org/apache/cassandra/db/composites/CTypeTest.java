@@ -19,6 +19,9 @@ package org.apache.cassandra.db.composites;
 
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
+
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -30,42 +33,42 @@ public class CTypeTest
     {
         CompositeType baseType = CompositeType.getInstance(AsciiType.instance, UUIDType.instance, LongType.instance);
 
-        ByteBuffer a1 = CompositeType.build(
-                ByteBufferUtil.bytes("a"),
-                UUIDType.instance.fromString("00000000-0000-0000-0000-000000000000"),
-                ByteBufferUtil.bytes(1));
-        ByteBuffer a2 = CompositeType.build(
-                ByteBufferUtil.bytes("a"),
-                UUIDType.instance.fromString("00000000-0000-0000-0000-000000000000"),
-                ByteBufferUtil.bytes(100));
-        ByteBuffer b1 = CompositeType.build(
-                ByteBufferUtil.bytes("a"),
-                UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                ByteBufferUtil.bytes(1));
-        ByteBuffer b2 = CompositeType.build(
-                ByteBufferUtil.bytes("a"),
-                UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                ByteBufferUtil.bytes(100));
-        ByteBuffer c1 = CompositeType.build(
-                ByteBufferUtil.bytes("z"),
-                UUIDType.instance.fromString("00000000-0000-0000-0000-000000000000"),
-                ByteBufferUtil.bytes(1));
-        ByteBuffer c2 = CompositeType.build(
-                ByteBufferUtil.bytes("z"),
-                UUIDType.instance.fromString("00000000-0000-0000-0000-000000000000"),
-                ByteBufferUtil.bytes(100));
-        ByteBuffer d1 = CompositeType.build(
-                ByteBufferUtil.bytes("z"),
-                UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                ByteBufferUtil.bytes(1));
-        ByteBuffer d2 = CompositeType.build(
-                ByteBufferUtil.bytes("z"),
-                UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                ByteBufferUtil.bytes(100));
-        ByteBuffer z1 = CompositeType.build(
-                ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                ByteBufferUtil.bytes(100));
+        Value a1 = CompositeType.build(
+                Values.valueOf("a"),
+                UUIDType.instance.valueFromString("00000000-0000-0000-0000-000000000000"),
+                Values.valueOf(1));
+        Value a2 = CompositeType.build(
+                Values.valueOf("a"),
+                UUIDType.instance.valueFromString("00000000-0000-0000-0000-000000000000"),
+                Values.valueOf(100));
+        Value b1 = CompositeType.build(
+                Values.valueOf("a"),
+                UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                Values.valueOf(1));
+        Value b2 = CompositeType.build(
+                Values.valueOf("a"),
+                UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                Values.valueOf(100));
+        Value c1 = CompositeType.build(
+                Values.valueOf("z"),
+                UUIDType.instance.valueFromString("00000000-0000-0000-0000-000000000000"),
+                Values.valueOf(1));
+        Value c2 = CompositeType.build(
+                Values.valueOf("z"),
+                UUIDType.instance.valueFromString("00000000-0000-0000-0000-000000000000"),
+                Values.valueOf(100));
+        Value d1 = CompositeType.build(
+                Values.valueOf("z"),
+                UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                Values.valueOf(1));
+        Value d2 = CompositeType.build(
+                Values.valueOf("z"),
+                UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                Values.valueOf(100));
+        Value z1 = CompositeType.build(
+                Values.EMPTY,
+                UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                Values.valueOf(100));
 
         assert baseType.compare(a1,a2) < 0;
         assert baseType.compare(a2,b1) < 0;
@@ -105,8 +108,8 @@ public class CTypeTest
     public void testSimpleType2()
     {
         CompositeType baseType = CompositeType.getInstance(UUIDType.instance);
-        ByteBuffer a = CompositeType.build(UUIDType.instance.fromString("00000000-0000-0000-0000-000000000000"));
-        ByteBuffer z = CompositeType.build(UUIDType.instance.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        Value a = CompositeType.build(UUIDType.instance.valueFromString("00000000-0000-0000-0000-000000000000"));
+        Value z = CompositeType.build(UUIDType.instance.valueFromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
 
         assert baseType.compare(a,z) < 0;
         assert baseType.compare(z,a) > 0;
@@ -118,8 +121,8 @@ public class CTypeTest
     public void testSimpleType1()
     {
         CompositeType baseType = CompositeType.getInstance(BytesType.instance);
-        ByteBuffer a = CompositeType.build(ByteBufferUtil.bytes("a"));
-        ByteBuffer z = CompositeType.build(ByteBufferUtil.bytes("z"));
+        Value a = CompositeType.build(Values.valueOf("a"));
+        Value z = CompositeType.build(Values.valueOf("z"));
 
         assert baseType.compare(a,z) < 0;
         assert baseType.compare(z,a) > 0;

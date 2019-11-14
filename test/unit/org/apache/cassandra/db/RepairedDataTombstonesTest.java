@@ -256,7 +256,7 @@ public class RepairedDataTombstonesTest extends CQLTester
                             for (int i = 0; i < row.clustering().size(); i++)
                             {
                                 foundRows++;
-                                int val = ByteBufferUtil.toInt(row.clustering().get(i));
+                                int val = row.clustering().get(i).getInt(0);
                                 assertTrue("val=" + val, val >= minVal && val < maxVal);
                             }
                         }
@@ -296,7 +296,7 @@ public class RepairedDataTombstonesTest extends CQLTester
                         for (int i = 0; i < row.clustering().size(); i++)
                         {
                             foundRows++;
-                            int val = ByteBufferUtil.toInt(row.clustering().get(i));
+                            int val = row.clustering().get(i).getInt(0);
                             assertTrue("val=" + val, val >= minVal && val < maxVal);
                         }
                     }

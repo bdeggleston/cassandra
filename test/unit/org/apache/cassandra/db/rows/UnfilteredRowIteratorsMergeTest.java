@@ -38,6 +38,7 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.rows.Unfiltered.Kind;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 
 public class UnfilteredRowIteratorsMergeTest
 {
@@ -378,12 +379,12 @@ public class UnfilteredRowIteratorsMergeTest
 
     private static ClusteringBound boundFor(int pos, boolean start, boolean inclusive)
     {
-        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decomposeBuffer(pos)});
+        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new Value[] { Int32Type.instance.decomposeValue(pos)});
     }
 
     private static Clustering clusteringFor(int i)
     {
-        return Clustering.make(Int32Type.instance.decomposeBuffer(i));
+        return Clustering.make(Int32Type.instance.decomposeValue(i));
     }
 
     static Row emptyRowAt(int pos, IntUnaryOperator timeGenerator)
@@ -507,7 +508,7 @@ public class UnfilteredRowIteratorsMergeTest
     private RangeTombstoneMarker marker(int pos, int delTime, boolean isStart, boolean inclusive)
     {
         return new RangeTombstoneBoundMarker(ClusteringBound.create(ClusteringBound.boundKind(isStart, inclusive),
-                                                                    new ByteBuffer[] {clusteringFor(pos).get(0)}),
+                                                                    new Value[] {clusteringFor(pos).get(0)}),
                                              new DeletionTime(delTime, delTime));
     }
 }

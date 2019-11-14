@@ -30,6 +30,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.rows.Unfiltered.Kind;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.btree.BTree;
+import org.apache.cassandra.utils.values.Value;
 
 public class UnfilteredRowsGenerator
 {
@@ -236,12 +237,12 @@ public class UnfilteredRowsGenerator
 
     static Clustering clusteringFor(int i)
     {
-        return Clustering.make(Int32Type.instance.decomposeBuffer(i));
+        return Clustering.make(Int32Type.instance.decomposeValue(i));
     }
 
     static ClusteringBound boundFor(int pos, boolean start, boolean inclusive)
     {
-        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decomposeBuffer(pos)});
+        return ClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new Value[] { Int32Type.instance.decomposeValue(pos)});
     }
 
     static void attachBoundaries(List<Unfiltered> content)
@@ -285,7 +286,7 @@ public class UnfilteredRowsGenerator
     private static RangeTombstoneMarker marker(int pos, int delTime, boolean isStart, boolean inclusive)
     {
         return new RangeTombstoneBoundMarker(ClusteringBound.create(ClusteringBound.boundKind(isStart, inclusive),
-                                                                    new ByteBuffer[] {clusteringFor(pos).get(0)}),
+                                                                    new Value[] {clusteringFor(pos).get(0)}),
                                              new DeletionTime(delTime, delTime));
     }
 

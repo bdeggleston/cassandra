@@ -1736,7 +1736,7 @@ public class ClusteringColumnRestrictionsTest
             assertTrue(String.format("the element %s of the bound is not the expected one: expected %s but was %s",
                                      i,
                                      ByteBufferUtil.toInt(element),
-                                     ByteBufferUtil.toInt(bound.get(i))),
+                                     bound.get(i).getInt(0)),
                        element.equals(bound.get(i)));
         }
     }

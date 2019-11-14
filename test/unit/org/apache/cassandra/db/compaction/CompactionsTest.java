@@ -357,8 +357,8 @@ public class CompactionsTest
         {
             RowUpdateBuilder deletedRowUpdateBuilder = new RowUpdateBuilder(table, 1, Util.dk(Integer.toString(dk)));
             deletedRowUpdateBuilder.clustering("01").add("val", "a"); //Range tombstone covers this (timestamp 2 > 1)
-            Clustering startClustering = Clustering.make(ByteBufferUtil.bytes("0"));
-            Clustering endClustering = Clustering.make(ByteBufferUtil.bytes("b"));
+            Clustering startClustering = Clustering.make(Values.valueOf("0"));
+            Clustering endClustering = Clustering.make(Values.valueOf("b"));
             deletedRowUpdateBuilder.addRangeTombstone(new RangeTombstone(Slice.make(startClustering, endClustering), new DeletionTime(2, (int) (System.currentTimeMillis() / 1000))));
             deletedRowUpdateBuilder.build().applyUnsafe();
 

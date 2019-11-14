@@ -29,6 +29,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.ReversedType;
+import org.apache.cassandra.utils.values.Value;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -159,19 +160,19 @@ public class GroupMakerTest
 
     private static Clustering clustering(int... components)
     {
-        return Clustering.make(toByteBufferArray(components));
+        return Clustering.make(toValueArray(components));
     }
 
-    private static ByteBuffer[] toByteBufferArray(int[] values)
+    private static Value[] toValueArray(int[] values)
     {
-        ByteBuffer[] buffers = new ByteBuffer[values.length];
+        Value[] out = new Value[values.length];
 
         for (int i = 0; i < values.length; i++)
         {
-            buffers[i] = Int32Type.instance.decomposeBuffer(values[i]);
+            out[i] = Int32Type.instance.decomposeValue(values[i]);
         }
 
-        return buffers;
+        return out;
     }
 
     private static ClusteringComparator newComparator(boolean... reversed)

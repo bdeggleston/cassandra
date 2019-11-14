@@ -29,6 +29,8 @@ import org.junit.Test;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.db.ClusteringPrefix.Kind.*;
 import static org.junit.Assert.*;
@@ -346,19 +348,19 @@ public class SliceTest
 
     private static ClusteringBound makeBound(ClusteringPrefix.Kind kind, Integer... components)
     {
-        ByteBuffer[] values = new ByteBuffer[components.length];
+        Value[] values = new Value[components.length];
         for (int i = 0; i < components.length; i++)
         {
-            values[i] = ByteBufferUtil.bytes(components[i]);
+            values[i] = Values.valueOf(components[i]);
         }
         return ClusteringBound.create(kind, values);
     }
 
-    private static List<ByteBuffer> columnNames(Integer ... components)
+    private static List<Value> columnNames(Integer ... components)
     {
-        List<ByteBuffer> names = new ArrayList<>(components.length);
+        List<Value> names = new ArrayList<>(components.length);
         for (int component : components)
-            names.add(ByteBufferUtil.bytes(component));
+            names.add(Values.valueOf(component));
         return names;
     }
 

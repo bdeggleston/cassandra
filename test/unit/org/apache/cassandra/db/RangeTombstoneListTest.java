@@ -18,7 +18,6 @@
 */
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -30,6 +29,8 @@ import static org.junit.Assert.*;
 
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 public class RangeTombstoneListTest
 {
@@ -605,12 +606,12 @@ public class RangeTombstoneListTest
 
     private static Clustering clustering(int i)
     {
-        return Clustering.make(bb(i));
+        return Clustering.make(v(i));
     }
 
-    private static ByteBuffer bb(int i)
+    private static Value v(int i)
     {
-        return ByteBufferUtil.bytes(i);
+        return Values.valueOf(i);
     }
 
     private static RangeTombstone rt(int start, int end, long tstamp)
@@ -625,7 +626,7 @@ public class RangeTombstoneListTest
 
     private static RangeTombstone rt(int start, int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(bb(start)), ClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(v(start)), ClusteringBound.inclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone rtei(int start, int end, long tstamp)
@@ -635,7 +636,7 @@ public class RangeTombstoneListTest
 
     private static RangeTombstone rtei(int start, int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(bb(start)), ClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(v(start)), ClusteringBound.inclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone rtie(int start, int end, long tstamp)
@@ -645,26 +646,26 @@ public class RangeTombstoneListTest
 
     private static RangeTombstone rtie(int start, int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(bb(start)), ClusteringBound.exclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(v(start)), ClusteringBound.exclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone atLeast(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.inclusiveStartOf(v(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone atMost(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone lessThan(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.exclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, ClusteringBound.exclusiveEndOf(v(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone greaterThan(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(ClusteringBound.exclusiveStartOf(v(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 }

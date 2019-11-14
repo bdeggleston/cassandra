@@ -35,6 +35,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.metrics.ClearableHistogram;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.values.Value;
 import org.apache.cassandra.utils.values.Values;
 
 import org.junit.Test;
@@ -152,8 +153,8 @@ public class KeyspaceTest extends CQLTester
 
     private static void assertRowsInSlice(ColumnFamilyStore cfs, String key, int sliceStart, int sliceEnd, int limit, boolean reversed, String columnValuePrefix)
     {
-        Clustering startClustering = Clustering.make(ByteBufferUtil.bytes(sliceStart));
-        Clustering endClustering = Clustering.make(ByteBufferUtil.bytes(sliceEnd));
+        Clustering startClustering = Clustering.make(Values.valueOf(sliceStart));
+        Clustering endClustering = Clustering.make(Values.valueOf(sliceEnd));
         Slices slices = Slices.with(cfs.getComparator(), Slice.make(startClustering, endClustering));
         ClusteringIndexSliceFilter filter = new ClusteringIndexSliceFilter(slices, reversed);
         SinglePartitionReadCommand command = singlePartitionSlice(cfs, key, filter, limit);
@@ -275,10 +276,10 @@ public class KeyspaceTest extends CQLTester
     {
         ClusteringBound startBound = sliceStart == null
                                    ? ClusteringBound.BOTTOM
-                                   : ClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceStart)});
+                                   : ClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new Value[]{ Values.valueOf(sliceStart)});
         ClusteringBound endBound = sliceEnd == null
                                  ? ClusteringBound.TOP
-                                 : ClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceEnd)});
+                                 : ClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new Value[]{Values.valueOf(sliceEnd)});
         Slices slices = Slices.with(cfs.getComparator(), Slice.make(startBound, endBound));
         return new ClusteringIndexSliceFilter(slices, reversed);
     }
