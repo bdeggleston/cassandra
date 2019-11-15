@@ -27,6 +27,7 @@ import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
@@ -239,7 +240,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                             ? column.cellPathSerializer().deserialize(in)
                             : null;
 
-            ByteBuffer value = ByteBufferUtil.EMPTY_BYTE_BUFFER;
+            byte[] value = ByteArrayUtil.EMPTY_BYTE_ARRAY;
             if (hasValue)
             {
                 if (helper.canSkipValue(column) || (path != null && helper.canSkipValue(path)))
@@ -250,13 +251,13 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 {
                     boolean isCounter = localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
 
-                    value = header.getType(column).readBuffer(in, DatabaseDescriptor.getMaxValueSize());
+                    value = header.getType(column).readArray(in, DatabaseDescriptor.getMaxValueSize());
                     if (isCounter)
-                        value = helper.maybeClearCounterValue(value);
+                        value = ByteBufferUtil.getArray(helper.maybeClearCounterValue(ByteBuffer.wrap(value)));  // FIXME
                 }
             }
 
-            return new BufferCell(column, timestamp, ttl, localDeletionTime, value, path);
+            return new ArrayCell(column, timestamp, ttl, localDeletionTime, value, path);
         }
 
         public long serializedSize(Cell cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)

@@ -43,6 +43,22 @@ public abstract class AbstractAllocator
         return cloned;
     }
 
+    /**
+     * Allocate a slice of the given length.
+     */
+    public ByteBuffer clone(byte[] bytes)
+    {
+        assert bytes != null;
+        if (bytes.length == 0)
+            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+        ByteBuffer cloned = allocate(bytes.length);
+
+        cloned.mark();
+        cloned.put(bytes);
+        cloned.reset();
+        return cloned;
+    }
+
     public abstract ByteBuffer allocate(int size);
 
     public Row.Builder cloningBTreeRowBuilder()

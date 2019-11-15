@@ -496,6 +496,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return read(ByteBufferAccessor.instance, in, maxValueSize);
     }
 
+    public byte[] readArray(DataInputPlus in, int maxValueSize) throws IOException
+    {
+        return read(ByteArrayAccessor.instance, in, maxValueSize);
+    }
+
     <T> T read(ValueAccessor<T> handle, DataInputPlus in, int maxValueSize) throws IOException
     {
         int length = valueLengthIfFixed();
@@ -515,27 +520,6 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
             return handle.read(in, l);
         }
-    }
-
-    public final byte[] readArray(DataInputPlus in, int maxValueSize) throws IOException
-    {
-        int length = valueLengthIfFixed();
-
-        if (length < 0)
-        {
-            int l = (int)in.readUnsignedVInt();
-            if (l < 0)
-                throw new IOException("Corrupt (negative) value length encountered");
-
-            if (l > maxValueSize)
-                throw new IOException(String.format("Corrupt value length %d encountered, as it exceeds the maximum of %d, " +
-                                                    "which is set via max_value_size_in_mb in cassandra.yaml",
-                                                    l, maxValueSize));
-            length = l;
-        }
-        byte[] bytes = new byte[length];
-        in.readFully(bytes);
-        return bytes;
     }
 
     public void skipValue(DataInputPlus in) throws IOException
