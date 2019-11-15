@@ -26,7 +26,6 @@ import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.serializers.UUIDSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.UUIDGen;
 
 public class LexicalUUIDType extends AbstractType<UUID>
 {
@@ -42,12 +41,11 @@ public class LexicalUUIDType extends AbstractType<UUID>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
-
-        return UUIDGen.getUUID(o1).compareTo(UUIDGen.getUUID(o2));
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        return handle.toUUID(left).compareTo(handle.toUUID(right));
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

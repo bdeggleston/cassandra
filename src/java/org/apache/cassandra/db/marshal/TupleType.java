@@ -28,6 +28,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.SyntaxException;
@@ -91,9 +92,9 @@ public class TupleType extends AbstractType<ByteBuffer>
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public <V> boolean referencesUserType(V name, ValueAccessor<V> accessor)
     {
-        return any(types, t -> t.referencesUserType(name));
+        return any(types, t -> t.referencesUserType(name, accessor));
     }
 
     @Override
@@ -136,20 +137,22 @@ public class TupleType extends AbstractType<ByteBuffer>
         return true;
     }
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
     {
-        if (!o1.hasRemaining() || !o2.hasRemaining())
-            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
+        if (handle.isEmpty(left) || handle.isEmpty(right))
+            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
 
-        ByteBuffer bb1 = o1.duplicate();
-        ByteBuffer bb2 = o2.duplicate();
+        int offset1 = 0;
+        int offset2 = 0;
 
-        for (int i = 0; bb1.remaining() > 0 && bb2.remaining() > 0; i++)
+        for (int i = 0; handle.sizeFromOffset(left, offset1) > 0 && handle.sizeFromOffset(right, offset2) > 0; i++)
         {
             AbstractType<?> comparator = types.get(i);
 
-            int size1 = bb1.getInt();
-            int size2 = bb2.getInt();
+            int size1 = handle.getInt(left, offset1);
+            offset1 += TypeSizes.sizeof(size1);
+            int size2 = handle.getInt(right, offset2);
+            offset2 += TypeSizes.sizeof(size2);
 
             // Handle nulls
             if (size1 < 0)
@@ -161,24 +164,28 @@ public class TupleType extends AbstractType<ByteBuffer>
             if (size2 < 0)
                 return 1;
 
-            ByteBuffer value1 = ByteBufferUtil.readBytes(bb1, size1);
-            ByteBuffer value2 = ByteBufferUtil.readBytes(bb2, size2);
-            int cmp = comparator.compare(value1, value2);
+            V value1 = handle.slice(left, offset1, size1);
+            offset1 += size1;
+            V value2 = handle.slice(right, offset2, size2);
+            offset2 += size2;
+            int cmp = comparator.compare(value1, value2, handle);
             if (cmp != 0)
                 return cmp;
         }
 
         // handle trailing nulls
-        while (bb1.remaining() > 0)
+        while (handle.sizeFromOffset(left, offset1) > 0)
         {
-            int size = bb1.getInt();
+            int size = handle.getInt(left, offset1);
+            offset1 += TypeSizes.sizeof(size);
             if (size > 0) // non-null
                 return 1;
         }
 
-        while (bb2.remaining() > 0)
+        while (handle.sizeFromOffset(right, offset2) > 0)
         {
-            int size = bb2.getInt();
+            int size = handle.getInt(right, offset2);
+            offset2 += TypeSizes.sizeof(size);
             if (size > 0) // non-null
                 return -1;
         }
@@ -242,32 +249,34 @@ public class TupleType extends AbstractType<ByteBuffer>
     }
 
     @Override
-    public String getString(ByteBuffer value)
+    public <V> String getString(V input, ValueAccessor<V> handle)
     {
-        if (value == null)
+        if (input == null)
             return "null";
 
         StringBuilder sb = new StringBuilder();
-        ByteBuffer input = value.duplicate();
+        int offset = 0;
         for (int i = 0; i < size(); i++)
         {
-            if (!input.hasRemaining())
+            if (handle.sizeFromOffset(input, offset) == 0)
                 return sb.toString();
 
             if (i > 0)
                 sb.append(":");
 
             AbstractType<?> type = type(i);
-            int size = input.getInt();
+            int size = handle.getInt(input, offset);
+            offset += TypeSizes.sizeof(size);
             if (size < 0)
             {
                 sb.append("@");
                 continue;
             }
 
-            ByteBuffer field = ByteBufferUtil.readBytes(input, size);
+            V field = handle.slice(input, offset, size);
+            offset += size;
             // We use ':' as delimiter, and @ to represent null, so escape them in the generated string
-            String fld = COLON_PAT.matcher(type.getString(field)).replaceAll(ESCAPED_COLON);
+            String fld = COLON_PAT.matcher(type.getString(field, handle)).replaceAll(ESCAPED_COLON);
             fld = AT_PAT.matcher(fld).replaceAll(ESCAPED_AT);
             sb.append(fld);
         }
@@ -338,13 +347,15 @@ public class TupleType extends AbstractType<ByteBuffer>
     public String toJSONString(ByteBuffer buffer, ProtocolVersion protocolVersion)
     {
         ByteBuffer duplicated = buffer.duplicate();
+        int offset = 0;
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < types.size(); i++)
         {
             if (i > 0)
                 sb.append(", ");
 
-            ByteBuffer value = CollectionSerializer.readValue(duplicated, protocolVersion);
+            ByteBuffer value = CollectionSerializer.readValue(duplicated, ByteBufferAccessor.instance, offset, protocolVersion);
+            offset += CollectionSerializer.sizeOfValue(value, ByteBufferAccessor.instance, protocolVersion);
             if (value == null)
                 sb.append("null");
             else

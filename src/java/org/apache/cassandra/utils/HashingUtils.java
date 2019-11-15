@@ -26,6 +26,8 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 
+import org.apache.cassandra.db.marshal.ValueAccessor;
+
 public class HashingUtils
 {
     public static final HashFunction CURRENT_HASH_FUNCTION = Hashing.md5();

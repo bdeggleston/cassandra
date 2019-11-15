@@ -268,7 +268,7 @@ public class CompositeTypeTest
             for (int i = 0; i < input.length; i++)
                 bbs[i] = UTF8Type.instance.fromString(input[i]);
 
-            ByteBuffer value = comp.fromString(comp.getString(CompositeType.build(bbs)));
+            ByteBuffer value = comp.fromString(comp.getString(CompositeType.build(ByteBufferAccessor.instance, bbs)));
             ByteBuffer[] splitted = comp.split(value);
             for (int i = 0; i < splitted.length; i++)
                 assertEquals(input[i], UTF8Type.instance.getString(splitted[i]));

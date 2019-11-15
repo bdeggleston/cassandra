@@ -15,28 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.cql3.functions;
+
+package org.apache.cassandra.db.marshal;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Comparator;
 
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
-import org.apache.cassandra.db.marshal.UUIDType;
-import org.apache.cassandra.serializers.UUIDSerializer;
-import org.apache.cassandra.transport.ProtocolVersion;
-
-public abstract class UuidFcts
+public class ComparatorSet
 {
-    public static Collection<Function> all()
+    public final Comparator<ByteBuffer> buffer;
+
+    public ComparatorSet(Comparator<ByteBuffer> buffer)
     {
-        return Collections.singleton(uuidFct);
+        this.buffer = buffer;
     }
 
-    public static final Function uuidFct = new NativeScalarFunction("uuid", UUIDType.instance)
+    public Comparator getForAccessor(ValueAccessor accessor)
     {
-        public ByteBuffer execute(ProtocolVersion protocolVersion, List<ByteBuffer> parameters)
-        {
-            return UUIDSerializer.instance.serialize(UUID.randomUUID(), ByteBufferAccessor.instance);
-        }
-    };
+        if (accessor == ByteBufferAccessor.instance)
+            return buffer;
+        throw new UnsupportedOperationException("Unsupported accessor: " + accessor.getClass().getName());
+    }
 }

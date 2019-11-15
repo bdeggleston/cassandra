@@ -27,6 +27,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.filter.ClusteringIndexNamesFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.rows.CellPath;
@@ -76,7 +77,7 @@ public final class CounterCacheKey extends CacheKey
         if (path != null)
             for (int i = 0; i < path.size(); i++)
                 values[cs + 1 + i] = path.get(i);
-        return CompositeType.build(values);
+        return CompositeType.build(ByteBufferAccessor.instance, values);
     }
 
     public ByteBuffer partitionKey()
@@ -99,7 +100,7 @@ public final class CounterCacheKey extends CacheKey
         DecoratedKey key = cfs.decorateKey(partitionKey());
 
         int clusteringSize = metadata.comparator.size();
-        List<ByteBuffer> buffers = CompositeType.splitName(ByteBuffer.wrap(cellName));
+        List<ByteBuffer> buffers = CompositeType.splitName(ByteBuffer.wrap(cellName), ByteBufferAccessor.instance);
         assert buffers.size() >= clusteringSize + 1; // See makeCellName above
 
         Clustering clustering = Clustering.make(buffers.subList(0, clusteringSize).toArray(new ByteBuffer[clusteringSize]));

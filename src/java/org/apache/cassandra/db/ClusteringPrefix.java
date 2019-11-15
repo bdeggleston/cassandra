@@ -25,6 +25,7 @@ import com.google.common.hash.Hasher;
 
 import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -254,7 +255,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
         ByteBuffer[] values = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
             values[i] = get(i);
-        return CompositeType.build(values);
+        return CompositeType.build(ByteBufferAccessor.instance, values);
     }
     /**
      * The values of this prefix as an array.
@@ -375,7 +376,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 {
                     values[offset] = isNull(header, offset)
                                 ? null
-                                : (isEmpty(header, offset) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : types.get(offset).readValue(in, DatabaseDescriptor.getMaxValueSize()));
+                                : (isEmpty(header, offset) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : types.get(offset).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
                     offset++;
                 }
             }
@@ -529,7 +530,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
             int i = deserializedSize++;
             nextValues[i] = Serializer.isNull(nextHeader, i)
                           ? null
-                          : (Serializer.isEmpty(nextHeader, i) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : serializationHeader.clusteringTypes().get(i).readValue(in, DatabaseDescriptor.getMaxValueSize()));
+                          : (Serializer.isEmpty(nextHeader, i) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : serializationHeader.clusteringTypes().get(i).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
             return true;
         }
 

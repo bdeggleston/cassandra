@@ -37,13 +37,12 @@ public class ShortType extends NumberType<Short>
         super(ComparisonType.CUSTOM);
     } // singleton
 
-    public int compareCustom(ByteBuffer o1, ByteBuffer o2)
+    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
     {
-        int diff = o1.get(o1.position()) - o2.get(o2.position());
+        int diff = handle.getByte(left, 0) - handle.getByte(right, 0);
         if (diff != 0)
             return diff;
-
-        return ByteBufferUtil.compareUnsigned(o1, o2);
+        return handle.compareUnsigned(left, right);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

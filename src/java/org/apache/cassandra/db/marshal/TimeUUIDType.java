@@ -43,23 +43,20 @@ public class TimeUUIDType extends TemporalType<UUID>
         return true;
     }
 
-    public int compareCustom(ByteBuffer b1, ByteBuffer b2)
+    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
     {
         // Compare for length
-        int s1 = b1.position(), s2 = b2.position();
-        int l1 = b1.limit(), l2 = b2.limit();
-
-        // should we assert exactly 16 bytes (or 0)? seems prudent
-        boolean p1 = l1 - s1 == 16, p2 = l2 - s2 == 16;
+        boolean p1 = handle.size(left) == 16, p2 = handle.size(right) == 16;
         if (!(p1 & p2))
         {
-            assert p1 | (l1 == s1);
-            assert p2 | (l2 == s2);
+            // should we assert exactly 16 bytes (or 0)? seems prudent
+            assert p1 || handle.isEmpty(left);
+            assert p2 || handle.isEmpty(right);
             return p1 ? 1 : p2 ? -1 : 0;
         }
 
-        long msb1 = b1.getLong(s1);
-        long msb2 = b2.getLong(s2);
+        long msb1 = handle.getLong(left, 0);
+        long msb2 = handle.getLong(right, 0);
         msb1 = reorderTimestampBytes(msb1);
         msb2 = reorderTimestampBytes(msb2);
 
@@ -72,8 +69,8 @@ public class TimeUUIDType extends TemporalType<UUID>
 
         // this has to be a signed per-byte comparison for compatibility
         // so we transform the bytes so that a simple long comparison is equivalent
-        long lsb1 = signedBytesToNativeLong(b1.getLong(s1 + 8));
-        long lsb2 = signedBytesToNativeLong(b2.getLong(s2 + 8));
+        long lsb1 = signedBytesToNativeLong(handle.getLong(left, 8));
+        long lsb2 = signedBytesToNativeLong(handle.getLong(right, 8));
         return Long.compare(lsb1, lsb2);
     }
 

@@ -23,6 +23,8 @@ import java.util.Comparator;
 
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -74,6 +76,11 @@ public abstract class Cell extends ColumnData
      * @return the cell value.
      */
     public abstract ByteBuffer value();
+
+    public ValueAccessor<ByteBuffer> valueAccessor()
+    {
+        return ByteBufferAccessor.instance;
+    }
 
     /**
      * The cell timestamp.
@@ -246,7 +253,7 @@ public abstract class Cell extends ColumnData
                 {
                     boolean isCounter = localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
 
-                    value = header.getType(column).readValue(in, DatabaseDescriptor.getMaxValueSize());
+                    value = header.getType(column).readBuffer(in, DatabaseDescriptor.getMaxValueSize());
                     if (isCounter)
                         value = helper.maybeClearCounterValue(value);
                 }

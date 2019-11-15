@@ -17,21 +17,19 @@
  */
 package org.apache.cassandra.serializers;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import org.apache.cassandra.utils.ByteBufferUtil;
-
 // For byte-order comparability, we shift by Integer.MIN_VALUE and treat the data as an unsigned integer ranging from
 // min date to max date w/epoch sitting in the center @ 2^31
-public class SimpleDateSerializer implements TypeSerializer<Integer>
+public class SimpleDateSerializer extends TypeSerializer<Integer>
 {
     private static final DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC);
     private static final long minSupportedDateMillis = TimeUnit.DAYS.toMillis(Integer.MIN_VALUE);
@@ -42,14 +40,14 @@ public class SimpleDateSerializer implements TypeSerializer<Integer>
     private static final Pattern rawPattern = Pattern.compile("^-?\\d+$");
     public static final SimpleDateSerializer instance = new SimpleDateSerializer();
 
-    public Integer deserialize(ByteBuffer bytes)
+    public <V> Integer deserialize(V value, ValueAccessor<V> handle)
     {
-        return bytes.remaining() == 0 ? null : ByteBufferUtil.toInt(bytes);
+        return handle.isEmpty(value) ? null : handle.toInt(value);
     }
 
-    public ByteBuffer serialize(Integer value)
+    public <V> V serialize(Integer value, ValueAccessor<V> handle)
     {
-        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        return value == null ? handle.empty() : handle.valueOf(value);
     }
 
     public static int dateStringToDays(String source) throws MarshalException
@@ -106,10 +104,10 @@ public class SimpleDateSerializer implements TypeSerializer<Integer>
         return TimeUnit.DAYS.toMillis(days - Integer.MIN_VALUE);
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
+    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
     {
-        if (bytes.remaining() != 4)
-            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", bytes.remaining()));
+        if (handle.size(value) != 4)
+            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", handle.size(value)));
     }
 
     public String toString(Integer value)

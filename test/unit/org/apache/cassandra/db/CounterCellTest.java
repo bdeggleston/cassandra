@@ -89,7 +89,7 @@ public class CounterCellTest
 
         Cell cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
 
-        assertEquals(delta, CounterContext.instance().total(cell.value()));
+        assertEquals(delta, CounterContext.instance().total(cell.value(), cell.valueAccessor()));
         assertEquals(1, cell.value().getShort(0));
         assertEquals(0, cell.value().getShort(2));
         Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId());
@@ -161,19 +161,19 @@ public class CounterCellTest
         left = createLegacyCounterCell(cfs, col, 1, 2);
         right = createLegacyCounterCell(cfs, col, 3, 5);
         Cell reconciled = Cells.reconcile(left, right);
-        assertEquals(CounterContext.instance().total(reconciled.value()), 4);
+        assertEquals(CounterContext.instance().total(reconciled), 4);
         assertEquals(reconciled.timestamp(), 5L);
 
         // Add, don't change TS
         Cell addTen = createLegacyCounterCell(cfs, col, 10, 4);
         reconciled = Cells.reconcile(reconciled, addTen);
-        assertEquals(CounterContext.instance().total(reconciled.value()), 14);
+        assertEquals(CounterContext.instance().total(reconciled), 14);
         assertEquals(reconciled.timestamp(), 5L);
 
         // Add w/new TS
         Cell addThree = createLegacyCounterCell(cfs, col, 3, 7);
         reconciled = Cells.reconcile(reconciled, addThree);
-        assertEquals(CounterContext.instance().total(reconciled.value()), 17);
+        assertEquals(CounterContext.instance().total(reconciled), 17);
         assertEquals(reconciled.timestamp(), 7L);
 
         // Confirm no deletion time

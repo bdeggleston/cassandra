@@ -15,28 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.cql3.functions;
 
-import java.nio.ByteBuffer;
-import java.util.*;
+package org.apache.cassandra.db.marshal;
 
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
-import org.apache.cassandra.db.marshal.UUIDType;
-import org.apache.cassandra.serializers.UUIDSerializer;
-import org.apache.cassandra.transport.ProtocolVersion;
-
-public abstract class UuidFcts
+public interface ValueAware<V>
 {
-    public static Collection<Function> all()
-    {
-        return Collections.singleton(uuidFct);
-    }
-
-    public static final Function uuidFct = new NativeScalarFunction("uuid", UUIDType.instance)
-    {
-        public ByteBuffer execute(ProtocolVersion protocolVersion, List<ByteBuffer> parameters)
-        {
-            return UUIDSerializer.instance.serialize(UUID.randomUUID(), ByteBufferAccessor.instance);
-        }
-    };
+    V value();
+    ValueAccessor<V> valueAccessor();
 }

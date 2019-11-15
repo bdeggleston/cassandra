@@ -19,6 +19,7 @@ package org.apache.cassandra.index.internal.composites;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -48,7 +49,7 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
                                       Clustering clustering,
                                       CellPath path, ByteBuffer cellValue)
     {
-        return CompositeType.build(path.get(0), cellValue);
+        return CompositeType.build(ByteBufferAccessor.instance, path.get(0), cellValue);
     }
 
     public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)

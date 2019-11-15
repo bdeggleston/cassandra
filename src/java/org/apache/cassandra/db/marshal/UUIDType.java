@@ -56,24 +56,22 @@ public class UUIDType extends AbstractType<UUID>
         return true;
     }
 
-    public int compareCustom(ByteBuffer b1, ByteBuffer b2)
+    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
     {
-        // Compare for length
-        int s1 = b1.position(), s2 = b2.position();
-        int l1 = b1.limit(), l2 = b2.limit();
 
-        // should we assert exactly 16 bytes (or 0)? seems prudent
-        boolean p1 = l1 - s1 == 16, p2 = l2 - s2 == 16;
+        // Compare for length
+        boolean p1 = handle.size(left) == 16, p2 = handle.size(right) == 16;
         if (!(p1 & p2))
         {
-            assert p1 | (l1 == s1);
-            assert p2 | (l2 == s2);
+            // should we assert exactly 16 bytes (or 0)? seems prudent
+            assert p1 || handle.isEmpty(left);
+            assert p2 || handle.isEmpty(right);
             return p1 ? 1 : p2 ? -1 : 0;
         }
 
         // Compare versions
-        long msb1 = b1.getLong(s1);
-        long msb2 = b2.getLong(s2);
+        long msb1 = handle.getLong(left, 0);
+        long msb2 = handle.getLong(right, 0);
 
         int version1 = (int) ((msb1 >>> 12) & 0xf);
         int version2 = (int) ((msb2 >>> 12) & 0xf);
@@ -98,7 +96,7 @@ public class UUIDType extends AbstractType<UUID>
                 return c;
         }
 
-        return UnsignedLongs.compare(b1.getLong(s1 + 8), b2.getLong(s2 + 8));
+        return UnsignedLongs.compare(handle.getLong(left, 8), handle.getLong(right, 8));
     }
 
     @Override

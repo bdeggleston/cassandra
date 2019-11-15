@@ -30,6 +30,7 @@ import com.google.common.collect.PeekingIterator;
 import com.google.common.util.concurrent.Striped;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.db.partitions.*;
@@ -209,7 +210,7 @@ public class CounterMutation implements IMutation
     private void updateWithCurrentValue(PartitionUpdate.CounterMark mark, ClockAndCount currentValue, ColumnFamilyStore cfs)
     {
         long clock = Math.max(FBUtilities.timestampMicros(), currentValue.clock + 1L);
-        long count = currentValue.count + CounterContext.instance().total(mark.value());
+        long count = currentValue.count + CounterContext.instance().total(mark.value(), ByteBufferAccessor.instance);
 
         mark.setValue(CounterContext.instance().createGlobal(CounterId.getLocalId(), clock, count));
 

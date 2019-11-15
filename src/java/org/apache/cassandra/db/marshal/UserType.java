@@ -379,9 +379,9 @@ public class UserType extends TupleType
     }
 
     @Override
-    public boolean referencesUserType(ByteBuffer name)
+    public <V> boolean referencesUserType(V name, ValueAccessor<V> accessor)
     {
-        return this.name.equals(name) || any(fieldTypes(), t -> t.referencesUserType(name));
+        return this.name.equals(name) || any(fieldTypes(), t -> t.referencesUserType(name, accessor));
     }
 
     @Override

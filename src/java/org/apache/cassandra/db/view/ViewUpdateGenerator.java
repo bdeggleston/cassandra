@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
@@ -581,7 +582,7 @@ public class ViewUpdateGenerator
     {
         ByteBuffer rawKey = viewMetadata.partitionKeyColumns().size() == 1
                           ? currentViewEntryPartitionKey[0]
-                          : CompositeType.build(currentViewEntryPartitionKey);
+                          : CompositeType.build(ByteBufferAccessor.instance, currentViewEntryPartitionKey);
 
         return viewMetadata.partitioner.decorateKey(rawKey);
     }
