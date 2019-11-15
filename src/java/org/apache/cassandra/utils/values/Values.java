@@ -147,6 +147,10 @@ public class Values
 
     public static Value valueOf(ByteBuffer s)
     {
+        if (s == ByteBufferUtil.UNSET_BYTE_BUFFER)
+            return UNSET;
+        if (s == ByteBufferUtil.EMPTY_BYTE_BUFFER)
+            return EMPTY;
         return FACTORY.of(s);
     }
 

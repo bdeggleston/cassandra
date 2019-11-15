@@ -182,7 +182,7 @@ public class HintsBufferTest
         Row row = hint.mutation.getPartitionUpdates().iterator().next().iterator().next();
         assertEquals(1, Iterables.size(row.cells()));
 
-        assertEquals(bytes(idx), row.clustering().get(0));
+        assertEquals(Values.valueOf(idx), row.clustering().get(0));
         Cell cell = row.cells().iterator().next();
         assertEquals(TimeUnit.MILLISECONDS.toMicros(baseTimestamp + idx), cell.timestamp());
         assertEquals(Values.valueOf(idx), cell.value());

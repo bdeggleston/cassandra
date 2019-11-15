@@ -194,7 +194,7 @@ public class CompactionsTest
 
         // a subcolumn
         new RowUpdateBuilder(table, FBUtilities.timestampMicros(), key.getKey())
-            .clustering(ByteBufferUtil.bytes("cols"))
+            .clustering(Values.valueOf("cols"))
             .add("val", "val1")
             .build().applyUnsafe();
         cfs.forceBlockingFlush();
@@ -327,7 +327,7 @@ public class CompactionsTest
         for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
             DecoratedKey key = Util.dk(String.valueOf(i));
             new RowUpdateBuilder(table, FBUtilities.timestampMicros(), key.getKey())
-            .clustering(ByteBufferUtil.bytes("cols"))
+            .clustering(Values.valueOf("cols"))
             .add("val", "val1")
             .build().applyUnsafe();
         }
@@ -420,7 +420,7 @@ public class CompactionsTest
                     assertEquals(Values.valueOf("a"), cell.value());
                     assertEquals(3, cell.timestamp());
                     assertNotEquals(ByteBufferUtil.bytes("01"), row.clustering().getRawValues()[0]);
-                    assertEquals(ByteBufferUtil.bytes("02"), row.clustering().getRawValues()[0]);
+                    assertEquals(Values.valueOf("02"), row.clustering().getRawValues()[0]);
                 }
             }
         }

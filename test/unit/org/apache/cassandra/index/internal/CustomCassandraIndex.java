@@ -61,6 +61,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.Refs;
 import org.apache.cassandra.utils.values.Value;
+import org.apache.cassandra.utils.values.Values;
 
 import static org.apache.cassandra.index.internal.CassandraIndex.getFunctions;
 import static org.apache.cassandra.index.internal.CassandraIndex.indexCfsMetadata;
@@ -258,7 +259,7 @@ public class CustomCassandraIndex implements Index
                                                CellPath path)
     {
         CBuilder builder = CBuilder.create(getIndexComparator());
-        builder.add(partitionKey);
+        builder.add(Values.valueOf(partitionKey));
         return builder;
     }
 

@@ -63,7 +63,7 @@ public class CleanupTransientTest
     public static final String CF_INDEXED2 = "Indexed2";
     public static final String CF_STANDARD2 = "Standard2";
 
-    public static final ByteBuffer COLUMN = ByteBufferUtil.bytes("birthdate");
+    public static final Value COLUMN = Values.valueOf("birthdate");
     public static final Value VALUE = Values.valueOf(20101229L);
 
     @BeforeClass
