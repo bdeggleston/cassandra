@@ -46,6 +46,11 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return value.length;
     }
 
+    public BackingKind getBackingKind()
+    {
+        return BackingKind.ARRAY;
+    }
+
     public byte[][] createArray(int length)
     {
         return new byte[length][];

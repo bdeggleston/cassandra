@@ -37,9 +37,9 @@ public class ByteType extends NumberType<Byte>
         super(ComparisonType.CUSTOM);
     } // singleton
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return handle.getByte(left, 0) - handle.getByte(right, 0);
+        return accessorL.getByte(left, 0) - accessorR.getByte(right, 0);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

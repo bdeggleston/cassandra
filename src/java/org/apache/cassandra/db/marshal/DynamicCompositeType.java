@@ -133,12 +133,12 @@ public class DynamicCompositeType extends AbstractCompositeType
         return getComparator(value, handle, offset);
     }
 
-    protected <V> AbstractType<?> getComparator(int i, V left, V right, ValueAccessor<V> handle, int offset1, int offset2)
+    protected <VL, VR> AbstractType<?> getComparator(int i, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, int offset1, int offset2)
     {
-        AbstractType<?> comp1 = getComparator(left, handle, offset1);
-        offset1 += getComparatorSize(i, left, handle, offset1);
-        AbstractType<?> comp2 = getComparator(right, handle, offset2);
-        offset2 += getComparatorSize(i, right, handle, offset2);
+        AbstractType<?> comp1 = getComparator(left, accessorL, offset1);
+        offset1 += getComparatorSize(i, left, accessorL, offset1);
+        AbstractType<?> comp2 = getComparator(right, accessorR, offset2);
+        offset2 += getComparatorSize(i, right, accessorR, offset2);
         AbstractType<?> rawComp = comp1;
 
         /*
@@ -392,7 +392,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             this.cmp = cmp;
         }
 
-        public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+        public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
         {
             return cmp;
         }

@@ -137,21 +137,21 @@ public class TupleType extends AbstractType<ByteBuffer>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
         int offset1 = 0;
         int offset2 = 0;
 
-        for (int i = 0; handle.sizeFromOffset(left, offset1) > 0 && handle.sizeFromOffset(right, offset2) > 0; i++)
+        for (int i = 0; accessorL.sizeFromOffset(left, offset1) > 0 && accessorR.sizeFromOffset(right, offset2) > 0; i++)
         {
             AbstractType<?> comparator = types.get(i);
 
-            int size1 = handle.getInt(left, offset1);
+            int size1 = accessorL.getInt(left, offset1);
             offset1 += TypeSizes.sizeof(size1);
-            int size2 = handle.getInt(right, offset2);
+            int size2 = accessorR.getInt(right, offset2);
             offset2 += TypeSizes.sizeof(size2);
 
             // Handle nulls
@@ -164,27 +164,27 @@ public class TupleType extends AbstractType<ByteBuffer>
             if (size2 < 0)
                 return 1;
 
-            V value1 = handle.slice(left, offset1, size1);
+            VL value1 = accessorL.slice(left, offset1, size1);
             offset1 += size1;
-            V value2 = handle.slice(right, offset2, size2);
+            VR value2 = accessorR.slice(right, offset2, size2);
             offset2 += size2;
-            int cmp = comparator.compare(value1, value2, handle);
+            int cmp = comparator.compare(value1, accessorL, value2, accessorR);
             if (cmp != 0)
                 return cmp;
         }
 
         // handle trailing nulls
-        while (handle.sizeFromOffset(left, offset1) > 0)
+        while (accessorL.sizeFromOffset(left, offset1) > 0)
         {
-            int size = handle.getInt(left, offset1);
+            int size = accessorL.getInt(left, offset1);
             offset1 += TypeSizes.sizeof(size);
             if (size > 0) // non-null
                 return 1;
         }
 
-        while (handle.sizeFromOffset(right, offset2) > 0)
+        while (accessorR.sizeFromOffset(right, offset2) > 0)
         {
-            int size = handle.getInt(right, offset2);
+            int size = accessorR.getInt(right, offset2);
             offset2 += TypeSizes.sizeof(size);
             if (size > 0) // non-null
                 return -1;

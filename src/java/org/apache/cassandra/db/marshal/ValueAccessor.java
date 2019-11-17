@@ -29,10 +29,16 @@ import java.util.UUID;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.utils.ByteArrayUtil;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface ValueAccessor<V>
 {
+    public enum BackingKind { BUFFER, ARRAY, NATIVE }
+
     int size(V value);
+
+    BackingKind getBackingKind();
 
     default int sizeFromOffset(V value, int offset)
     {
@@ -125,6 +131,13 @@ public interface ValueAccessor<V>
     public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
     {
         return leftAccessor.toBuffer(left).compareTo(rightAccessor.toBuffer(right)); /// FIXME:
+    }
+
+    public static <L, R> int compareUnsigned(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
+    {
+        if (leftAccessor.getBackingKind() == BackingKind.ARRAY && rightAccessor.getBackingKind() == BackingKind.ARRAY)
+            return ByteArrayUtil.compareUnsigned(leftAccessor.toArray(left), rightAccessor.toArray(right));
+        return ByteBufferUtil.compareUnsigned(leftAccessor.toBuffer(left), rightAccessor.toBuffer(right));  // FIXME
     }
 
     public static <L, R> int compare(ValueAware<L> left, ValueAware<R> right)

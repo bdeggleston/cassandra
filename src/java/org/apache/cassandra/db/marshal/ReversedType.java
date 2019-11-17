@@ -63,9 +63,9 @@ public class ReversedType<T> extends AbstractType<T>
         return baseType.isEmptyValueMeaningless();
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return baseType.compare(right, left, handle);
+        return baseType.compare(right, accessorR, left, accessorL);
     }
 
     @Override

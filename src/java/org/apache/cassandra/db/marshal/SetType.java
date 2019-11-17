@@ -146,9 +146,9 @@ public class SetType<T> extends CollectionType<Set<T>>
         return isCompatibleWithFrozen(previous);
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return ListType.compareListOrSet(elements, left, right, handle);
+        return ListType.compareListOrSet(elements, left, accessorL, right, accessorR);
     }
 
     public SetSerializer<T> getSerializer()

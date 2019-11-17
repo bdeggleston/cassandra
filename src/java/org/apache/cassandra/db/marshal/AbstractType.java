@@ -90,7 +90,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         reverseComparator = (o1, o2) -> AbstractType.this.compare(o2, o1);
         try
         {
-            Method custom = getClass().getMethod("compareCustom", Object.class, Object.class, ValueAccessor.class);
+            Method custom = getClass().getMethod("compareCustom", Object.class, ValueAccessor.class, Object.class, ValueAccessor.class);
             if ((custom.getDeclaringClass() == AbstractType.class) == (comparisonType == CUSTOM))
                 throw new IllegalStateException((comparisonType == CUSTOM ? "compareCustom must be overridden if ComparisonType is CUSTOM"
                                                                          : "compareCustom should not be overridden if ComparisonType is not CUSTOM")
@@ -101,15 +101,16 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
             throw new IllegalStateException();
         }
 
-        comparatorSet = new ComparatorSet((l, r) -> compare(l, r, ByteBufferAccessor.instance));
+        comparatorSet = new ComparatorSet((l, r) -> compare(l, ByteArrayAccessor.instance, r, ByteArrayAccessor.instance),
+                                          (l, r) -> compare(l, ByteBufferAccessor.instance, r, ByteBufferAccessor.instance));
     }
 
-    static <V, T extends Comparable<T>> int compareComposed(V left, V right, ValueAccessor<V> handle, AbstractType<T> type)
+    static <VL, VR, T extends Comparable<T>> int compareComposed(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, AbstractType<T> type)
     {
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
-        return type.compose(left, handle).compareTo(type.compose(right, handle));
+        return type.compose(left, accessorL).compareTo(type.compose(right, accessorR));
     }
 
     public static List<String> asCQLTypeStringList(List<AbstractType<?>> abstractTypes)
@@ -204,12 +205,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     public final int compare(ByteBuffer left, ByteBuffer right)
     {
-        return compare(left, right, ByteBufferAccessor.instance);
+        return compare(left, ByteBufferAccessor.instance, right, ByteBufferAccessor.instance);
     }
 
-    public final <V> int compare(V left, V right, ValueAccessor<V> handle)
+    public final <VL, VR> int compare(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return isByteOrderComparable ? handle.compareUnsigned(left, right) : compareCustom(left, right, handle);
+        return isByteOrderComparable ? ValueAccessor.compareUnsigned(left, accessorL, right, accessorR) : compareCustom(left, accessorL, right, accessorR);
     }
 
     /**
@@ -220,8 +221,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
      * unsigned bytes
      *
      * Standard Java compare semantics
+     * @param left
+     * @param accessorL
+     * @param right
+     * @param accessorR
      */
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
         throw new UnsupportedOperationException();
     }
@@ -351,9 +356,9 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
      *
      * Unless you're doing something very similar to CollectionsType, you shouldn't override this.
      */
-    public <V> int compareCollectionMembers(V v1, V v2, V collectionName, ValueAccessor<V> handle)
+    public <VL, VR> int compareCollectionMembers(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, VL collectionName)
     {
-        return compare(v1, v2, handle);
+        return compare(left, accessorL, right, accessorR);
     }
 
     /**

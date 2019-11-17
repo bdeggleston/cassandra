@@ -56,9 +56,9 @@ public class TimestampType extends TemporalType<Date>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return LongType.compareLongs(left, right, handle);
+        return LongType.compareLongs(left, accessorL, right, accessorR);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

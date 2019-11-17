@@ -43,49 +43,49 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         super(ComparisonType.CUSTOM);
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
-        boolean isStatic1 = readIsStatic(left, handle);
-        boolean isStatic2 = readIsStatic(right, handle);
+        boolean isStatic1 = readIsStatic(left, accessorL);
+        boolean isStatic2 = readIsStatic(right, accessorR);
         if (isStatic1 != isStatic2)
             return isStatic1 ? -1 : 1;
 
         int i = 0;
 
-        V previous = null;
+        VL previous = null;
         int offset1 = startingOffset(isStatic1);
         int offset2 = startingOffset(isStatic2);
 
-        while (handle.sizeFromOffset(left, offset1) > 0 && handle.sizeFromOffset(right, offset1) > 0)
+        while (accessorL.sizeFromOffset(left, offset1) > 0 && accessorR.sizeFromOffset(right, offset1) > 0)
         {
-            AbstractType<?> comparator = getComparator(i, left, right, handle, offset1, offset2);
-            offset1 += getComparatorSize(i, left, handle, offset1);
-            offset2 += getComparatorSize(i, right, handle, offset2);
+            AbstractType<?> comparator = getComparator(i, left, accessorL, right, accessorR, offset1, offset2);
+            offset1 += getComparatorSize(i, left, accessorL, offset1);
+            offset2 += getComparatorSize(i, right, accessorR, offset2);
 
-            V value1 = handle.sliceWithShortLength(left, offset1);
-            offset1 += handle.sizeWithShortLength(value1);
-            V value2 = handle.sliceWithShortLength(right, offset2);
-            offset2 += handle.sizeWithShortLength(value2);
+            VL value1 = accessorL.sliceWithShortLength(left, offset1);
+            offset1 += accessorL.sizeWithShortLength(value1);
+            VR value2 = accessorR.sliceWithShortLength(right, offset2);
+            offset2 += accessorR.sizeWithShortLength(value2);
 
-            int cmp = comparator.compareCollectionMembers(value1, value2, previous, handle);
+            int cmp = comparator.compareCollectionMembers(value1, accessorL, value2, accessorR, previous);
             if (cmp != 0)
                 return cmp;
 
             previous = value1;
 
-            byte b1 = handle.getByte(left, offset1++);
-            byte b2 = handle.getByte(right, offset2++);
+            byte b1 = accessorL.getByte(left, offset1++);
+            byte b2 = accessorR.getByte(right, offset2++);
             if (b1 != b2)
                 return b1 - b2;
 
             ++i;
         }
 
-        if (handle.sizeFromOffset(left, offset1) == 0)
-            return handle.sizeFromOffset(right, offset2) == 0 ? 0 : -1;
+        if (accessorL.sizeFromOffset(left, offset1) == 0)
+            return accessorR.sizeFromOffset(right, offset2) == 0 ? 0 : -1;
 
         // left.remaining() > 0 && right.remaining() == 0
         return 1;
@@ -329,7 +329,7 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
      * Adds DynamicCompositeType type information from @param bb1 to @param bb2.
      * @param i is ignored.
      */
-    abstract protected <V> AbstractType<?> getComparator(int i, V left, V right, ValueAccessor<V> handle, int offset1, int offset2);
+    abstract protected <VL, VR> AbstractType<?> getComparator(int i, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, int offset1, int offset2);
 
     /**
      * Adds type information from @param bb to @param sb.  @param i is ignored.

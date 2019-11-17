@@ -41,11 +41,11 @@ public class LexicalUUIDType extends AbstractType<UUID>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
-        return handle.toUUID(left).compareTo(handle.toUUID(right));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
+        return accessorL.toUUID(left).compareTo(accessorR.toUUID(right));
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

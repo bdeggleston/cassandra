@@ -34,16 +34,16 @@ public final class IntegerType extends NumberType<BigInteger>
 {
     public static final IntegerType instance = new IntegerType();
 
-    private static <V> int findMostSignificantByte(V value, ValueAccessor<V> handle)
+    private static <V> int findMostSignificantByte(V value, ValueAccessor<V> accessor)
     {
-        int len = handle.size(value) - 1;
+        int len = accessor.size(value) - 1;
         int i = 0;
         for (; i < len; i++)
         {
-            byte b0 = handle.getByte(value, i);
+            byte b0 = accessor.getByte(value, i);
             if (b0 != 0 && b0 != -1)
                 break;
-            byte b1 = handle.getByte(value, i + 1);
+            byte b1 = accessor.getByte(value, i + 1);
             if (b0 == 0 && b1 != 0)
             {
                 if (b1 > 0)
@@ -67,30 +67,30 @@ public final class IntegerType extends NumberType<BigInteger>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return IntegerType.compareIntegers(left, right, handle);
+        return IntegerType.compareIntegers(left, accessorL, right, accessorR);
     }
 
-    public static <V> int compareIntegers(V lhs, V rhs, ValueAccessor<V> handle)
+    public static <VL, VR> int compareIntegers(VL lhs, ValueAccessor<VL> accessorL, VR rhs, ValueAccessor<VR> accessorR)
     {
-        int lhsLen = handle.size(lhs);
-        int rhsLen = handle.size(rhs);
+        int lhsLen = accessorL.size(lhs);
+        int rhsLen = accessorR.size(rhs);
 
         if (lhsLen == 0)
             return rhsLen == 0 ? 0 : -1;
         if (rhsLen == 0)
             return 1;
 
-        int lhsMsbIdx = findMostSignificantByte(lhs, handle);
-        int rhsMsbIdx = findMostSignificantByte(rhs, handle);
+        int lhsMsbIdx = findMostSignificantByte(lhs, accessorL);
+        int rhsMsbIdx = findMostSignificantByte(rhs, accessorR);
 
         //diffs contain number of "meaningful" bytes (i.e. ignore padding)
         int lhsLenDiff = lhsLen - lhsMsbIdx;
         int rhsLenDiff = rhsLen - rhsMsbIdx;
 
-        byte lhsMsb = handle.getByte(lhs, lhsMsbIdx);
-        byte rhsMsb = handle.getByte(rhs, rhsMsbIdx);
+        byte lhsMsb = accessorL.getByte(lhs, lhsMsbIdx);
+        byte rhsMsb = accessorR.getByte(rhs, rhsMsbIdx);
 
         /*         +    -
          *      -----------
@@ -120,8 +120,8 @@ public final class IntegerType extends NumberType<BigInteger>
         // remaining bytes are compared unsigned
         while (lhsMsbIdx < lhsLen)
         {
-            lhsMsb = handle.getByte(lhs, lhsMsbIdx++);
-            rhsMsb = handle.getByte(rhs, rhsMsbIdx++);
+            lhsMsb = accessorL.getByte(lhs, lhsMsbIdx++);
+            rhsMsb = accessorR.getByte(rhs, rhsMsbIdx++);
 
             if (lhsMsb != rhsMsb)
                 return (lhsMsb & 0xFF) - (rhsMsb & 0xFF);

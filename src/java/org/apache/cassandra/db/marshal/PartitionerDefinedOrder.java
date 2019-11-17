@@ -87,10 +87,10 @@ public class PartitionerDefinedOrder extends AbstractType<ByteBuffer>
         throw new UnsupportedOperationException();
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
         // o1 and o2 can be empty so we need to use PartitionPosition, not DecoratedKey
-        return PartitionPosition.ForKey.get(handle.toBuffer(left), partitioner).compareTo(PartitionPosition.ForKey.get(handle.toBuffer(right), partitioner));
+        return PartitionPosition.ForKey.get(accessorL.toBuffer(left), partitioner).compareTo(PartitionPosition.ForKey.get(accessorR.toBuffer(right), partitioner));
     }
 
     @Override

@@ -159,29 +159,29 @@ public class ListType<T> extends CollectionType<List<T>>
         return this.elements.isValueCompatibleWithInternal(((ListType) previous).elements);
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return compareListOrSet(elements, left, right, handle);
+        return compareListOrSet(elements, left, accessorL, right, accessorR);
     }
 
-    static <V> int compareListOrSet(AbstractType<?> elementsComparator, V left, V right, ValueAccessor<V> handle)
+    static <VL, VR> int compareListOrSet(AbstractType<?> elementsComparator, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
         // Note that this is only used if the collection is frozen
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
-        int size1 = CollectionSerializer.readCollectionSize(left, handle, ProtocolVersion.V3);
+        int size1 = CollectionSerializer.readCollectionSize(left, accessorL, ProtocolVersion.V3);
         int offset1 = TypeSizes.sizeof(size1);
-        int size2 = CollectionSerializer.readCollectionSize(right, handle, ProtocolVersion.V3);
+        int size2 = CollectionSerializer.readCollectionSize(right, accessorR, ProtocolVersion.V3);
         int offset2 = TypeSizes.sizeof(size2);
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {
-            V v1 = CollectionSerializer.readValue(left, handle, offset1, ProtocolVersion.V3);
-            offset1 += CollectionSerializer.sizeOfValue(v1, handle, ProtocolVersion.V3);
-            V v2 = CollectionSerializer.readValue(right, handle, offset2, ProtocolVersion.V3);
-            offset2 += CollectionSerializer.sizeOfValue(v2, handle, ProtocolVersion.V3);
-            int cmp = elementsComparator.compare(v1, v2, handle);
+            VL v1 = CollectionSerializer.readValue(left, accessorL, offset1, ProtocolVersion.V3);
+            offset1 += CollectionSerializer.sizeOfValue(v1, accessorL, ProtocolVersion.V3);
+            VR v2 = CollectionSerializer.readValue(right, accessorR, offset2, ProtocolVersion.V3);
+            offset2 += CollectionSerializer.sizeOfValue(v2, accessorR, ProtocolVersion.V3);
+            int cmp = elementsComparator.compare(v1, accessorL, v2, accessorR);
             if (cmp != 0)
                 return cmp;
         }

@@ -155,9 +155,9 @@ public class CompositeType extends AbstractCompositeType
         }
     }
 
-    protected <V> AbstractType<?> getComparator(int i, V left, V right, ValueAccessor<V> handle, int offset1, int offset2)
+    protected <VL, VR> AbstractType<?> getComparator(int i, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, int offset1, int offset2)
     {
-        return getComparator(i, left, handle, offset1);
+        return getComparator(i, left, accessorL, offset1);
     }
 
     protected <V> AbstractType<?> getAndAppendComparator(int i, V value, ValueAccessor<V> handle, StringBuilder sb, int offset)

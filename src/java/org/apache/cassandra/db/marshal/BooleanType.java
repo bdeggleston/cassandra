@@ -43,14 +43,14 @@ public class BooleanType extends AbstractType<Boolean>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        if (handle.isEmpty(left) || handle.isEmpty(right))
-            return Boolean.compare(handle.isEmpty(right), handle.isEmpty(left));
+        if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
+            return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
         // False is 0, True is anything else, makes False sort before True.
-        int v1 = handle.getByte(left, 0) == 0 ? 0 : 1;
-        int v2 = handle.getByte(right, 0) == 0 ? 0 : 1;
+        int v1 = accessorL.getByte(left, 0) == 0 ? 0 : 1;
+        int v2 = accessorR.getByte(right, 0) == 0 ? 0 : 1;
         return v1 - v2;
     }
 

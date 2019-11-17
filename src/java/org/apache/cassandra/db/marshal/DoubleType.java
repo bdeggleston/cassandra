@@ -45,9 +45,9 @@ public class DoubleType extends NumberType<Double>
         return true;
     }
 
-    public <V> int compareCustom(V left, V right, ValueAccessor<V> handle)
+    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return compareComposed(left, right, handle, this);
+        return compareComposed(left, accessorL, right, accessorR, this);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

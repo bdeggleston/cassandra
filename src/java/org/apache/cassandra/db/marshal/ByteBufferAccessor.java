@@ -43,6 +43,11 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return value.remaining();
     }
 
+    public BackingKind getBackingKind()
+    {
+        return BackingKind.BUFFER;
+    }
+
     public ByteBuffer[] createArray(int length)
     {
         return new ByteBuffer[length];
