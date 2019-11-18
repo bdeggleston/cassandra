@@ -44,7 +44,7 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
 
     public static RangeTombstoneBoundaryMarker exclusiveCloseInclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
     {
-        ClusteringBoundary bound = ClusteringBoundary.exclusiveCloseInclusiveOpen(reversed, boundValues);
+        ClusteringBoundary bound = BufferClusteringBoundary.exclusiveCloseInclusiveOpen(reversed, boundValues);
         DeletionTime endDeletion = reversed ? openDeletion : closeDeletion;
         DeletionTime startDeletion = reversed ? closeDeletion : openDeletion;
         return new RangeTombstoneBoundaryMarker(bound, endDeletion, startDeletion);
@@ -52,7 +52,7 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
 
     public static RangeTombstoneBoundaryMarker inclusiveCloseExclusiveOpen(boolean reversed, ByteBuffer[] boundValues, DeletionTime closeDeletion, DeletionTime openDeletion)
     {
-        ClusteringBoundary bound = ClusteringBoundary.inclusiveCloseExclusiveOpen(reversed, boundValues);
+        ClusteringBoundary bound = BufferClusteringBoundary.inclusiveCloseExclusiveOpen(reversed, boundValues);
         DeletionTime endDeletion = reversed ? openDeletion : closeDeletion;
         DeletionTime startDeletion = reversed ? closeDeletion : openDeletion;
         return new RangeTombstoneBoundaryMarker(bound, endDeletion, startDeletion);

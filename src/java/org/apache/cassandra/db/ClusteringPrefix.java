@@ -545,7 +545,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
         {
             assert !nextIsRow;
             deserializeAll();
-            ClusteringBoundOrBoundary bound = ClusteringBoundOrBoundary.create(nextKind, nextValues);
+            ClusteringBoundOrBoundary bound = BufferClusteringBoundOrBoundary.create(nextKind, nextValues);
             nextValues = null;
             return bound;
         }
@@ -571,5 +571,29 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
             deserializedSize = nextSize;
             return nextKind;
         }
+    }
+
+    public static int hashCode(ClusteringPrefix prefix)
+    {
+        int result = 31;
+        for (int i = 0; i < prefix.size(); i++)
+            result += 31 * Objects.hashCode(prefix.get(i));
+        return 31 * result + Objects.hashCode(prefix.kind());
+    }
+
+    public static boolean equals(ClusteringPrefix prefix, Object o)
+    {
+        if(!(o instanceof ClusteringPrefix))
+            return false;
+
+        ClusteringPrefix that = (ClusteringPrefix)o;
+        if (prefix.kind() != that.kind() || prefix.size() != that.size())
+            return false;
+
+        for (int i = 0; i < prefix.size(); i++)
+            if (!Objects.equals(prefix.get(i), that.get(i)))
+                return false;
+
+        return true;
     }
 }

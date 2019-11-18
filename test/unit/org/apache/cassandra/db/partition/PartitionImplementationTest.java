@@ -354,7 +354,7 @@ public class PartitionImplementationTest
             Clustering start = clustering(pos);
             pos += sz;
             Clustering end = clustering(pos);
-            Slice slice = Slice.make(skip == 0 ? ClusteringBound.exclusiveStartOf(start) : ClusteringBound.inclusiveStartOf(start), ClusteringBound.inclusiveEndOf(end));
+            Slice slice = Slice.make(skip == 0 ? BufferClusteringBound.exclusiveStartOf(start) : BufferClusteringBound.inclusiveStartOf(start), BufferClusteringBound.inclusiveEndOf(end));
             builder.add(slice);
         }
         return builder.build();

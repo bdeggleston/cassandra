@@ -94,7 +94,7 @@ public class Slice
         // This doesn't give us what we want with the clustering prefix
         assert clustering != Clustering.STATIC_CLUSTERING;
         ByteBuffer[] values = extractValues(clustering);
-        return new Slice(ClusteringBound.inclusiveStartOf(values), ClusteringBound.inclusiveEndOf(values));
+        return new Slice(BufferClusteringBound.inclusiveStartOf(values), BufferClusteringBound.inclusiveEndOf(values));
     }
 
     public static Slice make(Clustering start, Clustering end)
@@ -105,7 +105,7 @@ public class Slice
         ByteBuffer[] startValues = extractValues(start);
         ByteBuffer[] endValues = extractValues(end);
 
-        return new Slice(ClusteringBound.inclusiveStartOf(startValues), ClusteringBound.inclusiveEndOf(endValues));
+        return new Slice(BufferClusteringBound.inclusiveStartOf(startValues), BufferClusteringBound.inclusiveEndOf(endValues));
     }
 
     private static ByteBuffer[] extractValues(ClusteringPrefix clustering)
@@ -212,7 +212,7 @@ public class Slice
                 return this;
 
             ByteBuffer[] values = extractValues(lastReturned);
-            return new Slice(start, inclusive ? ClusteringBound.inclusiveEndOf(values) : ClusteringBound.exclusiveEndOf(values));
+            return new Slice(start, inclusive ? BufferClusteringBound.inclusiveEndOf(values) : BufferClusteringBound.exclusiveEndOf(values));
         }
         else
         {
@@ -225,7 +225,7 @@ public class Slice
                 return this;
 
             ByteBuffer[] values = extractValues(lastReturned);
-            return new Slice(inclusive ? ClusteringBound.inclusiveStartOf(values) : ClusteringBound.exclusiveStartOf(values), end);
+            return new Slice(inclusive ? BufferClusteringBound.inclusiveStartOf(values) : BufferClusteringBound.exclusiveStartOf(values), end);
         }
     }
 

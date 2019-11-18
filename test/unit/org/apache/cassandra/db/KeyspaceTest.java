@@ -273,10 +273,10 @@ public class KeyspaceTest extends CQLTester
     {
         ClusteringBound startBound = sliceStart == null
                                    ? ClusteringBound.BOTTOM
-                                   : ClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceStart)});
+                                   : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceStart)});
         ClusteringBound endBound = sliceEnd == null
                                  ? ClusteringBound.TOP
-                                 : ClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceEnd)});
+                                 : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceEnd)});
         Slices slices = Slices.with(cfs.getComparator(), Slice.make(startBound, endBound));
         return new ClusteringIndexSliceFilter(slices, reversed);
     }

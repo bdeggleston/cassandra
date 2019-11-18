@@ -221,7 +221,7 @@ public class SinglePartitionSliceCommandTest
                 {
                     int cmp = CFM_SLICES.comparator.compareComponent(i,
                                                                      clustering.getRawValues()[i],
-                                                                     marker.clustering().values[i]);
+                                                                     marker.clustering().getRawValues()[i]);
                     assertEquals(0, cmp);
                 }
                 open = !open;
@@ -322,7 +322,7 @@ public class SinglePartitionSliceCommandTest
         DecoratedKey key = metadata.partitioner.decorateKey(ByteBufferUtil.bytes("k1"));
 
         ColumnFilter columnFilter = ColumnFilter.selection(RegularAndStaticColumns.of(s));
-        Slice slice = Slice.make(ClusteringBound.BOTTOM, ClusteringBound.inclusiveEndOf(ByteBufferUtil.bytes("i1")));
+        Slice slice = Slice.make(ClusteringBound.BOTTOM, BufferClusteringBound.inclusiveEndOf(ByteBufferUtil.bytes("i1")));
         ClusteringIndexSliceFilter sliceFilter = new ClusteringIndexSliceFilter(Slices.with(metadata.comparator, slice), false);
         ReadCommand cmd = SinglePartitionReadCommand.create(metadata,
                                                             FBUtilities.nowInSeconds(),

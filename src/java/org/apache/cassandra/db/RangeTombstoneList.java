@@ -128,7 +128,7 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
         ByteBuffer[] values = new ByteBuffer[bound.size()];
         for (int i = 0; i < values.length; i++)
             values[i] = allocator.clone(bound.get(i));
-        return new ClusteringBound(bound.kind(), values);
+        return new BufferClusteringBound(bound.kind(), values);
     }
 
     public void add(RangeTombstone tombstone)

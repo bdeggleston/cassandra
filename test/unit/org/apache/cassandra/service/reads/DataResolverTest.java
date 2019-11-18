@@ -24,6 +24,8 @@ import java.util.Iterator;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
+
+import org.apache.cassandra.db.BufferClusteringBound;
 import org.apache.cassandra.locator.ReplicaPlan;
 import org.junit.Assert;
 import org.junit.Before;
@@ -681,7 +683,7 @@ public class DataResolverTest extends AbstractReadResponseTest
             return rt;
 
         Slice slice = rt.deletedSlice();
-        ClusteringBound newStart = ClusteringBound.create(Kind.EXCL_START_BOUND, slice.start().getRawValues());
+        ClusteringBound newStart = BufferClusteringBound.create(Kind.EXCL_START_BOUND, slice.start().getRawValues());
         return condition
                ? new RangeTombstone(Slice.make(newStart, slice.end()), rt.deletionTime())
                : rt;
@@ -694,7 +696,7 @@ public class DataResolverTest extends AbstractReadResponseTest
             return rt;
 
         Slice slice = rt.deletedSlice();
-        ClusteringBound newEnd = ClusteringBound.create(Kind.EXCL_END_BOUND, slice.end().getRawValues());
+        ClusteringBound newEnd = BufferClusteringBound.create(Kind.EXCL_END_BOUND, slice.end().getRawValues());
         return condition
                ? new RangeTombstone(Slice.make(slice.start(), newEnd), rt.deletionTime())
                : rt;

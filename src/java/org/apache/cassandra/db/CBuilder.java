@@ -174,7 +174,7 @@ public abstract class CBuilder
             if (size == 0)
                 return isStart ? ClusteringBound.BOTTOM : ClusteringBound.TOP;
 
-            return ClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive),
+            return BufferClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive),
                                 size == values.length ? values : Arrays.copyOfRange(values, 0, size));
         }
 
@@ -214,7 +214,7 @@ public abstract class CBuilder
         {
             ByteBuffer[] newValues = Arrays.copyOf(values, size+1);
             newValues[size] = value;
-            return ClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive), newValues);
+            return BufferClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive), newValues);
         }
 
         public ClusteringBound buildBoundWith(List<ByteBuffer> newValues, boolean isStart, boolean isInclusive)
@@ -224,7 +224,7 @@ public abstract class CBuilder
             for (ByteBuffer value : newValues)
                 buffers[newSize++] = value;
 
-            return ClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive), buffers);
+            return BufferClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive), buffers);
         }
     }
 }
