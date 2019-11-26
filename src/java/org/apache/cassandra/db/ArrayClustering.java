@@ -15,30 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
-/**
- * The clustering column values for a row.
- * <p>
- * A {@code Clustering} is a {@code ClusteringPrefix} that must always be "complete", i.e. have
- * as many values as there is clustering columns in the table it is part of. It is the clustering
- * prefix used by rows.
- * <p>
- * Note however that while it's size must be equal to the table clustering size, a clustering can have
- * {@code null} values (this is currently only allowed in COMPACT table for historical reasons, but we
- * could imagine lifting that limitation if we decide it make sense from a CQL point of view).
- */
-public class BufferClustering extends AbstractBufferClusteringPrefix implements Clustering<ByteBuffer>
+public class ArrayClustering extends AbstractArrayClusteringPrefix implements Clustering<byte[]>
 {
-    BufferClustering(ByteBuffer... values)
+    public ArrayClustering(byte[][] values)
     {
         super(Kind.CLUSTERING, values);
     }
 
-    public static BufferClustering make(ByteBuffer... values)
+    public static ArrayClustering make(byte[]... values)
     {
-        return new BufferClustering(values);
+        return new ArrayClustering(values);
     }
 }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -60,7 +61,7 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
         return kind().isClose(reversed);
     }
 
-    default ClusteringBoundOrBoundary copy(AbstractAllocator allocator)
+    default ClusteringBoundOrBoundary<T> copy(AbstractAllocator allocator)
     {
         ByteBuffer[] newValues = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
@@ -133,8 +134,8 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
             if (size == 0)
                 return kind.isStart() ? ClusteringBound.BOTTOM : ClusteringBound.TOP;
 
-            ByteBuffer[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types);
-            return BufferClusteringBoundOrBoundary.create(kind, values);
+            byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types, ByteArrayAccessor.instance);
+            return ArrayClusteringBoundOrBoundary.create(kind, values);
         }
     }
 }

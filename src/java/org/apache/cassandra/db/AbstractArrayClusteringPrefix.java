@@ -15,23 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.db;
+
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.utils.ObjectSizes;
 
-public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringPrefix<ByteBuffer>
+public abstract class AbstractArrayClusteringPrefix extends AbstractClusteringPrefix<byte[]>
 {
-    public static final ByteBuffer[] EMPTY_VALUES_ARRAY = new ByteBuffer[0];
-    private static final long EMPTY_SIZE = ObjectSizes.measure(Clustering.make(EMPTY_VALUES_ARRAY));
-
+    public static final byte[][] EMPTY_VALUES_ARRAY = new byte[0][];
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ArrayClustering(EMPTY_VALUES_ARRAY));
     protected final Kind kind;
-    protected final ByteBuffer[] values;
+    protected final byte[][] values;
 
-    protected AbstractBufferClusteringPrefix(Kind kind, ByteBuffer[] values)
+    public AbstractArrayClusteringPrefix(Kind kind, byte[][] values)
     {
         this.kind = kind;
         this.values = values;
@@ -42,9 +43,9 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
         return kind;
     }
 
-    public ValueAccessor<ByteBuffer> accessor()
+    public ValueAccessor<byte[]> accessor()
     {
-        return ByteBufferAccessor.instance;
+        return ByteArrayAccessor.instance;
     }
 
     public ClusteringPrefix clustering()
@@ -57,28 +58,31 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
         return values.length;
     }
 
-    public ByteBuffer get(int i)
+    public byte[] get(int i)
     {
         return values[i];
     }
 
-    public ByteBuffer[] getRawValues()
+    public byte[][] getRawValues()
     {
         return values;
     }
 
     public ByteBuffer[] getBufferArray()
     {
-        return getRawValues();
+        ByteBuffer[] out = new ByteBuffer[values.length];
+        for (int i=0; i<values.length; i++)
+            out[i] = ByteBuffer.wrap(values[i]);
+        return out;
     }
 
     public long unsharedHeapSize()
     {
-        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
     }
 
     public long unsharedHeapSizeExcludingData()
     {
-        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
     }
 }

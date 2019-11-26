@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
@@ -161,8 +162,8 @@ public interface Clustering<T> extends ClusteringPrefix<T>
             if (types.isEmpty())
                 return EMPTY;
 
-            ByteBuffer[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types);
-            return new BufferClustering(values);
+            byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types, ByteArrayAccessor.instance);
+            return new ArrayClustering(values);
         }
 
         public Clustering deserialize(ByteBuffer in, int version, List<AbstractType<?>> types)

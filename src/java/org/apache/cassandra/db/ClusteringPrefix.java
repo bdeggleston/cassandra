@@ -25,6 +25,7 @@ import com.google.common.hash.Hasher;
 
 import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.ValueAccessor;
@@ -33,6 +34,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -394,9 +396,14 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
 
         ByteBuffer[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types) throws IOException
         {
+            return deserializeValuesWithoutSize(in, size, version, types, ByteBufferAccessor.instance);
+        }
+
+        <T> T[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types, ValueAccessor<T> accessor) throws IOException
+        {
             // Callers of this method should handle the case where size = 0 (in all case we want to return a special value anyway).
             assert size > 0;
-            ByteBuffer[] values = new ByteBuffer[size];
+            T[] values = accessor.createArray(size);
             int offset = 0;
             while (offset < size)
             {
@@ -405,8 +412,8 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
                 while (offset < limit)
                 {
                     values[offset] = isNull(header, offset)
-                                ? null
-                                : (isEmpty(header, offset) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : types.get(offset).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
+                                     ? null
+                                     : (isEmpty(header, offset) ? accessor.empty() : types.get(offset).read(accessor, in, DatabaseDescriptor.getMaxValueSize()));
                     offset++;
                 }
             }
@@ -489,7 +496,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
         private int nextSize;
         private ClusteringPrefix.Kind nextKind;
         private int deserializedSize;
-        private ByteBuffer[] nextValues;
+        private byte[][] nextValues;
 
         public Deserializer(ClusteringComparator comparator, DataInputPlus in, SerializationHeader header)
         {
@@ -514,7 +521,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
             // nextValues is of the proper size. Note that the 2nd condition may not hold for range tombstone bounds, but all
             // rows have a fixed size clustering, so we'll still save in the common case.
             if (nextValues == null || nextValues.length != nextSize)
-                this.nextValues = new ByteBuffer[nextSize];
+                this.nextValues = new byte[nextSize][];
         }
 
         public <T> int compareNextTo(ClusteringBoundOrBoundary<T> bound) throws IOException
@@ -527,7 +534,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
                 if (!hasComponent(i))
                     return nextKind.comparedToClustering;
 
-                int cmp = comparator.compareComponent(i, nextValues[i], ByteBufferAccessor.instance, bound.get(i), bound.accessor());
+                int cmp = comparator.compareComponent(i, nextValues[i], ByteArrayAccessor.instance, bound.get(i), bound.accessor());
                 if (cmp != 0)
                     return cmp;
             }
@@ -561,7 +568,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
             int i = deserializedSize++;
             nextValues[i] = Serializer.isNull(nextHeader, i)
                           ? null
-                          : (Serializer.isEmpty(nextHeader, i) ? ByteBufferUtil.EMPTY_BYTE_BUFFER : serializationHeader.clusteringTypes().get(i).readBuffer(in, DatabaseDescriptor.getMaxValueSize()));
+                          : (Serializer.isEmpty(nextHeader, i) ? ByteArrayUtil.EMPTY_BYTE_ARRAY : serializationHeader.clusteringTypes().get(i).readArray(in, DatabaseDescriptor.getMaxValueSize()));
             return true;
         }
 
@@ -575,7 +582,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
         {
             assert !nextIsRow;
             deserializeAll();
-            ClusteringBoundOrBoundary bound = BufferClusteringBoundOrBoundary.create(nextKind, nextValues);
+            ClusteringBoundOrBoundary bound = ArrayClusteringBoundOrBoundary.create(nextKind, nextValues);
             nextValues = null;
             return bound;
         }
@@ -584,7 +591,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
         {
             assert nextIsRow;
             deserializeAll();
-            Clustering clustering = Clustering.make(nextValues);
+            Clustering clustering = ArrayClustering.make(nextValues);
             nextValues = null;
             return clustering;
         }
