@@ -136,8 +136,8 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
         assert ClusteringPrefix.Kind.compare(close.kind(), open.kind()) == 0 : "Both bound don't form a boundary";
         boolean isExclusiveClose = close.isExclusive() || (close.isInclusive() && open.isInclusive() && openDeletion.supersedes(closeDeletion));
         return isExclusiveClose
-             ? exclusiveCloseInclusiveOpen(reversed, close.getRawValues(), closeDeletion, openDeletion)
-             : inclusiveCloseExclusiveOpen(reversed, close.getRawValues(), closeDeletion, openDeletion);
+             ? exclusiveCloseInclusiveOpen(reversed, close.getBufferArray(), closeDeletion, openDeletion)  // FIXME: can we avoid a buffer array
+             : inclusiveCloseExclusiveOpen(reversed, close.getBufferArray(), closeDeletion, openDeletion);
     }
 
     public RangeTombstoneBoundMarker createCorrespondingCloseMarker(boolean reversed)

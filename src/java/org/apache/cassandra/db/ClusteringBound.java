@@ -23,12 +23,13 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
  * The start or end of a range of clusterings, either inclusive or exclusive.
  */
-public interface ClusteringBound extends ClusteringBoundOrBoundary
+public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
 {
     /** The smallest start bound, i.e. the one that starts before any row. */
     public static final ClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
@@ -81,7 +82,7 @@ public interface ClusteringBound extends ClusteringBoundOrBoundary
             if (i >= size())
                 return isStart() ? -1 : 1;
 
-            int cmp = comparator.compareComponent(i, get(i), sstableBound.get(i));
+            int cmp = comparator.compareComponent(i, get(i), accessor(), sstableBound.get(i), ByteBufferAccessor.instance);
             if (cmp != 0)
                 return cmp;
         }
@@ -94,5 +95,36 @@ public interface ClusteringBound extends ClusteringBoundOrBoundary
 
         // The slice bound is equal to the sstable bound. Results depends on whether the slice is inclusive or not
         return isInclusive() ? 0 : (isStart() ? 1 : -1);
+    }
+
+    static ClusteringBound<?> create(ClusteringPrefix.Kind kind, ClusteringPrefix<?> from)
+    {
+        switch (from.accessor().getBackingKind())
+        {
+            case BUFFER:
+                return BufferClusteringBound.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<ByteBuffer>) from));
+            default:
+                throw new UnsupportedOperationException("Unsupported backing kind: " + from.accessor().getBackingKind());
+        }
+    }
+
+    public static ClusteringBound<?> inclusiveStartOf(ClusteringPrefix<?> from)
+    {
+        return create(ClusteringPrefix.Kind.INCL_START_BOUND, from);
+    }
+
+    public static ClusteringBound<?> inclusiveEndOf(ClusteringPrefix<?> from)
+    {
+        return create(ClusteringPrefix.Kind.INCL_END_BOUND, from);
+    }
+
+    public static ClusteringBound<?> exclusiveStartOf(ClusteringPrefix<?> from)
+    {
+        return create(ClusteringPrefix.Kind.EXCL_START_BOUND, from);
+    }
+
+    public static ClusteringBound<?> exclusiveEndOf(ClusteringPrefix<?> from)
+    {
+        return create(ClusteringPrefix.Kind.EXCL_END_BOUND, from);
     }
 }

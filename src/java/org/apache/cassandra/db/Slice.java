@@ -58,17 +58,17 @@ public class Slice
         }
     };
 
-    private final ClusteringBound start;
-    private final ClusteringBound end;
+    private final ClusteringBound<?> start;
+    private final ClusteringBound<?> end;
 
-    private Slice(ClusteringBound start, ClusteringBound end)
+    private Slice(ClusteringBound<?> start, ClusteringBound<?> end)
     {
         assert start.isStart() && end.isEnd();
         this.start = start;
         this.end = end;
     }
 
-    public static Slice make(ClusteringBound start, ClusteringBound end)
+    public static Slice make(ClusteringBound<?> start, ClusteringBound<?> end)
     {
         if (start == ClusteringBound.BOTTOM && end == ClusteringBound.TOP)
             return ALL;
@@ -89,49 +89,37 @@ public class Slice
         return new Slice(builder.buildBound(true, true), builder.buildBound(false, true));
     }
 
-    public static Slice make(Clustering clustering)
+    public static Slice make(Clustering<?> clustering)
     {
         // This doesn't give us what we want with the clustering prefix
         assert clustering != Clustering.STATIC_CLUSTERING;
-        ByteBuffer[] values = extractValues(clustering);
-        return new Slice(BufferClusteringBound.inclusiveStartOf(values), BufferClusteringBound.inclusiveEndOf(values));
+        return new Slice(ClusteringBound.inclusiveStartOf(clustering), ClusteringBound.inclusiveEndOf(clustering));
     }
 
-    public static Slice make(Clustering start, Clustering end)
+    public static Slice make(Clustering<?> start, Clustering<?> end)
     {
         // This doesn't give us what we want with the clustering prefix
         assert start != Clustering.STATIC_CLUSTERING && end != Clustering.STATIC_CLUSTERING;
 
-        ByteBuffer[] startValues = extractValues(start);
-        ByteBuffer[] endValues = extractValues(end);
-
-        return new Slice(BufferClusteringBound.inclusiveStartOf(startValues), BufferClusteringBound.inclusiveEndOf(endValues));
+        return new Slice(ClusteringBound.inclusiveStartOf(start), ClusteringBound.inclusiveEndOf(end));
     }
 
-    private static ByteBuffer[] extractValues(ClusteringPrefix clustering)
-    {
-        ByteBuffer[] values = new ByteBuffer[clustering.size()];
-        for (int i = 0; i < clustering.size(); i++)
-            values[i] = clustering.get(i);
-        return values;
-    }
-
-    public ClusteringBound start()
+    public ClusteringBound<?> start()
     {
         return start;
     }
 
-    public ClusteringBound end()
+    public ClusteringBound<?> end()
     {
         return end;
     }
 
-    public ClusteringBound open(boolean reversed)
+    public ClusteringBound<?> open(boolean reversed)
     {
         return reversed ? end : start;
     }
 
-    public ClusteringBound close(boolean reversed)
+    public ClusteringBound<?> close(boolean reversed)
     {
         return reversed ? start : end;
     }
@@ -211,8 +199,7 @@ public class Slice
             if (cmp < 0 || (inclusive && cmp == 0))
                 return this;
 
-            ByteBuffer[] values = extractValues(lastReturned);
-            return new Slice(start, inclusive ? BufferClusteringBound.inclusiveEndOf(values) : BufferClusteringBound.exclusiveEndOf(values));
+            return new Slice(start, inclusive ? ClusteringBound.inclusiveEndOf(lastReturned) : ClusteringBound.exclusiveEndOf(lastReturned));
         }
         else
         {
@@ -224,8 +211,7 @@ public class Slice
             if (cmp < 0 || (inclusive && cmp == 0))
                 return this;
 
-            ByteBuffer[] values = extractValues(lastReturned);
-            return new Slice(inclusive ? BufferClusteringBound.inclusiveStartOf(values) : BufferClusteringBound.exclusiveStartOf(values), end);
+            return new Slice(inclusive ? ClusteringBound.inclusiveStartOf(lastReturned) : ClusteringBound.exclusiveStartOf(lastReturned), end);
         }
     }
 
@@ -254,14 +240,14 @@ public class Slice
         {
             if (i > 0)
                 sb.append(':');
-            sb.append(comparator.subtype(i).getString(start.get(i)));
+            sb.append(start.getString(i, comparator));
         }
         sb.append(", ");
         for (int i = 0; i < end.size(); i++)
         {
             if (i > 0)
                 sb.append(':');
-            sb.append(comparator.subtype(i).getString(end.get(i)));
+            sb.append(end.getString(i, comparator));
         }
         sb.append(end.isInclusive() ? "]" : ")");
         return sb.toString();

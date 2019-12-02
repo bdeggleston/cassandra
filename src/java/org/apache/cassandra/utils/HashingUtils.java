@@ -44,6 +44,11 @@ public class HashingUtils
         }
     }
 
+    public static <T> void updateBytes(Hasher hasher, T input, ValueAccessor<T> accessor)
+    {
+        updateBytes(hasher, accessor.toSafeBuffer(input));  // FIXME
+    }
+
     public static void updateBytes(Hasher hasher, ByteBuffer input)
     {
         if (!input.hasRemaining())

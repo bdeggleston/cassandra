@@ -26,6 +26,7 @@ import java.util.stream.StreamSupport;
 import com.google.common.collect.Iterables;
 import com.google.common.hash.Hasher;
 
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.CollectionType;
@@ -73,15 +74,20 @@ public abstract class AbstractRow implements Row
             cd.digest(hasher);
     }
 
-    public void validateData(TableMetadata metadata)
+    private <T> void validateClustering(TableMetadata metadata, Clustering<T> clustering)
     {
-        Clustering clustering = clustering();
+        ValueAccessor<T> accessor = clustering.accessor();
         for (int i = 0; i < clustering.size(); i++)
         {
-            ByteBuffer value = clustering.get(i);
+            T value = clustering.get(i);
             if (value != null)
-                metadata.comparator.subtype(i).validate(value);
+                metadata.comparator.subtype(i).validate(value, accessor);
         }
+    }
+
+    public void validateData(TableMetadata metadata)
+    {
+        validateClustering(metadata, clustering());
 
         primaryKeyLivenessInfo().validate();
         if (deletion().time().localDeletionTime() < 0)

@@ -24,7 +24,7 @@ import com.google.common.hash.Hasher;
 
 import org.apache.cassandra.utils.HashingUtils;
 
-public abstract class AbstractClusteringPrefix implements ClusteringPrefix
+public abstract class AbstractClusteringPrefix<T> implements ClusteringPrefix<T>
 {
     public ClusteringPrefix clustering()
     {
@@ -36,8 +36,8 @@ public abstract class AbstractClusteringPrefix implements ClusteringPrefix
         int size = 0;
         for (int i = 0; i < size(); i++)
         {
-            ByteBuffer bb = get(i);
-            size += bb == null ? 0 : bb.remaining();
+            T v = get(i);
+            size += v == null ? 0 : accessor().size(v);
         }
         return size;
     }
@@ -46,9 +46,9 @@ public abstract class AbstractClusteringPrefix implements ClusteringPrefix
     {
         for (int i = 0; i < size(); i++)
         {
-            ByteBuffer bb = get(i);
-            if (bb != null)
-                HashingUtils.updateBytes(hasher, bb.duplicate());
+            T v = get(i);
+            if (v != null)
+                HashingUtils.updateBytes(hasher, v, accessor());
         }
         HashingUtils.updateWithByte(hasher, kind().ordinal());
     }
@@ -56,26 +56,12 @@ public abstract class AbstractClusteringPrefix implements ClusteringPrefix
     @Override
     public final int hashCode()
     {
-        int result = 31;
-        for (int i = 0; i < size(); i++)
-            result += 31 * Objects.hashCode(get(i));
-        return 31 * result + Objects.hashCode(kind());
+        return ClusteringPrefix.hashCode(this);
     }
 
     @Override
     public final boolean equals(Object o)
     {
-        if(!(o instanceof ClusteringPrefix))
-            return false;
-
-        ClusteringPrefix that = (ClusteringPrefix)o;
-        if (this.kind() != that.kind() || this.size() != that.size())
-            return false;
-
-        for (int i = 0; i < size(); i++)
-            if (!Objects.equals(this.get(i), that.get(i)))
-                return false;
-
-        return true;
+        return ClusteringPrefix.equals(this, o);
     }
 }

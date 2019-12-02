@@ -20,7 +20,7 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
-public abstract class BufferClusteringBoundOrBoundary extends AbstractBufferClusteringPrefix implements ClusteringBoundOrBoundary
+public abstract class BufferClusteringBoundOrBoundary extends AbstractBufferClusteringPrefix implements ClusteringBoundOrBoundary<ByteBuffer>
 {
     protected BufferClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
     {

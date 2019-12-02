@@ -194,11 +194,11 @@ public class RowTest
 
         assertEquals(1, start.size());
         assertEquals(start.kind(), ClusteringPrefix.Kind.INCL_START_BOUND);
-        assertEquals(expected[0], clusteringType.getString(start.get(0)));
+        assertEquals(expected[0], clusteringType.getString(start.getBuffer(0)));
 
         assertEquals(1, end.size());
         assertEquals(end.kind(), ClusteringPrefix.Kind.INCL_END_BOUND);
-        assertEquals(expected[1], clusteringType.getString(end.get(0)));
+        assertEquals(expected[1], clusteringType.getString(end.getBuffer(0)));
 
         assertEquals(expected[2], deletionTime.markedForDeleteAt());
         assertEquals(expected[3], deletionTime.localDeletionTime());

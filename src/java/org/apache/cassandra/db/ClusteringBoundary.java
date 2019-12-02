@@ -28,15 +28,26 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  * The threshold between two different ranges, i.e. a shortcut for the combination of two ClusteringBounds -- one
  * specifying the end of one of the ranges, and its (implicit) complement specifying the beginning of the other.
  */
-public interface ClusteringBoundary extends ClusteringBoundOrBoundary
+public interface ClusteringBoundary<T> extends ClusteringBoundOrBoundary<T>
 {
     @Override
-    public ClusteringBoundary invert();
+    public ClusteringBoundary<T> invert();
 
     @Override
-    public ClusteringBoundary copy(AbstractAllocator allocator);
+    public ClusteringBoundary<T> copy(AbstractAllocator allocator);
 
-    public ClusteringBound openBound(boolean reversed);
+    public ClusteringBound<T> openBound(boolean reversed);
 
-    public ClusteringBound closeBound(boolean reversed);
+    public ClusteringBound<T> closeBound(boolean reversed);
+
+    public static ClusteringBoundary<?> create(ClusteringBound.Kind kind, ClusteringPrefix<?> from)
+    {
+        switch (from.accessor().getBackingKind())
+        {
+            case BUFFER:
+                return BufferClusteringBoundary.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<ByteBuffer>) from));
+            default:
+                throw new UnsupportedOperationException("Unsupported backing kind: " + from.accessor().getBackingKind());
+        }
+    }
 }

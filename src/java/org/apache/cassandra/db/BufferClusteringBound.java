@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
-public class BufferClusteringBound extends BufferClusteringBoundOrBoundary implements ClusteringBound
+public class BufferClusteringBound extends BufferClusteringBoundOrBoundary implements ClusteringBound<ByteBuffer>
 {
 //    /** The smallest start bound, i.e. the one that starts before any row. */
 //    public static final ClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
@@ -69,30 +69,6 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
     public static BufferClusteringBound exclusiveEndOf(ByteBuffer... values)
     {
         return create(ClusteringPrefix.Kind.EXCL_END_BOUND, values);
-    }
-
-    public static BufferClusteringBound inclusiveStartOf(ClusteringPrefix prefix)
-    {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
-        for (int i = 0; i < prefix.size(); i++)
-            values[i] = prefix.get(i);
-        return inclusiveStartOf(values);
-    }
-
-    public static BufferClusteringBound exclusiveStartOf(ClusteringPrefix prefix)
-    {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
-        for (int i = 0; i < prefix.size(); i++)
-            values[i] = prefix.get(i);
-        return exclusiveStartOf(values);
-    }
-
-    public static BufferClusteringBound inclusiveEndOf(ClusteringPrefix prefix)
-    {
-        ByteBuffer[] values = new ByteBuffer[prefix.size()];
-        for (int i = 0; i < prefix.size(); i++)
-            values[i] = prefix.get(i);
-        return inclusiveEndOf(values);
     }
 
     public static ClusteringBound create(ClusteringComparator comparator, boolean isStart, boolean isInclusive, Object... values)

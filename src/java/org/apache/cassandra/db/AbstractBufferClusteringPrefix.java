@@ -19,9 +19,11 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.utils.ObjectSizes;
 
-public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringPrefix
+public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringPrefix<ByteBuffer>
 {
     public static final ByteBuffer[] EMPTY_VALUES_ARRAY = new ByteBuffer[0];
     private static final long EMPTY_SIZE = ObjectSizes.measure(Clustering.make(EMPTY_VALUES_ARRAY));
@@ -38,6 +40,11 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
     public Kind kind()
     {
         return kind;
+    }
+
+    public ValueAccessor accessor()
+    {
+        return ByteBufferAccessor.instance;
     }
 
     public ClusteringPrefix clustering()
@@ -58,6 +65,11 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
     public ByteBuffer[] getRawValues()
     {
         return values;
+    }
+
+    public ByteBuffer[] getBufferArray()
+    {
+        return getRawValues();
     }
 
     public long unsharedHeapSize()

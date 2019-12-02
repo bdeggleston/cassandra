@@ -41,7 +41,7 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  *      iterator. See this comment for more details: https://goo.gl/yyB5mR.
  *   2) This saves some storage space.
  */
-public interface ClusteringBoundOrBoundary extends ClusteringPrefix
+public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
 {
     public static final ClusteringBoundOrBoundary.Serializer serializer = new Serializer();
 
@@ -64,7 +64,7 @@ public interface ClusteringBoundOrBoundary extends ClusteringPrefix
     {
         ByteBuffer[] newValues = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
-            newValues[i] = allocator.clone(get(i));
+            newValues[i] = allocator.clone(get(i), accessor());
         return BufferClusteringBoundOrBoundary.create(kind(), newValues);
     }
 
@@ -81,7 +81,7 @@ public interface ClusteringBoundOrBoundary extends ClusteringPrefix
         {
             if (i > 0)
                 sb.append(", ");
-            sb.append(comparator.subtype(i).getString(get(i)));
+            sb.append(comparator.subtype(i).getString(get(i), accessor()));
         }
         return sb.append(')').toString();
     }

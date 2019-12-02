@@ -61,7 +61,6 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
-import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.concurrent.Refs;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
@@ -107,8 +106,8 @@ public abstract class CassandraIndex implements Index
      * @param path from the base data being indexed
      * @return a clustering prefix to be used to insert into the index table
      */
-    protected abstract CBuilder buildIndexClusteringPrefix(ByteBuffer partitionKey,
-                                                           ClusteringPrefix prefix,
+    protected abstract <T> CBuilder buildIndexClusteringPrefix(ByteBuffer partitionKey,
+                                                           ClusteringPrefix<T> prefix,
                                                            CellPath path);
 
     /**
@@ -142,7 +141,7 @@ public abstract class CassandraIndex implements Index
      * key in the index table
      */
     protected abstract ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                                  Clustering clustering,
+                                                  Clustering<?> clustering,
                                                   CellPath path,
                                                   ByteBuffer cellValue);
 

@@ -241,7 +241,7 @@ public class ColumnIndex
                 if (row.isStatic())
                     return null;
 
-                return row.clustering().get(column.position());
+                return row.clustering().getBuffer(column.position());
 
             // treat static cell retrieval the same was as regular
             // only if row kind is STATIC otherwise return null

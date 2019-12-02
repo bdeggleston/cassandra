@@ -48,7 +48,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  *   3) {@code ClusteringBoundary} represents the threshold between two adjacent range tombstones.
  * See those classes for more details.
  */
-public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
+public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
 {
     public static final Serializer serializer = new Serializer();
 
@@ -217,7 +217,24 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
      *
      * @return the ith value of this prefix. Note that a value can be {@code null}.
      */
-    public ByteBuffer get(int i);
+    public T get(int i);
+
+    public ValueAccessor<T> accessor();
+
+    default ByteBuffer getBuffer(int i)
+    {
+        return accessor().toBuffer(get(i));
+    }
+
+    default String getString(int i, ClusteringComparator comparator)
+    {
+        return comparator.subtype(i).getString(get(i), accessor());
+    }
+
+    default void validate(int i, ClusteringComparator comparator)
+    {
+        comparator.subtype(i).validate(get(i), accessor());
+    }
 
     /**
      * Adds the data of this clustering prefix to the provided Hasher instance.
@@ -251,11 +268,11 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
     default ByteBuffer serializeAsPartitionKey()
     {
         if (size() == 1)
-            return get(0);
+            return accessor().toBuffer(get(0));
 
         ByteBuffer[] values = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
-            values[i] = get(i);
+            values[i] = accessor().toBuffer(get(i));
         return CompositeType.build(ByteBufferAccessor.instance, values);
     }
     /**
@@ -267,7 +284,17 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
      *
      * @return the values for this prefix as an array.
      */
-    public ByteBuffer[] getRawValues();
+    public T[] getRawValues();
+
+    public ByteBuffer[] getBufferArray();
+
+    static <T> T[] extractValues(ClusteringPrefix<T> clustering)
+    {
+        T[] values = clustering.accessor().createArray(clustering.size());
+        for (int i = 0; i < clustering.size(); i++)
+            values[i] = clustering.get(i);
+        return values;
+    }
 
     public static class Serializer
     {
@@ -318,10 +345,11 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 return ClusteringBoundOrBoundary.serializer.serializedSize((ClusteringBoundOrBoundary)clustering, version, types);
         }
 
-        void serializeValuesWithoutSize(ClusteringPrefix clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
+        <T> void serializeValuesWithoutSize(ClusteringPrefix<T> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
         {
             int offset = 0;
             int clusteringSize = clustering.size();
+            ValueAccessor<T> accessor = clustering.accessor();
             // serialize in batches of 32, to avoid garbage when deserializing headers
             while (offset < clusteringSize)
             {
@@ -333,15 +361,15 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 out.writeUnsignedVInt(makeHeader(clustering, offset, limit));
                 while (offset < limit)
                 {
-                    ByteBuffer v = clustering.get(offset);
-                    if (v != null && v.hasRemaining())
-                        types.get(offset).writeValue(v, out);
+                    T v = clustering.get(offset);
+                    if (v != null && !accessor.isEmpty(v))
+                        types.get(offset).writeValue(v, accessor, out);
                     offset++;
                 }
             }
         }
 
-        long valuesWithoutSizeSerializedSize(ClusteringPrefix clustering, int version, List<AbstractType<?>> types)
+        <T> long valuesWithoutSizeSerializedSize(ClusteringPrefix<T> clustering, int version, List<AbstractType<?>> types)
         {
             long result = 0;
             int offset = 0;
@@ -352,13 +380,14 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 result += TypeSizes.sizeofUnsignedVInt(makeHeader(clustering, offset, limit));
                 offset = limit;
             }
+            ValueAccessor<T> accessor = clustering.accessor();
             for (int i = 0; i < clusteringSize; i++)
             {
-                ByteBuffer v = clustering.get(i);
-                if (v == null || !v.hasRemaining())
+                T v = clustering.get(i);
+                if (v == null || accessor.isEmpty(v))
                     continue; // handled in the header
 
-                result += types.get(i).writtenLength(v);
+                result += types.get(i).writtenLength(v, accessor);
             }
             return result;
         }
@@ -408,16 +437,17 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
          * empty values too. So for that, every clustering prefix includes a "header" that contains 2 bits per element in the prefix. For each element,
          * those 2 bits encode whether the element is null, empty, or none of those.
          */
-        private static long makeHeader(ClusteringPrefix clustering, int offset, int limit)
+        private static <T> long makeHeader(ClusteringPrefix<T> clustering, int offset, int limit)
         {
             long header = 0;
+            ValueAccessor<T> accessor = clustering.accessor();
             for (int i = offset ; i < limit ; i++)
             {
-                ByteBuffer v = clustering.get(i);
+                T v = clustering.get(i);
                 // no need to do modulo arithmetic for i, since the left-shift execute on the modulus of RH operand by definition
                 if (v == null)
                     header |= (1L << (i * 2) + 1);
-                else if (!v.hasRemaining())
+                else if (accessor.isEmpty(v))
                     header |= (1L << (i * 2));
             }
             return header;
@@ -487,7 +517,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 this.nextValues = new ByteBuffer[nextSize];
         }
 
-        public int compareNextTo(ClusteringBoundOrBoundary bound) throws IOException
+        public <T> int compareNextTo(ClusteringBoundOrBoundary<T> bound) throws IOException
         {
             if (bound == ClusteringBound.TOP)
                 return -1;
@@ -497,7 +527,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
                 if (!hasComponent(i))
                     return nextKind.comparedToClustering;
 
-                int cmp = comparator.compareComponent(i, nextValues[i], bound.get(i));
+                int cmp = comparator.compareComponent(i, nextValues[i], ByteBufferAccessor.instance, bound.get(i), bound.accessor());
                 if (cmp != 0)
                     return cmp;
             }
@@ -577,7 +607,7 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
     {
         int result = 31;
         for (int i = 0; i < prefix.size(); i++)
-            result += 31 * Objects.hashCode(prefix.get(i));
+            result += 31 * ValueAccessor.hashCode(prefix.get(i), prefix.accessor());
         return 31 * result + Objects.hashCode(prefix.kind());
     }
 
@@ -591,9 +621,10 @@ public interface ClusteringPrefix extends IMeasurableMemory, Clusterable
             return false;
 
         for (int i = 0; i < prefix.size(); i++)
-            if (!Objects.equals(prefix.get(i), that.get(i)))
+            if (!ValueAccessor.equals(prefix.get(i), prefix.accessor(), that.get(i), that.accessor()))
                 return false;
 
         return true;
     }
+
 }

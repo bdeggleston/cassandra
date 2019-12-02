@@ -196,7 +196,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
                           lowerBoundPrefix.getRawValues().length,
                           metadata().comparator.size(),
                           sstable.getFilename());
-            return BufferClusteringBound.inclusiveOpen(filter.isReversed(), lowerBoundPrefix.getRawValues());
+            return BufferClusteringBound.inclusiveOpen(filter.isReversed(), lowerBoundPrefix.getBufferArray());
         }
         catch (IOException e)
         {

@@ -40,6 +40,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -220,8 +221,10 @@ public class SinglePartitionSliceCommandTest
                 for (int i = 0; i < CFM_SLICES.comparator.size(); i++)
                 {
                     int cmp = CFM_SLICES.comparator.compareComponent(i,
-                                                                     clustering.getRawValues()[i],
-                                                                     marker.clustering().getRawValues()[i]);
+                                                                     clustering.getBufferArray()[i],
+                                                                     ByteBufferAccessor.instance,
+                                                                     marker.clustering().getBufferArray()[i],
+                                                                     ByteBufferAccessor.instance);
                     assertEquals(0, cmp);
                 }
                 open = !open;

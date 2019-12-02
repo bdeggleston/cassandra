@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
  * {@code null} values (this is currently only allowed in COMPACT table for historical reasons, but we
  * could imagine lifting that limitation if we decide it make sense from a CQL point of view).
  */
-public class BufferClustering extends AbstractBufferClusteringPrefix implements Clustering
+public class BufferClustering extends AbstractBufferClusteringPrefix implements Clustering<ByteBuffer>
 {
     BufferClustering(ByteBuffer... values)
     {

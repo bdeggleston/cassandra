@@ -72,7 +72,7 @@ public final class CounterCacheKey extends CacheKey
         int cs = clustering.size();
         ByteBuffer[] values = new ByteBuffer[cs + 1 + (path == null ? 0 : path.size())];
         for (int i = 0; i < cs; i++)
-            values[i] = clustering.get(i);
+            values[i] = clustering.getBuffer(i);
         values[cs] = c.name.bytes;
         if (path != null)
             for (int i = 0; i < path.size(); i++)

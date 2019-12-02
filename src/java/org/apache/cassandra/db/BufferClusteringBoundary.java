@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
-public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary implements ClusteringBoundary
+public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary implements ClusteringBoundary<ByteBuffer>
 {
     protected BufferClusteringBoundary(Kind kind, ByteBuffer[] values)
     {

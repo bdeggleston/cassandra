@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 
 /**
  * Allows to build ClusteringPrefixes, either Clustering or ClusteringBound.
@@ -45,7 +47,7 @@ public abstract class CBuilder
             throw new UnsupportedOperationException();
         }
 
-        public CBuilder add(ByteBuffer value)
+        public <T> CBuilder add(T value, ValueAccessor<T> accessor)
         {
             throw new UnsupportedOperationException();
         }
@@ -99,7 +101,15 @@ public abstract class CBuilder
     public abstract int count();
     public abstract int remainingCount();
     public abstract ClusteringComparator comparator();
-    public abstract CBuilder add(ByteBuffer value);
+    public final CBuilder add(ByteBuffer value)
+    {
+        return add(value, ByteBufferAccessor.instance);
+    }
+    public final <T> CBuilder add(ClusteringPrefix<T> prefix, int i)
+    {
+        return add(prefix.get(i), prefix.accessor());
+    }
+    public abstract <T> CBuilder add(T value, ValueAccessor<T> accessor);
     public abstract CBuilder add(Object value);
     public abstract Clustering build();
     public abstract ClusteringBound buildBound(boolean isStart, boolean isInclusive);
@@ -137,11 +147,11 @@ public abstract class CBuilder
             return type;
         }
 
-        public CBuilder add(ByteBuffer value)
+        public <T> CBuilder add(T value, ValueAccessor<T> accessor)
         {
             if (isDone())
                 throw new IllegalStateException();
-            values[size++] = value;
+            values[size++] = accessor.toBuffer(value);
             return this;
         }
 

@@ -268,7 +268,7 @@ public class CounterMutation implements IMutation
         }
     }
 
-    private int compare(Clustering c1, Clustering c2, ColumnFamilyStore cfs)
+    private int compare(Clustering<?> c1, Clustering<?> c2, ColumnFamilyStore cfs)
     {
         if (c1 == Clustering.STATIC_CLUSTERING)
             return c2 == Clustering.STATIC_CLUSTERING ? 0 : -1;

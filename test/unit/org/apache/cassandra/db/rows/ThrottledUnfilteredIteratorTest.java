@@ -319,7 +319,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
                 }
                 else
                 {
-                    ByteBuffer[] byteBuffers = expected.clustering().getRawValues();
+                    ByteBuffer[] byteBuffers = expected.clustering().getBufferArray();
                     RangeTombstoneBoundMarker closeMarker = RangeTombstoneBoundMarker.exclusiveClose(isRevered,
                                                                                                      byteBuffers,
                                                                                                      openDeletionTime);

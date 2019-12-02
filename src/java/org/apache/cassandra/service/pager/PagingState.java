@@ -400,7 +400,7 @@ public class PagingState
                     return columnName;
 
                 assert clustering.size() == 1 : "Expected clustering size to be 1, but was " + clustering.size();
-                return clustering.get(0);
+                return clustering.getBuffer(0);
             }
 
             // We use comparator.size() rather than clustering.size() because of static clusterings
@@ -417,7 +417,7 @@ public class PagingState
                     continue;
                 }
 
-                ByteBuffer v = clustering.get(i);
+                ByteBuffer v = clustering.getBuffer(i);
                 // we can have null (only for dense compound tables for backward compatibility reasons) but that
                 // means we're done and should stop there as far as building the composite is concerned.
                 if (v == null)

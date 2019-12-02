@@ -46,7 +46,7 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
     }
 
     public ByteBuffer getIndexedValue(ByteBuffer partitionKey,
-                                      Clustering clustering,
+                                      Clustering<?> clustering,
                                       CellPath path, ByteBuffer cellValue)
     {
         return CompositeType.build(ByteBufferAccessor.instance, path.get(0), cellValue);

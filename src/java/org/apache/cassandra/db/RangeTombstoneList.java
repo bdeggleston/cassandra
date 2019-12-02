@@ -123,11 +123,11 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
         return copy;
     }
 
-    private static ClusteringBound clone(ClusteringBound bound, AbstractAllocator allocator)
+    private static <T> ClusteringBound<ByteBuffer> clone(ClusteringBound<T> bound, AbstractAllocator allocator)
     {
         ByteBuffer[] values = new ByteBuffer[bound.size()];
         for (int i = 0; i < values.length; i++)
-            values[i] = allocator.clone(bound.get(i));
+            values[i] = allocator.clone(bound.get(i), bound.accessor());
         return new BufferClusteringBound(bound.kind(), values);
     }
 
@@ -145,7 +145,7 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
      * This method will be faster if the new tombstone sort after all the currently existing ones (this is a common use case),
      * but it doesn't assume it.
      */
-    public void add(ClusteringBound start, ClusteringBound end, long markedAt, int delTime)
+    public void add(ClusteringBound<?> start, ClusteringBound<?> end, long markedAt, int delTime)
     {
         if (isEmpty())
         {
