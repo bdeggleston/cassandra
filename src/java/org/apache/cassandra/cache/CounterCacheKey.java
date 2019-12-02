@@ -126,9 +126,9 @@ public final class CounterCacheKey extends CacheKey
         {
             ByteBuffer value = null;
             if (column.isStatic())
-                value = iter.staticRow().getCell(column).value();
+                value = iter.staticRow().getCell(column).buffer();
             else if (iter.hasNext())
-                value = iter.next().getCell(column).value();
+                value = iter.next().getCell(column).buffer();
 
             return value;
         }

@@ -581,7 +581,7 @@ public class CounterContext
 
     public long total(Cell cell)
     {
-        return total(cell.value(), cell.valueAccessor());
+        return total(cell.value(), cell.accessor());
     }
 
     public boolean shouldClearLocal(ByteBuffer context)

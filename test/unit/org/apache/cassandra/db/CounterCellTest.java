@@ -89,12 +89,12 @@ public class CounterCellTest
 
         Cell cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
 
-        assertEquals(delta, CounterContext.instance().total(cell.value(), cell.valueAccessor()));
-        assertEquals(1, cell.value().getShort(0));
-        assertEquals(0, cell.value().getShort(2));
-        Assert.assertTrue(CounterId.wrap(cell.value(), 4).isLocalId());
-        assertEquals(1L, cell.value().getLong(4 + idLength));
-        assertEquals(delta, cell.value().getLong(4 + idLength + clockLength));
+        assertEquals(delta, CounterContext.instance().total(cell.value(), cell.accessor()));
+        assertEquals(1, cell.buffer().getShort(0));
+        assertEquals(0, cell.buffer().getShort(2));
+        Assert.assertTrue(CounterId.wrap(cell.buffer(), 4).isLocalId());
+        assertEquals(1L, cell.buffer().getLong(4 + idLength));
+        assertEquals(delta, cell.buffer().getLong(4 + idLength + clockLength));
 
     }
 
@@ -196,18 +196,18 @@ public class CounterCellTest
         // Equal count
         leftCell = createLegacyCounterCell(cfs, col, 2, 2);
         rightCell = createLegacyCounterCell(cfs, col, 2, 1);
-        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
 
         // Non-equal count
         leftCell = createLegacyCounterCell(cfs, col, 1, 2);
         rightCell = createLegacyCounterCell(cfs, col, 2, 1);
-        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
 
         // timestamp
         CounterId id = CounterId.generate();
         leftCell = createCounterCell(cfs, col, id, 2, 2);
         rightCell = createCounterCell(cfs, col, id, 2, 1);
-        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
 
         ContextState leftContext;
         ContextState rightContext;
@@ -221,7 +221,7 @@ public class CounterCellTest
 
         leftCell = createCounterCellFromContext(cfs, col, leftContext, 1);
         rightCell = createCounterCellFromContext(cfs, col, rightContext, 1);
-        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
+        assertEquals(CounterContext.Relationship.EQUAL, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
 
         // greater than: left has superset of nodes (counts equal)
         leftContext = ContextState.allocate(0, 0, 4);
@@ -237,8 +237,8 @@ public class CounterCellTest
 
         leftCell = createCounterCellFromContext(cfs, col, leftContext, 1);
         rightCell = createCounterCellFromContext(cfs, col, rightContext, 1);
-        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
-        assertEquals(CounterContext.Relationship.LESS_THAN, CounterContext.instance().diff(rightCell.value(), leftCell.value()));
+        assertEquals(CounterContext.Relationship.GREATER_THAN, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
+        assertEquals(CounterContext.Relationship.LESS_THAN, CounterContext.instance().diff(rightCell.buffer(), leftCell.buffer()));
 
         // disjoint: right and left have disjoint node sets
         leftContext = ContextState.allocate(0, 0, 3);
@@ -253,8 +253,8 @@ public class CounterCellTest
 
         leftCell = createCounterCellFromContext(cfs, col, leftContext, 1);
         rightCell = createCounterCellFromContext(cfs, col, rightContext, 1);
-        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.value(), rightCell.value()));
-        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(rightCell.value(), leftCell.value()));
+        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(leftCell.buffer(), rightCell.buffer()));
+        assertEquals(CounterContext.Relationship.DISJOINT, CounterContext.instance().diff(rightCell.buffer(), leftCell.buffer()));
     }
 
     @Test

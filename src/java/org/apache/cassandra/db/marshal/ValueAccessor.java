@@ -29,7 +29,6 @@ import java.util.UUID;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface ValueAccessor<V>
 {
@@ -130,7 +129,7 @@ public interface ValueAccessor<V>
 
     public static <L, R> int compare(ValueAware<L> left, ValueAware<R> right)
     {
-        return compare(left.value(), left.valueAccessor(), right.value(), right.valueAccessor());
+        return compare(left.value(), left.accessor(), right.value(), right.accessor());
     }
 
     public static boolean equals(Object left, ValueAccessor accessorL, Object right, ValueAccessor accessorR)

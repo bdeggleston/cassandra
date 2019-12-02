@@ -209,7 +209,7 @@ public class ListType<T> extends CollectionType<List<T>>
         assert isMultiCell;
         List<ByteBuffer> bbs = new ArrayList<ByteBuffer>();
         while (cells.hasNext())
-            bbs.add(cells.next().value());
+            bbs.add(cells.next().buffer());
         return bbs;
     }
 

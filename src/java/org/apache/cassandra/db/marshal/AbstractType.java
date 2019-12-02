@@ -158,6 +158,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getString(bytes, ByteBufferAccessor.instance);
     }
 
+    public final String getString(ValueAware vv)
+    {
+        return getString(vv.value(), vv.accessor());
+    }
+
     /** get a byte representation of the given string. */
     public abstract ByteBuffer fromString(String source) throws MarshalException;
 
@@ -179,6 +184,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     public String toJSONString(ByteBuffer buffer, ProtocolVersion protocolVersion)
     {
         return '"' + getSerializer().deserialize(buffer).toString() + '"';
+    }
+
+    public <V> String toJSONString(V value, ValueAccessor<V> accessor, ProtocolVersion protocolVersion)
+    {
+        return toJSONString(accessor.toBuffer(value), protocolVersion); // FIXME
     }
 
     /* validate that the byte array is a valid sequence for the type we are supposed to be comparing */
@@ -454,7 +464,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     }
 
     // This assumes that no empty values are passed
-    private <T> void writeValue(T value, ValueAccessor<T> handle, DataOutputPlus out) throws IOException
+    public  <T> void writeValue(T value, ValueAccessor<T> handle, DataOutputPlus out) throws IOException
     {
         assert !handle.isEmpty(value);
         if (valueLengthIfFixed() >= 0)
@@ -468,7 +478,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return writtenLength(value, ByteBufferAccessor.instance);
     }
 
-    public <T> long writtenLength(T value, ValueAccessor<T> handle)
+    public <V> long writtenLength(V value, ValueAccessor<V> handle)
     {
         assert !handle.isEmpty(value);
         return valueLengthIfFixed() >= 0

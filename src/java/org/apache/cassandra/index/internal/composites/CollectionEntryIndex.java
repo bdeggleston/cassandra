@@ -64,6 +64,6 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
             return true;
 
         AbstractType<?> valueComparator = ((CollectionType)columnDef.type).valueComparator();
-        return valueComparator.compare(mapValue, cell.value()) != 0;
+        return valueComparator.compare(mapValue, cell.buffer()) != 0;
     }
 }

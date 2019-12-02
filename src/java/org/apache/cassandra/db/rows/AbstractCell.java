@@ -22,6 +22,7 @@ import java.util.Objects;
 
 import com.google.common.hash.Hasher;
 
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionPurger;
 import org.apache.cassandra.db.TypeSizes;
@@ -38,7 +39,7 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  * Unless you have a very good reason not to, every cell implementation
  * should probably extend this class.
  */
-public abstract class AbstractCell extends Cell
+public abstract class AbstractCell<V> extends Cell<V>
 {
     protected AbstractCell(ColumnMetadata column)
     {
@@ -70,7 +71,7 @@ public abstract class AbstractCell extends Cell
         if (!isCounterCell())
             return this;
 
-        ByteBuffer value = value();
+        ByteBuffer value = buffer();
         ByteBuffer marked = CounterContext.instance().markLocalToBeCleared(value);
         return marked == value ? this : new BufferCell(column, timestamp(), ttl(), localDeletionTime(), marked, path());
     }
@@ -101,13 +102,13 @@ public abstract class AbstractCell extends Cell
     public Cell copy(AbstractAllocator allocator)
     {
         CellPath path = path();
-        return new BufferCell(column, timestamp(), ttl(), localDeletionTime(), allocator.clone(value()), path == null ? null : path.copy(allocator));
+        return new BufferCell(column, timestamp(), ttl(), localDeletionTime(), allocator.clone(buffer()), path == null ? null : path.copy(allocator));
     }
 
     // note: while the cell returned may be different, the value is the same, so if the value is offheap it must be referenced inside a guarded context (or copied)
     public Cell updateAllTimestamp(long newTimestamp)
     {
-        return new BufferCell(column, isTombstone() ? newTimestamp - 1 : newTimestamp, ttl(), localDeletionTime(), value(), path());
+        return new BufferCell(column, isTombstone() ? newTimestamp - 1 : newTimestamp, ttl(), localDeletionTime(), buffer(), path());
     }
 
     public int dataSize()
@@ -116,7 +117,7 @@ public abstract class AbstractCell extends Cell
         return TypeSizes.sizeof(timestamp())
                + TypeSizes.sizeof(ttl())
                + TypeSizes.sizeof(localDeletionTime())
-               + value().remaining()
+               + valueSize()
                + (path == null ? 0 : path.dataSize());
     }
 
@@ -124,11 +125,11 @@ public abstract class AbstractCell extends Cell
     {
         if (isCounterCell())
         {
-            CounterContext.instance().updateDigest(hasher, value());
+            CounterContext.instance().updateDigest(hasher, buffer());
         }
         else
         {
-            HashingUtils.updateBytes(hasher, value().duplicate());
+            HashingUtils.updateBytes(hasher, buffer().duplicate());
         }
 
         HashingUtils.updateWithLong(hasher, timestamp());
@@ -177,25 +178,25 @@ public abstract class AbstractCell extends Cell
 
         Cell that = (Cell)other;
         return this.column().equals(that.column())
-            && this.isCounterCell() == that.isCounterCell()
-            && this.timestamp() == that.timestamp()
-            && this.ttl() == that.ttl()
-            && this.localDeletionTime() == that.localDeletionTime()
-            && Objects.equals(this.value(), that.value())
-            && Objects.equals(this.path(), that.path());
+               && this.isCounterCell() == that.isCounterCell()
+               && this.timestamp() == that.timestamp()
+               && this.ttl() == that.ttl()
+               && this.localDeletionTime() == that.localDeletionTime()
+               && ValueAccessor.equals(this.value(), this.accessor(), that.value(), that.accessor())
+               && Objects.equals(this.path(), that.path());
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(column(), isCounterCell(), timestamp(), ttl(), localDeletionTime(), value(), path());
+        return Objects.hash(column(), isCounterCell(), timestamp(), ttl(), localDeletionTime(), ValueAccessor.hashCode(value(), accessor()), path());
     }
 
     @Override
     public String toString()
     {
         if (isCounterCell())
-            return String.format("[%s=%d ts=%d]", column().name, CounterContext.instance().total(value(), valueAccessor()), timestamp());
+            return String.format("[%s=%d ts=%d]", column().name, CounterContext.instance().total(value(), accessor()), timestamp());
 
         AbstractType<?> type = column().type;
         if (type instanceof CollectionType && type.isMultiCell())
@@ -204,13 +205,13 @@ public abstract class AbstractCell extends Cell
             return String.format("[%s[%s]=%s %s]",
                                  column().name,
                                  ct.nameComparator().getString(path().get(0)),
-                                 ct.valueComparator().getString(value()),
+                                 ct.valueComparator().getString(value(), accessor()),
                                  livenessInfoString());
         }
         if (isTombstone())
             return String.format("[%s=<tombstone> %s]", column().name, livenessInfoString());
         else
-            return String.format("[%s=%s %s]", column().name, type.getString(value()), livenessInfoString());
+            return String.format("[%s=%s %s]", column().name, type.getString(value(), accessor()), livenessInfoString());
     }
 
     private String livenessInfoString()

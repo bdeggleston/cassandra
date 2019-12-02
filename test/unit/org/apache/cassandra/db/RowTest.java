@@ -144,8 +144,8 @@ public class RowTest
         Unfiltered unfiltered = update.unfilteredIterator().next();
         assertTrue(unfiltered.kind() == Unfiltered.Kind.ROW);
         row = (Row) unfiltered;
-        assertEquals("a2", defA.cellValueType().getString(row.getCell(defA).value()));
-        assertEquals("b1", defB.cellValueType().getString(row.getCell(defB).value()));
+        assertEquals("a2", defA.cellValueType().getString(row.getCell(defA).buffer()));
+        assertEquals("b1", defB.cellValueType().getString(row.getCell(defB).buffer()));
         assertEquals(2, row.columns().size());
     }
 
@@ -163,7 +163,7 @@ public class RowTest
         // when we read with a nowInSeconds before the cell has expired,
         // the PartitionIterator includes the row we just wrote
         Row row = Util.getOnlyRow(Util.cmd(cfs, dk).includeRow("c1").withNowInSeconds(nowInSeconds).build());
-        assertEquals("a1", ByteBufferUtil.string(row.getCell(def).value()));
+        assertEquals("a1", ByteBufferUtil.string(row.getCell(def).buffer()));
 
         // when we read with a nowInSeconds after the cell has expired, the row is filtered
         // so the PartitionIterator is empty

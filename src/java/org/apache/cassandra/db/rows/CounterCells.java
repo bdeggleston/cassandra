@@ -27,6 +27,6 @@ public abstract class CounterCells
 
     public static boolean hasLegacyShards(Cell cell)
     {
-        return contextManager.hasLegacyShards(cell.value(), cell.valueAccessor());
+        return contextManager.hasLegacyShards(cell.value(), cell.accessor());
     }
 }

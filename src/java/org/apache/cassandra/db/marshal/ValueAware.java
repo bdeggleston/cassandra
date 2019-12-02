@@ -21,5 +21,5 @@ package org.apache.cassandra.db.marshal;
 public interface ValueAware<V>
 {
     V value();
-    ValueAccessor<V> valueAccessor();
+    ValueAccessor<V> accessor();
 }

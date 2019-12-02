@@ -172,7 +172,7 @@ public class UserType extends TupleType
             while (fieldPosition < fieldPositionOfCell)
                 components[fieldPosition++] = null;
 
-            components[fieldPosition++] = cell.value();
+            components[fieldPosition++] = cell.accessor().toBuffer(cell.value());
         }
 
         // append trailing nulls for missing cells
@@ -189,11 +189,11 @@ public class UserType extends TupleType
             ByteBuffer path = cell.path().get(0);
             nameComparator().validate(path);
             Short fieldPosition = nameComparator().getSerializer().deserialize(path);
-            fieldType(fieldPosition).validate(cell.value());
+            fieldType(fieldPosition).validate(cell.value(), cell.accessor());
         }
         else
         {
-            validate(cell.value());
+            validate(cell.value(), cell.accessor());
         }
     }
 

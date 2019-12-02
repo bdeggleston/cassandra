@@ -320,7 +320,7 @@ public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
                 {
                     Cell cell = row.getCell(def);
                     if (cell != null)
-                        data.put(def.name.toString(), cell.value());
+                        data.put(def.name.toString(), cell.buffer());
                 }
                 else
                 {

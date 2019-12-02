@@ -472,7 +472,7 @@ public abstract class CommitLogStressTest
 
                     for (Cell cell : row.cells())
                     {
-                        hash = hash(hash, cell.value());
+                        hash = hash(hash, cell.buffer());
                         ++cells;
                     }
                 }

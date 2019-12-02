@@ -518,6 +518,6 @@ public class QueryPagerTest
     {
         Cell cell = row.getCell(column);
         assertNotNull(cell);
-        assertEquals(value, ByteBufferUtil.toInt(cell.value()));
+        assertEquals(value, ByteBufferUtil.toInt(cell.buffer()));
     }
 }
