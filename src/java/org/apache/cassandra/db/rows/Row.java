@@ -775,7 +775,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
                 if (column.isSimple())
                 {
                     Cell merged = null;
-                    for (int i=0; i<versions.size(); i++)
+                    for (int i=0, size=versions.size(); i<size; i++)
                     {
                         Cell cell = (Cell) versions.get(i);
                         if (!activeDeletion.deletes(cell))
@@ -788,7 +788,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
                     complexBuilder.newColumn(column);
                     complexCells.clear();
                     DeletionTime complexDeletion = DeletionTime.LIVE;
-                    for (int i=0; i<versions.size(); i++)
+                    for (int i=0, size=versions.size(); i<size; i++)
                     {
                         ColumnData data = versions.get(i);
                         ComplexColumnData cd = (ComplexColumnData)data;

@@ -52,7 +52,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
 
     public void close()
     {
-        for (int i=0; i<iterators.size(); i++)
+        for (int i=0, size=iterators.size(); i<size; i++)
         {
             Iterator<In> iterator = iterators.get(i);
             try
