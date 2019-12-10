@@ -147,7 +147,7 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
             public UnfilteredRowIterators.MergeListener getRowMergeListener(DecoratedKey partitionKey, List<UnfilteredRowIterator> versions)
             {
                 int merged = 0;
-                for (int i=0, size=versions.size(); i<size; i++)
+                for (int i=0, isize=versions.size(); i<isize; i++)
                 {
                     UnfilteredRowIterator iter = versions.get(i);
                     if (iter != null)

@@ -119,7 +119,7 @@ public class EncodingStats
             return function.apply(values.get(0));
 
         Collector collector = new Collector();
-        for (int i=0, size=values.size(); i<size; i++)
+        for (int i=0, isize=values.size(); i<isize; i++)
         {
             V v = values.get(i);
             EncodingStats stats = function.apply(v);
