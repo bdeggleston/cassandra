@@ -1249,6 +1249,29 @@ public class BTree
         return compare(cmp, previous, max) < 0;
     }
 
+    private static <V, A> boolean applyValue(V value, BiConsumer<A, V> function, A argument, Predicate<V> stopCondition)
+    {
+        if (stopCondition != null && stopCondition.apply(value))
+            return true;
+
+        function.accept(argument, value);
+
+        return false;
+    }
+
+    public static <V, A> boolean applyLeaf(Object[] btree, BiConsumer<A, V> function, A argument, Predicate<V> stopCondition)
+    {
+        Preconditions.checkArgument(isLeaf(btree));
+        int limit = getLeafKeyEnd(btree);
+        for (int i=0; i<limit; i++)
+        {
+            if (applyValue((V) btree[i], function, argument, stopCondition))
+                return true;
+        }
+
+        return false;
+    }
+
     /**
      * Simple method to walk the btree forwards and apply a function till a stop condition is reached
      *
@@ -1260,27 +1283,18 @@ public class BTree
      */
     public static <V, A> boolean apply(Object[] btree, BiConsumer<A, V> function, A argument, Predicate<V> stopCondition)
     {
-        boolean isLeaf = isLeaf(btree);
-        int childOffset = isLeaf ? Integer.MAX_VALUE : getChildStart(btree);
-        int limit = isLeaf ? getLeafKeyEnd(btree) : btree.length - 1;
+        if (isLeaf(btree))
+            return applyLeaf(btree, function, argument, stopCondition);
+
+        int childOffset = getChildStart(btree);
+        int limit = btree.length - 1 - childOffset;
         for (int i = 0 ; i < limit ; i++)
         {
-            // we want to visit in iteration order, so we visit our key nodes inbetween our children
-            int idx = isLeaf ? i : (i / 2) + (i % 2 == 0 ? childOffset : 0);
-            Object current = btree[idx];
-            if (idx < childOffset)
-            {
-                V castedCurrent = (V) current;
-                if (stopCondition != null && stopCondition.apply(castedCurrent))
-                    return true;
+            if (apply((Object[]) btree[childOffset + i], function, argument, stopCondition))
+                return true;
 
-                function.accept(argument, castedCurrent);
-            }
-            else
-            {
-                if (apply((Object[]) current, function, argument, stopCondition))
-                    return true;
-            }
+            if (i < childOffset && applyValue((V) btree[i], function, argument, stopCondition))
+                return true;
         }
 
         return false;
