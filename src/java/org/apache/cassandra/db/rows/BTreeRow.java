@@ -179,7 +179,7 @@ public class BTreeRow extends AbstractRow
         BTree.apply(btree, function);
     }
 
-    public <A> void apply(BiConsumer<ColumnData, A> function, A arg)
+    public <A> void apply(BiConsumer<A, ColumnData> function, A arg)
     {
         BTree.apply(btree, function, arg);
     }

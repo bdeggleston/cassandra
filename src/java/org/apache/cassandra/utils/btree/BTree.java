@@ -39,7 +39,6 @@ import static com.google.common.collect.Iterables.transform;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Comparator.naturalOrder;
-import static java.util.Comparator.nullsFirst;
 
 public class BTree
 {
@@ -1250,27 +1249,6 @@ public class BTree
         return compare(cmp, previous, max) < 0;
     }
 
-    private interface ConsumerAcceptor<T>
-    {
-        <V, A> void accept(T consumer, V value, A argument);
-    }
-
-    private static final ConsumerAcceptor<Consumer> ACCEPT_ONE = new ConsumerAcceptor<Consumer>()
-    {
-        public <V, A> void accept(Consumer consumer, V value, A argument)
-        {
-            consumer.accept(value);
-        }
-    };
-
-    private static final ConsumerAcceptor<BiConsumer> ACCEPT_TWO = new ConsumerAcceptor<BiConsumer>()
-    {
-        public <V, A> void accept(BiConsumer consumer, V value, A argument)
-        {
-            consumer.accept(value, argument);
-        }
-    };
-
     /**
      * Simple method to walk the btree forwards and apply a function till a stop condition is reached
      *
@@ -1280,7 +1258,7 @@ public class BTree
      * @param function
      * @param stopCondition
      */
-    private static <T, V, A> boolean applyImpl(Object[] btree, T function, Predicate<V> stopCondition, A argument, ConsumerAcceptor<T> acceptor)
+    public static <V, A> boolean apply(Object[] btree, BiConsumer<A, V> function, A argument, Predicate<V> stopCondition)
     {
         boolean isLeaf = isLeaf(btree);
         int childOffset = isLeaf ? Integer.MAX_VALUE : getChildStart(btree);
@@ -1296,11 +1274,11 @@ public class BTree
                 if (stopCondition != null && stopCondition.apply(castedCurrent))
                     return true;
 
-                acceptor.accept(function, castedCurrent, argument);
+                function.accept(argument, castedCurrent);
             }
             else
             {
-                if (applyImpl((Object[]) current, function, stopCondition, argument, acceptor))
+                if (apply((Object[]) current, function, argument, stopCondition))
                     return true;
             }
         }
@@ -1319,7 +1297,7 @@ public class BTree
      */
     public static <V> boolean apply(Object[] btree, Consumer<V> function, Predicate<V> stopCondition)
     {
-        return BTree.applyImpl(btree, function, stopCondition, null, ACCEPT_ONE);
+        return apply(btree, Consumer::accept, function, stopCondition);
     }
 
     public static <V> boolean apply(Object[] btree, Consumer<V> function)
@@ -1327,12 +1305,7 @@ public class BTree
         return apply(btree, function, null);
     }
 
-    public static <V, A> boolean apply(Object[] btree, BiConsumer<V, A> function, A argument, Predicate<V> stopCondition)
-    {
-        return BTree.applyImpl(btree, function, stopCondition, argument, ACCEPT_TWO);
-    }
-
-    public static <V, A> boolean apply(Object[] btree, BiConsumer<V, A> function, A argument)
+    public static <V, A> boolean apply(Object[] btree, BiConsumer<A, V> function, A argument)
     {
         return apply(btree, function, argument, null);
     }

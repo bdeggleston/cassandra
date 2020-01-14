@@ -79,6 +79,11 @@ public abstract class ColumnData
      */
     public abstract void digest(Hasher hasher);
 
+    public static void digest(Hasher hasher, ColumnData cd)
+    {
+        cd.digest(hasher);
+    }
+
     /**
      * Returns a copy of the data where all timestamps for live data have replaced by {@code newTimestamp} and
      * all deletion timestamp by {@code newTimestamp - 1}.

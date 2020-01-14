@@ -291,7 +291,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
     /**
      * Apply a function to every column in a row
      */
-    public <A> void apply(BiConsumer<ColumnData, A> function, A arg);
+    public <A> void apply(BiConsumer<A, ColumnData> function, A arg);
 
     /**
      * Apply an accumulation funtion to every column in a row

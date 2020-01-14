@@ -85,7 +85,7 @@ public abstract class AbstractRow implements Row
         if (deletion().time().localDeletionTime() < 0)
             throw new MarshalException("A local deletion time should not be negative");
 
-        apply(ColumnData::validate);
+        apply(cd -> cd.validate());
     }
 
     public String toString()
