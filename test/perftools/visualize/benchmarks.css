@@ -16,25 +16,36 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.test.microbench;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+text .title {
+    font-size: 15px;
+}
 
-import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.cassandra.concurrent.NamedThreadFactory;
+.row-label {
+    font-size: 18px;
+}
 
-/**
- * Created to test perf of FastThreadLocal
- *
- * Used in MutationBench via:
- * jvmArgsAppend = {"-Djmh.executor=CUSTOM", "-Djmh.executor.class=org.apache.cassandra.test.microbench.FastThreadExecutor"}
- */
-public class FastThreadExecutor extends ThreadPoolExecutor
-{
-    public FastThreadExecutor(int workers, String prefix)
-    {
-        super(workers, workers, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), new NamedThreadFactory(prefix + "-jmh-worker-"));
-    }
+.report-title {
+    font-size: 20px;
+}
+.report-desc {
+    font-size: 18px;
+}
+.report-xy {
+    font-size: 18px;
+}
+.report-params {
+    font-size: 14px;
+}
+
+.data-highlight {
+    stroke: white;
+    stroke-width: 1;
+    opacity: 0;
+    fill:white;
+    pointer-events: none;
+}
+
+.fg-label {
+    font-size: 12px;
 }

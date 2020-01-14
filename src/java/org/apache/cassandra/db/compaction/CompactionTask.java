@@ -191,7 +191,7 @@ public class CompactionTask extends AbstractCompactionTask
                     // where the compaction does not exist in activeCompactions but the CSM gets paused.
                     // We already have the sstables marked compacting here so CompactionManager#waitForCessation will
                     // block until the below exception is thrown and the transaction is cancelled.
-                    if (!controller.cfs.getCompactionStrategyManager().isActive())
+                    if (!controller.isActive())
                         throw new CompactionInterruptedException(ci.getCompactionInfo());
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext())
