@@ -1334,7 +1334,7 @@ public class BTree
 
     private static boolean isStopSentinel(long v)
     {
-        return v == Long.MIN_VALUE || v == Long.MAX_VALUE;
+        return v == Long.MAX_VALUE;
     }
 
     private static <V, A> long accumulateLeaf(Object[] btree, BiLongAccumulator<A, V> accumulator, A arg, Comparator<V> comparator, V from, long initialValue)
