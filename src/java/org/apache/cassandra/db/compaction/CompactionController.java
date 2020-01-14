@@ -59,6 +59,7 @@ public class CompactionController extends AbstractCompactionController
     private final RateLimiter limiter;
     private final long minTimestamp;
     final Map<SSTableReader, FileDataInput> openDataFiles = new HashMap<>();
+    final ColumnFamilyStore cfs;
 
     protected CompactionController(ColumnFamilyStore cfs, int maxValue)
     {
@@ -74,6 +75,8 @@ public class CompactionController extends AbstractCompactionController
     public CompactionController(ColumnFamilyStore cfs, Set<SSTableReader> compacting, int gcBefore, RateLimiter limiter, TombstoneOption tombstoneOption)
     {
         super(cfs, gcBefore, tombstoneOption);
+        assert cfs != null;
+        this.cfs = cfs;
         this.compacting = compacting;
         this.limiter = limiter;
         compactingRepaired = compacting != null && compacting.stream().allMatch(SSTableReader::isRepaired);

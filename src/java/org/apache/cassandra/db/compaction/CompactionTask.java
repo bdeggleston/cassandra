@@ -184,6 +184,9 @@ public class CompactionTask extends AbstractCompactionTask
 
                 long lastBytesScanned = 0;
 
+                if (!controller.isActive())
+                    throw new CompactionInterruptedException(ci.getCompactionInfo());
+
                 activeCompactions.beginCompaction(ci);
                 try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, actuallyCompact))
                 {
