@@ -67,6 +67,7 @@ public class PartitionUpdate extends AbstractBTreePartition
     // really requires that so we keep it simple for now).
     private volatile boolean isBuilt;
     private boolean canReOpen = true;
+    private boolean isOverflow = false;
 
     private Holder holder;
     private BTree.Builder<Row> rowBuilder;
@@ -118,6 +119,16 @@ public class PartitionUpdate extends AbstractBTreePartition
              metadata.decorateKey(key),
              columns,
              initialRowCapacity);
+    }
+
+    public boolean isOverflow()
+    {
+        return isOverflow;
+    }
+
+    public void setIsOverflow(boolean overflow)
+    {
+        isOverflow = overflow;
     }
 
     /**

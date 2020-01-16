@@ -41,8 +41,10 @@ import org.apache.cassandra.db.Memtable;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.commitlog.ReplayPosition;
 import org.apache.cassandra.db.compaction.OperationType;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.notifications.*;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
 import static com.google.common.collect.ImmutableSet.copyOf;
@@ -266,6 +268,7 @@ public class TrackerTest
         MockListener listener = new MockListener(false);
         Tracker tracker = cfs.getTracker();
         tracker.subscribe(listener);
+        PartitionUpdate update = PartitionUpdate.emptyUpdate(cfs.metadata, DatabaseDescriptor.getPartitioner().decorateKey(ByteBufferUtil.bytes(0)));
 
         Memtable prev1 = tracker.switchMemtable(true, new Memtable(new AtomicReference<>(CommitLog.instance.getContext()), cfs));
         OpOrder.Group write1 = cfs.keyspace.writeOrder.getCurrent();
@@ -279,9 +282,9 @@ public class TrackerTest
         barrier2.issue();
         Memtable cur = tracker.getView().getCurrentMemtable();
         OpOrder.Group writecur = cfs.keyspace.writeOrder.getCurrent();
-        Assert.assertEquals(prev1, tracker.getMemtableFor(write1, ReplayPosition.NONE));
-        Assert.assertEquals(prev2, tracker.getMemtableFor(write2, ReplayPosition.NONE));
-        Assert.assertEquals(cur, tracker.getMemtableFor(writecur, ReplayPosition.NONE));
+        Assert.assertEquals(prev1, tracker.getMemtableFor(update, write1, ReplayPosition.NONE));
+        Assert.assertEquals(prev2, tracker.getMemtableFor(update, write2, ReplayPosition.NONE));
+        Assert.assertEquals(cur, tracker.getMemtableFor(update, writecur, ReplayPosition.NONE));
         Assert.assertEquals(1, listener.received.size());
         Assert.assertTrue(listener.received.get(0) instanceof MemtableRenewedNotification);
         listener.received.clear();

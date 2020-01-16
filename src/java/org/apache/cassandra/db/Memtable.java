@@ -161,7 +161,7 @@ public class Memtable implements Comparable<Memtable>
     }
 
     // decide if this memtable should take the write, or if it should go to the next memtable
-    public boolean accepts(OpOrder.Group opGroup, ReplayPosition replayPosition)
+    public boolean accepts(PartitionUpdate update, OpOrder.Group opGroup, ReplayPosition replayPosition)
     {
         // if the barrier hasn't been set yet, then this memtable is still taking ALL writes
         OpOrder.Barrier barrier = this.writeBarrier;
@@ -182,7 +182,11 @@ public class Memtable implements Comparable<Memtable>
             // atomically wrt our max() maintenance, so an operation cannot sneak into the past
             ReplayPosition currentLast = commitLogUpperBound.get();
             if (currentLast instanceof LastReplayPosition)
-                return currentLast.compareTo(replayPosition) >= 0;
+            {
+                boolean accepts = currentLast.compareTo(replayPosition) >= 0;
+                update.setIsOverflow(!accepts);
+                return accepts;
+            }
             if (currentLast != null && currentLast.compareTo(replayPosition) >= 0)
                 return true;
             if (commitLogUpperBound.compareAndSet(currentLast, replayPosition))

@@ -1204,7 +1204,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     {
         long start = System.nanoTime();
-        Memtable mt = data.getMemtableFor(opGroup, replayPosition);
+        Memtable mt = data.getMemtableFor(update, opGroup, replayPosition);
         try
         {
             long timeDelta = mt.put(update, indexer, opGroup);

@@ -110,10 +110,11 @@ public class AtomicBTreePartition extends AbstractBTreePartition
     {
         RowUpdater updater = new RowUpdater(this, allocator, writeOp, indexer);
         DeletionInfo inputDeletionInfoCopy = null;
+        boolean isOverflow = update.isOverflow();
         boolean monitorOwned = false;
         try
         {
-            if (usePessimisticLocking())
+            if (usePessimisticLocking() && !isOverflow)
             {
                 Locks.monitorEnterUnsafe(this);
                 monitorOwned = true;
@@ -162,10 +163,10 @@ public class AtomicBTreePartition extends AbstractBTreePartition
                 }
                 else if (!monitorOwned)
                 {
-                    boolean shouldLock = usePessimisticLocking();
+                    boolean shouldLock = usePessimisticLocking() && !isOverflow;
                     if (!shouldLock)
                     {
-                        shouldLock = updateWastedAllocationTracker(updater.heapSize);
+                        shouldLock = updateWastedAllocationTracker(updater.heapSize) && !isOverflow;
                     }
                     if (shouldLock)
                     {
