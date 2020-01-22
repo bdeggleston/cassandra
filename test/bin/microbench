@@ -40,9 +40,12 @@ fi
 LOGBACK_CONF="`dirname $0`"/../conf/logback-test.xml
 TEXT_REGEX=
 
-echo "JVM_OPTS: $JVM_OPTS"
+if [ "$1" = "-h" ]; then
+  "$JAVA"  -cp "$CLASSPATH" org.openjdk.jmh.Main -h
+  exit 0
+fi
 
 "$JAVA" $JAVA_AGENT -ea -cp "$CLASSPATH" $JVM_OPTS \
         -Dcassandra.storagedir="$cassandra_storagedir" \
         -Dlogback.configurationFile="$LOGBACK_CONF" \
-        org.openjdk.jmh.Main ".*microbench.*$1"
+        org.openjdk.jmh.Main ".*microbench.*$1" -rf json -rff "jmh-result-$1.json"
