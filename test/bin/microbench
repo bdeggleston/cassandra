@@ -38,7 +38,10 @@ if [ -z "$CLASSPATH" ]; then
 fi
 
 LOGBACK_CONF="`dirname $0`"/../conf/logback-test.xml
-TEXT_REGEX=
+JVM_OPTS="$JVM_OPTS -Djmh.executor=CUSTOM"
+JVM_OPTS="$JVM_OPTS -Djmh.executor.class=org.apache.cassandra.test.microbench.FastThreadExecutor"
+JVM_OPTS="$JVM_OPTS -Dcassandra.config.loader=org.apache.cassandra.OffsetAwareConfigurationLoader"
+JVM_OPTS="$JVM_OPTS -Dcassandra.test.offsetseed=0"
 
 if [ "$1" = "-h" ]; then
   "$JAVA"  -cp "$CLASSPATH" org.openjdk.jmh.Main -h
