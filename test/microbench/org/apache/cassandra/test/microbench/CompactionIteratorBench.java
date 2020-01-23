@@ -68,7 +68,7 @@ import static java.lang.Math.max;
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(value = 2)
-@Threads(4)
+@Threads(32)
 @State(Scope.Benchmark)
 public class CompactionIteratorBench
 {
@@ -85,14 +85,14 @@ public class CompactionIteratorBench
     @Param({"0", "0.5", "1"})
     float rowOverlap;
 
-    @Param({"1", "32", "256"})
+    @Param({"32", "256"})
     int rowCount;
 
     // ratio of streams sharing a given partition
     @Param({"0", "0.5", "1"})
     float partitionOverlap;
 
-    @Param({"1", "32", "256"})
+    @Param({"32", "256"})
     int partitionCount;
 
     @Param({"8", "256"})
@@ -104,14 +104,14 @@ public class CompactionIteratorBench
     @Param({"RANDOM", "SEQUENTIAL"})
     DataGenerator.Distribution distribution;
 
-    @Param({"RANDOM", "SEQUENTIAL"})
+    @Param({"SEQUENTIAL"})
     DataGenerator.Distribution timestamps;
 
     @Param({"false"})
     boolean uniquePerTrial;
 
     // hacky way to help us predict memory requirements
-    @Param({"4"})
+    @Param({"32"})
     int threadsForTest;
 
     @State(Scope.Benchmark)
