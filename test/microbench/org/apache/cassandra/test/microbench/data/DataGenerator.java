@@ -28,6 +28,8 @@ import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.DecoratedKey;
@@ -67,6 +69,7 @@ public class DataGenerator
     private static final ByteBuffer zero = Int32Type.instance.decompose(0);
 
     public enum Distribution { RANDOM, SEQUENTIAL }
+    public enum ColumnType { NORMAL, COMPLEX }
 
     final float updateRowOverlap;
     final int updateRowCount;
@@ -80,7 +83,7 @@ public class DataGenerator
     final CellPath[] complexPaths;
     final int averageSizeInBytesOfOneBatch;
 
-    public DataGenerator(int clusteringCount, int columnCount, float updateRowOverlap, int updateRowCount, int valueSize, int updatesPerPartition, Distribution distribution, Distribution timestamps)
+    public DataGenerator(int clusteringCount, int columnCount, ColumnType columnType, float updateRowOverlap, int updateRowCount, int valueSize, int updatesPerPartition, Distribution distribution, Distribution timestamps)
     {
         this.updateRowOverlap = updateRowOverlap;
         this.updateRowCount = updateRowCount;
@@ -88,12 +91,12 @@ public class DataGenerator
         this.distribution = distribution;
         this.timestamps = timestamps;
         this.value = ByteBuffer.allocate(valueSize);
-        this.averageSizeInBytesOfOneBatch = 50 * max(columnCount, 1) * (updateRowCount + updateRowCount/2) * updatesPerPartition;
+        this.averageSizeInBytesOfOneBatch = 50 * max(columnCount, 1) * (updateRowCount + updateRowCount/2) * updatesPerPartition * valueSize;
 
         int rowCount = (int) (updateRowCount * (1 + (updatesPerPartition * (1f - updateRowOverlap))));
-        if (columnCount >= 0)
+        if (columnType == ColumnType.NORMAL)
         {
-            schema = simpleMetadata(clusteringCount, rowCount);
+            schema = simpleMetadata(clusteringCount, columnCount);
             clusterings = generateClusterings(clusteringCount, rowCount);
             complexPaths = new CellPath[0];
         }
@@ -181,8 +184,9 @@ public class DataGenerator
 
         private <I, O> int selectSortAndTransform(O[] out, I[] in, Comparator<? super I> comparator, Function<I, O> transform)
         {
-            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur();
-            int rowCount = insertRowCount.next();
+            int limit = Math.min(in.length, out.length);
+            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur() % limit;
+            int rowCount = insertRowCount.next() % limit;
             switch (distribution)
             {
                 case SEQUENTIAL:
