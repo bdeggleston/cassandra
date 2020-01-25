@@ -252,7 +252,8 @@ public class Memtable implements Comparable<Memtable>
             }
         }
 
-        long[] pair = previous.addAllWithSizeDelta(update, opGroup, indexer);
+        boolean canLock = !(opGroup.isSomething() && (writeBarrier == null || !writeBarrier.isAfter(opGroup)));
+        long[] pair = previous.addAllWithSizeDelta(update, opGroup, indexer, canLock);
         minTimestamp = Math.min(minTimestamp, previous.stats().minTimestamp);
         liveDataSize.addAndGet(initialSize + pair[0]);
         columnsCollector.update(update.columns());

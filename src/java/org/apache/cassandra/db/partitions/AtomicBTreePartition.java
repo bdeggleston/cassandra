@@ -106,14 +106,14 @@ public class AtomicBTreePartition extends AbstractBTreePartition
      * @return an array containing first the difference in size seen after merging the updates, and second the minimum
      * time detla between updates.
      */
-    public long[] addAllWithSizeDelta(final PartitionUpdate update, OpOrder.Group writeOp, UpdateTransaction indexer)
+    public long[] addAllWithSizeDelta(final PartitionUpdate update, OpOrder.Group writeOp, UpdateTransaction indexer, boolean canLock)
     {
         RowUpdater updater = new RowUpdater(this, allocator, writeOp, indexer);
         DeletionInfo inputDeletionInfoCopy = null;
         boolean monitorOwned = false;
         try
         {
-            if (usePessimisticLocking())
+            if (usePessimisticLocking() && canLock)
             {
                 Locks.monitorEnterUnsafe(this);
                 monitorOwned = true;
@@ -162,10 +162,10 @@ public class AtomicBTreePartition extends AbstractBTreePartition
                 }
                 else if (!monitorOwned)
                 {
-                    boolean shouldLock = usePessimisticLocking();
+                    boolean shouldLock = usePessimisticLocking() && canLock;
                     if (!shouldLock)
                     {
-                        shouldLock = updateWastedAllocationTracker(updater.heapSize);
+                        shouldLock = updateWastedAllocationTracker(updater.heapSize) && canLock;
                     }
                     if (shouldLock)
                     {

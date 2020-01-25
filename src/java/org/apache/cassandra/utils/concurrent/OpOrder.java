@@ -278,6 +278,13 @@ public class OpOrder
             }
         }
 
+        protected volatile boolean something = false;
+
+        public boolean isSomething()
+        {
+            return something;
+        }
+
         /**
          * @return true if a barrier we are behind is, or may be, blocking general progress,
          * so we should try more aggressively to progress
@@ -365,6 +372,16 @@ public class OpOrder
                 OpOrder.this.current = current.next = new Group(current);
             }
             current.expire();
+        }
+
+        public void markSomething()
+        {
+            Group current = orderOnOrBefore;
+            while (current != null)
+            {
+                current.something = true;
+                current = current.prev;
+            }
         }
 
         /**

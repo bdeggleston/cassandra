@@ -1030,6 +1030,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 memtables.add(oldMemtable);
             }
 
+            writeBarrier.markSomething();
             // we then ensure an atomic decision is made about the upper bound of the continuous range of commit log
             // records owned by this memtable
             setCommitLogUpperBound(commitLogUpperBound);
