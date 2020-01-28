@@ -83,9 +83,9 @@ import static org.apache.cassandra.net.MessagingService.current_version;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(value = 2)
+@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 15, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(value = 1)
 @Threads(32)
 @State(Scope.Benchmark)
 public class DataFileDeserializationBench
@@ -166,9 +166,10 @@ public class DataFileDeserializationBench
             if (!bench.uniquePerTrial)
             {
                 int uniqueCount = min(256, max(1, (int) (Runtime.getRuntime().maxMemory() / (2 * (bench.threadsForTest * partitionCount * generator.averageSizeInBytesOfOneBatch())))));
-                files = IntStream.range(0, uniqueCount)
-                                 .mapToObj(f -> generate())
-                                 .toArray(OneFile[]::new);
+//                files = IntStream.range(0, uniqueCount)
+//                                 .mapToObj(f -> generate())
+//                                 .toArray(OneFile[]::new);
+                next = generate();
             }
         }
 
@@ -179,11 +180,11 @@ public class DataFileDeserializationBench
             {
                 next = generate();
             }
-            else
-            {
-                next = files[counter++];
-                if (counter == files.length) counter = 0;
-            }
+//            else
+//            {
+//                next = files[counter++];
+//                if (counter == files.length) counter = 0;
+//            }
         }
 
         private OneFile generate()
