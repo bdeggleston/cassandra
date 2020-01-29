@@ -21,25 +21,23 @@ package org.apache.cassandra.test.microbench;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.LongPredicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
-import org.apache.cassandra.db.ICompactionController;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.UnfilteredDeserializer;
-import org.apache.cassandra.db.compaction.CompactionIterator;
-import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
@@ -51,14 +49,10 @@ import org.apache.cassandra.db.rows.Rows;
 import org.apache.cassandra.db.rows.SerializationHelper;
 import org.apache.cassandra.db.rows.Unfiltered;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
-import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.db.rows.UnfilteredSerializer;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
-import org.apache.cassandra.index.SecondaryIndexManager;
-import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBuffer;
-import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.test.microbench.data.DataGenerator;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -74,17 +68,18 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.BenchmarkParams;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static java.lang.Math.round;
 import static org.apache.cassandra.db.rows.EncodingStats.Collector.collect;
 import static org.apache.cassandra.net.MessagingService.current_version;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 15, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+//@Fork(value = 1, jvmArgs = {"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"})
 @Fork(value = 1)
 @Threads(32)
 @State(Scope.Benchmark)
@@ -94,27 +89,29 @@ public class DataFileDeserializationBench
     {
         DatabaseDescriptor.clientInitialization();
     }
+
+    private static final Curve PARTITON_CURVE = new Curve(256, 128, 64, 32);
+    private static final Curve ROW_CURVE =      new Curve(32, 128, 256, 128);
+    private static final Curve VAL_SIZE_CURVE = new Curve(8, 32, 128, 256);
+    private static final Map<String, Integer> DEFAULT_STEPS = ImmutableMap.<String, Integer>builder()
+                                                              .put("concentration", Curve.numSteps(PARTITON_CURVE, 4))
+                                                              .build();
+
     final AtomicInteger uniqueThreadInitialisation = new AtomicInteger();
+
+    @Param({"0.0"})
+    double concentration;
 
     @Param({"4"})
     int clusteringCount;
 
     // a value of -1 indicates to send all inserts to a single row,
     // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"-1", "1", "8", "64"})
+    @Param({"-1", "1", "8", "32"})
     int columnCount;
 
     @Param({"0", "0.5", "1"})
     float rowOverlap;
-
-    @Param({"32", "256"})
-    int rowCount;
-
-    @Param({"32", "256"})
-    int partitionCount;
-
-    @Param({"8", "256"})
-    int valueSize;
 
     @Param({"RANDOM", "SEQUENTIAL"})
     DataGenerator.Distribution distribution;
@@ -125,19 +122,32 @@ public class DataFileDeserializationBench
     @Param({"false"})
     boolean uniquePerTrial;
 
-    // hacky way to help us predict memory requirements
-    @Param({"32"})
-    int threadsForTest;
-
     @State(Scope.Benchmark)
     public static class GlobalState
     {
         DataGenerator generator;
 
+        int partitionCount;
+        int rowCount;
+        int valueSize;
+
         @Setup(Level.Trial)
         public void setup(DataFileDeserializationBench bench)
         {
-            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.rowOverlap, bench.rowCount, bench.valueSize, 1, bench.distribution, bench.timestamps);
+            this.partitionCount = PARTITON_CURVE.valueInt(bench.concentration);
+            this.rowCount = ROW_CURVE.valueInt(bench.concentration);
+            this.valueSize = VAL_SIZE_CURVE.valueInt(bench.concentration);
+
+            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.rowOverlap, rowCount, valueSize, 1, bench.distribution, bench.timestamps);
+        }
+
+        static void expand(String name, double value, Map<String, String> params, Map<String, String> dst)
+        {
+            Preconditions.checkArgument(name.equals("concentration"));
+
+            dst.put("partitionCount", Integer.toString(PARTITON_CURVE.valueInt(value)));
+            dst.put("rowCount", Integer.toString(ROW_CURVE.valueInt(value)));
+            dst.put("valueSize", Integer.toString(VAL_SIZE_CURVE.valueInt(value)));
         }
     }
 
@@ -157,19 +167,18 @@ public class DataFileDeserializationBench
         OneFile next;
 
         @Setup(Level.Trial)
-        public void preTrial(DataFileDeserializationBench bench, GlobalState state)
+        public void preTrial(DataFileDeserializationBench bench, GlobalState state, BenchmarkParams params)
         {
-            partitionCount = bench.partitionCount;
+            partitionCount = state.partitionCount;
             uniquePerTrial = bench.uniquePerTrial;
             generator = state.generator.newGenerator(bench.uniqueThreadInitialisation.incrementAndGet());
             schema = state.generator.schema();
             if (!bench.uniquePerTrial)
             {
-                int uniqueCount = min(256, max(1, (int) (Runtime.getRuntime().maxMemory() / (2 * (bench.threadsForTest * partitionCount * generator.averageSizeInBytesOfOneBatch())))));
-//                files = IntStream.range(0, uniqueCount)
-//                                 .mapToObj(f -> generate())
-//                                 .toArray(OneFile[]::new);
-                next = generate();
+                int uniqueCount = min(256, max(1, (int) (Runtime.getRuntime().maxMemory() / (2 * (params.getThreads() * partitionCount * generator.averageSizeInBytesOfOneBatch())))));
+                files = IntStream.range(0, uniqueCount)
+                                 .mapToObj(f -> generate())
+                                 .toArray(OneFile[]::new);
             }
         }
 
@@ -180,11 +189,11 @@ public class DataFileDeserializationBench
             {
                 next = generate();
             }
-//            else
-//            {
-//                next = files[counter++];
-//                if (counter == files.length) counter = 0;
-//            }
+            else
+            {
+                next = files[counter++];
+                if (counter == files.length) counter = 0;
+            }
         }
 
         private OneFile generate()
@@ -315,5 +324,10 @@ public class DataFileDeserializationBench
     public void scan(ThreadState state)
     {
         state.next.perform();
+    }
+
+    public static void main(String... args) throws Exception
+    {
+        Curve.mainHelper(args, DataFileDeserializationBench.class, GlobalState::expand, DEFAULT_STEPS);
     }
 }

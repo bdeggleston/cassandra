@@ -28,6 +28,8 @@ import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.DecoratedKey;
@@ -88,7 +90,7 @@ public class DataGenerator
         this.distribution = distribution;
         this.timestamps = timestamps;
         this.value = ByteBuffer.allocate(valueSize);
-        this.averageSizeInBytesOfOneBatch = 50 * max(columnCount, 1) * (updateRowCount + updateRowCount/2) * updatesPerPartition;
+        this.averageSizeInBytesOfOneBatch = 50 * max(columnCount, 1) * (updateRowCount + updateRowCount/2) * updatesPerPartition * valueSize;
 
         int rowCount = (int) (updateRowCount * (1 + (updatesPerPartition * (1f - updateRowOverlap))));
         if (columnCount >= 0)
@@ -181,8 +183,9 @@ public class DataGenerator
 
         private <I, O> int selectSortAndTransform(O[] out, I[] in, Comparator<? super I> comparator, Function<I, O> transform)
         {
-            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur();
-            int rowCount = insertRowCount.next();
+            Preconditions.checkArgument(out.length == in.length);
+            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur() % in.length;
+            int rowCount = insertRowCount.next() % in.length;
             switch (distribution)
             {
                 case SEQUENTIAL:

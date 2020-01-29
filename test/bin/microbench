@@ -37,18 +37,37 @@ if [ -z "$CLASSPATH" ]; then
     exit 1
 fi
 
-LOGBACK_CONF="`dirname $0`"/../conf/logback-test.xml
+LOGBACK_CONF="`dirname $0`"/../conf/logback-bench.xml
 JVM_OPTS="$JVM_OPTS -Djmh.executor=CUSTOM"
 JVM_OPTS="$JVM_OPTS -Djmh.executor.class=org.apache.cassandra.test.microbench.FastThreadExecutor"
 JVM_OPTS="$JVM_OPTS -Dcassandra.config.loader=org.apache.cassandra.OffsetAwareConfigurationLoader"
 JVM_OPTS="$JVM_OPTS -Dcassandra.test.offsetseed=0"
+#JVM_OPTS="$JVM_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
 
-if [ "$1" = "-h" ]; then
-  "$JAVA"  -cp "$CLASSPATH" org.openjdk.jmh.Main -h
-  exit 0
+TEST=$1
+shift
+FQTEST=org.apache.cassandra.test.microbench.$TEST
+javap -cp "$CLASSPATH" org.apache.cassandra.test.microbench.$TEST > /dev/null
+
+if [[ "$?" != "0" ]]
+then
+  echo "unknown test $TEST"
+  exit 1
 fi
 
-"$JAVA" $JAVA_AGENT -ea -cp "$CLASSPATH" $JVM_OPTS \
-        -Dcassandra.storagedir="$cassandra_storagedir" \
-        -Dlogback.configurationFile="$LOGBACK_CONF" \
-        org.openjdk.jmh.Main ".*microbench.*$1" -rf json -rff "jmh-result-$1.json"
+#MAIN=`javap -cp "$CLASSPATH" $FQTEST | grep -v "static void main" | wc -l`
+
+if [[ `javap -cp "$CLASSPATH" $FQTEST | grep -v "static void main" | wc -l` =~ *0* ]]
+then
+  echo "Running $TEST via jmh runner"
+  "$JAVA" $JAVA_AGENT -ea -cp "$CLASSPATH" $JVM_OPTS \
+          -Dcassandra.storagedir="$cassandra_storagedir" \
+          -Dlogback.configurationFile="$LOGBACK_CONF" \
+          -jar build/test/benchmarks.jar $TEST -rf json -rff "jmh-result-$TEST.json" $@
+else
+  echo "Running $TEST via main"
+  "$JAVA" $JAVA_AGENT -ea -cp "$CLASSPATH" $JVM_OPTS \
+          -Dcassandra.storagedir="$cassandra_storagedir" \
+          -Dlogback.configurationFile="$LOGBACK_CONF" \
+          $FQTEST -rf json -rff "jmh-result-$TEST.json" $@
+fi
