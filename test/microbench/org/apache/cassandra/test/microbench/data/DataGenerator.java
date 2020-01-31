@@ -95,7 +95,7 @@ public class DataGenerator
         int rowCount = (int) (updateRowCount * (1 + (updatesPerPartition * (1f - updateRowOverlap))));
         if (columnCount >= 0)
         {
-            schema = simpleMetadata(clusteringCount, rowCount);
+            schema = simpleMetadata(clusteringCount, columnCount);
             clusterings = generateClusterings(clusteringCount, rowCount);
             complexPaths = new CellPath[0];
         }
@@ -183,9 +183,9 @@ public class DataGenerator
 
         private <I, O> int selectSortAndTransform(O[] out, I[] in, Comparator<? super I> comparator, Function<I, O> transform)
         {
-            Preconditions.checkArgument(out.length == in.length);
-            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur() % in.length;
-            int rowCount = insertRowCount.next() % in.length;
+            int limit = Math.min(in.length, out.length);
+            int prevRowCount = offset == 0 ? 0 : insertRowCount.cur() % limit;
+            int rowCount = insertRowCount.next() % limit;
             switch (distribution)
             {
                 case SEQUENTIAL:

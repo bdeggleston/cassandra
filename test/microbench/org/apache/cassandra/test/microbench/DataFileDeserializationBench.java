@@ -134,9 +134,10 @@ public class DataFileDeserializationBench
         @Setup(Level.Trial)
         public void setup(DataFileDeserializationBench bench)
         {
-            this.partitionCount = PARTITON_CURVE.valueInt(bench.concentration);
-            this.rowCount = ROW_CURVE.valueInt(bench.concentration);
-            this.valueSize = VAL_SIZE_CURVE.valueInt(bench.concentration);
+            partitionCount = PARTITON_CURVE.valueInt(bench.concentration);
+            rowCount = ROW_CURVE.valueInt(bench.concentration);
+            valueSize = VAL_SIZE_CURVE.valueInt(bench.concentration);
+            System.out.println(String.format("partitionCount=%s, rowCount=%s, valueSize=%s", partitionCount, rowCount, valueSize));
 
             generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.rowOverlap, rowCount, valueSize, 1, bench.distribution, bench.timestamps);
         }
