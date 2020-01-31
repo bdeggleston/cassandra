@@ -251,10 +251,12 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     static final class ManyToOne<In,Out> extends MergeIterator<In,Out>
     {
         static final int DEFAULT_SIZE = Integer.getInteger("cassandra.pooled_merge_iterator_size", 32);
+        protected final Candidate<In>[] candidates;
         protected final Candidate<In>[] heap;
 
         /** Number of non-exhausted iterators. */
         int size = -1;
+        int numIters = -1;
 
         /**
          * Position of the deepest, right-most child that needs advancing before we can start consuming.
@@ -278,9 +280,10 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
         {
             super(pool);
             this.heap = new Candidate[size];
+            this.candidates = new Candidate[size];
             for (int i=0; i<size; i++)
             {
-                heap[i] = new Candidate<>();
+                candidates[i] = new Candidate<>();
             }
         }
 
@@ -289,22 +292,26 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             super.reset(sources, comparator, reducer);
 
             size = 0;
-            for (int i=0, isize=sources.size(); i<isize; i++)
+            for (int i=0; i<sources.size(); i++)
             {
+                heap[i] = candidates[i];
                 heap[i].reset(i, iterators.get(i), comparator);
                 size++;
             }
             needingAdvance = size;
+            numIters = size;
         }
 
         public void close()
         {
-            for (int i=0; i<size; i++)
+            for (int i=0; i<numIters; i++)
             {
-                heap[i].close();
+                heap[i] = null;
+                candidates[i].close();
             }
             size = -1;
             needingAdvance = -1;
+            numIters = -1;
             super.close();
         }
 
@@ -349,10 +356,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                  *  valid sub-heaps and can be skipped-over entirely
                  */
                 if (candidate.needsAdvance())
-                {
-                    boolean dropCandidate = candidate.advance();
-                    replaceAndSink(candidate, dropCandidate, i);
-                }
+                    replaceAndSink(candidate.advance(), i);
             }
         }
 
@@ -408,15 +412,13 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
          * Whenever an equality is found between two elements that form a new parent-child relationship, the child's
          * equalParent flag is set to true if the elements are equal.
          */
-        private void replaceAndSink(Candidate<In> candidate, boolean dropCandidate, int currIdx)
+        private void replaceAndSink(Candidate<In> candidate, int currIdx)
         {
-            if (dropCandidate)
+            if (candidate == null)
             {
-                candidate.close();
                 // Drop iterator by replacing it with the last one in the heap.
-                Candidate<In> replacement = heap[--size];
-                heap[size] = candidate;
-                candidate = replacement;
+                candidate = heap[--size];
+                heap[size] = null; // not necessary but helpful for debugging
             }
             // The new element will be top of its heap, at this point there is no parent to be equal to.
             candidate.equalParent = false;
@@ -555,19 +557,19 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
         }
 
         /** @return this if our iterator had an item, and it is now available, otherwise null */
-        protected boolean advance()
+        protected Candidate<In> advance()
         {
             if (lowerBound != null)
             {
                 item = lowerBound;
-                return false;
+                return this;
             }
 
             if (!iter.hasNext())
-                return true;
+                return null;
 
             item = iter.next();
-            return false;
+            return this;
         }
 
         public int compareTo(Candidate<In> that)
