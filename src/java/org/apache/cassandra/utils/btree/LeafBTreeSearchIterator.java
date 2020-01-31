@@ -94,8 +94,8 @@ public class LeafBTreeSearchIterator<K, V> implements BTreeSearchIterator<K, V>
         {
             hasCurrent = true;
             result = (V) keys[nextPos];
+            nextPos += forwards ? 1 : -1;
         }
-        nextPos += forwards ? 1 : -1;
         updateHasNext();
 
         if (result != null || !hasNext)
