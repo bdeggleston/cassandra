@@ -89,9 +89,7 @@ public abstract class Rows
         {
             if (cd.column().isSimple())
             {
-                l += COLUMN_INCR;
-                l = accumulateOnCell(collector, (Cell) cd, l);
-                Cells.collectStats((Cell) cd, collector);
+                l = accumulateOnCell(collector, (Cell) cd, l) + COLUMN_INCR;
             }
             else
             {
@@ -105,12 +103,12 @@ public abstract class Rows
             return l;
         }
 
-        private static int unpackColumnCount(long v)
+        private static int unpackCellCount(long v)
         {
             return (int) (v & 0xFFFFFFFFL);
         }
 
-        private static int unpackCellCount(long v)
+        private static int unpackColumnCount(long v)
         {
             return (int) (v >>> 32);
         }
