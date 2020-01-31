@@ -129,9 +129,11 @@ row_labels = make_row_map(y_params)
 data_name = "99.9"
 
 rows = []
+column_labels = []
 for bench_name, benchmark in benchmarks.items():
     for label in row_labels:
         columns = []
+        row_column_labels = []
         for value in param_values[x_param].sorted():
             key = set(label)
             key.add((x_param, value))
@@ -141,14 +143,20 @@ for bench_name, benchmark in benchmarks.items():
             key = frozenset(key)
             if key not in benchmark.trials:
                 columns.append(0)
+                row_column_labels.append('n/a')
                 continue
             trial = benchmark.trials[frozenset(key)]
             columns.append(trial.results[0][data_name])
+            expanded = trial.expanded['concentration']
+            row_column_labels.append('{}/{}/{}'.format(expanded['partitionCount'], expanded['rowCount'], expanded['valueSize']))
         rows.append(np.array(columns))
+        column_labels.append(row_column_labels)
 rows = np.array(rows)
 
 def heatmap(data: np.ndarray, ax):
-    im: AxesImage = ax.imshow(data, cmap=cm.rainbow,
+    im: AxesImage = ax.imshow(data,
+                              cmap=cm.rainbow,
+                              aspect=2,
                               norm=Normalize(vmin=data.min(), vmax=data.max(), clip=True))
     return im
 
@@ -156,26 +164,32 @@ def make_color_bar(im, ax, label):
     cbar = ax.figure.colorbar(im, ax=ax)
     return cbar
 
-def annotate(data, ax, name, labels):
+def annotate(data, ax, name, labels, columns):
     ax.set_title("{} [{:.4f} - {:.4f}]".format(name, data.min(), data.max()))
     ax.set_yticks(np.arange(len(labels)))
     ax.set_yticklabels(["{}/{:.1f}/{}".format(r[0][1], float(r[1][1]), r[2][1][0])
                         for r in labels])
+    ax.set_xticks(np.arange(len(columns)))
+    ax.set_xticklabels(columns)
+    plt.setp(ax.get_xticklabels(), rotation=-60, ha="left",
+             rotation_mode="anchor")
 
 class BenchmarkViz(object):
     def __init__(self, benchmark: Benchmark):
         self.benchmark = benchmark
 
 fig_name = data_name + " ops/ms"
-fig = plt.figure(figsize=[4, 6])
-split = 4
+fig = plt.figure(figsize=[10, 8], tight_layout=True)
+split = 1
 spec = gridspec.GridSpec(ncols=1, nrows=split, figure=fig)
 rr = 0
-for (data, labels) in zip(np.split(rows, split), np.split(np.array(row_labels), split)):
+for (data, labels, column_names) in zip(np.split(rows, split),
+                                        np.split(np.array(row_labels), split),
+                                        np.split(np.array(column_labels), split)):
 
     ax = fig.add_subplot(spec[rr, 0])
     im = heatmap(data, ax)
-    annotate(data, ax, fig_name, labels)
+    annotate(data, ax, fig_name, labels, column_names[-1])
     cbar = make_color_bar(im, ax, data_name)
     rr += 1
 
