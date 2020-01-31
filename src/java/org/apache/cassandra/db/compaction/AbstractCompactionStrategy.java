@@ -338,6 +338,7 @@ public abstract class AbstractCompactionStrategy
 
             for (int i=0, isize=scanners.size(); i<isize; i++)
             {
+                @SuppressWarnings("resource")
                 ISSTableScanner scanner = scanners.get(i);
                 compressed += scanner.getCompressedLengthInBytes();
                 uncompressed += scanner.getLengthInBytes();
