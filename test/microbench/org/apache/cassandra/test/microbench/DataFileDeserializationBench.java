@@ -42,6 +42,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.AbstractUnfilteredRowIterator;
+import org.apache.cassandra.db.rows.DeserializationHelper;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.RowBuilder;
@@ -230,6 +231,7 @@ public class DataFileDeserializationBench
     {
         final TableMetadata schema;
         final SerializationHeader header;
+        final SerializationHelper helper;
         final ByteBuffer serialized;
 
         public OneFile(TableMetadata schema, List<PartitionUpdate> partitions)
@@ -237,6 +239,8 @@ public class DataFileDeserializationBench
             this.schema = schema;
             this.header = new SerializationHeader(true, schema, schema.regularAndStaticColumns(),
                                              EncodingStats.merge(partitions, p -> collect(p.staticRow(), p.iterator(), p.deletionInfo())));
+            this.helper = new SerializationHelper(header);
+
 
             try (DataOutputBuffer out = new DataOutputBuffer())
             {
@@ -245,13 +249,13 @@ public class DataFileDeserializationBench
                     PartitionPosition.serializer.serialize(partition.partitionKey(), out, current_version);
                     DeletionTime.serializer.serialize(partition.partitionLevelDeletion(), out);
                     if (header.hasStatic())
-                        UnfilteredSerializer.serializer.serializeStaticRow(partition.staticRow(), header, out, current_version);
+                        UnfilteredSerializer.serializer.serializeStaticRow(partition.staticRow(), helper, out, current_version);
                     UnfilteredRowIterator iterator = partition.unfilteredIterator();
                     long prevPos = 0;
                     while (iterator.hasNext())
                     {
                         long pos = out.position();
-                        UnfilteredSerializer.serializer.serialize(iterator.next(), header, out, pos - prevPos, current_version);
+                        UnfilteredSerializer.serializer.serialize(iterator.next(), helper, out, pos - prevPos, current_version);
                         prevPos = pos;
                     }
                     UnfilteredSerializer.serializer.writeEndOfPartition(out);
@@ -268,7 +272,7 @@ public class DataFileDeserializationBench
         {
             return new UnfilteredPartitionIterator()
             {
-                final SerializationHelper helper = new SerializationHelper(schema, current_version, SerializationHelper.Flag.LOCAL);
+                final DeserializationHelper helper = new DeserializationHelper(schema, current_version, DeserializationHelper.Flag.LOCAL);
                 final Row.Builder builder = new RowBuilder();
                 final DataInputBuffer in = new DataInputBuffer(serialized.duplicate(), false);
 
