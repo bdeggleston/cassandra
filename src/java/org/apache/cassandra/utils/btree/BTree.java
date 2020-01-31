@@ -195,7 +195,7 @@ public class BTree
             values[i] = updateF.apply(k);
             idx++;
         }
-        if (updateF != UpdateFunction.noOp())
+        if (updateF != UpdateFunction.<K>noOp())
             updateF.allocated(ObjectSizes.sizeOfArray(values));
         return values;
     }
@@ -211,29 +211,29 @@ public class BTree
         int childNum = size / (TREE_SIZE[level - 1] + 1) + 1;
 
         V[] values = (V[]) new Object[childNum * 2];
-        if (updateF != UpdateFunction.noOp())
+        if (updateF != UpdateFunction.<K>noOp())
             updateF.allocated(ObjectSizes.sizeOfArray(values));
 
         int[] indexOffsets = new int[childNum];
         int childPos = childNum - 1;
 
-        int index = startIdx;
+        int index = 0;
         for (int i = 0; i < childNum - 1; i++)
         {
             // Calculate the next childSize by splitting the remaining values to the remaining child nodes.
             // The performance could be improved by pre-compute the childSize (see #9989 comments).
             int childSize = (size - index) / (childNum - i);
             // Build the tree with inorder traversal
-            values[childPos + i] = (V) buildInternal(source, iterFunc, childSize, level - 1, index, updateF);
+            values[childPos + i] = (V) buildInternal(source, iterFunc, childSize, level - 1, startIdx + index, updateF);
             index += childSize;
             indexOffsets[i] = index;
 
-            K k = iterFunc.nextAt(source, index);
+            K k = iterFunc.nextAt(source, startIdx + index);
             values[i] = updateF.apply(k);
             index++;
         }
 
-        values[childPos + childNum - 1] = (V) buildInternal(source, iterFunc, size - index, level - 1, index, updateF);
+        values[childPos + childNum - 1] = (V) buildInternal(source, iterFunc, size - index, level - 1, startIdx + index, updateF);
         indexOffsets[childNum - 1] = size;
 
         values[childPos + childNum] = (V) indexOffsets;
