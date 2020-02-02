@@ -92,9 +92,10 @@ public class DataFileDeserializationBench
 
     private static final Curve PARTITON_CURVE = new Curve(512, 128,  64,  32,  32);
     private static final Curve ROW_CURVE =      new Curve(64,  128, 256, 128,  64);
-    private static final Curve VAL_SIZE_CURVE = new Curve(16,   32,   32, 128, 256);
+    private static final Curve COL_CURVE =      new Curve(2,   4,   8, 16, 32);
     private static final Map<String, Integer> DEFAULT_STEPS = ImmutableMap.<String, Integer>builder()
                                                               .put("concentration", Curve.numSteps(PARTITON_CURVE, 4))
+                                                              .put("rowOverlap", 5)
                                                               .build();
 
     final AtomicInteger uniqueThreadInitialisation = new AtomicInteger();
@@ -105,14 +106,19 @@ public class DataFileDeserializationBench
     @Param({"4"})
     int clusteringCount;
 
-    // a value of -1 indicates to send all inserts to a single row,
-    // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"-1", "1", "8", "32"})
-    int columnCount;
+    @Param({"NORMAL", "COMPLEX"})
+    DataGenerator.ColumnType columnType;
 
-//    @Param({"0", "0.5", "1"})
-    @Param({"0", "0.25", "0.5", "0.75", "1"})
+//    // a value of -1 indicates to send all inserts to a single row,
+//    // using the clusterings to build CellPath and write our rows into a Map
+//    @Param({"-1", "1", "8", "32"})
+//    int columnCount;
+
+    @Param({"0"})
     float rowOverlap;
+
+    @Param({"32"})
+    int valueSize;
 
 //    @Param({"RANDOM", "SEQUENTIAL"})
     @Param({"RANDOM"})
@@ -131,42 +137,40 @@ public class DataFileDeserializationBench
 
         int partitionCount;
         int rowCount;
-        int valueSize;
+        int colCount;
 
-        private static int getPartitionCount(double pos, int colCount)
+        private static int getPartitionCount(double pos)
         {
-            return PARTITON_CURVE.valueInt(pos) / Math.max(colCount / 8, 1);
+            return PARTITON_CURVE.valueInt(pos);
         }
 
-        private static int getRowCount(double pos, int colCount)
+        private static int getRowCount(double pos)
         {
-            return ROW_CURVE.valueInt(pos) / (colCount == 32 ? 2 : Math.max(colCount / 4, 1));
+            return ROW_CURVE.valueInt(pos);
         }
-
-        private static int getValSize(double pos, int colCount)
+        private static int geColCount(double pos)
         {
-            return VAL_SIZE_CURVE.valueInt(pos) / (colCount == 32 ? 4 : Math.max(colCount / 2, 1));
+            return COL_CURVE.valueInt(pos);
         }
 
         @Setup(Level.Trial)
         public void setup(DataFileDeserializationBench bench)
         {
-            partitionCount = getPartitionCount(bench.concentration, bench.columnCount);
-            rowCount = getRowCount(bench.concentration, bench.columnCount);
-            valueSize = getValSize(bench.concentration, bench.columnCount);
-            System.out.println(String.format("partitionCount=%s, rowCount=%s, valueSize=%s", partitionCount, rowCount, valueSize));
+            partitionCount = getPartitionCount(bench.concentration);
+            rowCount = getRowCount(bench.concentration);
+            colCount = geColCount(bench.concentration);
+            System.out.println(String.format("partitionCount=%s, rowCount=%s, colCount=%s", partitionCount, rowCount, colCount));
 
-            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.rowOverlap, rowCount, valueSize, 1, bench.distribution, bench.timestamps);
+            generator = new DataGenerator(bench.clusteringCount, colCount, bench.columnType, bench.rowOverlap, rowCount, bench.valueSize, 1, bench.distribution, bench.timestamps);
         }
 
         static void expand(String name, double value, Map<String, String> params, Map<String, String> dst)
         {
             Preconditions.checkArgument(name.equals("concentration"));
-            int columnCount = Integer.parseInt(params.get("columnCount"));
 
-            dst.put("partitionCount", Integer.toString(getPartitionCount(value, columnCount)));
-            dst.put("rowCount", Integer.toString(getRowCount(value, columnCount)));
-            dst.put("valueSize", Integer.toString(getValSize(value, columnCount)));
+            dst.put("partitionCount", Integer.toString(getPartitionCount(value)));
+            dst.put("rowCount", Integer.toString(getRowCount(value)));
+            dst.put("colCount", Integer.toString(geColCount(value)));
         }
     }
 
