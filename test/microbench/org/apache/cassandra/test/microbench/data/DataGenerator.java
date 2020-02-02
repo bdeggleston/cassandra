@@ -69,6 +69,7 @@ public class DataGenerator
     private static final ByteBuffer zero = Int32Type.instance.decompose(0);
 
     public enum Distribution { RANDOM, SEQUENTIAL }
+    public enum ColumnType { NORMAL, COMPLEX }
 
     final float updateRowOverlap;
     final int updateRowCount;
@@ -82,7 +83,7 @@ public class DataGenerator
     final CellPath[] complexPaths;
     final int averageSizeInBytesOfOneBatch;
 
-    public DataGenerator(int clusteringCount, int columnCount, float updateRowOverlap, int updateRowCount, int valueSize, int updatesPerPartition, Distribution distribution, Distribution timestamps)
+    public DataGenerator(int clusteringCount, int columnCount, ColumnType columnType, float updateRowOverlap, int updateRowCount, int valueSize, int updatesPerPartition, Distribution distribution, Distribution timestamps)
     {
         this.updateRowOverlap = updateRowOverlap;
         this.updateRowCount = updateRowCount;
@@ -93,7 +94,7 @@ public class DataGenerator
         this.averageSizeInBytesOfOneBatch = 50 * max(columnCount, 1) * (updateRowCount + updateRowCount/2) * updatesPerPartition * valueSize;
 
         int rowCount = (int) (updateRowCount * (1 + (updatesPerPartition * (1f - updateRowOverlap))));
-        if (columnCount >= 0)
+        if (columnType == ColumnType.NORMAL)
         {
             schema = simpleMetadata(clusteringCount, columnCount);
             clusterings = generateClusterings(clusteringCount, rowCount);

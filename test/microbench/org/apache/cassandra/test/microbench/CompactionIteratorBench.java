@@ -103,8 +103,11 @@ public class CompactionIteratorBench
 
     // a value of -1 indicates to send all inserts to a single row,
     // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"-1", "1", "8", "32"})
+    @Param({"1", "8", "32"})
     int columnCount;
+
+    @Param({"NORMAL", "COMPLEX"})
+    DataGenerator.ColumnType columnType;
 
     @Param({"1", "4", "32"})
     int streamCount;
@@ -146,7 +149,7 @@ public class CompactionIteratorBench
             this.rowOverlap = ROW_OVERLAP_CURVE.valueInt(bench.overlap);
             this.partitionOverlap = PART_OVERLAP_CURVE.valueInt(bench.overlap);
 
-            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, this.rowOverlap, this.rowCount, this.valueSize, round(max(1, bench.streamCount * this.partitionOverlap)), bench.distribution, bench.timestamps);
+            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.columnType, this.rowOverlap, this.rowCount, this.valueSize, round(max(1, bench.streamCount * this.partitionOverlap)), bench.distribution, bench.timestamps);
             controller = controller(generator.schema());
         }
 
