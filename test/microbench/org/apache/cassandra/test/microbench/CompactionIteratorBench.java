@@ -79,9 +79,9 @@ public class CompactionIteratorBench
 {
     final AtomicInteger uniqueThreadInitialisation = new AtomicInteger();
 
-    private static final Curve PARTITON_CURVE = new Curve(256, 128, 64, 32);
-    private static final Curve ROW_CURVE =      new Curve(32, 128, 256, 128);
-    private static final Curve VAL_SIZE_CURVE = new Curve(8, 32, 128, 256);
+    private static final Curve PARTITON_CURVE = new Curve(512, 128,  64,  32,  32);
+    private static final Curve ROW_CURVE =      new Curve(64,  128, 256, 128,  64);
+    private static final Curve COL_CURVE =      new Curve(2,   4,   8, 16, 32);
 
     private static final Curve PART_OVERLAP_CURVE = new Curve(0, 0.25, 1.0, 1.0);
     private static final Curve ROW_OVERLAP_CURVE =  new Curve(0, 0,    0.5, 1.0);
@@ -103,8 +103,8 @@ public class CompactionIteratorBench
 
     // a value of -1 indicates to send all inserts to a single row,
     // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"1", "8", "32"})
-    int columnCount;
+    @Param({"8", "16", "32"})
+    int valueSize;
 
     @Param({"NORMAL", "COMPLEX"})
     DataGenerator.ColumnType columnType;
@@ -129,39 +129,52 @@ public class CompactionIteratorBench
 
         int partitionCount;
         int rowCount;
-        int valueSize;
+        int colCount;
 
         float rowOverlap;
         float partitionOverlap;
 
-        private static int getPartitionCount(double pos, int streams)
+        private static int getPartitionCount(double pos)
         {
-            return PARTITON_CURVE.valueInt(pos) / Math.max(streams / 4, 1);
+            return PARTITON_CURVE.valueInt(pos);
+        }
+
+        private static int getRowCount(double pos)
+        {
+            return ROW_CURVE.valueInt(pos);
+        }
+        private static int geColCount(double pos)
+        {
+            return COL_CURVE.valueInt(pos);
         }
 
         @Setup(Level.Trial)
         public void setup(CompactionIteratorBench bench)
         {
-            this.partitionCount = getPartitionCount(bench.concentration, bench.streamCount);
-            this.rowCount = ROW_CURVE.valueInt(bench.concentration);
-            this.valueSize = VAL_SIZE_CURVE.valueInt(bench.concentration);
+            partitionCount = getPartitionCount(bench.concentration);
+            rowCount = getRowCount(bench.concentration);
+            colCount = geColCount(bench.concentration);
 
             this.rowOverlap = ROW_OVERLAP_CURVE.valueInt(bench.overlap);
-            this.partitionOverlap = PART_OVERLAP_CURVE.valueInt(bench.overlap);
+            this.partitionOverlap = ROW_OVERLAP_CURVE.valueInt(bench.overlap);
 
-            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.columnType, this.rowOverlap, this.rowCount, this.valueSize, round(max(1, bench.streamCount * this.partitionOverlap)), bench.distribution, bench.timestamps);
+            generator = new DataGenerator(bench.clusteringCount, colCount, bench.columnType, this.rowOverlap, this.rowCount, bench.valueSize, round(max(1, bench.streamCount * this.partitionOverlap)), bench.distribution, bench.timestamps);
             controller = controller(generator.schema());
         }
 
         static void expand(String name, double value, Map<String, String> params, Map<String, String> dst)
         {
-            Preconditions.checkArgument(name.equals("concentration"));
-
-            dst.put("partitionCount", Integer.toString(getPartitionCount(value, Integer.parseInt(params.get("streamCount")))));
-            dst.put("rowCount", Integer.toString(ROW_CURVE.valueInt(value)));
-            dst.put("valueSize", Integer.toString(VAL_SIZE_CURVE.valueInt(value)));
-            dst.put("rowOverlap", Integer.toString(ROW_OVERLAP_CURVE.valueInt(value)));
-            dst.put("partitionOverlap", Integer.toString(PART_OVERLAP_CURVE.valueInt(value)));
+            if (name.equals("concentration"))
+            {
+                dst.put("partitionCount", Integer.toString(getPartitionCount(value)));
+                dst.put("rowCount", Integer.toString(getRowCount(value)));
+                dst.put("colCount", Integer.toString(geColCount(value)));
+            }
+            if (name.equals("overlap"))
+            {
+                dst.put("rowOverlap", Integer.toString(ROW_OVERLAP_CURVE.valueInt(value)));
+                dst.put("partitionOverlap", Integer.toString(ROW_OVERLAP_CURVE.valueInt(value)));
+            }
         }
     }
 
