@@ -113,7 +113,7 @@ public class DataFileDeserializationBench
     @Param({"0"})
     float rowOverlap;
 
-    @Param({"32"})
+    @Param({"8", "16", "32"})
     int valueSize;
 
 //    @Param({"RANDOM", "SEQUENTIAL"})
