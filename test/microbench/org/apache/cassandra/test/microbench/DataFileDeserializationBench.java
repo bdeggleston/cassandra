@@ -110,11 +110,6 @@ public class DataFileDeserializationBench
     @Param({"NORMAL", "COMPLEX"})
     DataGenerator.ColumnType columnType;
 
-//    // a value of -1 indicates to send all inserts to a single row,
-//    // using the clusterings to build CellPath and write our rows into a Map
-//    @Param({"-1", "1", "8", "32"})
-//    int columnCount;
-
     @Param({"0"})
     float rowOverlap;
 
@@ -167,11 +162,12 @@ public class DataFileDeserializationBench
 
         static void expand(String name, double value, Map<String, String> params, Map<String, String> dst)
         {
-            Preconditions.checkArgument(name.equals("concentration"));
-
-            dst.put("partitionCount", Integer.toString(getPartitionCount(value)));
-            dst.put("rowCount", Integer.toString(getRowCount(value)));
-            dst.put("colCount", Integer.toString(geColCount(value)));
+            if (name.equals("concentration"))
+            {
+                dst.put("partitionCount", Integer.toString(getPartitionCount(value)));
+                dst.put("rowCount", Integer.toString(getRowCount(value)));
+                dst.put("colCount", Integer.toString(geColCount(value)));
+            }
         }
     }
 
