@@ -198,11 +198,6 @@ class Color(object):
     def b(self):
         return self.arr[2]
 
-    def darken(self, amount):
-        new: np.ndarray = self.arr * amount
-        new.clip(0, 255)
-        return Color(*new)
-
     def as_svg(self):
         return 'rgb({},{},{})'.format(*[int(v+0.5) for v in (self.arr)])
 
@@ -353,7 +348,7 @@ PREDATOR = Gradient(Color(128, 0, 255).lightness(0.8),
                     Color(0, 148, 242).lightness(0.85),
                     Color(0, 255, 160),
                     Color(255, 180, 60), Colors.RED)
-DIFF = Gradient(Colors.RED, BG_COLOR.darken(0.6), Colors.GREEN)
+DIFF = Gradient(Colors.RED, BG_COLOR.lightness(0.6), Colors.GREEN)
 
 class HeatMap(object):
 
@@ -446,7 +441,7 @@ class HeatMap(object):
                                           x=self._val_x(x),
                                           y=self._val_y(y),
                                           fill=color.as_svg(),
-                                          stroke=color.darken(0.97).as_svg(),
+                                          stroke=color.lightness(0.97).as_svg(),
                                           stroke_width=DATA_STROKE,
                                           width=VAL_WIDTH,
                                           height=VAL_HEIGHT,
