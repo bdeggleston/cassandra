@@ -129,7 +129,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             List<Iterator<T>> subSources = new ArrayList<>((int) Math.ceil((double) sources.size() / ManyToOne.DEFAULT_SIZE));
             for (int i=0; i<sources.size(); i+=ManyToOne.DEFAULT_SIZE)
             {
-                Iterator<T> subIter = get(sources.subList(i, Math.min(i + ManyToOne.DEFAULT_SIZE, sources.size())), comparator, reducer);
+                Iterator<T> subIter = get(new ArrayList<>(sources.subList(i, Math.min(i + ManyToOne.DEFAULT_SIZE, sources.size()))), comparator, reducer);
                 subSources.add(subIter);
             }
             return get(subSources, comparator, reducer);
