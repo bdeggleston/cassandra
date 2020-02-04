@@ -31,10 +31,13 @@ text .title {
 
 .row-label {
     font-size: 12px;
-
     margin-right: 15em;
-    /*margin-left: 50em;*/
-    /*margin-bottom: 20em;*/
-    /*text-align: right;*/
+}
 
+.data-highlight {
+    stroke: white;
+    stroke-width: 1;
+    opacity: 0;
+    fill:white;
+    pointer-events: none;
 }

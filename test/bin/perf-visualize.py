@@ -3,6 +3,7 @@ import enum
 import json
 import os
 from typing import Callable
+from string import Template
 import sys
 #
 # from matplotlib import pyplot as plt
@@ -435,6 +436,7 @@ class HeatMap(object):
                                     width=self.data_width, height=self.data_height,
                                     z=200,
                                     onmouseout='hmapMouseout()'))
+        DATA_STROKE = 1
         for x in range(width):
             for y in range(height):
                 val = self.data[y][x]
@@ -445,15 +447,12 @@ class HeatMap(object):
                                           y=self._val_y(y),
                                           fill=color.as_svg(),
                                           stroke=color.darken(0.97).as_svg(),
-                                          stroke_width=1,
+                                          stroke_width=DATA_STROKE,
                                           width=VAL_WIDTH,
                                           height=VAL_HEIGHT,
                                           onmouseover="dataMouseover('{}', {}, {})".format(self.map_id, x, y),
                                           onmouseout="dataMouseout('{}', {}, {})".format(self.map_id, x, y),
                                           ))
-                lines.append(XML.open_tag('title'))
-                lines.append(XML.indent(self.fmt_value(str(val))))
-                lines.append(XML.close_tag('title'))
                 lines.append(XML.close_tag('rect'))
 
         # make labels
@@ -480,28 +479,28 @@ class HeatMap(object):
         # make highlights
         for x in range(width):
             lines.append(XML.single_tag('rect',
-                                        width=VAL_WIDTH,
-                                        height=self.data_height,
-                                        y=self.data_y,
+                                        width=VAL_WIDTH - DATA_STROKE,
+                                        height=self.data_height - (DATA_STROKE * 2),
+                                        y=self.data_y + DATA_STROKE,
                                         x=self._val_x(x),
                                         fill='none',
-                                        stroke=self.trace_color,
-                                        stroke_width=self.HIGHLIGHT_BORDER,
-                                        opacity=0,
-                                        classes='col{}'.format(x),
+                                        # stroke=self.trace_color,
+                                        # stroke_width=self.HIGHLIGHT_BORDER,
+                                        # opacity=0,
+                                        classes='data-highlight col{}'.format(x),
                                         z=100))
 
         for y in range(height):
             lines.append(XML.single_tag('rect',
-                                        width=self.data_width,
-                                        height=VAL_HEIGHT,
+                                        width=self.data_width - (DATA_STROKE * 2),
+                                        height=VAL_HEIGHT - DATA_STROKE,
                                         y=self._val_y(y),
-                                        x=self.data_x,
+                                        x=self.data_x + DATA_STROKE,
                                         fill='none',
-                                        stroke=self.trace_color,
-                                        stroke_width=self.HIGHLIGHT_BORDER,
-                                        opacity=0,
-                                        classes='row{}'.format(y),
+                                        # stroke=self.trace_color,
+                                        # stroke_width=self.HIGHLIGHT_BORDER,
+                                        # opacity=0,
+                                        classes='data-highlight row{}'.format(y),
                                         z=100))
         # lines.append(XML.close_tag('rect'))
         lines.append(XML.text('', x=self.data_x, y=self.output_y + VAL_HEIGHT,

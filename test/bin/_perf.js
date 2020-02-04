@@ -39,7 +39,7 @@ function dataKey(hmapId, v) {
 function dataMouseover(hmapId, x, y) {
     mapAdd(highlighted_columns, dataKey(hmapId + x), 1);
     mapAdd(highlighted_rows, dataKey(hmapId + y), 1);
-    var setOpacity = function (e) { e.style.opacity = "0.85"; };
+    var setOpacity = function (e) { e.style.opacity = "0.35"; };
     document.querySelectorAll('.col' + x).forEach(setOpacity);
     document.querySelectorAll('.row' + y).forEach(setOpacity);
     hmapShowOutput(x, y);
