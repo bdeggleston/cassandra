@@ -208,6 +208,25 @@ class Color(object):
     def __repr__(self):
         return 'Color({},{},{})'.format(*self.arr)
 
+    def _clip0_1(self, v):
+        if v > 1.0:
+            return 1.0
+        if v < 0:
+            return 0.0
+        return v
+
+    def _transform_hsv(self, idx, adj):
+        hsv = color.rgb2hsv([[self.arr / 255]])[0][0]
+        hsv[idx] = self._clip0_1(hsv[idx] * adj)
+        rgb = color.hsv2rgb([[hsv]])[0][0] * 255
+        return Color(*rgb)
+
+    def lightness(self, adj):
+        return self._transform_hsv(2, adj)
+
+    def saturation(self, adj):
+        return self._transform_hsv(1, adj)
+
 
 class Colors(object):
     BLACK = Color(0, 0, 0)
@@ -322,39 +341,18 @@ class Gradient(object):
     def reversed(self):
         return Gradient(*reversed(self.colors))
 
-    def _clip0_1(self, v):
-        if v > 1.0:
-            return 1.0
-        if v < 0:
-            return 0.0
-        return v
-
-    def _transform_hsv(self, idx, adj):
-        hsv = color.rgb2hsv([[c.arr/255 for c in self.colors]])[0]
-        for i in range(len(hsv)):
-            hsv[i][idx] = self._clip0_1(hsv[i][idx] * adj)
-        rgb = color.hsv2rgb([hsv])[0] * 255
-        return Gradient(*[Color(*c) for c in rgb])
-
     def lightness(self, adj):
-        return self._transform_hsv(2, adj)
+        return Gradient(*[c.lightness(adj) for c in self.colors])
 
     def saturation(self, adj):
-        return self._transform_hsv(1, adj)
+        return Gradient(*[c.saturation(adj) for c in self.colors])
 
-
-
-# PREDATOR = Gradient(Colors.BLACK, Colors.BLUE, Colors.GREEN, Colors.RED, Colors.WHITE)
-# PREDATOR = Gradient(Colors.PURPLE, Colors.BLUE, Colors.GREEN, Colors.ORANGE, Colors.RED, Colors.WHITE)
-# PREDATOR = Gradient(Colors.PURPLE, Colors.GREEN, Colors.ORANGE, Colors.RED, Colors.WHITE)
-# PREDATOR = Gradient(Color(128, 0, 255), Color(0, 255, 150), Colors.RED)
-# PREDATOR = Gradient(Colors.PURPLE, Colors.GREEN, Colors.RED, Colors.WHITE)
-# PREDATOR = Gradient(Colors.BLUE, Colors.GREEN, Colors.RED, Colors.WHITE)
-# PREDATOR = Gradient(Colors.PURPLE, Colors.BLUE, Colors.GREEN, Colors.YELLOW, Colors.RED)
-# PREDATOR = Gradient(Colors.PURPLE, Colors.GREEN, Colors.RED)
-PREDATOR = Gradient(Colors.PURPLE, Color(0, 255, 160), Colors.RED)
-PREDATOR = Gradient(Color(128, 0, 255), Color(0, 148, 242), Color(0, 255, 160), Color(255, 180, 60), Colors.RED).lightness(0.8)
-DIFF = Gradient(Colors.RED, Color(50,50,50), Colors.GREEN)
+BG_COLOR = Color(50, 50, 50)
+PREDATOR = Gradient(Color(128, 0, 255).lightness(0.8),
+                    Color(0, 148, 242).lightness(0.85),
+                    Color(0, 255, 160),
+                    Color(255, 180, 60), Colors.RED)
+DIFF = Gradient(Colors.RED, BG_COLOR.darken(0.6), Colors.GREEN)
 
 class HeatMap(object):
 
@@ -431,13 +429,10 @@ class HeatMap(object):
         normalized = (self.data - self.min_val) / (self.max_val - self.min_val)
         height, width = self.data.shape
         lines = []
-        # lines.append(XML.text(self.title, height=self.TITLE_HEIGHT, classes='hm-title'))
         lines.append(XML.text(self.title, x=self.data_x, y=self.title_height - TXT_Y_PAD, height=self.title_height, width=self.width))
         lines.append(XML.single_tag('rect',
                                     x=self.data_x, y=self.data_y,
                                     width=self.data_width, height=self.data_height,
-                                    # fill='white', stroke='black',
-                                    # stroke_width=self.BORDER_WIDTH,
                                     z=200,
                                     onmouseout='hmapMouseout()'))
         for x in range(width):
@@ -509,10 +504,18 @@ class HeatMap(object):
                                         classes='row{}'.format(y),
                                         z=100))
         # lines.append(XML.close_tag('rect'))
-        lines.append(XML.text('', x=self.data_x, y=self.output_y + VAL_HEIGHT, height=VAL_HEIGHT, width=self.data_width, dy=-10, id=self.map_id + '-xy-out'))
-        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 2), height=VAL_HEIGHT, width=self.data_width, dy=-10, id=self.map_id + '-data-out'))
-        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 3), height=VAL_HEIGHT, width=self.data_width, dy=-10, id=self.map_id + '-x-out', classes="row-label"))
-        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 4), height=VAL_HEIGHT, width=self.data_width, dy=-10, id=self.map_id + '-y-out', classes="row-label"))
+        lines.append(XML.text('', x=self.data_x, y=self.output_y + VAL_HEIGHT,
+                              height=VAL_HEIGHT, width=self.data_width,
+                              dy=-10, id=self.map_id + '-xy-out'))
+        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 2),
+                              height=VAL_HEIGHT, width=self.data_width,
+                              dy=-10, id=self.map_id + '-data-out'))
+        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 3),
+                              height=VAL_HEIGHT, width=self.data_width,
+                              dy=-10, id=self.map_id + '-x-out', classes="row-label"))
+        lines.append(XML.text('', x=self.data_x, y=self.output_y + (VAL_HEIGHT * 4),
+                              height=VAL_HEIGHT, width=self.data_width, dy=-10,
+                              id=self.map_id + '-y-out', classes="row-label"))
 
         return '\n'.join(lines)
 
@@ -684,7 +687,7 @@ class BenchResults(object):
                              xmlns="http://www.w3.org/2000/svg",
                              height=px(height),
                              width=px(width),
-                             fill='rgb(50,50,50'),
+                             fill=BG_COLOR.as_svg()),
                 XML.open_tag('script'),
                 XML.indent(script),
                 XML.indent('valueData = {};'.format(json.dumps(value_data, indent=4, sort_keys=True))),
@@ -696,7 +699,7 @@ class BenchResults(object):
                 XML.open_tag('defs'),
                 XML.indent(defs),
                 XML.close_tag('defs'),
-                XML.single_tag('rect', width='100%', height='100%', fill='rgb(50, 50, 50'),
+                XML.single_tag('rect', width='100%', height='100%', fill=BG_COLOR.as_svg()),
                 XML.indent(doc_body.markup),
                 XML.close_tag('svg'),
             ])

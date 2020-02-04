@@ -37,19 +37,15 @@ function dataKey(hmapId, v) {
 }
 
 function dataMouseover(hmapId, x, y) {
-    mapAdd(highlighted_columns, dataKey(hmapId + x), 1)
-    mapAdd(highlighted_rows, dataKey(hmapId + y), 1)
-    var setOpacity = function (e) {
-        // debugger;
-        e.style.opacity = "0.85";
-    }
+    mapAdd(highlighted_columns, dataKey(hmapId + x), 1);
+    mapAdd(highlighted_rows, dataKey(hmapId + y), 1);
+    var setOpacity = function (e) { e.style.opacity = "0.85"; };
     document.querySelectorAll('.col' + x).forEach(setOpacity);
     document.querySelectorAll('.row' + y).forEach(setOpacity);
     hmapShowOutput(x, y);
 }
 
 function dataMouseout(hmapId, x, y) {
-    // debugger;
     var setOpacity = function (e) { e.style.opacity = "0"; }
     if (mapAdd(highlighted_columns, dataKey(hmapId + x), -1) === 0)
         document.querySelectorAll('.col' + x).forEach(setOpacity);
