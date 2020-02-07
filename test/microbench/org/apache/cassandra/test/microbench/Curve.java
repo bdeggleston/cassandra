@@ -22,14 +22,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
 
 import org.apache.cassandra.io.util.FileUtils;
-import org.apache.cassandra.utils.FBUtilities;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -162,17 +160,20 @@ public class Curve
         return (curve.points.length * resolution) + 1;
     }
 
-    public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps) throws Exception
+    public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps, ChainedOptionsBuilder builder) throws Exception
     {
-        ChainedOptionsBuilder builder = new OptionsBuilder();
-
         builder.include(clazz.getSimpleName());
         builder.parent(new CommandLineOptions(args));
         Set<String> steppedParams = parseSteps(args, builder, defaultSteps);
-        Options options = builder.build();
+        Options opts = builder.build();
 
-        new Runner(options).run();
+        new Runner(opts).run();
 
-        expandCurves(steppedParams, options, expander);
+        expandCurves(steppedParams, opts, expander);
+    }
+
+    public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps) throws Exception
+    {
+        mainHelper(args, clazz, expander, defaultSteps, new OptionsBuilder());
     }
 }

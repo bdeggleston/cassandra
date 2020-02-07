@@ -55,6 +55,8 @@ import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.test.microbench.data.DataGenerator;
+import org.apache.cassandra.test.microbench.profile.BPFTraceProfiler;
+import org.apache.cassandra.test.microbench.profile.BccProfiler;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -69,6 +71,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.BenchmarkParams;
+import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -77,8 +82,8 @@ import static org.apache.cassandra.net.MessagingService.current_version;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 15, time = 2, timeUnit = TimeUnit.SECONDS)
 //@Fork(value = 1, jvmArgs = {"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"})
 @Fork(value = 1)
 @Threads(32)
@@ -347,6 +352,8 @@ public class DataFileDeserializationBench
 
     public static void main(String... args) throws Exception
     {
-        Curve.mainHelper(args, DataFileDeserializationBench.class, GlobalState::expand, DEFAULT_STEPS);
+        ChainedOptionsBuilder options = new OptionsBuilder();
+//        options.addProfiler(BccProfiler.class);
+        Curve.mainHelper(args, DataFileDeserializationBench.class, GlobalState::expand, DEFAULT_STEPS, options);
     }
 }
