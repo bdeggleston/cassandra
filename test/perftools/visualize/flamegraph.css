@@ -1,0 +1,14 @@
+
+.flamegraph g text {
+    font-size: ${FONT_SIZE}px;
+    pointer-events: none;
+}
+
+.fg-output {
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.fg-reset {
+    font-size: 12px;
+}
