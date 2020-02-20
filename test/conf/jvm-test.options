@@ -1,0 +1,14 @@
+###########################################################################
+#                         jvm-server.options                              #
+#                                                                         #
+# - all flags defined here will be used by cassandra to startup the JVM   #
+# - one flag should be specified per line                                 #
+# - lines that do not start with '-' will be ignored                      #
+# - only static flags are accepted (no variables or parameters)           #
+# - dynamic flags will be appended to these on cassandra-env              #
+#                                                                         #
+###########################################################################
+
+# NOTE: these are added in addition to the jvm options set in $CASSANDRA_CONF
+
+-XX:+PreserveFramePointer
