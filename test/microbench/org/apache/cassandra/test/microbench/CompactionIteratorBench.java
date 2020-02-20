@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import com.google.common.collect.ImmutableMap;
 
 import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
@@ -59,60 +62,64 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.BenchmarkParams;
 
-import static java.lang.Math.*;
 import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static java.lang.Math.round;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(value = 2)
-@Threads(4)
+@Fork(value = 1)
+@Threads(32)
 @State(Scope.Benchmark)
 public class CompactionIteratorBench
 {
     final AtomicInteger uniqueThreadInitialisation = new AtomicInteger();
+
+    private static final Curve PARTITON_CURVE = new Curve(512, 128,  64,  32,  32);
+    private static final Curve ROW_CURVE =      new Curve(64,  128, 256, 128,  64);
+    private static final Curve COL_CURVE =      new Curve(2,   4,   8, 16, 32);
+
+    private static final Curve PART_OVERLAP_CURVE = new Curve(0, 0.25, 1.0, 1.0);
+    private static final Curve ROW_OVERLAP_CURVE =  new Curve(0, 0,    0.5, 1.0);
+
+
+    private static final Map<String, Integer> DEFAULT_STEPS = ImmutableMap.<String, Integer>builder()
+                                                              .put("concentration", Curve.numSteps(PARTITON_CURVE, 4))
+                                                              .put("overlap", 5)
+                                                              .build();
+
+    @Param({"0.0"})
+    double concentration;
+
+    @Param({"0"})
+    float overlap;
 
     @Param({"4"})
     int clusteringCount;
 
     // a value of -1 indicates to send all inserts to a single row,
     // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"-1", "1", "8", "64"})
-    int columnCount;
-
-    @Param({"0", "0.5", "1"})
-    float rowOverlap;
-
-    @Param({"1", "32", "256"})
-    int rowCount;
-
-    // ratio of streams sharing a given partition
-    @Param({"0", "0.5", "1"})
-    float partitionOverlap;
-
-    @Param({"1", "32", "256"})
-    int partitionCount;
-
-    @Param({"8", "256"})
+    @Param({"8", "16", "32"})
     int valueSize;
 
-    @Param({"1", "4", "32"})
+    @Param({"NORMAL", "COMPLEX"})
+    DataGenerator.ColumnType columnType;
+
+    @Param({"1", "4"})
     int streamCount;
 
-    @Param({"RANDOM", "SEQUENTIAL"})
+    @Param({"RANDOM"})
     DataGenerator.Distribution distribution;
 
-    @Param({"RANDOM", "SEQUENTIAL"})
+    @Param({"SEQUENTIAL"})
     DataGenerator.Distribution timestamps;
 
     @Param({"false"})
     boolean uniquePerTrial;
-
-    // hacky way to help us predict memory requirements
-    @Param({"4"})
-    int threadsForTest;
 
     @State(Scope.Benchmark)
     public static class GlobalState
@@ -120,11 +127,54 @@ public class CompactionIteratorBench
         DataGenerator generator;
         ICompactionController controller;
 
+        int partitionCount;
+        int rowCount;
+        int colCount;
+
+        float rowOverlap;
+        float partitionOverlap;
+
+        private static int getPartitionCount(double pos)
+        {
+            return PARTITON_CURVE.valueInt(pos);
+        }
+
+        private static int getRowCount(double pos)
+        {
+            return ROW_CURVE.valueInt(pos);
+        }
+        private static int geColCount(double pos)
+        {
+            return COL_CURVE.valueInt(pos);
+        }
+
         @Setup(Level.Trial)
         public void setup(CompactionIteratorBench bench)
         {
-            generator = new DataGenerator(bench.clusteringCount, bench.columnCount, bench.rowOverlap, bench.rowCount, bench.valueSize, round(max(1, bench.streamCount * bench.partitionOverlap)), bench.distribution, bench.timestamps);
+            partitionCount = getPartitionCount(bench.concentration);
+            rowCount = getRowCount(bench.concentration);
+            colCount = geColCount(bench.concentration);
+
+            this.rowOverlap = ROW_OVERLAP_CURVE.valueInt(bench.overlap);
+            this.partitionOverlap = PART_OVERLAP_CURVE.valueInt(bench.overlap);
+
+            generator = new DataGenerator(bench.clusteringCount, colCount, bench.columnType, this.rowOverlap, this.rowCount, bench.valueSize, round(max(1, bench.streamCount * this.partitionOverlap)), bench.distribution, bench.timestamps);
             controller = controller(generator.schema());
+        }
+
+        static void expand(String name, double value, Map<String, String> params, Map<String, String> dst)
+        {
+            if (name.equals("concentration"))
+            {
+                dst.put("partitionCount", Integer.toString(getPartitionCount(value)));
+                dst.put("rowCount", Integer.toString(getRowCount(value)));
+                dst.put("colCount", Integer.toString(geColCount(value)));
+            }
+            if (name.equals("overlap"))
+            {
+                dst.put("rowOverlap", Integer.toString(ROW_OVERLAP_CURVE.valueInt(value)));
+                dst.put("partitionOverlap", Integer.toString(ROW_OVERLAP_CURVE.valueInt(value)));
+            }
         }
     }
 
@@ -132,7 +182,7 @@ public class CompactionIteratorBench
     public static class ThreadState
     {
         DataGenerator.PartitionGenerator generator;
-        int totalPartitionCount;
+        int partitionCount;
         boolean uniquePerTrial;
         int streamCount;
         ICompactionController controller;
@@ -145,17 +195,16 @@ public class CompactionIteratorBench
         OneCompaction next;
 
         @Setup(Level.Trial)
-        public void preTrial(CompactionIteratorBench bench, GlobalState state)
+        public void preTrial(CompactionIteratorBench bench, GlobalState state, BenchmarkParams params)
         {
-            totalPartitionCount = bench.partitionOverlap <= 0.0001f ? bench.partitionCount * bench.streamCount
-                                                                    : round(bench.partitionCount / bench.partitionOverlap);
+            partitionCount = state.partitionCount / bench.streamCount;
             streamCount = bench.streamCount;
             uniquePerTrial = bench.uniquePerTrial;
             generator = state.generator.newGenerator(bench.uniqueThreadInitialisation.incrementAndGet());
             controller = state.controller;
             if (!bench.uniquePerTrial)
             {
-                int uniqueCount = min(256, max(1, (int) (Runtime.getRuntime().maxMemory() / (2 * (bench.threadsForTest * totalPartitionCount * bench.streamCount * generator.averageSizeInBytesOfOneBatch())))));
+                int uniqueCount = min(64, max(1, (int) (Runtime.getRuntime().maxMemory() / (4 * (params.getThreads() * partitionCount * bench.streamCount * generator.averageSizeInBytesOfOneBatch())))));
                 compactions = IntStream.range(0, uniqueCount)
                                        .mapToObj(f -> generate())
                                        .toArray(OneCompaction[]::new);
@@ -178,7 +227,7 @@ public class CompactionIteratorBench
 
         private OneCompaction generate()
         {
-            List<List<PartitionUpdate>> partitions = IntStream.range(0, totalPartitionCount)
+            List<List<PartitionUpdate>> partitions = IntStream.range(0, partitionCount)
                                                               .mapToObj(p -> generator.generate(key(p)))
                                                               .collect(Collectors.toList());
 
@@ -349,5 +398,10 @@ public class CompactionIteratorBench
     public void compact(ThreadState state)
     {
         state.next.perform();
+    }
+
+    public static void main(String... args) throws Exception
+    {
+        Curve.mainHelper(args, CompactionIteratorBench.class, GlobalState::expand, DEFAULT_STEPS);
     }
 }
