@@ -127,17 +127,14 @@ case "$jvm" in
 esac
 
 # Read user-defined JVM options from jvm-server.options file
-JVM_OPTS_FILE=$CASSANDRA_CONF/jvm-test.options
-JVM_TEST_OPTS_FILE=$TEST_CONF/jvm-test.options
+JVM_OPTS_FILE=$TEST_CONF/jvm-test.options
 if [ $JAVA_VERSION -ge 11 ] ; then
-    JVM_DEP_OPTS_FILE=$CASSANDRA_CONF/jvm11-test.options
+    JVM_DEP_OPTS_FILE=$TEST_CONF/jvm11-test.options
 else
-    JVM_DEP_OPTS_FILE=$CASSANDRA_CONF/jvm8-test.options
+    JVM_DEP_OPTS_FILE=$TEST_CONF/jvm8-test.options
 fi
 
-for opt in `grep "^-" $JVM_OPTS_FILE` \
-           `grep "^-" $JVM_DEP_OPTS_FILE` \
-           `grep "^-" JVM_TEST_OPTS_FILE`
+for opt in `grep "^-" $JVM_OPTS_FILE` `grep "^-" $JVM_DEP_OPTS_FILE`
 do
   JVM_OPTS="$JVM_OPTS $opt"
 done

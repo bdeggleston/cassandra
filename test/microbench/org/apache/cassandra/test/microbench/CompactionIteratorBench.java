@@ -49,6 +49,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.test.microbench.data.DataGenerator;
+import org.apache.cassandra.utils.UUIDGen;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -69,10 +70,16 @@ import static java.lang.Math.min;
 import static java.lang.Math.round;
 
 @BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+
+//@BenchmarkMode(Mode.SingleShotTime)
+//@Warmup(iterations = 5, batchSize = 50000)
+//@Measurement(iterations = 10, batchSize = 200000)
+
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1)
+//@Fork(value = 1, jvmArgs = {"-agentpath:/Users/beggleston/libyjpagent.so=dir=/Users/beggleston/snapshots,sessionname=base,probe_disable=*,sampling,onexit=snapshot"})
 @Threads(32)
 @State(Scope.Benchmark)
 public class CompactionIteratorBench
@@ -80,7 +87,7 @@ public class CompactionIteratorBench
     final AtomicInteger uniqueThreadInitialisation = new AtomicInteger();
 
     private static final Curve PARTITON_CURVE = new Curve(512, 128,  64,  32,  32);
-    private static final Curve ROW_CURVE =      new Curve(64,  128, 256, 128,  64);
+    private static final Curve ROW_CURVE =      new Curve(64,  128, 128, 128,  64);
     private static final Curve COL_CURVE =      new Curve(2,   4,   8, 16, 32);
 
     private static final Curve PART_OVERLAP_CURVE = new Curve(0, 0.25, 1.0, 1.0);
@@ -101,18 +108,16 @@ public class CompactionIteratorBench
     @Param({"4"})
     int clusteringCount;
 
-    // a value of -1 indicates to send all inserts to a single row,
-    // using the clusterings to build CellPath and write our rows into a Map
-    @Param({"8", "16", "32"})
+    @Param({"8", "16"})
     int valueSize;
 
     @Param({"NORMAL", "COMPLEX"})
     DataGenerator.ColumnType columnType;
 
-    @Param({"1", "4"})
+    @Param({"1", "8"})
     int streamCount;
 
-    @Param({"RANDOM"})
+    @Param({"SEQUENTIAL"})
     DataGenerator.Distribution distribution;
 
     @Param({"SEQUENTIAL"})
@@ -151,7 +156,7 @@ public class CompactionIteratorBench
         @Setup(Level.Trial)
         public void setup(CompactionIteratorBench bench)
         {
-            partitionCount = getPartitionCount(bench.concentration);
+            partitionCount = getPartitionCount(bench.concentration) / bench.streamCount;
             rowCount = getRowCount(bench.concentration);
             colCount = geColCount(bench.concentration);
 
@@ -197,7 +202,7 @@ public class CompactionIteratorBench
         @Setup(Level.Trial)
         public void preTrial(CompactionIteratorBench bench, GlobalState state, BenchmarkParams params)
         {
-            partitionCount = state.partitionCount / bench.streamCount;
+            partitionCount = state.partitionCount;
             streamCount = bench.streamCount;
             uniquePerTrial = bench.uniquePerTrial;
             generator = state.generator.newGenerator(bench.uniqueThreadInitialisation.incrementAndGet());
@@ -284,8 +289,13 @@ public class CompactionIteratorBench
 
     private static class OneCompaction
     {
+        private static AtomicInteger COMPACTION_ID = new AtomicInteger();
+
         final ICompactionController controller;
         final List<ISSTableScanner> scanners;
+
+        private final long compactionId = COMPACTION_ID.incrementAndGet();
+        private long iteration = 0;
 
         public OneCompaction(ICompactionController controller, List<ISSTableScanner> scanners)
         {
@@ -295,10 +305,17 @@ public class CompactionIteratorBench
 
         void perform()
         {
-            try (CompactionIterator iter = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, UUID.randomUUID());)
+            long time = (compactionId << 32) + iteration++;
+            try (CompactionIterator iter = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, UUIDGen.getTimeUUID(time));)
             {
                 while (!iter.hasNext())
-                    iter.next();
+                {
+                    try (UnfilteredRowIterator partition = iter.next();)
+                    {
+                        while (partition.hasNext())
+                            partition.next();
+                    }
+                }
             }
         }
     }
