@@ -77,10 +77,16 @@ import static org.apache.cassandra.db.rows.EncodingStats.Collector.collect;
 import static org.apache.cassandra.net.MessagingService.current_version;
 
 @BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 15, time = 2, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+
+//@BenchmarkMode(Mode.SingleShotTime)
+//@Warmup(iterations = 5, batchSize = 50000)
+//@Measurement(iterations = 10, batchSize = 200000)
+
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1)
+//@Fork(value = 1, jvmArgs = {"-agentpath:/Users/beggleston/libyjpagent.so=dir=/Users/beggleston/snapshots,sessionname=base,probe_disable=*,sampling,onexit=snapshot"})
 @Threads(32)
 @State(Scope.Benchmark)
 public class DataFileDeserializationBench
@@ -91,7 +97,7 @@ public class DataFileDeserializationBench
     }
 
     private static final Curve PARTITON_CURVE = new Curve(512, 128,  64,  32,  32);
-    private static final Curve ROW_CURVE =      new Curve(64,  128, 256, 128,  64);
+    private static final Curve ROW_CURVE =      new Curve(64,  128, 128, 128,  64);
     private static final Curve COL_CURVE =      new Curve(2,   4,   8, 16, 32);
     private static final Map<String, Integer> DEFAULT_STEPS = ImmutableMap.<String, Integer>builder()
                                                               .put("concentration", Curve.numSteps(PARTITON_CURVE, 4))
@@ -115,7 +121,7 @@ public class DataFileDeserializationBench
     @Param({"8", "16", "32"})
     int valueSize;
 
-//    @Param({"RANDOM", "SEQUENTIAL"})
+    //    @Param({"RANDOM", "SEQUENTIAL"})
     @Param({"RANDOM"})
     DataGenerator.Distribution distribution;
 

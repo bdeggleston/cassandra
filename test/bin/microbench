@@ -57,7 +57,7 @@ fi
 
 #MAIN=`javap -cp "$CLASSPATH" $FQTEST | grep -v "static void main" | wc -l`
 
-if [[ `javap -cp "$CLASSPATH" $FQTEST | grep -v "static void main" | wc -l` =~ *0* ]]
+if [[ `javap -cp "$CLASSPATH" $FQTEST | grep "static void main" | wc -l` =~ "0" ]]
 then
   echo "Running $TEST via jmh runner"
   "$JAVA" $JAVA_AGENT -ea -cp "$CLASSPATH" $JVM_OPTS \
