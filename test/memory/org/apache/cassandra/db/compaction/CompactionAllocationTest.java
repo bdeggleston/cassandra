@@ -150,6 +150,9 @@ public class CompactionAllocationTest
             MIN_OBJECTS_ALLOCATED = 0;
             MIN_BYTES_ALLOCATED = 0;
             logger.warn("{} is using the ThreadMXBean to measure memory usage, this is less accurate than the allocation instrumenter agent", CompactionAllocationTest.class.getSimpleName());
+            logger.warn("If you're running this in your IDE, add the following jvm arg: " +
+                        "-javaagent:<build.dir>/lib/jars/java-allocation-instrumenter-<allocation-instrumenter.version>.jar " +
+                        "(and replace <> with appropriate values from build.xml)");
         }
     }
 
@@ -393,7 +396,7 @@ public class CompactionAllocationTest
         Assert.assertFalse(tasks.isEmpty());
 
         String compactionSummary = "SKIPPED";
-        if (!PROFILING_READS || true)
+        if (!PROFILING_READS)
         {
             compactionSampler.start();
             if (PROFILING_COMPACTION && !workload.name().equals("warmup"))
@@ -431,7 +434,7 @@ public class CompactionAllocationTest
             summaries.add(workload.name() + " reads summary: " + readSummary);
             summaries.add(workload.name() + " compaction summary: " + compactionSummary);
         }
-        Thread.sleep(1000); // maybe log entries will stop disappearing?
+        Thread.sleep(1000); // avoid losing report when running in IDE
     }
 
     private static final DataOutputPlus NOOP_OUT = new UnbufferedDataOutputStreamPlus()
