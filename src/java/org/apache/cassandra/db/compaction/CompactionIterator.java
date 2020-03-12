@@ -164,8 +164,10 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
 
                 Columns statics = Columns.NONE;
                 Columns regulars = Columns.NONE;
-                for (UnfilteredRowIterator iter : versions)
+                for (int i=0, isize=versions.size(); i<isize; i++)
                 {
+                    @SuppressWarnings("resource")
+                    UnfilteredRowIterator iter = versions.get(i);
                     if (iter != null)
                     {
                         statics = statics.mergeTo(iter.columns().statics);
