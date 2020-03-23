@@ -308,7 +308,7 @@ public class CompactionIteratorBench
             long time = (compactionId << 32) + iteration++;
             try (CompactionIterator iter = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, UUIDGen.getTimeUUID(time));)
             {
-                while (!iter.hasNext())
+                while (iter.hasNext())
                 {
                     try (UnfilteredRowIterator partition = iter.next();)
                     {
