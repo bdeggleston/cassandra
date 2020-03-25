@@ -121,7 +121,7 @@ class Profile(object):
 class RowSplit(object):
     def __init__(self, all_rows, split=None, filt_func=None):
         self.split = split
-        self.labels = [r for r in all_rows if filt_func({k: v for k, v in r})]
+        self.labels = all_rows if split is None else [r for r in all_rows if filt_func({k: v for k, v in r})]
 
 
 PROFILES = {
@@ -144,8 +144,8 @@ parser = argparse.ArgumentParser(prog='jmh-heatmap', description="generate inter
 parser.add_argument('--profile', '-p', dest='profile', required=True, choices=sorted(PROFILES.keys()),
                     help='name of benchmark being visualized (add Profile entry if it isn\'t listed)')
 parser.add_argument('--out', '-o', dest='output', required=True, help='output directory')
-parser.add_argument('dir1', metavar='dir', help='directory of jmh data to visualize')
-parser.add_argument('dir2', metavar='dir2', nargs='?', help='optional second directory of jmh data.'
+parser.add_argument('file', metavar='file', help='directory of jmh data to visualize')
+parser.add_argument('file2', metavar='file2', nargs='?', help='optional second directory of jmh data.'
                                                             'If present, it will be compared against the first')
 
 args = parser.parse_args()
@@ -165,7 +165,7 @@ if os.path.exists(out_dir):
 else:
     os.mkdir(out_dir)
 
-directories = [args.dir1, args.dir2] if args.dir2 else [args.dir1]
+directories = [args.file, args.file2] if args.file2 else [args.file]
 
 src_paths = [os.path.expanduser(p) for p in directories]
 src_names = [os.path.split(p)[-1] for p in src_paths]
@@ -177,7 +177,7 @@ unlisted_params = set()
 
 # load in the data
 for src_path in src_paths:
-    with open(src_path + '/out.json', 'r') as f:
+    with open(src_path, 'r') as f:
         js = json.load(f)
 
     for row in js:
