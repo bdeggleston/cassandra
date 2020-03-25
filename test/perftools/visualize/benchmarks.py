@@ -89,7 +89,7 @@ class BenchResults(object):
         self.unlisted_params = unlisted_params
         self.unit = None
         self.run_data = []
-        self.diff_data = []
+        self.diff_data = None
         self.column_labels = []
         self.keys = []
         self.param_data = None
@@ -109,8 +109,8 @@ class BenchResults(object):
         assert len(self.run_data) in [1, 2], len(self.run_data)
         self.run_data = np.array(self.run_data)
         self.column_labels = np.array(self.column_labels)
-        old, new = self.run_data
         if len(self.run_data) > 1:
+            old, new = self.run_data
             self.diff_data = np.nan_to_num(((new - old) / old) * 100)
         self.finalized = True
 
