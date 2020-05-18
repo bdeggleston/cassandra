@@ -113,6 +113,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
 
+    private static final boolean REQUIRE_SCHEMAS = !Boolean.getBoolean("cassandra.skip_schema_check");
+
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
 
     /**
@@ -761,6 +763,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @VisibleForTesting
     public void prepareToJoin() throws ConfigurationException
     {
+        MigrationCoordinator.instance.start();
         if (!joined)
         {
             Map<ApplicationState, VersionedValue> appStates = new EnumMap<>(ApplicationState.class);
@@ -837,6 +840,22 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
+    public void waitForSchema(int delay)
+    {
+        boolean schemasReceived = MigrationCoordinator.instance.awaitSchemaRequests(TimeUnit.SECONDS.toMillis(delay));
+
+        if (schemasReceived)
+            return;
+
+        logger.warn(String.format("There are nodes in the cluster with a different schema version than us we did not merged schemas from, " +
+                                  "our version : (%s), outstanding versions -> endpoints : %s",
+                                  Schema.instance.getVersion(),
+                                  MigrationCoordinator.instance.outstandingVersions()));
+
+        if (REQUIRE_SCHEMAS)
+            throw new RuntimeException("Didn't receive schemas for all known versions within the timeout");
+    }
+
     @VisibleForTesting
     public void joinTokenRing(int delay) throws ConfigurationException
     {
@@ -884,14 +903,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 }
                 Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             }
-            // if our schema hasn't matched yet, wait until it has
-            // we do this by waiting for all in-flight migration requests and responses to complete
-            // (post CASSANDRA-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
-            if (!MigrationManager.isReadyForBootstrap())
-            {
-                setMode(Mode.JOINING, "waiting for schema information to complete", true);
-                MigrationManager.waitUntilReadyForBootstrap();
-            }
+            waitForSchema(delay);
             setMode(Mode.JOINING, "schema complete, ready to bootstrap", true);
             setMode(Mode.JOINING, "waiting for pending range calculation", true);
             PendingRangeCalculatorService.instance.blockUntilFinished();
@@ -1809,7 +1821,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                         break;
                     case SCHEMA:
                         SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value), executor);
-                        MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
+                        MigrationCoordinator.instance.reportEndpointVersion(endpoint, UUID.fromString(value.value));
                         break;
                     case HOST_ID:
                         SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value), executor);
@@ -2570,13 +2582,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             onChange(endpoint, entry.getKey(), entry.getValue());
         }
-        MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
+        MigrationCoordinator.instance.reportEndpointVersion(endpoint, epState);
     }
 
     public void onAlive(InetAddress endpoint, EndpointState state)
     {
-        MigrationManager.instance.scheduleSchemaPull(endpoint, state);
-
         if (tokenMetadata.isMember(endpoint))
             notifyUp(endpoint);
     }
