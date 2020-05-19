@@ -28,6 +28,7 @@ import java.util.Set;
 import com.google.common.base.Preconditions;
 
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.utils.FBUtilities;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -160,11 +161,20 @@ public class Curve
         return (curve.points.length * resolution) + 1;
     }
 
-    public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps, ChainedOptionsBuilder builder) throws Exception
+    public static String getOutputDir(Class<?> clazz)
     {
+        return "jmh-results/" + clazz.getSimpleName() + '-' + FBUtilities.nowInSeconds();
+    }
+
+    public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps, ChainedOptionsBuilder builder, String outputDir) throws Exception
+    {
+        FileUtils.createDirectory(outputDir);
         builder.include(clazz.getSimpleName());
         builder.parent(new CommandLineOptions(args));
         Set<String> steppedParams = parseSteps(args, builder, defaultSteps);
+        builder.resultFormat(ResultFormatType.JSON);
+        builder.result(outputDir + "/out.json");
+
         Options opts = builder.build();
 
         new Runner(opts).run();
@@ -174,6 +184,6 @@ public class Curve
 
     public static void mainHelper(String[] args, Class<?> clazz, CurveExpander expander, Map<String, Integer> defaultSteps) throws Exception
     {
-        mainHelper(args, clazz, expander, defaultSteps, new OptionsBuilder());
+        mainHelper(args, clazz, expander, defaultSteps, new OptionsBuilder(), getOutputDir(clazz));
     }
 }
