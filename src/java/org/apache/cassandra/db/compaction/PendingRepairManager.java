@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -266,29 +265,34 @@ class PendingRepairManager
     private RepairFinishedCompactionTask getRepairFinishedCompactionTask(UUID sessionID)
     {
         Preconditions.checkState(canCleanup(sessionID));
-        Set<SSTableReader> sstables = get(sessionID).getSSTables();
+        AbstractCompactionStrategy compactionStrategy = get(sessionID);
+        if (compactionStrategy == null)
+            return null;
+        Set<SSTableReader> sstables = compactionStrategy.getSSTables();
         long repairedAt = ActiveRepairService.instance.consistent.local.getFinalSessionRepairedAt(sessionID);
         LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.COMPACTION);
         return txn == null ? null : new RepairFinishedCompactionTask(cfs, txn, sessionID, repairedAt);
     }
 
-    public Callable<CleanupSummary> releaseSessionData(Collection<UUID> sessionIDs)
+    public static class CleanupTask
     {
-        List<Pair<UUID, Runnable>> tasks = new ArrayList<>(sessionIDs.size());
-        for (UUID session : sessionIDs)
+        private final ColumnFamilyStore cfs;
+        private final List<Pair<UUID, RepairFinishedCompactionTask>> tasks;
+
+        public CleanupTask(ColumnFamilyStore cfs, List<Pair<UUID, RepairFinishedCompactionTask>> tasks)
         {
-            if (hasDataForSession(session))
-            {
-                tasks.add(Pair.create(session, getRepairFinishedCompactionTask(session)));
-            }
+            this.cfs = cfs;
+            this.tasks = tasks;
         }
-        return () -> {
+
+        public CleanupSummary cleanup()
+        {
             Set<UUID> successful = new HashSet<>();
             Set<UUID> unsuccessful = new HashSet<>();
-            for (Pair<UUID, Runnable> pair : tasks)
+            for (Pair<UUID, RepairFinishedCompactionTask> pair : tasks)
             {
                 UUID session = pair.left;
-                Runnable task = pair.right;
+                RepairFinishedCompactionTask task = pair.right;
 
                 if (task != null)
                 {
@@ -297,9 +301,10 @@ class PendingRepairManager
                         task.run();
                         successful.add(session);
                     }
-                    catch (Exception e)
+                    catch (Throwable t)
                     {
-                        logger.error("Failed cleaning up " + session, e);
+                        t = task.transaction.abort(t);
+                        logger.error("Failed cleaning up " + session, t);
                         unsuccessful.add(session);
                     }
                 }
@@ -309,7 +314,27 @@ class PendingRepairManager
                 }
             }
             return new CleanupSummary(cfs, successful, unsuccessful);
-        };
+        }
+
+        public Throwable abort(Throwable accumulate)
+        {
+            for (Pair<UUID, RepairFinishedCompactionTask> pair : tasks)
+                accumulate = pair.right.transaction.abort(accumulate);
+            return accumulate;
+        }
+    }
+
+    public CleanupTask releaseSessionData(Collection<UUID> sessionIDs)
+    {
+        List<Pair<UUID, RepairFinishedCompactionTask>> tasks = new ArrayList<>(sessionIDs.size());
+        for (UUID session : sessionIDs)
+        {
+            if (hasDataForSession(session))
+            {
+                tasks.add(Pair.create(session, getRepairFinishedCompactionTask(session)));
+            }
+        }
+        return new CleanupTask(cfs, tasks);
     }
 
     synchronized int getNumPendingRepairFinishedTasks()

@@ -268,7 +268,6 @@ public class LocalSessions
         PendingStat.Builder failed = new PendingStat.Builder();
 
         Map<UUID, PendingStat> stats = cfs.getPendingRepairStats();
-        Set<UUID> sessionIds = new HashSet<>();
         for (Map.Entry<UUID, PendingStat> entry : stats.entrySet())
         {
             UUID sessionID = entry.getKey();
@@ -276,11 +275,11 @@ public class LocalSessions
             Verify.verify(sessionID.equals(Iterables.getOnlyElement(stat.sessions)));
 
             LocalSession session = sessions.get(sessionID);
+            Verify.verifyNotNull(session);
 
             if (!Iterables.any(ranges, r -> r.intersects(session.ranges)))
                 continue;
 
-            Verify.verifyNotNull(session);
             switch (session.getState())
             {
                 case FINALIZED:
@@ -292,7 +291,6 @@ public class LocalSessions
                 default:
                     pending.addStat(stat);
             }
-            sessionIds.add(session.sessionID);
         }
 
         return new PendingStats(cfs.keyspace.getName(), cfs.name, pending.build(), finalized.build(), failed.build());
@@ -407,6 +405,8 @@ public class LocalSessions
                 {
                     if (session.getState() == FINALIZED && !isSuperseded(session))
                     {
+                        // if we delete a non-superseded session, some ranges will be mis-reported as
+                        // not having been repaired in repair_admin after a restart
                         logger.info("Skipping delete of FINALIZED LocalSession {} because it has " +
                                     "not been superseded by a more recent session", session.sessionID);
                     }

@@ -42,6 +42,14 @@ import org.apache.cassandra.utils.UUIDGen;
 
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
 
+/**
+ * Tracks the repaired state of token ranges per table, and is effectively an
+ * in memory representation of the on-disk local incremental repair state.
+ *
+ * The main purpose of this class is to provide metrics via nodetool repair_admin. To make sure those metrics
+ * are accurate, it also determines when a completed IR session can be deleted, which is explained in a bit
+ * more detail in LocalSessions#cleanup, by the call to isSuperseded.
+ */
 public class RepairedState
 {
     static class Level

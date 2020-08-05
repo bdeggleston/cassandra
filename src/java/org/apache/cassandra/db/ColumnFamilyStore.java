@@ -1562,10 +1562,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         Map<UUID, PendingStat.Builder> builders = new HashMap<>();
         for (SSTableReader sstable : getLiveSSTables())
         {
-            if (!sstable.isPendingRepair())
+            UUID session = sstable.getPendingRepair();
+            if (session == null)
                 continue;
 
-            UUID session = sstable.getPendingRepair();
             if (!builders.containsKey(session))
                 builders.put(session, new PendingStat.Builder());
 
@@ -1590,9 +1590,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     {
         if (force)
         {
+            Predicate<SSTableReader> predicate = sst -> {
+                UUID session = sst.getPendingRepair();
+                return session != null && sessions.contains(session);
+            };
             return runWithCompactionsDisabled(() -> compactionStrategyManager.releaseRepairData(sessions),
-                                              sst -> sst.isPendingRepair() && sessions.contains(sst.getPendingRepair()),
-                                              false, true, true);
+                                              predicate, false, true, true);
         }
         else
         {

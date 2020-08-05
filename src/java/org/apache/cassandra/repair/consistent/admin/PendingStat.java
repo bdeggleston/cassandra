@@ -119,7 +119,8 @@ public class PendingStat
         public Builder addSSTable(SSTableReader sstable)
         {
             UUID sessionID = sstable.getPendingRepair();
-            Preconditions.checkArgument(sessionID != null);
+            if (sessionID == null)
+                return this;
             dataSize += sstable.onDiskLength();
             sessions.add(sessionID);
             numSSTables++;

@@ -109,4 +109,9 @@ public class SchemaArgsParser implements Iterable<ColumnFamilyStore>
     {
         return new SchemaArgsParser(schemaArgs);
     }
+
+    public static Iterable<ColumnFamilyStore> parse(String... schemaArgs)
+    {
+        return parse(Lists.newArrayList(schemaArgs));
+    }
 }

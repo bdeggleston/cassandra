@@ -45,7 +45,6 @@ public class PendingStats
                                                SimpleType.STRING,
                                                PendingStat.COMPOSITE_TYPE,
                                                PendingStat.COMPOSITE_TYPE,
-                                               PendingStat.COMPOSITE_TYPE,
                                                PendingStat.COMPOSITE_TYPE};
             COMPOSITE_TYPE = new CompositeType(RepairStats.Section.class.getName(), "PendingStats", COMPOSITE_NAMES, COMPOSITE_NAMES, COMPOSITE_TYPES);
         }
@@ -78,10 +77,9 @@ public class PendingStats
         Map<String, Object> values = new HashMap<>();
         values.put(COMPOSITE_NAMES[0], keyspace);
         values.put(COMPOSITE_NAMES[1], table);
-        values.put(COMPOSITE_NAMES[2], total.toComposite());
-        values.put(COMPOSITE_NAMES[3], pending.toComposite());
-        values.put(COMPOSITE_NAMES[4], finalized.toComposite());
-        values.put(COMPOSITE_NAMES[5], failed.toComposite());
+        values.put(COMPOSITE_NAMES[2], pending.toComposite());
+        values.put(COMPOSITE_NAMES[3], finalized.toComposite());
+        values.put(COMPOSITE_NAMES[4], failed.toComposite());
         try
         {
             return new CompositeDataSupport(COMPOSITE_TYPE, values);

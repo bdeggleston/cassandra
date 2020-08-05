@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -40,6 +39,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
+
+import org.apache.cassandra.db.compaction.PendingRepairManager.CleanupTask;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1228,31 +1229,23 @@ public class CompactionStrategyManager implements INotificationConsumer
 
     public CleanupSummary releaseRepairData(Collection<UUID> sessions)
     {
-        List<Callable<CleanupSummary>> callables = new ArrayList<>();
+        List<CleanupTask> cleanupTasks = new ArrayList<>();
         readLock.lock();
         try
         {
             for (PendingRepairManager prm : Iterables.concat(pendingRepairs.getManagers(), transientRepairs.getManagers()))
-            {
-                callables.add(prm.releaseSessionData(sessions));
-            }
+                cleanupTasks.add(prm.releaseSessionData(sessions));
         }
         finally
         {
             readLock.unlock();
         }
+
         CleanupSummary summary = new CleanupSummary(cfs, Collections.emptySet(), Collections.emptySet());
-        for (Callable<CleanupSummary> callable : callables)
-        {
-            try
-            {
-                summary = CleanupSummary.add(summary, callable.call());
-            }
-            catch (Exception e)
-            {
-                throw new AssertionError(e);
-            }
-        }
+
+        for (CleanupTask task : cleanupTasks)
+            summary = CleanupSummary.add(summary, task.cleanup());
+
         return summary;
     }
 }
