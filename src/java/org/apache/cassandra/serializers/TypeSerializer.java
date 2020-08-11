@@ -51,7 +51,7 @@ public abstract class TypeSerializer<T>
      * Validate that the byte array is a valid sequence for the type this represents.
      * This guarantees deserialize() can be called without errors.
      */
-    public abstract <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException;
+    public abstract <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException;
 
     /*
      * Does not modify the position or limit of the buffer even temporarily.

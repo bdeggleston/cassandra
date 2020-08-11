@@ -474,7 +474,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     }
 
     // This assumes that no empty values are passed
-    public  <T> void writeValue(T value, ValueAccessor<T> handle, DataOutputPlus out) throws IOException
+    public  <V> void writeValue(V value, ValueAccessor<V> handle, DataOutputPlus out) throws IOException
     {
         assert !handle.isEmpty(value);
         if (valueLengthIfFixed() >= 0)
