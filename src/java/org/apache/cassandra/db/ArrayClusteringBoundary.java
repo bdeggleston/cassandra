@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.db;
 
+import java.nio.ByteBuffer;
+
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary implements ClusteringBoundary<byte[]>
@@ -37,12 +39,6 @@ public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary impl
     public ClusteringBoundary<byte[]> invert()
     {
         return create(kind().invert(), values);
-    }
-
-    @Override
-    public ClusteringBoundary<byte[]> copy(AbstractAllocator allocator)
-    {
-        return (ClusteringBoundary<byte[]>) super.copy(allocator);
     }
 
     public ClusteringBound<byte[]> openBound(boolean reversed)

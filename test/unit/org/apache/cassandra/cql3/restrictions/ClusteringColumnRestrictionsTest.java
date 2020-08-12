@@ -1688,7 +1688,7 @@ public class ClusteringColumnRestrictionsTest
      */
     private static void assertEmptyStart(ClusteringBound bound)
     {
-        assertEquals(ClusteringBound.BOTTOM, bound);
+        assertTrue(bound.isBottom());
     }
 
     /**
@@ -1698,7 +1698,7 @@ public class ClusteringColumnRestrictionsTest
      */
     private static void assertEmptyEnd(ClusteringBound bound)
     {
-        assertEquals(ClusteringBound.TOP, bound);
+        assertTrue(bound.isTop());
     }
 
     /**

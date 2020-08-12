@@ -733,21 +733,21 @@ public class RangeTombstoneListTest
 
     private static RangeTombstone atLeast(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(BufferClusteringBound.inclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(BufferClusteringBound.inclusiveStartOf(bb(start)), BufferClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone atMost(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, BufferClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(BufferClusteringBound.BOTTOM, BufferClusteringBound.inclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone lessThan(int end, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(ClusteringBound.BOTTOM, BufferClusteringBound.exclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(BufferClusteringBound.BOTTOM, BufferClusteringBound.exclusiveEndOf(bb(end))), new DeletionTime(tstamp, delTime));
     }
 
     private static RangeTombstone greaterThan(int start, long tstamp, int delTime)
     {
-        return new RangeTombstone(Slice.make(BufferClusteringBound.exclusiveStartOf(bb(start)), ClusteringBound.TOP), new DeletionTime(tstamp, delTime));
+        return new RangeTombstone(Slice.make(BufferClusteringBound.exclusiveStartOf(bb(start)), BufferClusteringBound.TOP), new DeletionTime(tstamp, delTime));
     }
 }

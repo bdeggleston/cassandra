@@ -61,7 +61,7 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
         return kind().isClose(reversed);
     }
 
-    default ClusteringBoundOrBoundary<T> copy(AbstractAllocator allocator)
+    default ClusteringBoundOrBoundary<ByteBuffer> copy(AbstractAllocator allocator)
     {
         ByteBuffer[] newValues = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
@@ -99,21 +99,21 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
 
     public static class Serializer
     {
-        public void serialize(ClusteringBoundOrBoundary bound, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
+        public <T> void serialize(ClusteringBoundOrBoundary<T> bound, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
         {
             out.writeByte(bound.kind().ordinal());
             out.writeShort(bound.size());
             ClusteringPrefix.serializer.serializeValuesWithoutSize(bound, out, version, types);
         }
 
-        public long serializedSize(ClusteringBoundOrBoundary bound, int version, List<AbstractType<?>> types)
+        public <T> long serializedSize(ClusteringBoundOrBoundary<T> bound, int version, List<AbstractType<?>> types)
         {
             return 1 // kind ordinal
                  + TypeSizes.sizeof((short)bound.size())
                  + ClusteringPrefix.serializer.valuesWithoutSizeSerializedSize(bound, version, types);
         }
 
-        public ClusteringBoundOrBoundary deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public ClusteringBoundOrBoundary<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             Kind kind = Kind.values()[in.readByte()];
             return deserializeValues(in, kind, version, types);
@@ -128,11 +128,11 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
             ClusteringPrefix.serializer.skipValuesWithoutSize(in, size, version, types);
         }
 
-        public ClusteringBoundOrBoundary deserializeValues(DataInputPlus in, Kind kind, int version, List<AbstractType<?>> types) throws IOException
+        public ClusteringBoundOrBoundary<byte[]> deserializeValues(DataInputPlus in, Kind kind, int version, List<AbstractType<?>> types) throws IOException
         {
             int size = in.readUnsignedShort();
             if (size == 0)
-                return kind.isStart() ? ClusteringBound.BOTTOM : ClusteringBound.TOP;
+                return kind.isStart() ? ArrayClusteringBound.BOTTOM : ArrayClusteringBound.TOP;
 
             byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types, ByteArrayAccessor.instance);
             return ArrayClusteringBoundOrBoundary.create(kind, values);

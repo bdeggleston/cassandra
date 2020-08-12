@@ -38,7 +38,7 @@ public class Slice
     public static final Serializer serializer = new Serializer();
 
     /** The slice selecting all rows (of a given partition) */
-    public static final Slice ALL = new Slice(ClusteringBound.BOTTOM, ClusteringBound.TOP)
+    public static final Slice ALL = new Slice(BufferClusteringBound.BOTTOM, BufferClusteringBound.TOP)
     {
         @Override
         public boolean includes(ClusteringComparator comparator, ClusteringPrefix clustering)
@@ -71,7 +71,7 @@ public class Slice
 
     public static Slice make(ClusteringBound<?> start, ClusteringBound<?> end)
     {
-        if (start == ClusteringBound.BOTTOM && end == ClusteringBound.TOP)
+        if (start.isBottom() && end.isTop())
             return ALL;
 
         return new Slice(start, end);

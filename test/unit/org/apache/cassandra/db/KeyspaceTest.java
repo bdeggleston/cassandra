@@ -271,12 +271,12 @@ public class KeyspaceTest extends CQLTester
 
     private static ClusteringIndexSliceFilter slices(ColumnFamilyStore cfs, Integer sliceStart, Integer sliceEnd, boolean reversed)
     {
-        ClusteringBound startBound = sliceStart == null
-                                   ? ClusteringBound.BOTTOM
-                                   : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceStart)});
-        ClusteringBound endBound = sliceEnd == null
-                                 ? ClusteringBound.TOP
-                                 : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceEnd)});
+        ClusteringBound<ByteBuffer> startBound = sliceStart == null
+                                                 ? BufferClusteringBound.BOTTOM
+                                                 : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_START_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceStart)});
+        ClusteringBound<ByteBuffer> endBound = sliceEnd == null
+                                               ? BufferClusteringBound.TOP
+                                               : BufferClusteringBound.create(ClusteringPrefix.Kind.INCL_END_BOUND, new ByteBuffer[]{ByteBufferUtil.bytes(sliceEnd)});
         Slices slices = Slices.with(cfs.getComparator(), Slice.make(startBound, endBound));
         return new ClusteringIndexSliceFilter(slices, reversed);
     }

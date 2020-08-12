@@ -25,10 +25,10 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class BufferClusteringBound extends BufferClusteringBoundOrBoundary implements ClusteringBound<ByteBuffer>
 {
-//    /** The smallest start bound, i.e. the one that starts before any row. */
-//    public static final ClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
-//    /** The biggest end bound, i.e. the one that ends after any row. */
-//    public static final ClusteringBound TOP = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, EMPTY_VALUES_ARRAY);
+    /** The smallest start bound, i.e. the one that starts before any row. */
+    public static final BufferClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
+    /** The biggest end bound, i.e. the one that ends after any row. */
+    public static final BufferClusteringBound TOP = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, EMPTY_VALUES_ARRAY);
 
     protected BufferClusteringBound(ClusteringPrefix.Kind kind, ByteBuffer[] values)
     {

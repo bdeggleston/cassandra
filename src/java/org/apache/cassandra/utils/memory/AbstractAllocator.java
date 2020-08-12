@@ -20,6 +20,8 @@ package org.apache.cassandra.utils.memory;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.Clustering;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.Cell;
@@ -33,15 +35,7 @@ public abstract class AbstractAllocator
      */
     public ByteBuffer clone(ByteBuffer buffer)
     {
-        assert buffer != null;
-        if (buffer.remaining() == 0)
-            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        ByteBuffer cloned = allocate(buffer.remaining());
-
-        cloned.mark();
-        cloned.put(buffer.duplicate());
-        cloned.reset();
-        return cloned;
+        return clone(buffer, ByteBufferAccessor.instance);
     }
 
     /**
@@ -49,20 +43,21 @@ public abstract class AbstractAllocator
      */
     public ByteBuffer clone(byte[] bytes)
     {
-        assert bytes != null;
-        if (bytes.length == 0)
-            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        ByteBuffer cloned = allocate(bytes.length);
-
-        cloned.mark();
-        cloned.put(bytes);
-        cloned.reset();
-        return cloned;
+        return clone(bytes, ByteArrayAccessor.instance);
     }
 
-    public <T> ByteBuffer clone(T input, ValueAccessor<T> accessor)
+    public <V> ByteBuffer clone(V value, ValueAccessor<V> accessor)
     {
-        return clone(accessor.toBuffer(input));  // FIXME
+        assert value != null;
+        int size = accessor.size(value);
+        if (size == 0)
+            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+        ByteBuffer cloned = allocate(size);
+
+        cloned.mark();
+        accessor.write(value, cloned);
+        cloned.reset();
+        return cloned;
     }
 
     public abstract ByteBuffer allocate(int size);

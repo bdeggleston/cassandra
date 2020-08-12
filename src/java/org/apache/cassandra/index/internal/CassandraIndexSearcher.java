@@ -132,8 +132,8 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
                     DecoratedKey startKey = (DecoratedKey) range.left;
                     DecoratedKey endKey = (DecoratedKey) range.right;
 
-                    ClusteringBound start = ClusteringBound.BOTTOM;
-                    ClusteringBound end = ClusteringBound.TOP;
+                    ClusteringBound<?> start = BufferClusteringBound.BOTTOM;
+                    ClusteringBound<?> end = BufferClusteringBound.TOP;
 
                     /*
                      * For index queries over a range, we can't do a whole lot better than querying everything for the
@@ -167,15 +167,15 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
                 else
                 {
                     // otherwise, just start the index slice from the key we do have
-                    slice = Slice.make(makeIndexBound(((DecoratedKey)range.left).getKey(), ClusteringBound.BOTTOM),
-                                       ClusteringBound.TOP);
+                    slice = Slice.make(makeIndexBound(((DecoratedKey)range.left).getKey(), BufferClusteringBound.BOTTOM),
+                                       BufferClusteringBound.TOP);
                 }
             }
             return new ClusteringIndexSliceFilter(Slices.with(index.getIndexComparator(), slice), false);
         }
     }
 
-    private ClusteringBound makeIndexBound(ByteBuffer rowKey, ClusteringBound bound)
+    private ClusteringBound<ByteBuffer> makeIndexBound(ByteBuffer rowKey, ClusteringBound<?> bound)
     {
         return index.buildIndexClusteringPrefix(rowKey, bound, null)
                                  .buildBound(bound.isStart(), bound.isInclusive());

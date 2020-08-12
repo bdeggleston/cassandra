@@ -27,12 +27,12 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
 /**
  * A range tombstone marker that represents a boundary between 2 range tombstones (i.e. it closes one range and open another).
  */
-public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<ClusteringBoundary>
+public class RangeTombstoneBoundaryMarker<T> extends AbstractRangeTombstoneMarker<ClusteringBoundary<T>>
 {
     private final DeletionTime endDeletion;
     private final DeletionTime startDeletion;
 
-    public RangeTombstoneBoundaryMarker(ClusteringBoundary bound, DeletionTime endDeletion, DeletionTime startDeletion)
+    public RangeTombstoneBoundaryMarker(ClusteringBoundary<T> bound, DeletionTime endDeletion, DeletionTime startDeletion)
     {
         super(bound);
         assert bound.isBoundary();
@@ -119,14 +119,14 @@ public class RangeTombstoneBoundaryMarker extends AbstractRangeTombstoneMarker<C
         return !startDeletion.validate() || !endDeletion.validate();
     }
 
-    public RangeTombstoneBoundaryMarker copy(AbstractAllocator allocator)
+    public RangeTombstoneBoundaryMarker<ByteBuffer> copy(AbstractAllocator allocator)
     {
-        return new RangeTombstoneBoundaryMarker(clustering().copy(allocator), endDeletion, startDeletion);
+        return new RangeTombstoneBoundaryMarker<>((ClusteringBoundary<ByteBuffer>) clustering().copy(allocator), endDeletion, startDeletion);
     }
 
-    public RangeTombstoneBoundaryMarker withNewOpeningDeletionTime(boolean reversed, DeletionTime newDeletionTime)
+    public RangeTombstoneBoundaryMarker<T> withNewOpeningDeletionTime(boolean reversed, DeletionTime newDeletionTime)
     {
-        return new RangeTombstoneBoundaryMarker(clustering(), reversed ? newDeletionTime : endDeletion, reversed ? startDeletion : newDeletionTime);
+        return new RangeTombstoneBoundaryMarker<>(clustering(), reversed ? newDeletionTime : endDeletion, reversed ? startDeletion : newDeletionTime);
     }
 
     public static RangeTombstoneBoundaryMarker makeBoundary(boolean reversed, ClusteringBound close, ClusteringBound open, DeletionTime closeDeletion, DeletionTime openDeletion)
