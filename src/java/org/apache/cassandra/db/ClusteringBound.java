@@ -103,6 +103,8 @@ public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
         {
             case BUFFER:
                 return BufferClusteringBound.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<ByteBuffer>) from));
+            case ARRAY:
+                return ArrayClusteringBound.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<byte[]>) from));
             default:
                 throw new UnsupportedOperationException("Unsupported backing kind: " + from.accessor().getBackingKind());
         }
