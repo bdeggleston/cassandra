@@ -175,14 +175,14 @@ public abstract class CBuilder
             return size == 0 ? Clustering.EMPTY : Clustering.make(values);
         }
 
-        public ClusteringBound buildBound(boolean isStart, boolean isInclusive)
+        public ClusteringBound<ByteBuffer> buildBound(boolean isStart, boolean isInclusive)
         {
             // We don't allow to add more element to a builder that has been built so
             // that we don't have to copy values (even though we have to do it in most cases).
             built = true;
 
             if (size == 0)
-                return isStart ? ClusteringBound.BOTTOM : ClusteringBound.TOP;
+                return isStart ? BufferClusteringBound.BOTTOM : BufferClusteringBound.TOP;
 
             return BufferClusteringBound.create(ClusteringBound.boundKind(isStart, isInclusive),
                                 size == values.length ? values : Arrays.copyOfRange(values, 0, size));

@@ -24,6 +24,11 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary implements ClusteringBound<byte[]>
 {
+    /** The smallest start bound, i.e. the one that starts before any row. */
+    public static final ArrayClusteringBound BOTTOM = new ArrayClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
+    /** The biggest end bound, i.e. the one that ends after any row. */
+    public static final ArrayClusteringBound TOP = new ArrayClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, EMPTY_VALUES_ARRAY);
+
     public ArrayClusteringBound(Kind kind, byte[][] values)
     {
         super(kind, values);
@@ -35,9 +40,9 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
         return create(kind().invert(), values);
     }
 
-    public ClusteringBound<byte[]> copy(AbstractAllocator allocator)
+    public ClusteringBound<ByteBuffer> copy(AbstractAllocator allocator)
     {
-        return (ClusteringBound<byte[]>) super.copy(allocator);
+        return (ClusteringBound<ByteBuffer>) super.copy(allocator);
     }
 
     public static ArrayClusteringBound create(ClusteringPrefix.Kind kind, byte[][] values)

@@ -48,7 +48,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  *   3) {@code ClusteringBoundary} represents the threshold between two adjacent range tombstones.
  * See those classes for more details.
  */
-public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
+public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
 {
     public static final Serializer serializer = new Serializer();
 
@@ -197,6 +197,16 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
                  ? (this == INCL_END_EXCL_START_BOUNDARY ? INCL_END_BOUND : EXCL_END_BOUND)
                  : (this == INCL_END_EXCL_START_BOUNDARY ? EXCL_START_BOUND : INCL_START_BOUND);
         }
+    }
+
+    default boolean isBottom()
+    {
+        return kind() == Kind.INCL_START_BOUND && getRawValues().length == 0;
+    }
+
+    default boolean isTop()
+    {
+        return kind() == Kind.INCL_END_BOUND && getRawValues().length == 0;
     }
 
     public Kind kind();
@@ -530,7 +540,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable
 
         public <T> int compareNextTo(ClusteringBoundOrBoundary<T> bound) throws IOException
         {
-            if (bound == ClusteringBound.TOP)
+            if (bound.isTop())
                 return -1;
 
             for (int i = 0; i < bound.size(); i++)

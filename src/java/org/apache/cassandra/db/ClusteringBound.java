@@ -44,10 +44,10 @@ public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
     }
 
     @Override
-    ClusteringBound invert();
+    ClusteringBound<T> invert();
 
     @Override
-    ClusteringBound copy(AbstractAllocator allocator);
+    ClusteringBound<ByteBuffer> copy(AbstractAllocator allocator);
 
     default boolean isStart()
     {

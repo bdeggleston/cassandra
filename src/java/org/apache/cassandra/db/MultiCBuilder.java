@@ -279,7 +279,7 @@ public abstract class MultiCBuilder
                 return BTreeSet.empty(comparator);
 
             if (size == 0)
-                return BTreeSet.of(comparator, isStart ? ClusteringBound.BOTTOM : ClusteringBound.TOP);
+                return BTreeSet.of(comparator, isStart ? BufferClusteringBound.BOTTOM : BufferClusteringBound.TOP);
 
             ByteBuffer[] newValues = size == elements.length
                                    ? elements

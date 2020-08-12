@@ -189,8 +189,8 @@ public abstract class AbstractBTreePartition implements Partition, Iterable<Row>
 
     private UnfilteredRowIterator sliceIterator(ColumnFilter selection, Slice slice, boolean reversed, Holder current, Row staticRow)
     {
-        ClusteringBound start = slice.start() == ClusteringBound.BOTTOM ? null : slice.start();
-        ClusteringBound end = slice.end() == ClusteringBound.TOP ? null : slice.end();
+        ClusteringBound<?> start = slice.start().isBottom() ? null : slice.start();
+        ClusteringBound<?> end = slice.end().isTop() ? null : slice.end();
         Iterator<Row> rowIter = BTree.slice(current.tree, metadata().comparator, start, true, end, true, desc(reversed));
         Iterator<RangeTombstone> deleteIter = current.deletionInfo.rangeIterator(slice, reversed);
         return merge(rowIter, deleteIter, selection, reversed, current, staticRow);

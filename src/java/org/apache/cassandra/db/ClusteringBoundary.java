@@ -33,9 +33,6 @@ public interface ClusteringBoundary<T> extends ClusteringBoundOrBoundary<T>
     @Override
     public ClusteringBoundary<T> invert();
 
-    @Override
-    public ClusteringBoundary<T> copy(AbstractAllocator allocator);
-
     public ClusteringBound<T> openBound(boolean reversed);
 
     public ClusteringBound<T> closeBound(boolean reversed);

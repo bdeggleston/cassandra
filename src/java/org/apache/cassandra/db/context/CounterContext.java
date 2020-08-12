@@ -578,7 +578,7 @@ public class CounterContext
         return total;
     }
 
-    public long total(Cell cell)
+    public <V> long total(Cell<V> cell)
     {
         return total(cell.value(), cell.accessor());
     }

@@ -382,13 +382,13 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
 
     private Iterator<RangeTombstone> forwardIterator(final Slice slice)
     {
-        int startIdx = slice.start() == ClusteringBound.BOTTOM ? 0 : searchInternal(slice.start(), 0, size);
+        int startIdx = slice.start().isBottom() ? 0 : searchInternal(slice.start(), 0, size);
         final int start = startIdx < 0 ? -startIdx-1 : startIdx;
 
         if (start >= size)
             return Collections.emptyIterator();
 
-        int finishIdx = slice.end() == ClusteringBound.TOP ? size - 1 : searchInternal(slice.end(), start, size);
+        int finishIdx = slice.end().isTop() ? size - 1 : searchInternal(slice.end(), start, size);
         // if stopIdx is the first range after 'slice.end()' we care only until the previous range
         final int finish = finishIdx < 0 ? -finishIdx-2 : finishIdx;
 
@@ -429,14 +429,14 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
 
     private Iterator<RangeTombstone> reverseIterator(final Slice slice)
     {
-        int startIdx = slice.end() == ClusteringBound.TOP ? size - 1 : searchInternal(slice.end(), 0, size);
+        int startIdx = slice.end().isTop() ? size - 1 : searchInternal(slice.end(), 0, size);
         // if startIdx is the first range after 'slice.end()' we care only until the previous range
         final int start = startIdx < 0 ? -startIdx-2 : startIdx;
 
         if (start < 0)
             return Collections.emptyIterator();
 
-        int finishIdx = slice.start() == ClusteringBound.BOTTOM ? 0 : searchInternal(slice.start(), 0, start + 1);  // include same as finish
+        int finishIdx = slice.start().isBottom() ? 0 : searchInternal(slice.start(), 0, start + 1);  // include same as finish
         // if stopIdx is the first range after 'slice.end()' we care only until the previous range
         final int finish = finishIdx < 0 ? -finishIdx-1 : finishIdx;
 

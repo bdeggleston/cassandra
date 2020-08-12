@@ -59,7 +59,7 @@ public abstract class Slices implements Iterable<Slice>
      */
     public static Slices with(ClusteringComparator comparator, Slice slice)
     {
-        if (slice.start() == ClusteringBound.BOTTOM && slice.end() == ClusteringBound.TOP)
+        if (slice.start().isBottom() && slice.end().isTop())
             return Slices.ALL;
 
         Preconditions.checkArgument(!slice.isEmpty(comparator));
@@ -335,7 +335,7 @@ public abstract class Slices implements Iterable<Slice>
             for (int i = 0; i < size; i++)
                 slices[i] = Slice.serializer.deserialize(in, version, metadata.comparator.subtypes());
 
-            if (size == 1 && slices[0].start() == ClusteringBound.BOTTOM && slices[0].end() == ClusteringBound.TOP)
+            if (size == 1 && slices[0].start().isBottom() && slices[0].end().isTop())
                 return ALL;
 
             return new ArrayBackedSlices(metadata.comparator, slices);

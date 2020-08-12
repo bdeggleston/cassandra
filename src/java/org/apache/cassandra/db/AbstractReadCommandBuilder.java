@@ -45,8 +45,8 @@ public abstract class AbstractReadCommandBuilder
     protected Set<ColumnIdentifier> columns;
     protected final RowFilter filter = RowFilter.create();
 
-    private ClusteringBound lowerClusteringBound;
-    private ClusteringBound upperClusteringBound;
+    private ClusteringBound<ByteBuffer> lowerClusteringBound;
+    private ClusteringBound<ByteBuffer> upperClusteringBound;
 
     private NavigableSet<Clustering> clusterings;
 
@@ -204,8 +204,8 @@ public abstract class AbstractReadCommandBuilder
         }
         else
         {
-            Slice slice = Slice.make(lowerClusteringBound == null ? ClusteringBound.BOTTOM : lowerClusteringBound,
-                                     upperClusteringBound == null ? ClusteringBound.TOP : upperClusteringBound);
+            Slice slice = Slice.make(lowerClusteringBound == null ? BufferClusteringBound.BOTTOM : lowerClusteringBound,
+                                     upperClusteringBound == null ? BufferClusteringBound.TOP : upperClusteringBound);
             return new ClusteringIndexSliceFilter(Slices.with(cfs.metadata().comparator, slice), reversed);
         }
     }

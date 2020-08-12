@@ -15,13 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.db;
 
-/**
- * Common class for objects that are identified by a clustering prefix, and can be thus sorted by a
- * {@link ClusteringComparator}.
- */
-public interface Clusterable<T>
+import org.junit.Assert;
+import org.junit.Test;
+
+public class ClusteringBoundTest
 {
-    public ClusteringPrefix<T> clustering();
+    @Test
+    public void arrayTopAndBottom()
+    {
+        Assert.assertTrue(ArrayClusteringBound.BOTTOM.isBottom());
+        Assert.assertFalse(ArrayClusteringBound.BOTTOM.isTop());
+        Assert.assertTrue(ArrayClusteringBound.TOP.isTop());
+        Assert.assertFalse(ArrayClusteringBound.TOP.isBottom());
+    }
+
+    @Test
+    public void bufferTopAndBottom()
+    {
+        Assert.assertTrue(BufferClusteringBound.BOTTOM.isBottom());
+        Assert.assertFalse(BufferClusteringBound.BOTTOM.isTop());
+        Assert.assertTrue(BufferClusteringBound.TOP.isTop());
+        Assert.assertFalse(BufferClusteringBound.TOP.isBottom());
+    }
 }
