@@ -128,6 +128,8 @@ public interface ValueAccessor<V>
     V valueOf(float v);
     V valueOf(double v);
 
+    V convert(Object o);
+
     public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
     {
         return leftAccessor.toBuffer(left).compareTo(rightAccessor.toBuffer(right)); /// FIXME:
