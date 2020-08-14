@@ -88,16 +88,22 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public ByteBuffer toSafeBuffer(ByteBuffer value)
     {
+        if (value == null)
+            return null;
         return value.duplicate();
     }
 
     public byte[] toArray(ByteBuffer value)
     {
+        if (value == null)
+            return null;
         return ByteBufferUtil.getArray(value);
     }
 
     public byte[] toArray(ByteBuffer value, int offset, int length)
     {
+        if (value == null)
+            return null;
         return ByteBufferUtil.getArray(value, value.position() + offset, length);
     }
 

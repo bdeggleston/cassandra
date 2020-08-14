@@ -85,11 +85,15 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 
     public ByteBuffer toBuffer(byte[] value)
     {
+        if (value == null)
+            return null;
         return ByteBuffer.wrap(value);
     }
 
     public ByteBuffer toSafeBuffer(byte[] value)
     {
+        if (value == null)
+            return null;
         return ByteBuffer.wrap(value);
     }
 
@@ -100,6 +104,8 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 
     public byte[] toArray(byte[] value, int offset, int length)
     {
+        if (value == null)
+            return null;
         if (offset == 0 && length == value.length)
             return value;
         return slice(value, offset, length);
