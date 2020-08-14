@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.cache.RowCacheKey;
+import org.apache.cassandra.db.marshal.ValueAccessors;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -460,7 +461,7 @@ public class RowCacheTest
         {
             Row r = (Row) unfiltered;
 
-            assertEquals(r.clustering().get(0), ByteBufferUtil.bytes(values[i].substring(3)));
+            ValueAccessors.assertDataEquals(r.clustering().get(0), ByteBufferUtil.bytes(values[i].substring(3)));
 
             for (ColumnData c : r)
             {
