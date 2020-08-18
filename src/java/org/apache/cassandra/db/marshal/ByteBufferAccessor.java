@@ -86,7 +86,7 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return value;
     }
 
-    public ByteBuffer toSafeBuffer(ByteBuffer value)
+    public ByteBuffer toMutableBuffer(ByteBuffer value)
     {
         if (value == null)
             return null;

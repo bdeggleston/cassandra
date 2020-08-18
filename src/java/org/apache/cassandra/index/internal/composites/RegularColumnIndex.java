@@ -94,7 +94,7 @@ public class RegularColumnIndex extends CassandraIndex
         return new IndexEntry(indexedValue,
                               clustering,
                               indexEntry.primaryKeyLivenessInfo().timestamp(),
-                              clustering.getBuffer(0),
+                              clustering.bufferAt(0),
                               indexedEntryClustering);
     }
 

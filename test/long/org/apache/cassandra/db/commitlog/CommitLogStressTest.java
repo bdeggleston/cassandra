@@ -464,7 +464,7 @@ public abstract class CommitLogStressTest
                 while (rowIterator.hasNext())
                 {
                     Row row = rowIterator.next();
-                    if (!(UTF8Type.instance.compose(row.clustering().getBuffer(0)).startsWith("name")))
+                    if (!(UTF8Type.instance.compose(row.clustering().bufferAt(0)).startsWith("name")))
                         continue;
 
                     for (Cell cell : row.cells())

@@ -90,7 +90,7 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return ByteBuffer.wrap(value);
     }
 
-    public ByteBuffer toSafeBuffer(byte[] value)
+    public ByteBuffer toMutableBuffer(byte[] value)
     {
         if (value == null)
             return null;

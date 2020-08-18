@@ -75,7 +75,7 @@ public interface ValueAccessor<V>
     /**
      * returns a modifiable buffer
      */
-    ByteBuffer toSafeBuffer(V value);
+    ByteBuffer toMutableBuffer(V value);
 
     byte[] toArray(V value);
     byte[] toArray(V value, int offset, int length);
