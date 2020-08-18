@@ -148,7 +148,7 @@ public abstract class Rows
     @SuppressWarnings("resource")
     public static void diff(RowDiffListener diffListener, Row merged, Row...inputs)
     {
-        Clustering clustering = merged.clustering();
+        Clustering<?> clustering = merged.clustering();
         LivenessInfo mergedInfo = merged.primaryKeyLivenessInfo().isEmpty() ? null : merged.primaryKeyLivenessInfo();
         Row.Deletion mergedDeletion = merged.deletion().isLive() ? null : merged.deletion();
         for (int i = 0; i < inputs.length; i++)
@@ -279,7 +279,7 @@ public abstract class Rows
                              Row update,
                              Row.Builder builder)
     {
-        Clustering clustering = existing.clustering();
+        Clustering<?> clustering = existing.clustering();
         builder.newRow(clustering);
 
         LivenessInfo existingInfo = existing.primaryKeyLivenessInfo();
@@ -351,7 +351,7 @@ public abstract class Rows
     public static Row removeShadowedCells(Row existing, Row update, DeletionTime rangeDeletion)
     {
         Row.Builder builder = BTreeRow.sortedBuilder();
-        Clustering clustering = existing.clustering();
+        Clustering<?> clustering = existing.clustering();
         builder.newRow(clustering);
 
         DeletionTime deletion = update.deletion().time();

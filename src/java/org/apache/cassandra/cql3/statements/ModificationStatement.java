@@ -180,7 +180,7 @@ public abstract class ModificationStatement implements CQLStatement
         return restrictions;
     }
 
-    public abstract void addUpdateForKey(PartitionUpdate.Builder updateBuilder, Clustering clustering, UpdateParameters params);
+    public abstract void addUpdateForKey(PartitionUpdate.Builder updateBuilder, Clustering<?> clustering, UpdateParameters params);
 
     public abstract void addUpdateForKey(PartitionUpdate.Builder updateBuilder, Slice slice, UpdateParameters params);
 
@@ -503,7 +503,7 @@ public abstract class ModificationStatement implements CQLStatement
                    "IN on the clustering key columns is not supported with conditional %s",
                     type.isUpdate()? "updates" : "deletions");
 
-        Clustering clustering = Iterables.getOnlyElement(createClustering(options));
+        Clustering<?> clustering = Iterables.getOnlyElement(createClustering(options));
         CQL3CasRequest request = new CQL3CasRequest(metadata(), key, conditionColumns(), updatesRegularRows(), updatesStaticRow());
 
         addConditions(clustering, request, options);
@@ -512,7 +512,7 @@ public abstract class ModificationStatement implements CQLStatement
         return request;
     }
 
-    public void addConditions(Clustering clustering, CQL3CasRequest request, QueryOptions options) throws InvalidRequestException
+    public void addConditions(Clustering<?> clustering, CQL3CasRequest request, QueryOptions options) throws InvalidRequestException
     {
         conditions.addConditionsTo(request, clustering, options);
     }
@@ -738,7 +738,7 @@ public abstract class ModificationStatement implements CQLStatement
                 }
                 else
                 {
-                    for (Clustering clustering : clusterings)
+                    for (Clustering<?> clustering : clusterings)
                     {
                         for (ByteBuffer c : clustering.getBufferArray())
                         {

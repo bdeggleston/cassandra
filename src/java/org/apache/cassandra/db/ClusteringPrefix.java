@@ -321,7 +321,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             if (clustering.kind() == Kind.CLUSTERING)
             {
                 out.writeByte(clustering.kind().ordinal());
-                Clustering.serializer.serialize((Clustering)clustering, out, version, types);
+                Clustering.serializer.serialize((Clustering<?>)clustering, out, version, types);
             }
             else
             {
@@ -356,7 +356,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             // We shouldn't serialize static clusterings
             assert clustering.kind() != Kind.STATIC_CLUSTERING;
             if (clustering.kind() == Kind.CLUSTERING)
-                return 1 + Clustering.serializer.serializedSize((Clustering)clustering, version, types);
+                return 1 + Clustering.serializer.serializedSize((Clustering<?>)clustering, version, types);
             else
                 return ClusteringBoundOrBoundary.serializer.serializedSize((ClusteringBoundOrBoundary)clustering, version, types);
         }
@@ -601,11 +601,11 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             return bound;
         }
 
-        public Clustering deserializeNextClustering() throws IOException
+        public Clustering<byte[]> deserializeNextClustering() throws IOException
         {
             assert nextIsRow;
             deserializeAll();
-            Clustering clustering = ArrayClustering.make(nextValues);
+            Clustering<byte[]> clustering = ArrayClustering.make(nextValues);
             nextValues = null;
             return clustering;
         }

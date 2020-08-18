@@ -505,7 +505,7 @@ public class UnfilteredSerializer
                     boolean hasTimestamp = (flags & HAS_TIMESTAMP) != 0;
                     boolean hasTTL = (flags & HAS_TTL) != 0;
                     boolean deletionIsShadowable = (extendedFlags & HAS_SHADOWABLE_DELETION) != 0;
-                    Clustering clustering = Clustering.serializer.deserialize(in, helper.version, header.clusteringTypes());
+                    Clustering<byte[]> clustering = Clustering.serializer.deserialize(in, helper.version, header.clusteringTypes());
                     long nextPosition = in.readUnsignedVInt() + in.getFilePointer();
                     in.readUnsignedVInt(); // skip previous unfiltered size
                     if (hasTimestamp)

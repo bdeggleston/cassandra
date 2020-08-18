@@ -368,7 +368,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     }
 
     @Override
-    public SinglePartitionReadCommand forPaging(Clustering lastReturned, DataLimits limits)
+    public SinglePartitionReadCommand forPaging(Clustering<?> lastReturned, DataLimits limits)
     {
         // We shouldn't have set digest yet when reaching that point
         assert !isDigestQuery();
@@ -928,7 +928,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         if (result == null)
             return filter;
 
-        SearchIterator<Clustering, Row> searchIter = result.searchIterator(columnFilter(), false);
+        SearchIterator<Clustering<?>, Row> searchIter = result.searchIterator(columnFilter(), false);
 
         RegularAndStaticColumns columns = columnFilter().fetchedColumns();
         NavigableSet<Clustering<?>> clusterings = filter.requestedRows();
@@ -944,8 +944,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             removeStatic = staticRow != null && canRemoveRow(staticRow, columns.statics, sstableTimestamp);
         }
 
-        NavigableSet<Clustering> toRemove = null;
-        for (Clustering clustering : clusterings)
+        NavigableSet<Clustering<?>> toRemove = null;
+        for (Clustering<?> clustering : clusterings)
         {
             Row row = searchIter.next(clustering);
             if (row == null || !canRemoveRow(row, columns.regulars, sstableTimestamp))

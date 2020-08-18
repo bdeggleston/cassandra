@@ -55,9 +55,9 @@ public final class GroupingState
     /**
      * The last row clustering
      */
-    final Clustering clustering;
+    final Clustering<?> clustering;
 
-    public GroupingState(ByteBuffer partitionKey, Clustering clustering)
+    public GroupingState(ByteBuffer partitionKey, Clustering<?> clustering)
     {
         this.partitionKey = partitionKey;
         this.clustering = clustering;
@@ -78,7 +78,7 @@ public final class GroupingState
      * @return he last row clustering or <code>null</code> if either no rows has been processed yet or the last
      * row was a static row
      */
-    public Clustering clustering()
+    public Clustering<?> clustering()
     {
         return clustering;
     }
@@ -115,7 +115,7 @@ public final class GroupingState
                 return GroupingState.EMPTY_STATE;
 
             ByteBuffer partitionKey = ByteBufferUtil.readWithVIntLength(in);
-            Clustering clustering = null;
+            Clustering<byte[]> clustering = null;
             if (in.readBoolean())
                 clustering = Clustering.serializer.deserialize(in, version, comparator.subtypes());
 

@@ -273,7 +273,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                     while (entriesIdx < entries.size())
                     {
                         IndexEntry entry = entries.get(entriesIdx++);
-                        Clustering indexedEntryClustering = entry.indexedEntryClustering;
+                        Clustering<?> indexedEntryClustering = entry.indexedEntryClustering;
                         // The entries are in clustering order. So that the requested entry should be the
                         // next entry, the one at 'entriesIdx'. However, we can have stale entries, entries
                         // that have no corresponding row in the base table typically because of a range
@@ -296,7 +296,7 @@ public class CompositesSearcher extends CassandraIndexSearcher
                     throw new AssertionError();
                 }
 
-                private boolean containsOnlyNullValues(Clustering indexedEntryClustering)
+                private boolean containsOnlyNullValues(Clustering<?> indexedEntryClustering)
                 {
                     int i = 0;
                     for (; i < indexedEntryClustering.size() && indexedEntryClustering.get(i) == null; i++);

@@ -377,7 +377,7 @@ public class PagingState
             return new RowMark(mark, protocolVersion);
         }
 
-        public Clustering clustering(TableMetadata metadata)
+        public Clustering<?> clustering(TableMetadata metadata)
         {
             if (mark == null)
                 return null;
@@ -387,8 +387,8 @@ public class PagingState
                  : Clustering.serializer.deserialize(mark, MessagingService.VERSION_30, makeClusteringTypes(metadata));
         }
 
-        // Old (pre-3.0) encoding of cells. We need that for the protocol v3 as that is how things were encoded
-        private static ByteBuffer encodeCellName(TableMetadata metadata, Clustering clustering, ByteBuffer columnName, ByteBuffer collectionElement)
+        // Old (pre-3.0) encoding of cells. We need that for the protocol v3 as that is how things where encoded
+        private static ByteBuffer encodeCellName(TableMetadata metadata, Clustering<?> clustering, ByteBuffer columnName, ByteBuffer collectionElement)
         {
             boolean isStatic = clustering == Clustering.STATIC_CLUSTERING;
 
@@ -420,7 +420,7 @@ public class PagingState
             return CompositeType.build(ByteBufferAccessor.instance, isStatic, values);
         }
 
-        private static Clustering decodeClustering(TableMetadata metadata, ByteBuffer value)
+        private static Clustering<?> decodeClustering(TableMetadata metadata, ByteBuffer value)
         {
             int csize = metadata.comparator.size();
             if (csize == 0)

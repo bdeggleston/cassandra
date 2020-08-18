@@ -63,7 +63,7 @@ public final class RTBoundCloser extends Transformation<UnfilteredRowIterator>
     {
         private final UnfilteredRowIterator partition;
 
-        private Clustering lastRowClustering;
+        private Clustering<?> lastRowClustering;
         private DeletionTime openMarkerDeletionTime;
 
         private RowsTransformation(UnfilteredRowIterator partition)

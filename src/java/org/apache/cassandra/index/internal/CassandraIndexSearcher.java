@@ -96,7 +96,7 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
             {
                 NavigableSet<Clustering<?>> requested = ((ClusteringIndexNamesFilter)filter).requestedRows();
                 BTreeSet.Builder<Clustering<?>> clusterings = BTreeSet.builder(index.getIndexComparator());
-                for (Clustering c : requested)
+                for (Clustering<?> c : requested)
                     clusterings.add(makeIndexClustering(pk, c));
                 return new ClusteringIndexNamesFilter(clusterings.build(), filter.isReversed());
             }
@@ -181,7 +181,7 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
                                  .buildBound(bound.isStart(), bound.isInclusive());
     }
 
-    protected Clustering makeIndexClustering(ByteBuffer rowKey, Clustering clustering)
+    protected Clustering<?> makeIndexClustering(ByteBuffer rowKey, Clustering<?> clustering)
     {
         return index.buildIndexClusteringPrefix(rowKey, clustering, null).build();
     }

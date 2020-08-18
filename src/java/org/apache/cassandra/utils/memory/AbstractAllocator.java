@@ -78,7 +78,7 @@ public abstract class AbstractAllocator
         }
 
         @Override
-        public void newRow(Clustering clustering)
+        public void newRow(Clustering<?> clustering)
         {
             super.newRow(clustering.copy(allocator));
         }

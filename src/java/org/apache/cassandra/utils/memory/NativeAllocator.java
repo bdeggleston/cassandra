@@ -74,7 +74,7 @@ public class NativeAllocator extends MemtableAllocator
         }
 
         @Override
-        public void newRow(Clustering clustering)
+        public void newRow(Clustering<?> clustering)
         {
             if (clustering != Clustering.STATIC_CLUSTERING)
                 clustering = new NativeClustering(allocator, writeOp, clustering);

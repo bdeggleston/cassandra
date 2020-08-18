@@ -66,9 +66,9 @@ public abstract class CollectionKeyIndexBase extends CassandraIndex
     public IndexEntry decodeEntry(DecoratedKey indexedValue,
                                   Row indexEntry)
     {
-        Clustering clustering = indexEntry.clustering();
+        Clustering<?> clustering = indexEntry.clustering();
 
-        Clustering indexedEntryClustering = null;
+        Clustering<?> indexedEntryClustering = null;
         if (getIndexedColumn().isStatic())
             indexedEntryClustering = Clustering.STATIC_CLUSTERING;
         else

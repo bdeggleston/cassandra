@@ -123,7 +123,7 @@ public final class ResultSetBuilder
      * @param partitionKey the partition key of the new row
      * @param clustering the clustering of the new row
      */
-    public void newRow(DecoratedKey partitionKey, Clustering clustering)
+    public void newRow(DecoratedKey partitionKey, Clustering<?> clustering)
     {
         // The groupMaker needs to be called for each row
         boolean isNewAggregate = groupMaker == null || groupMaker.isNewGroup(partitionKey, clustering);

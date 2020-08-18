@@ -117,25 +117,25 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
 
         this.diffListener = new RowDiffListener()
         {
-            public void onPrimaryKeyLivenessInfo(int i, Clustering clustering, LivenessInfo merged, LivenessInfo original)
+            public void onPrimaryKeyLivenessInfo(int i, Clustering<?> clustering, LivenessInfo merged, LivenessInfo original)
             {
                 if (merged != null && !merged.equals(original))
                     currentRow(i, clustering).addPrimaryKeyLivenessInfo(merged);
             }
 
-            public void onDeletion(int i, Clustering clustering, Row.Deletion merged, Row.Deletion original)
+            public void onDeletion(int i, Clustering<?> clustering, Row.Deletion merged, Row.Deletion original)
             {
                 if (merged != null && !merged.equals(original))
                     currentRow(i, clustering).addRowDeletion(merged);
             }
 
-            public void onComplexDeletion(int i, Clustering clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
+            public void onComplexDeletion(int i, Clustering<?> clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
             {
                 if (merged != null && !merged.equals(original))
                     currentRow(i, clustering).addComplexDeletion(column, merged);
             }
 
-            public void onCell(int i, Clustering clustering, Cell merged, Cell original)
+            public void onCell(int i, Clustering<?> clustering, Cell<?> merged, Cell<?> original)
             {
                 if (merged != null && !merged.equals(original) && isQueried(merged))
                     currentRow(i, clustering).addCell(merged);
@@ -167,7 +167,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
         return repairs[i] == null ? DeletionTime.LIVE : repairs[i].partitionLevelDeletion();
     }
 
-    private Row.Builder currentRow(int i, Clustering clustering)
+    private Row.Builder currentRow(int i, Clustering<?> clustering)
     {
         if (currentRows[i] == null)
         {

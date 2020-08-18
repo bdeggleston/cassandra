@@ -160,7 +160,7 @@ public class MutableDeletionInfo implements DeletionInfo
         return ranges == null ? Collections.emptyIterator() : ranges.iterator(slice, reversed);
     }
 
-    public RangeTombstone rangeCovering(Clustering name)
+    public RangeTombstone rangeCovering(Clustering<?> name)
     {
         return ranges == null ? null : ranges.search(name);
     }

@@ -310,7 +310,7 @@ public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
             for (ColumnMetadata def : metadata.partitionKeyColumns())
                 data.put(def.name.toString(), keyComponents[def.position()]);
 
-            Clustering clustering = row.clustering();
+            Clustering<?> clustering = row.clustering();
             for (ColumnMetadata def : metadata.clusteringColumns())
                 data.put(def.name.toString(), clustering.bufferAt(def.position()));
 

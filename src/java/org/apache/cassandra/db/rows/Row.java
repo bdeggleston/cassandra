@@ -482,7 +482,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
          *
          * @param clustering the clustering for the new row.
          */
-        public void newRow(Clustering clustering);
+        public void newRow(Clustering<?> clustering);
 
         /**
          * The clustering for the row that is currently being built.
@@ -490,7 +490,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
          * @return the clustering for the row that is currently being built, or {@code null} if {@link #newRow} hasn't
          * yet been called.
          */
-        public Clustering clustering();
+        public Clustering<?> clustering();
 
         /**
          * Adds the liveness information for the partition key columns of this row.
@@ -640,7 +640,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
         private final Row[] rows;
         private final List<Iterator<ColumnData>> columnDataIterators;
 
-        private Clustering clustering;
+        private Clustering<?> clustering;
         private int rowsToMerge;
         private int lastRowSet = -1;
 
@@ -725,7 +725,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
                  : BTreeRow.create(clustering, rowInfo, rowDeletion, BTree.build(dataBuffer, UpdateFunction.<ColumnData>noOp()));
         }
 
-        public Clustering mergedClustering()
+        public Clustering<?> mergedClustering()
         {
             return clustering;
         }

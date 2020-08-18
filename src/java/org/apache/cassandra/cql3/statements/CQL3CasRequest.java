@@ -75,7 +75,7 @@ public class CQL3CasRequest implements CASRequest
         this.updatesStaticRow = updatesStaticRow;
     }
 
-    void addRowUpdate(Clustering clustering, ModificationStatement stmt, QueryOptions options, long timestamp, int nowInSeconds)
+    void addRowUpdate(Clustering<?> clustering, ModificationStatement stmt, QueryOptions options, long timestamp, int nowInSeconds)
     {
         updates.add(new RowUpdate(clustering, stmt, options, timestamp, nowInSeconds));
     }
@@ -85,17 +85,17 @@ public class CQL3CasRequest implements CASRequest
         rangeDeletions.add(new RangeDeletion(slice, stmt, options, timestamp, nowInSeconds));
     }
 
-    public void addNotExist(Clustering clustering) throws InvalidRequestException
+    public void addNotExist(Clustering<?> clustering) throws InvalidRequestException
     {
         addExistsCondition(clustering, new NotExistCondition(clustering), true);
     }
 
-    public void addExist(Clustering clustering) throws InvalidRequestException
+    public void addExist(Clustering<?> clustering) throws InvalidRequestException
     {
         addExistsCondition(clustering, new ExistCondition(clustering), false);
     }
 
-    private void addExistsCondition(Clustering clustering, RowCondition condition, boolean isNotExist)
+    private void addExistsCondition(Clustering<?> clustering, RowCondition condition, boolean isNotExist)
     {
         assert condition instanceof ExistCondition || condition instanceof NotExistCondition;
         RowCondition previous = getConditionsForRow(clustering);
@@ -128,7 +128,7 @@ public class CQL3CasRequest implements CASRequest
         hasExists = true;
     }
 
-    public void addConditions(Clustering clustering, Collection<ColumnCondition> conds, QueryOptions options) throws InvalidRequestException
+    public void addConditions(Clustering<?> clustering, Collection<ColumnCondition> conds, QueryOptions options) throws InvalidRequestException
     {
         RowCondition condition = getConditionsForRow(clustering);
         if (condition == null)
@@ -143,12 +143,12 @@ public class CQL3CasRequest implements CASRequest
         ((ColumnsConditions)condition).addConditions(conds, options);
     }
 
-    private RowCondition getConditionsForRow(Clustering clustering)
+    private RowCondition getConditionsForRow(Clustering<?> clustering)
     {
         return clustering == Clustering.STATIC_CLUSTERING ? staticConditions : conditions.get(clustering);
     }
 
-    private void setConditionsForRow(Clustering clustering, RowCondition condition)
+    private void setConditionsForRow(Clustering<?> clustering, RowCondition condition)
     {
         if (clustering == Clustering.STATIC_CLUSTERING)
         {
@@ -255,13 +255,13 @@ public class CQL3CasRequest implements CASRequest
      */
     private class RowUpdate
     {
-        private final Clustering clustering;
+        private final Clustering<?> clustering;
         private final ModificationStatement stmt;
         private final QueryOptions options;
         private final long timestamp;
         private final int nowInSeconds;
 
-        private RowUpdate(Clustering clustering, ModificationStatement stmt, QueryOptions options, long timestamp, int nowInSeconds)
+        private RowUpdate(Clustering<?> clustering, ModificationStatement stmt, QueryOptions options, long timestamp, int nowInSeconds)
         {
             this.clustering = clustering;
             this.stmt = stmt;
