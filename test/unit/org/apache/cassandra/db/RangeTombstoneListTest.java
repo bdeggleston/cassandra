@@ -703,7 +703,7 @@ public class RangeTombstoneListTest
 
     private static RangeTombstone rt(int start, boolean startInclusive, int end, boolean endInclusive, long tstamp)
     {
-        return new RangeTombstone(Slice.make(BufferClusteringBound.create(cmp, true, startInclusive, start), BufferClusteringBound.create(cmp, false, endInclusive, end)), new DeletionTime(tstamp, 0));
+        return new RangeTombstone(Slice.make(ClusteringBound.create(cmp, true, startInclusive, start), ClusteringBound.create(cmp, false, endInclusive, end)), new DeletionTime(tstamp, 0));
     }
 
     private static RangeTombstone rt(int start, int end, long tstamp, int delTime)

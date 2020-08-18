@@ -175,7 +175,7 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
         }
     }
 
-    private ClusteringBound<ByteBuffer> makeIndexBound(ByteBuffer rowKey, ClusteringBound<?> bound)
+    private ClusteringBound<?> makeIndexBound(ByteBuffer rowKey, ClusteringBound<?> bound)
     {
         return index.buildIndexClusteringPrefix(rowKey, bound, null)
                                  .buildBound(bound.isStart(), bound.isInclusive());

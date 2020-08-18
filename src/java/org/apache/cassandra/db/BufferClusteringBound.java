@@ -78,17 +78,4 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
     {
         return create(ClusteringPrefix.Kind.EXCL_END_BOUND, values);
     }
-
-    public static ClusteringBound<ByteBuffer> create(ClusteringComparator comparator, boolean isStart, boolean isInclusive, Object... values)
-    {
-        CBuilder builder = CBuilder.create(comparator);
-        for (Object val : values)
-        {
-            if (val instanceof ByteBuffer)
-                builder.add((ByteBuffer) val);
-            else
-                builder.add(val);
-        }
-        return builder.buildBound(isStart, isInclusive);
-    }
 }

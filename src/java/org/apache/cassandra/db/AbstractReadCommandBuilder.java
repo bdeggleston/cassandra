@@ -45,8 +45,8 @@ public abstract class AbstractReadCommandBuilder
     protected Set<ColumnIdentifier> columns;
     protected final RowFilter filter = RowFilter.create();
 
-    private ClusteringBound<ByteBuffer> lowerClusteringBound;
-    private ClusteringBound<ByteBuffer> upperClusteringBound;
+    private ClusteringBound<?> lowerClusteringBound;
+    private ClusteringBound<?> upperClusteringBound;
 
     private NavigableSet<Clustering> clusterings;
 
@@ -66,28 +66,28 @@ public abstract class AbstractReadCommandBuilder
     public AbstractReadCommandBuilder fromIncl(Object... values)
     {
         assert lowerClusteringBound == null && clusterings == null;
-        this.lowerClusteringBound = BufferClusteringBound.create(cfs.metadata().comparator, true, true, values);
+        this.lowerClusteringBound = ClusteringBound.create(cfs.metadata().comparator, true, true, values);
         return this;
     }
 
     public AbstractReadCommandBuilder fromExcl(Object... values)
     {
         assert lowerClusteringBound == null && clusterings == null;
-        this.lowerClusteringBound = BufferClusteringBound.create(cfs.metadata().comparator, true, false, values);
+        this.lowerClusteringBound = ClusteringBound.create(cfs.metadata().comparator, true, false, values);
         return this;
     }
 
     public AbstractReadCommandBuilder toIncl(Object... values)
     {
         assert upperClusteringBound == null && clusterings == null;
-        this.upperClusteringBound = BufferClusteringBound.create(cfs.metadata().comparator, false, true, values);
+        this.upperClusteringBound = ClusteringBound.create(cfs.metadata().comparator, false, true, values);
         return this;
     }
 
     public AbstractReadCommandBuilder toExcl(Object... values)
     {
         assert upperClusteringBound == null && clusterings == null;
-        this.upperClusteringBound = BufferClusteringBound.create(cfs.metadata().comparator, false, false, values);
+        this.upperClusteringBound = ClusteringBound.create(cfs.metadata().comparator, false, false, values);
         return this;
     }
 

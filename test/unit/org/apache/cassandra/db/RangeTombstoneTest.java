@@ -210,8 +210,8 @@ public class RangeTombstoneTest
         assertEquals(1, rt.size());
 
         Slices.Builder sb = new Slices.Builder(cfs.getComparator());
-        sb.add(BufferClusteringBound.create(cfs.getComparator(), true, true, 1), BufferClusteringBound.create(cfs.getComparator(), false, true, 10));
-        sb.add(BufferClusteringBound.create(cfs.getComparator(), true, true, 16), BufferClusteringBound.create(cfs.getComparator(), false, true, 20));
+        sb.add(ClusteringBound.create(cfs.getComparator(), true, true, 1), ClusteringBound.create(cfs.getComparator(), false, true, 10));
+        sb.add(ClusteringBound.create(cfs.getComparator(), true, true, 16), ClusteringBound.create(cfs.getComparator(), false, true, 20));
 
         partition = Util.getOnlyPartitionUnfiltered(SinglePartitionReadCommand.create(cfs.metadata(), FBUtilities.nowInSeconds(), Util.dk(key), sb.build()));
         rt = rangeTombstones(partition);
