@@ -676,12 +676,12 @@ public abstract class Slices implements Iterable<Slice>
                 if (component < start.size())
                 {
                     startInclusive = start.isInclusive();
-                    startValue = start.getBuffer(component);
+                    startValue = start.bufferAt(component);
                 }
                 if (component < end.size())
                 {
                     endInclusive = end.isInclusive();
-                    endValue = end.getBuffer(component);
+                    endValue = end.bufferAt(component);
                 }
                 return new ComponentOfSlice(startInclusive, startValue, endInclusive, endValue);
             }

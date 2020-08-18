@@ -24,7 +24,6 @@ import java.util.*;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
  * A slice represents the selection of a range of rows.
@@ -241,14 +240,14 @@ public class Slice
         {
             if (i > 0)
                 sb.append(':');
-            sb.append(start.getString(i, comparator));
+            sb.append(start.stringAt(i, comparator));
         }
         sb.append(", ");
         for (int i = 0; i < end.size(); i++)
         {
             if (i > 0)
                 sb.append(':');
-            sb.append(end.getString(i, comparator));
+            sb.append(end.stringAt(i, comparator));
         }
         sb.append(end.isInclusive() ? "]" : ")");
         return sb.toString();

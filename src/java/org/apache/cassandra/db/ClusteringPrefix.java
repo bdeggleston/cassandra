@@ -231,12 +231,12 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
 
     public ValueAccessor<T> accessor();
 
-    default ByteBuffer getBuffer(int i)
+    default ByteBuffer bufferAt(int i)
     {
         return accessor().toBuffer(get(i));
     }
 
-    default String getString(int i, ClusteringComparator comparator)
+    default String stringAt(int i, ClusteringComparator comparator)
     {
         return comparator.subtype(i).getString(get(i), accessor());
     }

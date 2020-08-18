@@ -217,7 +217,7 @@ public class QueryPagerTest
         for (Row row : Util.once(partition.iterator()))
         {
             ByteBuffer expected = names[i++];
-            assertEquals("column " + i + " doesn't match "+string(expected)+" vs "+string(row.clustering().getBuffer(0)), expected, row.clustering().get(0));
+            assertEquals("column " + i + " doesn't match "+string(expected)+" vs "+string(row.clustering().bufferAt(0)), expected, row.clustering().get(0));
         }
     }
 

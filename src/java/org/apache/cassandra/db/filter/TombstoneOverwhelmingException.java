@@ -61,7 +61,7 @@ public class TombstoneOverwhelmingException extends RuntimeException
             sb.append(")");
 
         for (int i = 0; i < clustering.size(); i++)
-            sb.append(", ").append(clustering.getString(i, metadata.comparator));
+            sb.append(", ").append(clustering.stringAt(i, metadata.comparator));
 
         return sb.toString();
     }

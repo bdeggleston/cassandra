@@ -63,7 +63,7 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
         {
             MemoryUtil.setShort(peer + 2 + i * 2, (short) dataOffset);
 
-            ByteBuffer value = clustering.getBuffer(i);
+            ByteBuffer value = clustering.bufferAt(i);
             if (value == null)
             {
                 long boffset = bitmapStart + (i >>> 3);

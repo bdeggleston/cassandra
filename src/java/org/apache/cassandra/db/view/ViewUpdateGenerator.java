@@ -582,7 +582,7 @@ public class ViewUpdateGenerator
             case PARTITION_KEY:
                 return basePartitionKey[column.position()];
             case CLUSTERING:
-                return row.clustering().getBuffer(column.position());
+                return row.clustering().bufferAt(column.position());
             default:
                 // This shouldn't NPE as we shouldn't get there if the value can be null (or there is a bug in updateAction())
                 return row.getCell(column).buffer();

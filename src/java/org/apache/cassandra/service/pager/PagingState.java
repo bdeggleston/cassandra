@@ -404,7 +404,7 @@ public class PagingState
                     continue;
                 }
 
-                ByteBuffer v = clustering.getBuffer(i);
+                ByteBuffer v = clustering.bufferAt(i);
                 // we can have null (only for dense compound tables for backward compatibility reasons) but that
                 // means we're done and should stop there as far as building the composite is concerned.
                 if (v == null)

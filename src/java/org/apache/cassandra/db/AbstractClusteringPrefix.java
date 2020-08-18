@@ -43,7 +43,7 @@ public abstract class AbstractClusteringPrefix<T> implements ClusteringPrefix<T>
         {
             T value = get(i);
             // FIXME: Modify Digest to take a value and accessor?
-            ByteBuffer bb = accessor().toSafeBuffer(value);
+            ByteBuffer bb = accessor().toMutableBuffer(value);
             if (bb != null)
                 digest.update(bb);
         }

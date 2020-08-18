@@ -60,7 +60,7 @@ public class ClusteringColumnIndex extends CassandraIndex
                                       Clustering<?> clustering,
                                       CellPath path, ByteBuffer cellValue)
     {
-        return clustering.getBuffer(indexedColumn.position());
+        return clustering.bufferAt(indexedColumn.position());
     }
 
     public <T> CBuilder buildIndexClusteringPrefix(ByteBuffer partitionKey,
@@ -94,7 +94,7 @@ public class ClusteringColumnIndex extends CassandraIndex
         return new IndexEntry(indexedValue,
                               clustering,
                               indexEntry.primaryKeyLivenessInfo().timestamp(),
-                              clustering.getBuffer(0),
+                              clustering.bufferAt(0),
                               builder.build());
     }
 

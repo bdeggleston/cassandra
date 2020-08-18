@@ -331,7 +331,7 @@ public class UnfilteredRowIteratorsMergeTest
     {
         if (curr == null)
             return "null";
-        return Int32Type.instance.getString(curr.clustering().getBuffer(0));
+        return Int32Type.instance.getString(curr.clustering().bufferAt(0));
     }
 
     private Unfiltered rowFor(Clusterable pointer, List<Unfiltered> list)
@@ -404,7 +404,7 @@ public class UnfilteredRowIteratorsMergeTest
     {
         if (curr == null)
             return "null";
-        String val = Int32Type.instance.getString(curr.clustering().getBuffer(0));
+        String val = Int32Type.instance.getString(curr.clustering().bufferAt(0));
         if (curr instanceof RangeTombstoneMarker)
         {
             RangeTombstoneMarker marker = (RangeTombstoneMarker) curr;
@@ -507,7 +507,7 @@ public class UnfilteredRowIteratorsMergeTest
     private RangeTombstoneMarker marker(int pos, int delTime, boolean isStart, boolean inclusive)
     {
         return new RangeTombstoneBoundMarker(BufferClusteringBound.create(ClusteringBound.boundKind(isStart, inclusive),
-                                                                    new ByteBuffer[] {clusteringFor(pos).getBuffer(0)}),
+                                                                    new ByteBuffer[] {clusteringFor(pos).bufferAt(0)}),
                                              new DeletionTime(delTime, delTime));
     }
 }
