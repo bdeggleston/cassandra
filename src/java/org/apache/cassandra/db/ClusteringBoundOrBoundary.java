@@ -95,7 +95,7 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
      * @return the invert of this bound. For instance, if this bound is an exlusive start, this return
      * an inclusive end with the same values.
      */
-    public abstract ClusteringBoundOrBoundary invert();
+    public abstract ClusteringBoundOrBoundary<T> invert();
 
     public static class Serializer
     {

@@ -466,7 +466,7 @@ public class UnfilteredSerializer
 
         if (kind(flags) == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)
         {
-            ClusteringBoundOrBoundary bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
+            ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
             return deserializeMarkerBody(in, header, bound);
         }
         else
@@ -493,7 +493,7 @@ public class UnfilteredSerializer
 
             if (kind(flags) == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)
             {
-                ClusteringBoundOrBoundary bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
+                ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
                 return deserializeMarkerBody(in, header, bound);
             }
             else
@@ -543,7 +543,7 @@ public class UnfilteredSerializer
         return deserializeRowBody(in, header, helper, flags, extendedFlags, builder);
     }
 
-    public RangeTombstoneMarker deserializeMarkerBody(DataInputPlus in, SerializationHeader header, ClusteringBoundOrBoundary bound)
+    public RangeTombstoneMarker deserializeMarkerBody(DataInputPlus in, SerializationHeader header, ClusteringBoundOrBoundary<?> bound)
     throws IOException
     {
         if (header.isForSSTable())
@@ -553,9 +553,9 @@ public class UnfilteredSerializer
         }
 
         if (bound.isBoundary())
-            return new RangeTombstoneBoundaryMarker((ClusteringBoundary) bound, header.readDeletionTime(in), header.readDeletionTime(in));
+            return new RangeTombstoneBoundaryMarker((ClusteringBoundary<?>) bound, header.readDeletionTime(in), header.readDeletionTime(in));
         else
-            return new RangeTombstoneBoundMarker((ClusteringBound) bound, header.readDeletionTime(in));
+            return new RangeTombstoneBoundMarker((ClusteringBound<?>) bound, header.readDeletionTime(in));
     }
 
     public Row deserializeRowBody(DataInputPlus in,

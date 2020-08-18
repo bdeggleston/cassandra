@@ -50,7 +50,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
     private final ClusteringIndexFilter filter;
     private final ColumnFilter selectedColumns;
     private final SSTableReadsListener listener;
-    private ClusteringBound lowerBound;
+    private ClusteringBound<?> lowerBound;
     private boolean firstItemRetrieved;
 
     public UnfilteredRowIteratorWithLowerBound(DecoratedKey partitionKey,
@@ -76,11 +76,11 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
         // The partition index lower bound is more accurate than the sstable metadata lower bound but it is only
         // present if the iterator has already been initialized, which we only do when there are tombstones since in
         // this case we cannot use the sstable metadata clustering values
-        ClusteringBound ret = getPartitionIndexLowerBound();
+        ClusteringBound<?> ret = getPartitionIndexLowerBound();
         return ret != null ? makeBound(ret) : makeBound(getMetadataLowerBound());
     }
 
-    private Unfiltered makeBound(ClusteringBound bound)
+    private Unfiltered makeBound(ClusteringBound<?> bound)
     {
         if (bound == null)
             return null;
@@ -172,7 +172,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
     /**
      * @return the lower bound stored on the index entry for this partition, if available.
      */
-    private ClusteringBound getPartitionIndexLowerBound()
+    private ClusteringBound<?> getPartitionIndexLowerBound()
     {
         // NOTE: CASSANDRA-11206 removed the lookup against the key-cache as the IndexInfo objects are no longer
         // in memory for not heap backed IndexInfo objects (so, these are on disk).
@@ -239,7 +239,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
      * @return a global lower bound made from the clustering values stored in the sstable metadata, note that
      * this currently does not correctly compare tombstone bounds, especially ranges.
      */
-    private ClusteringBound getMetadataLowerBound()
+    private ClusteringBound<?> getMetadataLowerBound()
     {
         if (!canUseMetadataLowerBound())
             return null;

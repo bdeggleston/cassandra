@@ -338,7 +338,7 @@ public final class JsonTransformer
         }
     }
 
-    private void serializeBound(ClusteringBound bound, DeletionTime deletionTime) throws IOException
+    private void serializeBound(ClusteringBound<?> bound, DeletionTime deletionTime) throws IOException
     {
         json.writeFieldName(bound.isStart() ? "start" : "end");
         json.writeStartObject();

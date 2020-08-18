@@ -78,7 +78,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
     // For each source, the time of the current deletion as known by the source.
     private final DeletionTime[] sourceDeletionTime;
     // For each source, record if there is an open range to send as repair, and from where.
-    private final ClusteringBound[] markerToRepair;
+    private final ClusteringBound<?>[] markerToRepair;
 
     private final ReadRepair readRepair;
 
@@ -111,7 +111,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
         this.repairs = new PartitionUpdate.Builder[size + (buildFullDiff ? 1 : 0)];
         this.currentRows = new Row.Builder[size];
         this.sourceDeletionTime = new DeletionTime[size];
-        this.markerToRepair = new ClusteringBound[size];
+        this.markerToRepair = new ClusteringBound<?>[size];
         this.command = command;
         this.readRepair = readRepair;
 
@@ -342,9 +342,9 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
             mergedDeletionTime = merged.isOpen(isReversed) ? merged.openDeletionTime(isReversed) : null;
     }
 
-    private void closeOpenMarker(int i, ClusteringBound close)
+    private void closeOpenMarker(int i, ClusteringBound<?> close)
     {
-        ClusteringBound open = markerToRepair[i];
+        ClusteringBound<?> open = markerToRepair[i];
         RangeTombstone rt = new RangeTombstone(Slice.make(isReversed ? close : open, isReversed ? open : close), currentDeletion());
         applyToPartition(i, p -> p.add(rt));
         markerToRepair[i] = null;

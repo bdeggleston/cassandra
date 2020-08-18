@@ -32,9 +32,9 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
 public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
 {
     /** The smallest start bound, i.e. the one that starts before any row. */
-    public static final ClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
+    public static final ClusteringBound<?> BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
     /** The biggest end bound, i.e. the one that ends after any row. */
-    public static final ClusteringBound TOP = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
+    public static final ClusteringBound<?> TOP = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
 
     public static ClusteringPrefix.Kind boundKind(boolean isStart, boolean isInclusive)
     {
