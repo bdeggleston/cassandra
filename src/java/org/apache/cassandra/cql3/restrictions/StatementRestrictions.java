@@ -745,7 +745,7 @@ public final class StatementRestrictions
      * @param options the query options
      * @return the requested clustering columns
      */
-    public NavigableSet<Clustering> getClusteringColumns(QueryOptions options)
+    public NavigableSet<Clustering<?>> getClusteringColumns(QueryOptions options)
     {
         // If this is a names command and the table is a static compact one, then as far as CQL is concerned we have
         // only a single row which internally correspond to the static parts. In which case we want to return an empty
@@ -763,7 +763,7 @@ public final class StatementRestrictions
      * @param options the query options
      * @return the bounds (start or end) of the clustering columns
      */
-    public NavigableSet<ClusteringBound> getClusteringColumnsBounds(Bound b, QueryOptions options)
+    public NavigableSet<ClusteringBound<?>> getClusteringColumnsBounds(Bound b, QueryOptions options)
     {
         return clusteringColumnsRestrictions.boundsAsClustering(b, options);
     }

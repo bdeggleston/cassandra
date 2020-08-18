@@ -152,7 +152,7 @@ public class SinglePartitionSliceCommandTest
     private AbstractClusteringIndexFilter createClusteringFilter(int uniqueCk1, int uniqueCk2, boolean isSlice)
     {
         Slices.Builder slicesBuilder = new Slices.Builder(CFM_SLICES.comparator);
-        BTreeSet.Builder<Clustering> namesBuilder = BTreeSet.builder(CFM_SLICES.comparator);
+        BTreeSet.Builder<Clustering<?>> namesBuilder = BTreeSet.builder(CFM_SLICES.comparator);
 
         for (int ck1 = 0; ck1 < uniqueCk1; ck1++)
         {

@@ -48,7 +48,7 @@ public abstract class AbstractReadCommandBuilder
     private ClusteringBound<?> lowerClusteringBound;
     private ClusteringBound<?> upperClusteringBound;
 
-    private NavigableSet<Clustering> clusterings;
+    private NavigableSet<Clustering<?>> clusterings;
 
     // Use Util.cmd() instead of this ctor directly
     AbstractReadCommandBuilder(ColumnFamilyStore cfs)
