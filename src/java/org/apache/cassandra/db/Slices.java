@@ -186,7 +186,7 @@ public abstract class Slices implements Iterable<Slice>
             this.slices = new ArrayList<>(initialSize);
         }
 
-        public Builder add(ClusteringBound start, ClusteringBound end)
+        public Builder add(ClusteringBound<?> start, ClusteringBound<?> end)
         {
             return add(Slice.make(start, end));
         }

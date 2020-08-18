@@ -87,12 +87,12 @@ public class RangeTombstoneBoundaryMarker<T> extends AbstractRangeTombstoneMarke
         return (bound.kind() == ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY) ^ reversed;
     }
 
-    public ClusteringBound openBound(boolean reversed)
+    public ClusteringBound<?> openBound(boolean reversed)
     {
         return bound.openBound(reversed);
     }
 
-    public ClusteringBound closeBound(boolean reversed)
+    public ClusteringBound<?> closeBound(boolean reversed)
     {
         return bound.closeBound(reversed);
     }
@@ -129,7 +129,7 @@ public class RangeTombstoneBoundaryMarker<T> extends AbstractRangeTombstoneMarke
         return new RangeTombstoneBoundaryMarker<>(clustering(), reversed ? newDeletionTime : endDeletion, reversed ? startDeletion : newDeletionTime);
     }
 
-    public static RangeTombstoneBoundaryMarker makeBoundary(boolean reversed, ClusteringBound close, ClusteringBound open, DeletionTime closeDeletion, DeletionTime openDeletion)
+    public static RangeTombstoneBoundaryMarker makeBoundary(boolean reversed, ClusteringBound<?> close, ClusteringBound<?> open, DeletionTime closeDeletion, DeletionTime openDeletion)
     {
         assert ClusteringPrefix.Kind.compare(close.kind(), open.kind()) == 0 : "Both bound don't form a boundary";
         boolean isExclusiveClose = close.isExclusive() || (close.isInclusive() && open.isInclusive() && openDeletion.supersedes(closeDeletion));

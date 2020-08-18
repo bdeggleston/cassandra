@@ -291,8 +291,8 @@ public class MutableDeletionInfo implements DeletionInfo
                 DeletionTime openDeletion = openMarker.openDeletionTime(reversed);
                 assert marker.closeDeletionTime(reversed).equals(openDeletion);
 
-                ClusteringBound open = openMarker.openBound(reversed);
-                ClusteringBound close = marker.closeBound(reversed);
+                ClusteringBound<?> open = openMarker.openBound(reversed);
+                ClusteringBound<?> close = marker.closeBound(reversed);
 
                 Slice slice = reversed ? Slice.make(close, open) : Slice.make(open, close);
                 deletion.add(new RangeTombstone(slice, openDeletion), comparator);

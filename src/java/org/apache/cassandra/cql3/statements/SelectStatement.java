@@ -637,8 +637,8 @@ public class SelectStatement implements CQLStatement
         // The case where startBounds == 1 is common enough that it's worth optimizing
         if (startBounds.size() == 1)
         {
-            ClusteringBound start = startBounds.first();
-            ClusteringBound end = endBounds.first();
+            ClusteringBound<?> start = startBounds.first();
+            ClusteringBound<?> end = endBounds.first();
             return Slice.isEmpty(table.comparator, start, end)
                  ? Slices.NONE
                  : Slices.with(table.comparator, Slice.make(start, end));
@@ -649,8 +649,8 @@ public class SelectStatement implements CQLStatement
         Iterator<ClusteringBound<?>> endIter = endBounds.iterator();
         while (startIter.hasNext() && endIter.hasNext())
         {
-            ClusteringBound start = startIter.next();
-            ClusteringBound end = endIter.next();
+            ClusteringBound<?> start = startIter.next();
+            ClusteringBound<?> end = endIter.next();
 
             // Ignore slices that are nonsensical
             if (Slice.isEmpty(table.comparator, start, end))

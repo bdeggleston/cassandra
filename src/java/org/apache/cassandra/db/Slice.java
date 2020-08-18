@@ -144,7 +144,7 @@ public class Slice
      * @return whether the slice formed by {@code start} and {@code end} is
      * empty or not.
      */
-    public static boolean isEmpty(ClusteringComparator comparator, ClusteringBound start, ClusteringBound end)
+    public static boolean isEmpty(ClusteringComparator comparator, ClusteringBound<?> start, ClusteringBound<?> end)
     {
         assert start.isStart() && end.isEnd();
 
@@ -286,8 +286,8 @@ public class Slice
 
         public Slice deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
-            ClusteringBound start = (ClusteringBound) ClusteringBound.serializer.deserialize(in, version, types);
-            ClusteringBound end = (ClusteringBound) ClusteringBound.serializer.deserialize(in, version, types);
+            ClusteringBound<byte[]> start = (ClusteringBound<byte[]>) ClusteringBound.serializer.deserialize(in, version, types);
+            ClusteringBound<byte[]> end = (ClusteringBound<byte[]>) ClusteringBound.serializer.deserialize(in, version, types);
             return new Slice(start, end);
         }
     }

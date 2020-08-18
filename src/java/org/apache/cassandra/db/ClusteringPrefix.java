@@ -325,7 +325,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             }
             else
             {
-                ClusteringBoundOrBoundary.serializer.serialize((ClusteringBoundOrBoundary)clustering, out, version, types);
+                ClusteringBoundOrBoundary.serializer.serialize((ClusteringBoundOrBoundary<?>)clustering, out, version, types);
             }
         }
 
@@ -358,7 +358,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             if (clustering.kind() == Kind.CLUSTERING)
                 return 1 + Clustering.serializer.serializedSize((Clustering<?>)clustering, version, types);
             else
-                return ClusteringBoundOrBoundary.serializer.serializedSize((ClusteringBoundOrBoundary)clustering, version, types);
+                return ClusteringBoundOrBoundary.serializer.serializedSize((ClusteringBoundOrBoundary<?>)clustering, version, types);
         }
 
         <T> void serializeValuesWithoutSize(ClusteringPrefix<T> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
@@ -592,11 +592,11 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 continue;
         }
 
-        public ClusteringBoundOrBoundary deserializeNextBound() throws IOException
+        public ClusteringBoundOrBoundary<byte[]> deserializeNextBound() throws IOException
         {
             assert !nextIsRow;
             deserializeAll();
-            ClusteringBoundOrBoundary bound = ArrayClusteringBoundOrBoundary.create(nextKind, nextValues);
+            ClusteringBoundOrBoundary<byte[]> bound = ArrayClusteringBoundOrBoundary.create(nextKind, nextValues);
             nextValues = null;
             return bound;
         }

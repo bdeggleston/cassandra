@@ -105,7 +105,7 @@ public class UnfilteredDeserializer
      * comparison. Whenever we know what to do with this atom (read it or skip it),
      * readNext or skipNext should be called.
      */
-    public int compareNextTo(ClusteringBound bound) throws IOException
+    public int compareNextTo(ClusteringBound<?> bound) throws IOException
     {
         if (!isReady)
             prepareNext();
@@ -134,7 +134,7 @@ public class UnfilteredDeserializer
         isReady = false;
         if (UnfilteredSerializer.kind(nextFlags) == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)
         {
-            ClusteringBoundOrBoundary bound = clusteringDeserializer.deserializeNextBound();
+            ClusteringBoundOrBoundary<byte[]> bound = clusteringDeserializer.deserializeNextBound();
             return UnfilteredSerializer.serializer.deserializeMarkerBody(in, header, bound);
         }
         else
