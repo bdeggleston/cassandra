@@ -70,18 +70,4 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
     {
         return create(ClusteringPrefix.Kind.EXCL_END_BOUND, values);
     }
-
-    public static ClusteringBound create(ClusteringComparator comparator, boolean isStart, boolean isInclusive, Object... values)
-    {
-        CBuilder builder = CBuilder.create(comparator);
-        for (Object val : values)
-        {
-            assert !(val instanceof byte[]) : "FIXME";
-            if (val instanceof ByteBuffer)
-                builder.add((ByteBuffer) val);
-            else
-                builder.add(val);
-        }
-        return builder.buildBound(isStart, isInclusive);
-    }
 }
