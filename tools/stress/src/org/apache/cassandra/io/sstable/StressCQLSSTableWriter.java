@@ -243,7 +243,7 @@ public class StressCQLSSTableWriter implements Closeable
 
         QueryOptions options = QueryOptions.forInternalCalls(null, values);
         List<ByteBuffer> keys = insert.buildPartitionKeyNames(options);
-        SortedSet<Clustering> clusterings = insert.createClustering(options);
+        SortedSet<Clustering<?>> clusterings = insert.createClustering(options);
 
         long now = System.currentTimeMillis();
         // Note that we asks indexes to not validate values (the last 'false' arg below) because that triggers a 'Keyspace.open'

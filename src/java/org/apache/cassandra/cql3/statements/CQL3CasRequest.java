@@ -56,7 +56,7 @@ public class CQL3CasRequest implements CASRequest
     // We index RowCondition by the clustering of the row they applied to for 2 reasons:
     //   1) this allows to keep things sorted to build the read command below
     //   2) this allows to detect when contradictory conditions are set (not exists with some other conditions on the same row)
-    private final TreeMap<Clustering, RowCondition> conditions;
+    private final TreeMap<Clustering<?>, RowCondition> conditions;
 
     private final List<RowUpdate> updates = new ArrayList<>();
     private final List<RangeDeletion> rangeDeletions = new ArrayList<>();
@@ -320,9 +320,9 @@ public class CQL3CasRequest implements CASRequest
 
     private static abstract class RowCondition
     {
-        public final Clustering clustering;
+        public final Clustering<?> clustering;
 
-        protected RowCondition(Clustering clustering)
+        protected RowCondition(Clustering<?> clustering)
         {
             this.clustering = clustering;
         }
@@ -332,7 +332,7 @@ public class CQL3CasRequest implements CASRequest
 
     private static class NotExistCondition extends RowCondition
     {
-        private NotExistCondition(Clustering clustering)
+        private NotExistCondition(Clustering<?> clustering)
         {
             super(clustering);
         }
@@ -345,7 +345,7 @@ public class CQL3CasRequest implements CASRequest
 
     private static class ExistCondition extends RowCondition
     {
-        private ExistCondition(Clustering clustering)
+        private ExistCondition(Clustering<?> clustering)
         {
             super(clustering);
         }
@@ -360,7 +360,7 @@ public class CQL3CasRequest implements CASRequest
     {
         private final Multimap<Pair<ColumnIdentifier, ByteBuffer>, ColumnCondition.Bound> conditions = HashMultimap.create();
 
-        private ColumnsConditions(Clustering clustering)
+        private ColumnsConditions(Clustering<?> clustering)
         {
             super(clustering);
         }

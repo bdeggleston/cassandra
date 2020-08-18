@@ -94,8 +94,8 @@ public abstract class CassandraIndexSearcher implements Index.Searcher
 
             if (filter instanceof ClusteringIndexNamesFilter)
             {
-                NavigableSet<Clustering> requested = ((ClusteringIndexNamesFilter)filter).requestedRows();
-                BTreeSet.Builder<Clustering> clusterings = BTreeSet.builder(index.getIndexComparator());
+                NavigableSet<Clustering<?>> requested = ((ClusteringIndexNamesFilter)filter).requestedRows();
+                BTreeSet.Builder<Clustering<?>> clusterings = BTreeSet.builder(index.getIndexComparator());
                 for (Clustering c : requested)
                     clusterings.add(makeIndexClustering(pk, c));
                 return new ClusteringIndexNamesFilter(clusterings.build(), filter.isReversed());

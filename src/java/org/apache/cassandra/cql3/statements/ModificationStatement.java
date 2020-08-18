@@ -323,7 +323,7 @@ public abstract class ModificationStatement implements CQLStatement
         return partitionKeys;
     }
 
-    public NavigableSet<Clustering> createClustering(QueryOptions options)
+    public NavigableSet<Clustering<?>> createClustering(QueryOptions options)
     throws InvalidRequestException
     {
         if (appliesOnlyToStaticColumns() && !restrictions.hasClusteringColumnsRestrictions())
@@ -717,7 +717,7 @@ public abstract class ModificationStatement implements CQLStatement
         }
         else
         {
-            NavigableSet<Clustering> clusterings = createClustering(options);
+            NavigableSet<Clustering<?>> clusterings = createClustering(options);
 
             // If some of the restrictions were unspecified (e.g. empty IN restrictions) we do not need to do anything.
             if (restrictions.hasClusteringColumnsRestrictions() && clusterings.isEmpty())
@@ -756,14 +756,14 @@ public abstract class ModificationStatement implements CQLStatement
 
     Slices createSlices(QueryOptions options)
     {
-        SortedSet<ClusteringBound> startBounds = restrictions.getClusteringColumnsBounds(Bound.START, options);
-        SortedSet<ClusteringBound> endBounds = restrictions.getClusteringColumnsBounds(Bound.END, options);
+        SortedSet<ClusteringBound<?>> startBounds = restrictions.getClusteringColumnsBounds(Bound.START, options);
+        SortedSet<ClusteringBound<?>> endBounds = restrictions.getClusteringColumnsBounds(Bound.END, options);
 
         return toSlices(startBounds, endBounds);
     }
 
     private UpdateParameters makeUpdateParameters(Collection<ByteBuffer> keys,
-                                                  NavigableSet<Clustering> clusterings,
+                                                  NavigableSet<Clustering<?>> clusterings,
                                                   QueryOptions options,
                                                   boolean local,
                                                   long timestamp,
@@ -818,14 +818,14 @@ public abstract class ModificationStatement implements CQLStatement
                                     lists);
     }
 
-    private Slices toSlices(SortedSet<ClusteringBound> startBounds, SortedSet<ClusteringBound> endBounds)
+    private Slices toSlices(SortedSet<ClusteringBound<?>> startBounds, SortedSet<ClusteringBound<?>> endBounds)
     {
         assert startBounds.size() == endBounds.size();
 
         Slices.Builder builder = new Slices.Builder(metadata().comparator);
 
-        Iterator<ClusteringBound> starts = startBounds.iterator();
-        Iterator<ClusteringBound> ends = endBounds.iterator();
+        Iterator<ClusteringBound<?>> starts = startBounds.iterator();
+        Iterator<ClusteringBound<?>> ends = endBounds.iterator();
 
         while (starts.hasNext())
         {
