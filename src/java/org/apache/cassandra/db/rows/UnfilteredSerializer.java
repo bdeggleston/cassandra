@@ -640,7 +640,7 @@ public class UnfilteredSerializer
     {
         if (helper.includes(column))
         {
-            Cell cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
+            Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
             if (helper.includes(cell, rowLiveness) && !helper.isDropped(cell, false))
                 builder.addCell(cell);
         }

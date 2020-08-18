@@ -18,9 +18,18 @@
 
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.schema.TableMetadata;
+
 public class ArrayClustering extends AbstractArrayClusteringPrefix implements Clustering<byte[]>
 {
-    public ArrayClustering(byte[][] values)
+    public static final Clustering<byte[]> EMPTY = new ArrayClustering() {
+        public String toString(TableMetadata metadata)
+        {
+            return "EMPTY";
+        }
+    };
+
+    public ArrayClustering(byte[]... values)
     {
         super(Kind.CLUSTERING, values);
     }

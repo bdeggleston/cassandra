@@ -34,7 +34,7 @@ import org.apache.cassandra.utils.Pair;
  */
 public class RowBuilder implements Row.Builder
 {
-    public List<Cell> cells = new LinkedList<>();
+    public List<Cell<?>> cells = new LinkedList<>();
     public Clustering clustering = null;
     public LivenessInfo livenessInfo = null;
     public Row.Deletion deletionTime = null;
@@ -46,7 +46,7 @@ public class RowBuilder implements Row.Builder
         throw new UnsupportedOperationException();
     }
 
-    public void addCell(Cell cell)
+    public void addCell(Cell<?> cell)
     {
         cells.add(cell);
     }

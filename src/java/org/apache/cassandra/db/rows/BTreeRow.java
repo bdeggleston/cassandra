@@ -778,7 +778,7 @@ public class BTreeRow extends AbstractRow
                 this.primaryKeyLivenessInfo = LivenessInfo.EMPTY;
         }
 
-        public void addCell(Cell cell)
+        public void addCell(Cell<?> cell)
         {
             assert cell.column().isStatic() == (clustering == Clustering.STATIC_CLUSTERING) : "Column is " + cell.column() + ", clustering = " + clustering;
 

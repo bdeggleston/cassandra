@@ -62,15 +62,15 @@ public class IndexInfo
 
     public final long offset;
     public final long width;
-    public final ClusteringPrefix firstName;
-    public final ClusteringPrefix lastName;
+    public final ClusteringPrefix<?> firstName;
+    public final ClusteringPrefix<?> lastName;
 
     // If at the end of the index block there is an open range tombstone marker, this marker
     // deletion infos. null otherwise.
     public final DeletionTime endOpenMarker;
 
-    public IndexInfo(ClusteringPrefix firstName,
-                     ClusteringPrefix lastName,
+    public IndexInfo(ClusteringPrefix<?> firstName,
+                     ClusteringPrefix<?> lastName,
                      long offset,
                      long width,
                      DeletionTime endOpenMarker)
@@ -128,8 +128,8 @@ public class IndexInfo
 
         public IndexInfo deserialize(DataInputPlus in) throws IOException
         {
-            ClusteringPrefix firstName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
-            ClusteringPrefix lastName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> firstName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> lastName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
             long offset = in.readUnsignedVInt();
             long width = in.readVInt() + WIDTH_BASE;
             DeletionTime endOpenMarker = null;

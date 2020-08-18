@@ -82,7 +82,7 @@ public class NativeAllocator extends MemtableAllocator
         }
 
         @Override
-        public void addCell(Cell cell)
+        public void addCell(Cell<?> cell)
         {
             super.addCell(new NativeCell(allocator, writeOp, cell));
         }

@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.cql3.restrictions;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -101,7 +102,7 @@ final class ClusteringColumnRestrictions extends RestrictionSetWrapper
         return false;
     }
 
-    public NavigableSet<Clustering> valuesAsClustering(QueryOptions options) throws InvalidRequestException
+    public NavigableSet<Clustering<ByteBuffer>> valuesAsClustering(QueryOptions options) throws InvalidRequestException
     {
         MultiCBuilder builder = MultiCBuilder.create(comparator, hasIN());
         for (SingleRestriction r : restrictions)
@@ -113,7 +114,7 @@ final class ClusteringColumnRestrictions extends RestrictionSetWrapper
         return builder.build();
     }
 
-    public NavigableSet<ClusteringBound> boundsAsClustering(Bound bound, QueryOptions options) throws InvalidRequestException
+    public NavigableSet<ClusteringBound<ByteBuffer>> boundsAsClustering(Bound bound, QueryOptions options) throws InvalidRequestException
     {
         MultiCBuilder builder = MultiCBuilder.create(comparator, hasIN() || hasMultiColumnSlice());
         int keyPosition = 0;

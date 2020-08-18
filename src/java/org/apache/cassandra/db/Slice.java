@@ -40,7 +40,7 @@ public class Slice
     public static final Slice ALL = new Slice(BufferClusteringBound.BOTTOM, BufferClusteringBound.TOP)
     {
         @Override
-        public boolean includes(ClusteringComparator comparator, ClusteringPrefix clustering)
+        public boolean includes(ClusteringComparator comparator, ClusteringPrefix<?> clustering)
         {
             return true;
         }
@@ -166,7 +166,7 @@ public class Slice
      *
      * @return whether {@code bound} is within the bounds of this slice.
      */
-    public boolean includes(ClusteringComparator comparator, ClusteringPrefix bound)
+    public boolean includes(ClusteringComparator comparator, ClusteringPrefix<?> bound)
     {
         return comparator.compare(start, bound) <= 0 && comparator.compare(bound, end) <= 0;
     }
@@ -184,7 +184,7 @@ public class Slice
      * @return a new slice that selects results coming after {@code lastReturned}, or {@code null} if paging
      * the resulting slice selects nothing (i.e. if it originally selects nothing coming after {@code lastReturned}).
      */
-    public Slice forPaging(ClusteringComparator comparator, Clustering lastReturned, boolean inclusive, boolean reversed)
+    public Slice forPaging(ClusteringComparator comparator, Clustering<?> lastReturned, boolean inclusive, boolean reversed)
     {
         if (lastReturned == null)
             return this;
