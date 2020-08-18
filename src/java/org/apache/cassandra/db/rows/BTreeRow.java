@@ -47,7 +47,7 @@ public class BTreeRow extends AbstractRow
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(emptyRow(Clustering.EMPTY));
 
-    private final Clustering clustering;
+    private final Clustering<?> clustering;
     private final LivenessInfo primaryKeyLivenessInfo;
     private final Deletion deletion;
 
@@ -82,13 +82,13 @@ public class BTreeRow extends AbstractRow
         this.minLocalDeletionTime = minLocalDeletionTime;
     }
 
-    private BTreeRow(Clustering clustering, Object[] btree, int minLocalDeletionTime)
+    private BTreeRow(Clustering<?> clustering, Object[] btree, int minLocalDeletionTime)
     {
         this(clustering, LivenessInfo.EMPTY, Deletion.LIVE, btree, minLocalDeletionTime);
     }
 
     // Note that it's often easier/safer to use the sortedBuilder/unsortedBuilder or one of the static creation method below. Only directly useful in a small amount of cases.
-    public static BTreeRow create(Clustering clustering,
+    public static BTreeRow create(Clustering<?> clustering,
                                   LivenessInfo primaryKeyLivenessInfo,
                                   Deletion deletion,
                                   Object[] btree)
@@ -103,7 +103,7 @@ public class BTreeRow extends AbstractRow
         return create(clustering, primaryKeyLivenessInfo, deletion, btree, minDeletionTime);
     }
 
-    public static BTreeRow create(Clustering clustering,
+    public static BTreeRow create(Clustering<?> clustering,
                                   LivenessInfo primaryKeyLivenessInfo,
                                   Deletion deletion,
                                   Object[] btree,
@@ -112,12 +112,12 @@ public class BTreeRow extends AbstractRow
         return new BTreeRow(clustering, primaryKeyLivenessInfo, deletion, btree, minDeletionTime);
     }
 
-    public static BTreeRow emptyRow(Clustering clustering)
+    public static BTreeRow emptyRow(Clustering<?> clustering)
     {
         return new BTreeRow(clustering, BTree.empty(), Integer.MAX_VALUE);
     }
 
-    public static BTreeRow singleCellRow(Clustering clustering, Cell cell)
+    public static BTreeRow singleCellRow(Clustering<?> clustering, Cell cell)
     {
         if (cell.column().isSimple())
             return new BTreeRow(clustering, BTree.singleton(cell), minDeletionTime(cell));
@@ -126,13 +126,13 @@ public class BTreeRow extends AbstractRow
         return new BTreeRow(clustering, BTree.singleton(complexData), minDeletionTime(cell));
     }
 
-    public static BTreeRow emptyDeletedRow(Clustering clustering, Deletion deletion)
+    public static BTreeRow emptyDeletedRow(Clustering<?> clustering, Deletion deletion)
     {
         assert !deletion.isLive();
         return new BTreeRow(clustering, LivenessInfo.EMPTY, deletion, BTree.empty(), Integer.MIN_VALUE);
     }
 
-    public static BTreeRow noCellLiveRow(Clustering clustering, LivenessInfo primaryKeyLivenessInfo)
+    public static BTreeRow noCellLiveRow(Clustering<?> clustering, LivenessInfo primaryKeyLivenessInfo)
     {
         assert !primaryKeyLivenessInfo.isEmpty();
         return new BTreeRow(clustering,
@@ -219,7 +219,7 @@ public class BTreeRow extends AbstractRow
         return Ints.checkedCast(min);
     }
 
-    public Clustering clustering()
+    public Clustering<?> clustering()
     {
         return clustering;
     }
@@ -696,7 +696,7 @@ public class BTreeRow extends AbstractRow
             }
         }
 
-        protected Clustering clustering;
+        protected Clustering<?> clustering;
         protected LivenessInfo primaryKeyLivenessInfo = LivenessInfo.EMPTY;
         protected Deletion deletion = Deletion.LIVE;
 
@@ -743,13 +743,13 @@ public class BTreeRow extends AbstractRow
             return isSorted;
         }
 
-        public void newRow(Clustering clustering)
+        public void newRow(Clustering<?> clustering)
         {
             assert this.clustering == null; // Ensures we've properly called build() if we've use this builder before
             this.clustering = clustering;
         }
 
-        public Clustering clustering()
+        public Clustering<?> clustering()
         {
             return clustering;
         }

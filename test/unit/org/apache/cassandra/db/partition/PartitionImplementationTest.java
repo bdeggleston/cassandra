@@ -237,7 +237,7 @@ public class PartitionImplementationTest
 
     private Clustering<ByteBuffer> clustering(int i)
     {
-        return metadata.comparator.make(String.format("Row%06d", i));
+        return (Clustering<ByteBuffer>) metadata.comparator.make(String.format("Row%06d", i));
     }
 
     private void test(Supplier<Collection<? extends Unfiltered>> content, Row staticRow)
@@ -346,7 +346,7 @@ public class PartitionImplementationTest
 
     void testSearchIterator(NavigableSet<Clusterable> sortedContent, Partition partition, ColumnFilter cf, boolean reversed)
     {
-        SearchIterator<Clustering, Row> searchIter = partition.searchIterator(cf, reversed);
+        SearchIterator<Clustering<?>, Row> searchIter = partition.searchIterator(cf, reversed);
         int pos = reversed ? KEY_RANGE : 0;
         int mul = reversed ? -1 : 1;
         boolean started = false;

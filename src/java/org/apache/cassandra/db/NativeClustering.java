@@ -41,7 +41,7 @@ public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> imple
         return this;
     }
 
-    public NativeClustering(NativeAllocator allocator, OpOrder.Group writeOp, Clustering clustering)
+    public NativeClustering(NativeAllocator allocator, OpOrder.Group writeOp, Clustering<?> clustering)
     {
         int count = clustering.size();
         int metadataSize = (count * 2) + 4;

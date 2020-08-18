@@ -695,7 +695,7 @@ public class PartitionUpdate extends AbstractBTreePartition
             this.path = path;
         }
 
-        public Clustering clustering()
+        public Clustering<?> clustering()
         {
             return row.clustering();
         }

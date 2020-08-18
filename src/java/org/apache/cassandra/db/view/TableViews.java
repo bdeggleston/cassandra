@@ -482,7 +482,7 @@ public class TableViews extends AbstractCollection<View>
             generator.addBaseTableUpdate(existingBaseRow, mergedBaseRow);
     }
 
-    private static Row emptyRow(Clustering clustering, DeletionTime deletion)
+    private static Row emptyRow(Clustering<?> clustering, DeletionTime deletion)
     {
         // Returning null for an empty row is slightly ugly, but the case where there is no pre-existing row is fairly common
         // (especially when building the view), so we want to avoid a dummy allocation of an empty row every time.

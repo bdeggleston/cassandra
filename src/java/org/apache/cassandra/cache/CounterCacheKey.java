@@ -62,12 +62,12 @@ public final class CounterCacheKey extends CacheKey
         this(tableMetadata, ByteBufferUtil.getArray(partitionKey), ByteBufferUtil.getArray(cellName));
     }
 
-    public static CounterCacheKey create(TableMetadata tableMetadata, ByteBuffer partitionKey, Clustering clustering, ColumnMetadata c, CellPath path)
+    public static CounterCacheKey create(TableMetadata tableMetadata, ByteBuffer partitionKey, Clustering<?> clustering, ColumnMetadata c, CellPath path)
     {
         return new CounterCacheKey(tableMetadata, partitionKey, makeCellName(clustering, c, path));
     }
 
-    private static ByteBuffer makeCellName(Clustering clustering, ColumnMetadata c, CellPath path)
+    private static ByteBuffer makeCellName(Clustering<?> clustering, ColumnMetadata c, CellPath path)
     {
         int cs = clustering.size();
         ByteBuffer[] values = new ByteBuffer[cs + 1 + (path == null ? 0 : path.size())];
@@ -103,7 +103,7 @@ public final class CounterCacheKey extends CacheKey
         List<ByteBuffer> buffers = CompositeType.splitName(ByteBuffer.wrap(cellName), ByteBufferAccessor.instance);
         assert buffers.size() >= clusteringSize + 1; // See makeCellName above
 
-        Clustering clustering = Clustering.make(buffers.subList(0, clusteringSize).toArray(new ByteBuffer[clusteringSize]));
+        Clustering<?> clustering = Clustering.make(buffers.subList(0, clusteringSize).toArray(new ByteBuffer[clusteringSize]));
         ColumnMetadata column = metadata.getColumn(buffers.get(clusteringSize));
         // This can theoretically happen if a column is dropped after the cache is saved and we
         // try to load it. Not point if failing in any case, just skip the value.

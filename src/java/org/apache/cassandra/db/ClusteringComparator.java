@@ -106,7 +106,7 @@ public class ClusteringComparator implements Comparator<Clusterable>
      *
      * @return the newly created clustering.
      */
-    public Clustering make(Object... values)
+    public Clustering<?> make(Object... values)
     {
         if (values.length != size())
             throw new IllegalArgumentException(String.format("Invalid number of components, expecting %d but got %d", size(), values.length));

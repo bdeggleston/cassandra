@@ -175,7 +175,7 @@ public class ViewUpdateGenerator
 
         if (baseMetadata.isCompactTable())
         {
-            Clustering clustering = mergedBaseRow.clustering();
+            Clustering<?> clustering = mergedBaseRow.clustering();
             for (int i = 0; i < clustering.size(); i++)
             {
                 if (clustering.get(i) == null)

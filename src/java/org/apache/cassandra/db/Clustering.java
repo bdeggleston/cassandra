@@ -43,7 +43,7 @@ public interface Clustering<T> extends ClusteringPrefix<T>
 
     public long unsharedHeapSizeExcludingData();
 
-    public default Clustering copy(AbstractAllocator allocator)
+    public default Clustering<?> copy(AbstractAllocator allocator)
     {
         // Important for STATIC_CLUSTERING (but must copy empty native clustering types).
         if (size() == 0)
@@ -128,14 +128,14 @@ public interface Clustering<T> extends ClusteringPrefix<T>
      */
     public static class Serializer
     {
-        public void serialize(Clustering clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
+        public void serialize(Clustering<?> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
         {
             assert clustering != STATIC_CLUSTERING : "We should never serialize a static clustering";
             assert clustering.size() == types.size() : "Invalid clustering for the table: " + clustering;
             ClusteringPrefix.serializer.serializeValuesWithoutSize(clustering, out, version, types);
         }
 
-        public ByteBuffer serialize(Clustering clustering, int version, List<AbstractType<?>> types)
+        public ByteBuffer serialize(Clustering<?> clustering, int version, List<AbstractType<?>> types)
         {
             try (DataOutputBuffer buffer = new DataOutputBuffer((int)serializedSize(clustering, version, types)))
             {
@@ -148,7 +148,7 @@ public interface Clustering<T> extends ClusteringPrefix<T>
             }
         }
 
-        public long serializedSize(Clustering clustering, int version, List<AbstractType<?>> types)
+        public long serializedSize(Clustering<?> clustering, int version, List<AbstractType<?>> types)
         {
             return ClusteringPrefix.serializer.valuesWithoutSizeSerializedSize(clustering, version, types);
         }

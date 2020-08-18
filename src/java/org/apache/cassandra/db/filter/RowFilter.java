@@ -205,7 +205,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
      * Returns true if all of the expressions within this filter that apply to the clustering key are satisfied by
      * the given Clustering, false otherwise.
      */
-    public boolean clusteringKeyRestrictionsAreSatisfiedBy(Clustering clustering)
+    public boolean clusteringKeyRestrictionsAreSatisfiedBy(Clustering<?> clustering)
     {
         for (Expression e : expressions)
         {

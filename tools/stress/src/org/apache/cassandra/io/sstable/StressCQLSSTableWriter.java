@@ -260,7 +260,7 @@ public class StressCQLSSTableWriter implements Closeable
         {
             for (ByteBuffer key : keys)
             {
-                for (Clustering clustering : clusterings)
+                for (Clustering<?> clustering : clusterings)
                     insert.addUpdateForKey(writer.getUpdateFor(key), clustering, params);
             }
             return this;

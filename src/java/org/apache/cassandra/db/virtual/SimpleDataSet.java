@@ -61,7 +61,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
         System.arraycopy(primaryKeyValues, partitionKeyValues.length, clusteringValues, 0, clusteringValues.length);
 
         DecoratedKey partitionKey = makeDecoratedKey(partitionKeyValues);
-        Clustering clustering = makeClustering(clusteringValues);
+        Clustering<?> clustering = makeClustering(clusteringValues);
 
         currentRow = new Row(metadata, clustering);
         SimplePartition partition = (SimplePartition) partitions.computeIfAbsent(partitionKey, pk -> new SimplePartition(metadata, pk));
@@ -88,7 +88,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
         return metadata.partitioner.decorateKey(partitionKey);
     }
 
-    private Clustering makeClustering(Object... clusteringValues)
+    private Clustering<?> makeClustering(Object... clusteringValues)
     {
         if (clusteringValues.length == 0)
             return Clustering.EMPTY;
@@ -102,7 +102,7 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
     private static final class SimplePartition implements AbstractVirtualTable.Partition
     {
         private final DecoratedKey key;
-        private final NavigableMap<Clustering, Row> rows;
+        private final NavigableMap<Clustering<?>, Row> rows;
 
         private SimplePartition(TableMetadata metadata, DecoratedKey key)
         {
@@ -152,11 +152,11 @@ public class SimpleDataSet extends AbstractVirtualTable.AbstractDataSet
     private static class Row
     {
         private final TableMetadata metadata;
-        private final Clustering clustering;
+        private final Clustering<?> clustering;
 
         private final Map<ColumnMetadata, Object> values = new HashMap<>();
 
-        private Row(TableMetadata metadata, Clustering clustering)
+        private Row(TableMetadata metadata, Clustering<?> clustering)
         {
             this.metadata = metadata;
             this.clustering = clustering;

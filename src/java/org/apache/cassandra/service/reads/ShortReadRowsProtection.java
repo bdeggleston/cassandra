@@ -47,7 +47,7 @@ class ShortReadRowsProtection extends Transformation implements MoreRows<Unfilte
     private final TableMetadata metadata;
     private final DecoratedKey partitionKey;
 
-    private Clustering lastClustering; // clustering of the last observed row
+    private Clustering<?> lastClustering; // clustering of the last observed row
 
     private int lastCounted = 0; // last seen recorded # before attempting to fetch more rows
     private int lastFetched = 0; // # rows returned by last attempt to get more (or by the original read command)

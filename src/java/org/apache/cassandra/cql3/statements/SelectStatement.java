@@ -544,7 +544,7 @@ public class SelectStatement implements CQLStatement
             return ((ClusteringIndexSliceFilter)filter).requestedSlices();
 
         Slices.Builder builder = new Slices.Builder(table.comparator);
-        for (Clustering clustering: ((ClusteringIndexNamesFilter)filter).requestedRows())
+        for (Clustering<?> clustering: ((ClusteringIndexNamesFilter)filter).requestedRows())
             builder.add(Slice.make(clustering));
         return builder.build();
     }

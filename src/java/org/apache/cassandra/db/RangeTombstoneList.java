@@ -233,7 +233,7 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
      * Returns whether the given name/timestamp pair is deleted by one of the tombstone
      * of this RangeTombstoneList.
      */
-    public boolean isDeleted(Clustering clustering, Cell cell)
+    public boolean isDeleted(Clustering<?> clustering, Cell cell)
     {
         int idx = searchInternal(clustering, 0, size);
         // No matter what the counter cell's timestamp is, a tombstone always takes precedence. See CASSANDRA-7346.
@@ -244,13 +244,13 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
      * Returns the DeletionTime for the tombstone overlapping {@code name} (there can't be more than one),
      * or null if {@code name} is not covered by any tombstone.
      */
-    public DeletionTime searchDeletionTime(Clustering name)
+    public DeletionTime searchDeletionTime(Clustering<?> name)
     {
         int idx = searchInternal(name, 0, size);
         return idx < 0 ? null : new DeletionTime(markedAts[idx], delTimes[idx]);
     }
 
-    public RangeTombstone search(Clustering name)
+    public RangeTombstone search(Clustering<?> name)
     {
         int idx = searchInternal(name, 0, size);
         return idx < 0 ? null : rangeTombstone(idx);

@@ -1280,19 +1280,19 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
             // diff listener collates the columns to be added & removed from the indexes
             RowDiffListener diffListener = new RowDiffListener()
             {
-                public void onPrimaryKeyLivenessInfo(int i, Clustering clustering, LivenessInfo merged, LivenessInfo original)
+                public void onPrimaryKeyLivenessInfo(int i, Clustering<?> clustering, LivenessInfo merged, LivenessInfo original)
                 {
                 }
 
-                public void onDeletion(int i, Clustering clustering, Row.Deletion merged, Row.Deletion original)
+                public void onDeletion(int i, Clustering<?> clustering, Row.Deletion merged, Row.Deletion original)
                 {
                 }
 
-                public void onComplexDeletion(int i, Clustering clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
+                public void onComplexDeletion(int i, Clustering<?> clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
                 {
                 }
 
-                public void onCell(int i, Clustering clustering, Cell merged, Cell original)
+                public void onCell(int i, Clustering<?> clustering, Cell<?> merged, Cell<?> original)
                 {
                     if (merged != null && !merged.equals(original))
                         toInsert.addCell(merged);
@@ -1374,27 +1374,27 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
             final Row.Builder[] builders = new Row.Builder[versions.length];
             RowDiffListener diffListener = new RowDiffListener()
             {
-                public void onPrimaryKeyLivenessInfo(int i, Clustering clustering, LivenessInfo merged, LivenessInfo original)
+                public void onPrimaryKeyLivenessInfo(int i, Clustering<?> clustering, LivenessInfo merged, LivenessInfo original)
                 {
                     if (original != null && (merged == null || !merged.isLive(nowInSec)))
                         getBuilder(i, clustering).addPrimaryKeyLivenessInfo(original);
                 }
 
-                public void onDeletion(int i, Clustering clustering, Row.Deletion merged, Row.Deletion original)
+                public void onDeletion(int i, Clustering<?> clustering, Row.Deletion merged, Row.Deletion original)
                 {
                 }
 
-                public void onComplexDeletion(int i, Clustering clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
+                public void onComplexDeletion(int i, Clustering<?> clustering, ColumnMetadata column, DeletionTime merged, DeletionTime original)
                 {
                 }
 
-                public void onCell(int i, Clustering clustering, Cell merged, Cell original)
+                public void onCell(int i, Clustering<?> clustering, Cell<?> merged, Cell<?> original)
                 {
                     if (original != null && (merged == null || !merged.isLive(nowInSec)))
                         getBuilder(i, clustering).addCell(original);
                 }
 
-                private Row.Builder getBuilder(int index, Clustering clustering)
+                private Row.Builder getBuilder(int index, Clustering<?> clustering)
                 {
                     if (builders[index] == null)
                     {
