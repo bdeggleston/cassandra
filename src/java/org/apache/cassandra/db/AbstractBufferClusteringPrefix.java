@@ -46,7 +46,7 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
         return ByteBufferAccessor.instance;
     }
 
-    public ClusteringPrefix clustering()
+    public ClusteringPrefix<ByteBuffer> clustering()
     {
         return this;
     }

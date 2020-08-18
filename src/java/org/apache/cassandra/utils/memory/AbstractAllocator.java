@@ -84,7 +84,7 @@ public abstract class AbstractAllocator
         }
 
         @Override
-        public void addCell(Cell cell)
+        public void addCell(Cell<?> cell)
         {
             super.addCell(cell.copy(allocator));
         }

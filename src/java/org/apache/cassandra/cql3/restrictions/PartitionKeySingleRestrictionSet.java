@@ -55,10 +55,10 @@ final class PartitionKeySingleRestrictionSet extends RestrictionSetWrapper imple
         this.comparator = restrictionSet.comparator;
     }
 
-    private List<ByteBuffer> toByteBuffers(SortedSet<? extends ClusteringPrefix> clusterings)
+    private List<ByteBuffer> toByteBuffers(SortedSet<? extends ClusteringPrefix<?>> clusterings)
     {
         List<ByteBuffer> l = new ArrayList<>(clusterings.size());
-        for (ClusteringPrefix clustering : clusterings)
+        for (ClusteringPrefix<?> clustering : clusterings)
             l.add(clustering.serializeAsPartitionKey());
         return l;
     }

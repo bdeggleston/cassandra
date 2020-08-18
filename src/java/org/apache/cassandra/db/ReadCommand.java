@@ -579,7 +579,7 @@ public abstract class ReadCommand extends AbstractReadQuery
                 return marker;
             }
 
-            private void countTombstone(ClusteringPrefix clustering)
+            private void countTombstone(ClusteringPrefix<?> clustering)
             {
                 ++tombstones;
                 if (tombstones > failureThreshold && respectTombstoneThresholds)

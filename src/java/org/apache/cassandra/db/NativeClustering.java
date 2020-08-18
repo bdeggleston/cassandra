@@ -28,7 +28,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 import org.apache.cassandra.utils.memory.NativeAllocator;
 
-public class NativeClustering extends AbstractClusteringPrefix implements Clustering
+public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> implements Clustering<ByteBuffer>
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new NativeClustering());
 
@@ -125,7 +125,7 @@ public class NativeClustering extends AbstractClusteringPrefix implements Cluste
         return getRawValues();
     }
 
-    public ValueAccessor accessor()
+    public ValueAccessor<ByteBuffer> accessor()
     {
         return ByteBufferAccessor.instance;  // FIXME
     }

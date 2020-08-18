@@ -159,16 +159,16 @@ public interface Clustering<T> extends ClusteringPrefix<T>
                 ClusteringPrefix.serializer.skipValuesWithoutSize(in, types.size(), version, types);
         }
 
-        public Clustering deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public Clustering<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             if (types.isEmpty())
-                return EMPTY;
+                return ArrayClustering.EMPTY;
 
             byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types, ByteArrayAccessor.instance);
             return new ArrayClustering(values);
         }
 
-        public Clustering deserialize(ByteBuffer in, int version, List<AbstractType<?>> types)
+        public Clustering<byte[]> deserialize(ByteBuffer in, int version, List<AbstractType<?>> types)
         {
             try (DataInputBuffer buffer = new DataInputBuffer(in, true))
             {

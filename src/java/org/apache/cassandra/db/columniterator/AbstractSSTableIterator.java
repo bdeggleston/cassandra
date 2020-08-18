@@ -540,7 +540,7 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
             return indexFor(bound, fromIdx);
         }
 
-        public int indexFor(ClusteringPrefix name, int lastIndex) throws IOException
+        public int indexFor(ClusteringPrefix<?> name, int lastIndex) throws IOException
         {
             IndexInfo target = new IndexInfo(name, name, 0, 0, null);
             /*

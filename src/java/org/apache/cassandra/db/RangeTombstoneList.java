@@ -262,7 +262,7 @@ public class RangeTombstoneList implements Iterable<RangeTombstone>, IMeasurable
      *
      * Note that bounds are not in the range if they fall on its boundary.
      */
-    private int searchInternal(ClusteringPrefix name, int startIdx, int endIdx)
+    private int searchInternal(ClusteringPrefix<?> name, int startIdx, int endIdx)
     {
         if (isEmpty())
             return -1;

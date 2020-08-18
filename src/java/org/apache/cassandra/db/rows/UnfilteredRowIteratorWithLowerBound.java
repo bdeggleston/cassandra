@@ -190,7 +190,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
         try (RowIndexEntry.IndexInfoRetriever onHeapRetriever = rowIndexEntry.openWithIndex(null))
         {
             IndexInfo column = onHeapRetriever.columnsIndex(filter.isReversed() ? rowIndexEntry.columnsIndexCount() - 1 : 0);
-            ClusteringPrefix lowerBoundPrefix = filter.isReversed() ? column.lastName : column.firstName;
+            ClusteringPrefix<?> lowerBoundPrefix = filter.isReversed() ? column.lastName : column.firstName;
             assert lowerBoundPrefix.getRawValues().length <= metadata().comparator.size() :
             String.format("Unexpected number of clustering values %d, expected %d or fewer for %s",
                           lowerBoundPrefix.getRawValues().length,

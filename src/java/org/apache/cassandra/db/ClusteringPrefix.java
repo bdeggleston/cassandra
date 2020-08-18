@@ -314,7 +314,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
 
     public static class Serializer
     {
-        public void serialize(ClusteringPrefix clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
+        public void serialize(ClusteringPrefix<?> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
         {
             // We shouldn't serialize static clusterings
             assert clustering.kind() != Kind.STATIC_CLUSTERING;
@@ -340,7 +340,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 ClusteringBoundOrBoundary.serializer.skipValues(in, kind, version, types);
         }
 
-        public ClusteringPrefix deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public ClusteringPrefix<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             Kind kind = Kind.values()[in.readByte()];
             // We shouldn't serialize static clusterings
@@ -351,7 +351,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 return ClusteringBoundOrBoundary.serializer.deserializeValues(in, kind, version, types);
         }
 
-        public long serializedSize(ClusteringPrefix clustering, int version, List<AbstractType<?>> types)
+        public long serializedSize(ClusteringPrefix<?> clustering, int version, List<AbstractType<?>> types)
         {
             // We shouldn't serialize static clusterings
             assert clustering.kind() != Kind.STATIC_CLUSTERING;
@@ -624,7 +624,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
         }
     }
 
-    public static int hashCode(ClusteringPrefix prefix)
+    public static <V> int hashCode(ClusteringPrefix<V> prefix)
     {
         int result = 31;
         for (int i = 0; i < prefix.size(); i++)
@@ -632,20 +632,24 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
         return 31 * result + Objects.hashCode(prefix.kind());
     }
 
-    public static boolean equals(ClusteringPrefix prefix, Object o)
+    static <V1, V2> boolean equals(ClusteringPrefix<V1> left, ClusteringPrefix<V2> right)
+    {
+        if (left.kind() != right.kind() || left.size() != right.size())
+            return false;
+
+        for (int i = 0; i < left.size(); i++)
+            if (!ValueAccessor.equals(left.get(i), left.accessor(), right.get(i), right.accessor()))
+                return false;
+
+        return true;
+    }
+
+    public static boolean equals(ClusteringPrefix<?> prefix, Object o)
     {
         if(!(o instanceof ClusteringPrefix))
             return false;
 
-        ClusteringPrefix that = (ClusteringPrefix)o;
-        if (prefix.kind() != that.kind() || prefix.size() != that.size())
-            return false;
-
-        for (int i = 0; i < prefix.size(); i++)
-            if (!ValueAccessor.equals(prefix.get(i), prefix.accessor(), that.get(i), that.accessor()))
-                return false;
-
-        return true;
+        return equals(prefix, (ClusteringPrefix<?>) o);
     }
 
 }

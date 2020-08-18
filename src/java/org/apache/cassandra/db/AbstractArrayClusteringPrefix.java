@@ -48,7 +48,7 @@ public abstract class AbstractArrayClusteringPrefix extends AbstractClusteringPr
         return ByteArrayAccessor.instance;
     }
 
-    public ClusteringPrefix clustering()
+    public ClusteringPrefix<byte[]> clustering()
     {
         return this;
     }

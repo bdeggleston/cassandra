@@ -515,7 +515,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
          *
          * @param cell the cell to add.
          */
-        public void addCell(Cell cell);
+        public void addCell(Cell<?> cell);
 
         /**
          * Adds a complex deletion.

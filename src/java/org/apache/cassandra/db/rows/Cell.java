@@ -219,7 +219,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 header.getType(column).writeValue(cell.value(), cell.accessor(), out);
         }
 
-        public Cell deserialize(DataInputPlus in, LivenessInfo rowLiveness, ColumnMetadata column, SerializationHeader header, DeserializationHelper helper) throws IOException
+        public Cell<byte[]> deserialize(DataInputPlus in, LivenessInfo rowLiveness, ColumnMetadata column, SerializationHeader header, DeserializationHelper helper) throws IOException
         {
             int flags = in.readUnsignedByte();
             boolean hasValue = (flags & HAS_EMPTY_VALUE_MASK) == 0;

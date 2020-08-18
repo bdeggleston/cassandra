@@ -323,7 +323,7 @@ public abstract class ModificationStatement implements CQLStatement
         return partitionKeys;
     }
 
-    public NavigableSet<Clustering> createClustering(QueryOptions options)
+    public NavigableSet<Clustering<ByteBuffer>> createClustering(QueryOptions options)
     throws InvalidRequestException
     {
         if (appliesOnlyToStaticColumns() && !restrictions.hasClusteringColumnsRestrictions())
@@ -756,8 +756,8 @@ public abstract class ModificationStatement implements CQLStatement
 
     Slices createSlices(QueryOptions options)
     {
-        SortedSet<ClusteringBound> startBounds = restrictions.getClusteringColumnsBounds(Bound.START, options);
-        SortedSet<ClusteringBound> endBounds = restrictions.getClusteringColumnsBounds(Bound.END, options);
+        SortedSet<ClusteringBound<ByteBuffer>> startBounds = restrictions.getClusteringColumnsBounds(Bound.START, options);
+        SortedSet<ClusteringBound<ByteBuffer>> endBounds = restrictions.getClusteringColumnsBounds(Bound.END, options);
 
         return toSlices(startBounds, endBounds);
     }
