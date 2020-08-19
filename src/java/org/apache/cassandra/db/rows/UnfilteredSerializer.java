@@ -467,7 +467,7 @@ public class UnfilteredSerializer
 
         if (kind(flags) == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)
         {
-            ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
+            ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(ByteArrayAccessor.instance, in, helper.version, header.clusteringTypes());
             return deserializeMarkerBody(in, header, bound);
         }
         else
@@ -476,7 +476,7 @@ public class UnfilteredSerializer
             if (isStatic(extendedFlags))
                 throw new IOException("Corrupt flags value for unfiltered partition (isStatic flag set): " + flags);
 
-            builder.newRow(Clustering.serializer.deserialize(in, helper.version, header.clusteringTypes()));
+            builder.newRow(Clustering.serializer.deserialize(ByteArrayAccessor.instance, in, helper.version, header.clusteringTypes()));
             return deserializeRowBody(in, header, helper, flags, extendedFlags, builder);
         }
     }
@@ -494,7 +494,7 @@ public class UnfilteredSerializer
 
             if (kind(flags) == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)
             {
-                ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(in, helper.version, header.clusteringTypes());
+                ClusteringBoundOrBoundary<byte[]> bound = ClusteringBoundOrBoundary.serializer.deserialize(ByteArrayAccessor.instance, in, helper.version, header.clusteringTypes());
                 return deserializeMarkerBody(in, header, bound);
             }
             else
@@ -506,7 +506,7 @@ public class UnfilteredSerializer
                     boolean hasTimestamp = (flags & HAS_TIMESTAMP) != 0;
                     boolean hasTTL = (flags & HAS_TTL) != 0;
                     boolean deletionIsShadowable = (extendedFlags & HAS_SHADOWABLE_DELETION) != 0;
-                    Clustering<byte[]> clustering = Clustering.serializer.deserialize(in, helper.version, header.clusteringTypes());
+                    Clustering<byte[]> clustering = Clustering.serializer.deserialize(ByteArrayAccessor.instance, in, helper.version, header.clusteringTypes());
                     long nextPosition = in.readUnsignedVInt() + in.getFilePointer();
                     in.readUnsignedVInt(); // skip previous unfiltered size
                     if (hasTimestamp)

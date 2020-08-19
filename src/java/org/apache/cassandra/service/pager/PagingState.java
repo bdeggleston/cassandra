@@ -26,6 +26,7 @@ import com.google.common.primitives.Ints;
 
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -384,7 +385,7 @@ public class PagingState
 
             return protocolVersion.isSmallerOrEqualTo(ProtocolVersion.V3)
                  ? decodeClustering(metadata, mark)
-                 : Clustering.serializer.deserialize(mark, MessagingService.VERSION_30, makeClusteringTypes(metadata));
+                 : Clustering.serializer.deserialize(ByteArrayAccessor.instance, mark, MessagingService.VERSION_30, makeClusteringTypes(metadata));
         }
 
         // Old (pre-3.0) encoding of cells. We need that for the protocol v3 as that is how things where encoded

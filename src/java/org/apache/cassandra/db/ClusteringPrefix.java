@@ -340,15 +340,15 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 ClusteringBoundOrBoundary.serializer.skipValues(in, kind, version, types);
         }
 
-        public ClusteringPrefix<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public <V> ClusteringPrefix<V> deserialize(ValueAccessor<V> accessor, DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             Kind kind = Kind.values()[in.readByte()];
             // We shouldn't serialize static clusterings
             assert kind != Kind.STATIC_CLUSTERING;
             if (kind == Kind.CLUSTERING)
-                return Clustering.serializer.deserialize(in, version, types);
+                return Clustering.serializer.deserialize(accessor, in, version, types);
             else
-                return ClusteringBoundOrBoundary.serializer.deserializeValues(in, kind, version, types);
+                return ClusteringBoundOrBoundary.serializer.deserializeValues(accessor, in, kind, version, types);
         }
 
         public long serializedSize(ClusteringPrefix<?> clustering, int version, List<AbstractType<?>> types)
@@ -498,7 +498,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
      * little work as possible. It does that by providing a comparison method that deserialize only what is needed
      * to decide of the comparison.
      */
-    public static class Deserializer
+    public static class Deserializer<V>
     {
         private final ClusteringComparator comparator;
         private final DataInputPlus in;
@@ -510,13 +510,15 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
         private int nextSize;
         private ClusteringPrefix.Kind nextKind;
         private int deserializedSize;
-        private byte[][] nextValues;
+        private V[] nextValues;
+        private final ValueAccessor<V> accessor;
 
-        public Deserializer(ClusteringComparator comparator, DataInputPlus in, SerializationHeader header)
+        public Deserializer(ClusteringComparator comparator, DataInputPlus in, SerializationHeader header, ValueAccessor<V> accessor)
         {
             this.comparator = comparator;
             this.in = in;
             this.serializationHeader = header;
+            this.accessor = accessor;
         }
 
         public void prepare(int flags, int extendedFlags) throws IOException
@@ -535,7 +537,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             // nextValues is of the proper size. Note that the 2nd condition may not hold for range tombstone bounds, but all
             // rows have a fixed size clustering, so we'll still save in the common case.
             if (nextValues == null || nextValues.length != nextSize)
-                this.nextValues = new byte[nextSize][];
+                this.nextValues = accessor.createArray(nextSize);
         }
 
         public <T> int compareNextTo(ClusteringBoundOrBoundary<T> bound) throws IOException
@@ -548,7 +550,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 if (!hasComponent(i))
                     return nextKind.comparedToClustering;
 
-                int cmp = comparator.compareComponent(i, nextValues[i], ByteArrayAccessor.instance, bound.get(i), bound.accessor());
+                int cmp = comparator.compareComponent(i, nextValues[i], accessor, bound.get(i), bound.accessor());
                 if (cmp != 0)
                     return cmp;
             }
@@ -582,7 +584,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             int i = deserializedSize++;
             nextValues[i] = Serializer.isNull(nextHeader, i)
                           ? null
-                          : (Serializer.isEmpty(nextHeader, i) ? ByteArrayUtil.EMPTY_BYTE_ARRAY : serializationHeader.clusteringTypes().get(i).readArray(in, DatabaseDescriptor.getMaxValueSize()));
+                          : (Serializer.isEmpty(nextHeader, i) ? accessor.empty() : serializationHeader.clusteringTypes().get(i).read(accessor, in, DatabaseDescriptor.getMaxValueSize()));
             return true;
         }
 
@@ -592,20 +594,20 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 continue;
         }
 
-        public ClusteringBoundOrBoundary<byte[]> deserializeNextBound() throws IOException
+        public ClusteringBoundOrBoundary<V> deserializeNextBound() throws IOException
         {
             assert !nextIsRow;
             deserializeAll();
-            ClusteringBoundOrBoundary<byte[]> bound = ArrayClusteringBoundOrBoundary.create(nextKind, nextValues);
+            ClusteringBoundOrBoundary<V> bound = accessor.factory().boundOrBoundary(nextKind, nextValues);
             nextValues = null;
             return bound;
         }
 
-        public Clustering<byte[]> deserializeNextClustering() throws IOException
+        public Clustering<V> deserializeNextClustering() throws IOException
         {
             assert nextIsRow;
             deserializeAll();
-            Clustering<byte[]> clustering = ArrayClustering.make(nextValues);
+            Clustering<V> clustering = accessor.factory().clustering(nextValues);
             nextValues = null;
             return clustering;
         }

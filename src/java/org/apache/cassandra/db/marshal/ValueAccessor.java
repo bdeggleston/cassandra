@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
+import org.apache.cassandra.db.ClusteringBoundOrBoundary;
 import org.apache.cassandra.db.ClusteringBoundary;
 import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.TypeSizes;
@@ -45,14 +46,16 @@ public interface ValueAccessor<V>
 
     public interface ObjectFactory<V>
     {
-        Cell<V> createCell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, V value, CellPath path);
+        Cell<V> cell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, V value, CellPath path);
         Clustering<V> clustering(V... values);
-        ClusteringBound<V> inclusiveOpen(boolean reversed, V... boundValues);
-        ClusteringBound<V> exclusiveOpen(boolean reversed, V... boundValues);
-        ClusteringBound<V> inclusiveClose(boolean reversed, V... boundValues);
-        ClusteringBound<V> exclusiveClose(boolean reversed, V... boundValues);
-        ClusteringBoundary<V> inclusiveCloseExclusiveOpen(boolean reversed, V... boundValues);
-        ClusteringBoundary<V> exclusiveCloseInclusiveOpen(boolean reversed, V... boundValues);
+        Clustering<V> clustering();
+        ClusteringBound<V> bound(ClusteringPrefix.Kind kind, V... values);
+        ClusteringBound<V> bound(ClusteringPrefix.Kind kind);
+        ClusteringBoundOrBoundary<V> boundary(ClusteringPrefix.Kind kind, V... values);
+        default ClusteringBoundOrBoundary<V> boundOrBoundary(ClusteringPrefix.Kind kind, V... values)
+        {
+            return kind.isBoundary() ? boundary(kind, values) : bound(kind, values);
+        }
     }
 
     int size(V value);

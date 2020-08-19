@@ -261,7 +261,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 }
             }
 
-            return accessor.factory().createCell(column, timestamp, ttl, localDeletionTime, value, path);
+            return accessor.factory().cell(column, timestamp, ttl, localDeletionTime, value, path);
         }
 
         public <T> long serializedSize(Cell<T> cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)
