@@ -49,39 +49,6 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
     private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
     private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
 
-    private static final ObjectFactory<ByteBuffer> factory = new ObjectFactory<ByteBuffer>()
-    {
-        public Cell<ByteBuffer> cell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, ByteBuffer value, CellPath path)
-        {
-            return new BufferCell(column, timestamp, ttl, localDeletionTime, value, path);
-        }
-
-        public Clustering<ByteBuffer> clustering(ByteBuffer... values)
-        {
-            return new BufferClustering(values);
-        }
-
-        public Clustering<ByteBuffer> clustering()
-        {
-            return BufferClustering.EMPTY;
-        }
-
-        public ClusteringBound<ByteBuffer> bound(ClusteringPrefix.Kind kind, ByteBuffer... values)
-        {
-            return new BufferClusteringBound(kind, values);
-        }
-
-        public ClusteringBound<ByteBuffer> bound(ClusteringPrefix.Kind kind)
-        {
-            return kind.isStart() ? BufferClusteringBound.BOTTOM : BufferClusteringBound.TOP;
-        }
-
-        public ClusteringBoundOrBoundary<ByteBuffer> boundary(ClusteringPrefix.Kind kind, ByteBuffer... values)
-        {
-            return new BufferClusteringBoundary(kind, values);
-        }
-    };
-
     private ByteBufferAccessor() {}
 
     public int size(ByteBuffer value)
@@ -315,6 +282,6 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public ObjectFactory<ByteBuffer> factory()
     {
-        return factory;
+        return ByteBufferObjectFactory.instance;
     }
 }

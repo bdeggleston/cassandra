@@ -83,6 +83,8 @@ public class ByteBufferUtil
     /** Represents an unset value in bound variables */
     public static final ByteBuffer UNSET_BYTE_BUFFER = ByteBuffer.wrap(new byte[]{});
 
+    public static final ByteBuffer[] EMPTY_ARRAY = new ByteBuffer[0];
+
     @Inline
     public static int compareUnsigned(ByteBuffer o1, ByteBuffer o2)
     {

@@ -25,21 +25,9 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.UUID;
 
-import org.apache.cassandra.db.ArrayClustering;
-import org.apache.cassandra.db.ArrayClusteringBound;
-import org.apache.cassandra.db.ArrayClusteringBoundary;
-import org.apache.cassandra.db.Clustering;
-import org.apache.cassandra.db.ClusteringBound;
-import org.apache.cassandra.db.ClusteringBoundOrBoundary;
-import org.apache.cassandra.db.ClusteringBoundary;
-import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.TypeSizes;
-import org.apache.cassandra.db.rows.ArrayCell;
-import org.apache.cassandra.db.rows.Cell;
-import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FastByteOperations;
@@ -52,39 +40,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
     private static final byte[] EMPTY = new byte[0];
     private static final byte[] TRUE = new byte[]{1};
     private static final byte[] FALSE = new byte[]{0};
-
-    private static final ObjectFactory<byte[]> factory = new ObjectFactory<byte[]>()
-    {
-        public Cell<byte[]> cell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, byte[] value, CellPath path)
-        {
-            return new ArrayCell(column, timestamp, ttl, localDeletionTime, value, path);
-        }
-
-        public Clustering<byte[]> clustering(byte[]... values)
-        {
-            return new ArrayClustering(values);
-        }
-
-        public Clustering<byte[]> clustering()
-        {
-            return ArrayClustering.EMPTY;
-        }
-
-        public ClusteringBound<byte[]> bound(ClusteringPrefix.Kind kind, byte[]... values)
-        {
-            return new ArrayClusteringBound(kind, values);
-        }
-
-        public ClusteringBound<byte[]> bound(ClusteringPrefix.Kind kind)
-        {
-            return kind.isStart() ? ArrayClusteringBound.BOTTOM : ArrayClusteringBound.TOP;
-        }
-
-        public ClusteringBoundOrBoundary<byte[]> boundary(ClusteringPrefix.Kind kind, byte[]... values)
-        {
-            return new ArrayClusteringBoundary(kind, values);
-        }
-    };
 
     private ByteArrayAccessor() {}
 
@@ -319,6 +274,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 
     public ObjectFactory<byte[]> factory()
     {
-        return factory;
+        return ByteArrayObjectFactory.instance;
     }
 }
