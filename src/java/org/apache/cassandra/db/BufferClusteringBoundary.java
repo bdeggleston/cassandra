@@ -28,7 +28,7 @@ public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary im
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClusteringBoundary(Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
 
-    protected BufferClusteringBoundary(Kind kind, ByteBuffer[] values)
+    public BufferClusteringBoundary(Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
     }

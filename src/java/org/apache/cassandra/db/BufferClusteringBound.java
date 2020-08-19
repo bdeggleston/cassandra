@@ -33,7 +33,7 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
     /** The biggest end bound, i.e. the one that ends after any row. */
     public static final BufferClusteringBound TOP = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_END_BOUND, EMPTY_VALUES_ARRAY);
 
-    protected BufferClusteringBound(ClusteringPrefix.Kind kind, ByteBuffer[] values)
+    public BufferClusteringBound(ClusteringPrefix.Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
     }

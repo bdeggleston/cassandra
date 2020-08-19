@@ -26,16 +26,34 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.apache.cassandra.db.Clustering;
+import org.apache.cassandra.db.ClusteringBound;
+import org.apache.cassandra.db.ClusteringBoundary;
+import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.rows.Cell;
+import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface ValueAccessor<V>
 {
     public enum BackingKind { BUFFER, ARRAY, NATIVE }
+
+    public interface ObjectFactory<V>
+    {
+        Cell<V> createCell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, V value, CellPath path);
+        Clustering<V> clustering(V... values);
+        ClusteringBound<V> inclusiveOpen(boolean reversed, V... boundValues);
+        ClusteringBound<V> exclusiveOpen(boolean reversed, V... boundValues);
+        ClusteringBound<V> inclusiveClose(boolean reversed, V... boundValues);
+        ClusteringBound<V> exclusiveClose(boolean reversed, V... boundValues);
+        ClusteringBoundary<V> inclusiveCloseExclusiveOpen(boolean reversed, V... boundValues);
+        ClusteringBoundary<V> exclusiveCloseInclusiveOpen(boolean reversed, V... boundValues);
+    }
 
     int size(V value);
 
@@ -136,7 +154,7 @@ public interface ValueAccessor<V>
 
     V allocate(int size);
 
-    Cell.Factory<V> cellFactory();
+    ObjectFactory<V> factory();
 
     public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
     {
