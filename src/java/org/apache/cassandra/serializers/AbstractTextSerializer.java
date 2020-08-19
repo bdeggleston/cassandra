@@ -46,7 +46,7 @@ public abstract class AbstractTextSerializer extends TypeSerializer<String>
         }
     }
 
-    public <V> V serialize(String value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(String value, ValueAccessor<V> handle)
     {
         return handle.valueOf(value, charset);
     }

@@ -50,7 +50,7 @@ public class SimpleDateSerializer extends TypeSerializer<Integer>
         return handle.isEmpty(value) ? null : handle.toInt(value);
     }
 
-    public <V> V serialize(Integer value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Integer value, ValueAccessor<V> handle)
     {
         return value == null ? handle.empty() : handle.valueOf(value);
     }

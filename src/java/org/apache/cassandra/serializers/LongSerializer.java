@@ -29,7 +29,7 @@ public class LongSerializer extends TypeSerializer<Long>
         return handle.isEmpty(value) ? null : handle.toLong(value);
     }
 
-    public <V> V serialize(Long value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Long value, ValueAccessor<V> handle)
     {
         return value == null ? handle.empty() : handle.valueOf(value);
     }

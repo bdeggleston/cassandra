@@ -54,7 +54,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
     {
         List<V> output = new ArrayList<>(values.size());
         for (T value: values)
-            output.add(elements.serialize(value, handle));
+            output.add(elements.serializeBuffer(value, handle));
         return output;
     }
 

@@ -251,12 +251,6 @@ public class CompositeType extends AbstractCompositeType
     }
 
     @Override
-    public int componentsCount()
-    {
-        return types.size();
-    }
-
-    @Override
     public List<AbstractType<?>> getComponents()
     {
         return types;

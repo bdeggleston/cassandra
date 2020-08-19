@@ -51,37 +51,6 @@ public class ArrayCell extends AbstractCell<byte[]>
         this.path = path;
     }
 
-    public static ArrayCell live(ColumnMetadata column, long timestamp, byte[] value)
-    {
-        return live(column, timestamp, value, null);
-    }
-
-    public static ArrayCell live(ColumnMetadata column, long timestamp, byte[] value, CellPath path)
-    {
-        return new ArrayCell(column, timestamp, NO_TTL, NO_DELETION_TIME, value, path);
-    }
-
-    public static ArrayCell expiring(ColumnMetadata column, long timestamp, int ttl, int nowInSec, byte[] value)
-    {
-        return expiring(column, timestamp, ttl, nowInSec, value, null);
-    }
-
-    public static ArrayCell expiring(ColumnMetadata column, long timestamp, int ttl, int nowInSec, byte[] value, CellPath path)
-    {
-        assert ttl != NO_TTL;
-        return new ArrayCell(column, timestamp, ttl, ExpirationDateOverflowHandling.computeLocalExpirationTime(nowInSec, ttl), value, path);
-    }
-
-    public static ArrayCell tombstone(ColumnMetadata column, long timestamp, int nowInSec)
-    {
-        return tombstone(column, timestamp, nowInSec, null);
-    }
-
-    public static ArrayCell tombstone(ColumnMetadata column, long timestamp, int nowInSec, CellPath path)
-    {
-        return new ArrayCell(column, timestamp, NO_TTL, nowInSec, ByteArrayUtil.EMPTY_BYTE_ARRAY, path);
-    }
-
     public long timestamp()
     {
         return timestamp;

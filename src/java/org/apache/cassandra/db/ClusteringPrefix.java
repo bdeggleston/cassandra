@@ -408,11 +408,6 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             return result;
         }
 
-        ByteBuffer[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types) throws IOException
-        {
-            return deserializeValuesWithoutSize(in, size, version, types, ByteBufferAccessor.instance);
-        }
-
         <T> T[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types, ValueAccessor<T> accessor) throws IOException
         {
             // Callers of this method should handle the case where size = 0 (in all case we want to return a special value anyway).

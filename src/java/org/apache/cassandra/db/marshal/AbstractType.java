@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.cql3.AssignmentTestable;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnSpecification;
@@ -57,8 +54,6 @@ import static org.apache.cassandra.db.marshal.AbstractType.ComparisonType.CUSTOM
 @Unmetered
 public abstract class AbstractType<T> implements Comparator<ByteBuffer>, AssignmentTestable
 {
-    private static final Logger logger = LoggerFactory.getLogger(AbstractType.class);
-
     public final Comparator<ByteBuffer> reverseComparator;
 
     public enum ComparisonType
@@ -139,7 +134,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     <V> V decompose(T value, ValueAccessor<V> handle)
     {
-        return getSerializer().serialize(value, handle);
+        return getSerializer().serializeBuffer(value, handle);
     }
 
     /** get a string representation of the bytes used for various identifier (NOT just for log messages) */
@@ -356,21 +351,10 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return compare(left, accessorL, right, accessorR);
     }
 
-    /**
-     * An alternative validation function used by CollectionsType in conjunction with CompositeType.
-     *
-     * This is similar to the compare function above.
-     */
-    public void validateCollectionMember(ByteBuffer bytes, ByteBuffer collectionName) throws MarshalException
-    {
-        validate(bytes);
-    }
-
     public <V> void validateCollectionMember(V value, V collectionName, ValueAccessor<V> handle) throws MarshalException
     {
         getSerializer().validate(value, handle);
     }
-
 
     public boolean isCollection()
     {
@@ -434,15 +418,6 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     public String toString(boolean ignoreFreezing)
     {
         return this.toString();
-    }
-
-    /**
-     * The number of subcomponents this type has.
-     * This is always 1, i.e. the type has only itself as "subcomponents", except for CompositeType.
-     */
-    public int componentsCount()
-    {
-        return 1;
     }
 
     /**

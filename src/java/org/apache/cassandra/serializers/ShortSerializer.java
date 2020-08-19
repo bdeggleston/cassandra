@@ -29,7 +29,7 @@ public class ShortSerializer extends TypeSerializer<Short>
         return handle.isEmpty(value) ? null : handle.toShort(value);
     }
 
-    public <V> V serialize(Short value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Short value, ValueAccessor<V> handle)
     {
         return value == null ? handle.empty() : handle.valueOf(value.shortValue());
     }

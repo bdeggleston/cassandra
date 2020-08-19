@@ -25,16 +25,11 @@ import org.apache.cassandra.db.marshal.ValueAccessor;
 
 public abstract class TypeSerializer<T>
 {
-    public abstract <V> V serialize(T value, ValueAccessor<V> handle);
+    public abstract <V> V serializeBuffer(T value, ValueAccessor<V> handle);
 
     public final ByteBuffer serializeBuffer(T value)
     {
-        return serialize(value, ByteBufferAccessor.instance);
-    }
-
-    public final ByteBuffer serialize(T value)  // TODO: remove / rename
-    {
-        return serializeBuffer(value);
+        return serializeBuffer(value, ByteBufferAccessor.instance);
     }
 
     public abstract <V> T deserialize(V value, ValueAccessor<V> handle);
@@ -42,7 +37,7 @@ public abstract class TypeSerializer<T>
     /*
      * Does not modify the position or limit of the buffer even temporarily.
      */
-    public final T deserialize(ByteBuffer bytes)  // TODO: remove / rename
+    public final T deserialize(ByteBuffer bytes)
     {
         return deserialize(bytes, ByteBufferAccessor.instance);
     }

@@ -29,7 +29,7 @@ public final class DurationSerializer extends TypeSerializer<Duration>
 {
     public static final DurationSerializer instance = new DurationSerializer();
 
-    public <V> V serialize(Duration duration, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Duration duration, ValueAccessor<V> handle)
     {
         if (duration == null)
             return handle.empty();

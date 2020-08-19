@@ -62,7 +62,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
     {
         List<Pair<O, O>> pairs = new ArrayList<>(map.size());
         for (Map.Entry<K, V> entry : map.entrySet())
-            pairs.add(Pair.create(keys.serialize(entry.getKey(), accessor), values.serialize(entry.getValue(), accessor)));
+            pairs.add(Pair.create(keys.serializeBuffer(entry.getKey(), accessor), values.serializeBuffer(entry.getValue(), accessor)));
 
         Collections.sort(pairs, (l, r) -> comparators.getForAccessor(accessor).compare(l.left, r.left));
         List<O> output = new ArrayList<>(pairs.size() * 2);

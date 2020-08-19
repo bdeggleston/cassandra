@@ -31,7 +31,6 @@ import org.apache.cassandra.db.TypeSizes;
 public class ByteArrayUtil
 {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
-    public static final byte[] UNSET_BYTE_ARRAY = new byte[]{};
 
     public static int compareUnsigned(byte[] o1, byte[] o2)
     {

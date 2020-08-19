@@ -32,7 +32,7 @@ public class FloatSerializer extends TypeSerializer<Float>
         return handle.toFloat(value);
     }
 
-    public <V> V serialize(Float value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Float value, ValueAccessor<V> handle)
     {
         return (value == null) ? handle.empty() : handle.valueOf(value);
     }
