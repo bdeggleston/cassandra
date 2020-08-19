@@ -38,7 +38,7 @@ public class DecimalSerializer extends TypeSerializer<BigDecimal>
         return new BigDecimal(bi, scale);
     }
 
-    public <V> V serialize(BigDecimal value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(BigDecimal value, ValueAccessor<V> handle)
     {
         if (value == null)
             return handle.empty();

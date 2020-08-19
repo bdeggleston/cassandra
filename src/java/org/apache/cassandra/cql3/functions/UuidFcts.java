@@ -36,7 +36,7 @@ public abstract class UuidFcts
     {
         public ByteBuffer execute(ProtocolVersion protocolVersion, List<ByteBuffer> parameters)
         {
-            return UUIDSerializer.instance.serialize(UUID.randomUUID(), ByteBufferAccessor.instance);
+            return UUIDSerializer.instance.serializeBuffer(UUID.randomUUID(), ByteBufferAccessor.instance);
         }
     };
 }

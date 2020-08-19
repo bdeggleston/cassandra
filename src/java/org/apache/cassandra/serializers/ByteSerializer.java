@@ -29,7 +29,7 @@ public class ByteSerializer extends TypeSerializer<Byte>
         return value == null || handle.isEmpty(value) ? null : handle.toByte(value);
     }
 
-    public <V> V serialize(Byte value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Byte value, ValueAccessor<V> handle)
     {
         return value == null ? handle.empty() : handle.valueOf(value);
     }
