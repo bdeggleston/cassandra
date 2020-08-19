@@ -20,6 +20,7 @@ package org.apache.cassandra.db.rows;
 import java.io.IOException;
 
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.Row.Deletion;
@@ -640,7 +641,7 @@ public class UnfilteredSerializer
     {
         if (helper.includes(column))
         {
-            Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
+            Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper, ByteArrayAccessor.instance);
             if (helper.includes(cell, rowLiveness) && !helper.isDropped(cell, false))
                 builder.addCell(cell);
         }
@@ -666,7 +667,7 @@ public class UnfilteredSerializer
             int count = (int) in.readUnsignedVInt();
             while (--count >= 0)
             {
-                Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
+                Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper, ByteArrayAccessor.instance);
                 if (helper.includes(cell, rowLiveness) && !helper.isDropped(cell, true))
                     builder.addCell(cell);
             }

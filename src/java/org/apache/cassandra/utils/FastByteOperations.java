@@ -70,6 +70,11 @@ public class FastByteOperations
         return BestHolder.BEST.compare(b1, b2);
     }
 
+    public static void copy(byte[] src, int srcPosition, byte[] trg, int trgPosition, int length)
+    {
+        BestHolder.BEST.copy(src, srcPosition, trg, trgPosition, length);
+    }
+
     public static void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length)
     {
         BestHolder.BEST.copy(src, srcPosition, trg, trgPosition, length);
@@ -95,6 +100,8 @@ public class FastByteOperations
         abstract public int compare(ByteBuffer buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2);
 
         abstract public int compare(ByteBuffer buffer1, ByteBuffer buffer2);
+
+        abstract public void copy(byte[] src, int srcPosition, byte[] trg, int trgPosition, int length);
 
         abstract public void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length);
 
@@ -230,6 +237,11 @@ public class FastByteOperations
         public int compare(ByteBuffer buffer1, ByteBuffer buffer2)
         {
             return compareTo(buffer1, buffer2);
+        }
+
+        public void copy(byte[] src, int srcPosition, byte[] trg, int trgPosition, int length)
+        {
+            System.arraycopy(src, srcPosition, trg, trgPosition, length);
         }
 
         public void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length)
@@ -462,6 +474,11 @@ public class FastByteOperations
                 }
             }
             return buffer1.remaining() - buffer2.remaining();
+        }
+
+        public void copy(byte[] src, int srcPosition, byte[] trg, int trgPosition, int length)
+        {
+            System.arraycopy(src, srcPosition, trg, trgPosition, length);
         }
 
         public void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length)

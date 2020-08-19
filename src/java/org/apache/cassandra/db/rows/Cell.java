@@ -23,6 +23,7 @@ import java.util.Comparator;
 
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -57,6 +58,11 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
     };
 
     public static final Serializer serializer = new BufferCell.Serializer();
+
+    public interface Factory<V>
+    {
+        Cell<V> create(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, V value, CellPath path);
+    }
 
     protected Cell(ColumnMetadata column)
     {
@@ -219,7 +225,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 header.getType(column).writeValue(cell.value(), cell.accessor(), out);
         }
 
-        public Cell<byte[]> deserialize(DataInputPlus in, LivenessInfo rowLiveness, ColumnMetadata column, SerializationHeader header, DeserializationHelper helper) throws IOException
+        public <V> Cell<V> deserialize(DataInputPlus in, LivenessInfo rowLiveness, ColumnMetadata column, SerializationHeader header, DeserializationHelper helper, ValueAccessor<V> accessor) throws IOException
         {
             int flags = in.readUnsignedByte();
             boolean hasValue = (flags & HAS_EMPTY_VALUE_MASK) == 0;
@@ -240,7 +246,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                             ? column.cellPathSerializer().deserialize(in)
                             : null;
 
-            byte[] value = ByteArrayUtil.EMPTY_BYTE_ARRAY;
+            V value = accessor.empty();
             if (hasValue)
             {
                 if (helper.canSkipValue(column) || (path != null && helper.canSkipValue(path)))
@@ -251,13 +257,13 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 {
                     boolean isCounter = localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
 
-                    value = header.getType(column).readArray(in, DatabaseDescriptor.getMaxValueSize());
+                    value = header.getType(column).read(accessor, in, DatabaseDescriptor.getMaxValueSize());
                     if (isCounter)
-                        value = ByteBufferUtil.getArray(helper.maybeClearCounterValue(ByteBuffer.wrap(value)));  // FIXME
+                        value = helper.maybeClearCounterValue(value, accessor);
                 }
             }
 
-            return new ArrayCell(column, timestamp, ttl, localDeletionTime, value, path);
+            return accessor.cellFactory().create(column, timestamp, ttl, localDeletionTime, value, path);
         }
 
         public <T> long serializedSize(Cell<T> cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)

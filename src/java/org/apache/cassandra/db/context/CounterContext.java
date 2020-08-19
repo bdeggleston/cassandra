@@ -583,10 +583,10 @@ public class CounterContext
         return total(cell.value(), cell.accessor());
     }
 
-    public boolean shouldClearLocal(ByteBuffer context)
+    public <V> boolean shouldClearLocal(V context, ValueAccessor<V> accessor)
     {
         // #elt being negative means we have to clean local shards.
-        return context.getShort(context.position()) < 0;
+        return accessor.getShort(context, 0) < 0;
     }
 
     /**
@@ -644,22 +644,16 @@ public class CounterContext
         return marked;
     }
 
-    /**
-     * Remove all the local of a context (but keep global).
-     *
-     * @param context a counter context
-     * @return a version of {@code context} where no shards are local.
-     */
-    public ByteBuffer clearAllLocal(ByteBuffer context)
+    public <V> V clearAllLocal(V context, ValueAccessor<V> accessor)
     {
-        int count = Math.abs(context.getShort(context.position()));
+        int count = Math.abs(accessor.getShort(context, 0));
         if (count == 0)
             return context; // no local or global shards present.
 
         List<Short> globalShardIndexes = new ArrayList<>(count);
         for (int i = 0; i < count; i++)
         {
-            short elt = context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH);
+            short elt = accessor.getShort(context, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH);
             if (elt < 0)
                 globalShardIndexes.add(elt);
         }
@@ -668,18 +662,15 @@ public class CounterContext
             return context; // no local shards detected.
 
         // allocate a smaller BB for the cleared context - with no local header elts.
-        ByteBuffer cleared = ByteBuffer.allocate(context.remaining() - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH);
+        V cleared = accessor.allocate(accessor.size(context) - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH);
 
-        cleared.putShort(cleared.position(), (short) globalShardIndexes.size());
+        int offset = 0;
+        offset += accessor.putShort(cleared, offset, (short) globalShardIndexes.size());
         for (int i = 0; i < globalShardIndexes.size(); i++)
-            cleared.putShort(cleared.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
+            offset += accessor.putShort(cleared, offset + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
 
-        int origHeaderLength = headerLength(context, ByteBufferAccessor.instance);
-        ByteBufferUtil.copyBytes(context,
-                                 context.position() + origHeaderLength,
-                                 cleared,
-                                 cleared.position() + headerLength(cleared, ByteBufferAccessor.instance),
-                                 context.remaining() - origHeaderLength);
+        int origHeaderLength = headerLength(context, accessor);
+        ValueAccessor.copy(context, accessor, 0, cleared, accessor, headerLength(cleared, accessor), accessor.size(context) - origHeaderLength);
 
         return cleared;
     }

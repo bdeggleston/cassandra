@@ -20,6 +20,7 @@ package org.apache.cassandra.db.rows;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
@@ -140,10 +141,10 @@ public class DeserializationHelper
         return currentDroppedComplex != null && complexDeletion.markedForDeleteAt() <= currentDroppedComplex.droppedTime;
     }
 
-    public ByteBuffer maybeClearCounterValue(ByteBuffer value)
+    public <V> V maybeClearCounterValue(V value, ValueAccessor<V> accessor)
     {
-        return flag == Flag.FROM_REMOTE || (flag == Flag.LOCAL && CounterContext.instance().shouldClearLocal(value))
-             ? CounterContext.instance().clearAllLocal(value)
-             : value;
+        return flag == Flag.FROM_REMOTE || (flag == Flag.LOCAL && CounterContext.instance().shouldClearLocal(value, accessor))
+               ? CounterContext.instance().clearAllLocal(value, accessor)
+               : value;
     }
 }

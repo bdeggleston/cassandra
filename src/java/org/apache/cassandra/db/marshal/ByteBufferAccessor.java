@@ -24,6 +24,9 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.UUID;
 
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.rows.BufferCell;
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -61,6 +64,21 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
     public void write(ByteBuffer value, ByteBuffer out)
     {
         out.put(value.duplicate());
+    }
+
+    public <V2> void copyTo(ByteBuffer src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
+    {
+        switch (dstAccessor.getBackingKind())
+        {
+            case BUFFER:
+                FastByteOperations.copy(src, srcOffset, (ByteBuffer) dst, dstOffset, size);
+                return;
+            case ARRAY:
+                FastByteOperations.copy(src, srcOffset, (byte[]) dst, dstOffset, size);
+                return;
+            default:
+                throw new IllegalArgumentException("Unsupported copy dest: " + dstAccessor.getBackingKind());
+        }
     }
 
     public ByteBuffer read(DataInputPlus in, int length) throws IOException
@@ -177,6 +195,12 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return UUIDGen.getUUID(value);
     }
 
+    public int putShort(ByteBuffer dest, int offset, short value)
+    {
+        dest.putShort(offset, value);
+        return TypeSizes.SHORT_SIZE;
+    }
+
     public ByteBuffer empty()
     {
         return ByteBufferUtil.EMPTY_BYTE_BUFFER;
@@ -239,5 +263,15 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         if (o instanceof ByteBuffer)
             return (ByteBuffer) o;
         throw new IllegalArgumentException("Unhandled type: " + o.getClass().getName());
+    }
+
+    public ByteBuffer allocate(int size)
+    {
+        return ByteBuffer.allocate(size);
+    }
+
+    public Cell.Factory<ByteBuffer> cellFactory()
+    {
+        return BufferCell::new;
     }
 }

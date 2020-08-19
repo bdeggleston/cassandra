@@ -25,10 +25,14 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.UUID;
 
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.rows.ArrayCell;
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FastByteOperations;
 import org.apache.cassandra.utils.Hex;
 import org.apache.cassandra.utils.UUIDGen;
 
@@ -64,6 +68,20 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
     public void write(byte[] value, ByteBuffer out)
     {
         out.put(value);
+    }
+
+    public <V2> void copyTo(byte[] src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
+    {
+        switch (dstAccessor.getBackingKind())
+        {
+            case ARRAY:
+                FastByteOperations.copy(src, srcOffset, (byte[]) dst, dstOffset, size);
+                return;
+            case BUFFER:
+                FastByteOperations.copy(src, srcOffset, (ByteBuffer) dst, dstOffset, size);
+            default:
+                throw new IllegalArgumentException("Unsupported copy dest: " + dstAccessor.getBackingKind());
+        }
     }
 
     public byte[] read(DataInputPlus in, int length) throws IOException
@@ -176,6 +194,12 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return new UUID(getLong(value, 0), getLong(value, 8));
     }
 
+    public int putShort(byte[] dest, int offset, short value)
+    {
+        ByteArrayUtil.putShort(dest, offset, value);
+        return TypeSizes.SHORT_SIZE;
+    }
+
     public byte[] empty()
     {
         return EMPTY;
@@ -243,5 +267,15 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         if (o instanceof ByteBuffer)
             return ByteBufferUtil.getArray((ByteBuffer) o);
         throw new IllegalArgumentException("Unhandled type: " + o.getClass().getName());
+    }
+
+    public byte[] allocate(int size)
+    {
+        return new byte[size];
+    }
+
+    public Cell.Factory<byte[]> cellFactory()
+    {
+        return ArrayCell::new;
     }
 }
