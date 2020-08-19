@@ -29,8 +29,8 @@ import java.util.UUID;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.ClusteringBoundOrBoundary;
-import org.apache.cassandra.db.ClusteringBoundary;
 import org.apache.cassandra.db.ClusteringPrefix;
+import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.CellPath;
@@ -72,6 +72,11 @@ public interface ValueAccessor<V>
     void write(V value, DataOutputPlus out) throws IOException;
     void write(V value, ByteBuffer out);
     <V2> void copyTo(V src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size);
+    void digest(V value, int offset, int size, Digest digest);
+    default void digest(V value, Digest digest)
+    {
+        digest(value, 0, size(value), digest);
+    }
     V read(DataInputPlus in, int length) throws IOException;
     V slice(V input, int offset, int length);
     default V sliceWithShortLength(V input, int offset)

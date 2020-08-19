@@ -25,6 +25,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.UUID;
 
+import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -80,6 +81,11 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
             default:
                 throw new IllegalArgumentException("Unsupported copy dest: " + dstAccessor.getBackingKind());
         }
+    }
+
+    public void digest(byte[] value, int offset, int size, Digest digest)
+    {
+        digest.update(value, offset, size);
     }
 
     public byte[] read(DataInputPlus in, int length) throws IOException

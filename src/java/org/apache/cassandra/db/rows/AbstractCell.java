@@ -123,9 +123,9 @@ public abstract class AbstractCell<V> extends Cell<V>
     public void digest(Digest digest)
     {
         if (isCounterCell())
-            digest.updateWithCounterContext(buffer());
+            digest.updateWithCounterContext(value(), accessor());
         else
-            digest.update(buffer());
+            digest.update(value(), accessor());
 
         digest.updateWithLong(timestamp())
               .updateWithInt(ttl())

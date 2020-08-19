@@ -58,24 +58,4 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
         assert !kind.isBoundary();
         return new ArrayClusteringBound(kind, values);
     }
-
-    public static ArrayClusteringBound inclusiveStartOf(byte[]... values)
-    {
-        return create(ClusteringPrefix.Kind.INCL_START_BOUND, values);
-    }
-
-    public static ArrayClusteringBound inclusiveEndOf(byte[]... values)
-    {
-        return create(ClusteringPrefix.Kind.INCL_END_BOUND, values);
-    }
-
-    public static ArrayClusteringBound exclusiveStartOf(byte[]... values)
-    {
-        return create(ClusteringPrefix.Kind.EXCL_START_BOUND, values);
-    }
-
-    public static ArrayClusteringBound exclusiveEndOf(byte[]... values)
-    {
-        return create(ClusteringPrefix.Kind.EXCL_END_BOUND, values);
-    }
 }

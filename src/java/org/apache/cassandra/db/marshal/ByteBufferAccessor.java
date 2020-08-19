@@ -24,21 +24,10 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.UUID;
 
-import org.apache.cassandra.db.BufferClustering;
-import org.apache.cassandra.db.BufferClusteringBound;
-import org.apache.cassandra.db.BufferClusteringBoundary;
-import org.apache.cassandra.db.Clustering;
-import org.apache.cassandra.db.ClusteringBound;
-import org.apache.cassandra.db.ClusteringBoundOrBoundary;
-import org.apache.cassandra.db.ClusteringBoundary;
-import org.apache.cassandra.db.ClusteringPrefix;
+import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.db.TypeSizes;
-import org.apache.cassandra.db.rows.BufferCell;
-import org.apache.cassandra.db.rows.Cell;
-import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FastByteOperations;
 import org.apache.cassandra.utils.UUIDGen;
@@ -89,6 +78,11 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
             default:
                 throw new IllegalArgumentException("Unsupported copy dest: " + dstAccessor.getBackingKind());
         }
+    }
+
+    public void digest(ByteBuffer value, int offset, int size, Digest digest)
+    {
+        digest.update(value, offset, size);
     }
 
     public ByteBuffer read(DataInputPlus in, int length) throws IOException
