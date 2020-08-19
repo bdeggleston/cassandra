@@ -70,14 +70,4 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
     {
         return getRawValues();
     }
-
-    public long unsharedHeapSize()
-    {
-        return Clustering.EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
-    }
-
-    public long unsharedHeapSizeExcludingData()
-    {
-        return Clustering.EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
-    }
 }

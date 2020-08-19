@@ -37,8 +37,6 @@ import static org.apache.cassandra.db.AbstractBufferClusteringPrefix.EMPTY_VALUE
 
 public interface Clustering<T> extends ClusteringPrefix<T>
 {
-    static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClustering(EMPTY_VALUES_ARRAY));
-
     public static final Serializer serializer = new Serializer();
 
     public long unsharedHeapSizeExcludingData();

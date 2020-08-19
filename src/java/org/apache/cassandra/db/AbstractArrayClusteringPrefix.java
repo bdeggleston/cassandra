@@ -28,7 +28,6 @@ import org.apache.cassandra.utils.ObjectSizes;
 public abstract class AbstractArrayClusteringPrefix extends AbstractClusteringPrefix<byte[]>
 {
     public static final byte[][] EMPTY_VALUES_ARRAY = new byte[0][];
-    private static final long EMPTY_SIZE = ObjectSizes.measure(new ArrayClustering(EMPTY_VALUES_ARRAY));
     protected final Kind kind;
     protected final byte[][] values;
 
@@ -74,16 +73,6 @@ public abstract class AbstractArrayClusteringPrefix extends AbstractClusteringPr
         for (int i=0; i<values.length; i++)
             out[i] = ByteBuffer.wrap(values[i]);
         return out;
-    }
-
-    public long unsharedHeapSize()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
-    }
-
-    public long unsharedHeapSizeExcludingData()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
     }
 
     public ClusteringPrefix<byte[]> minimize()

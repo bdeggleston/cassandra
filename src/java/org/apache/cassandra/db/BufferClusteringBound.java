@@ -21,10 +21,13 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class BufferClusteringBound extends BufferClusteringBoundOrBoundary implements ClusteringBound<ByteBuffer>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClusteringBound(Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
+
     /** The smallest start bound, i.e. the one that starts before any row. */
     public static final BufferClusteringBound BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
     /** The biggest end bound, i.e. the one that ends after any row. */
@@ -33,6 +36,16 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
     protected BufferClusteringBound(ClusteringPrefix.Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
     }
 
     @Override
