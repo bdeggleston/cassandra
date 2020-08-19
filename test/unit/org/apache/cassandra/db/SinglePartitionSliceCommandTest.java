@@ -217,7 +217,7 @@ public class SinglePartitionSliceCommandTest
                     assertEquals(deletionTime, marker.closeDeletionTime(false).markedForDeleteAt());
 
                 // check clustering values
-                Clustering clustering = Util.clustering(CFM_SLICES.comparator, ck1, count / 2);
+                Clustering<?> clustering = Util.clustering(CFM_SLICES.comparator, ck1, count / 2);
                 for (int i = 0; i < CFM_SLICES.comparator.size(); i++)
                 {
                     int cmp = CFM_SLICES.comparator.compareComponent(i,

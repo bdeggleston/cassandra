@@ -123,7 +123,7 @@ public class PartitionImplementationTest
         return content; // not sorted
     }
 
-    Row makeRow(Clustering clustering, String colValue)
+    Row makeRow(Clustering<?> clustering, String colValue)
     {
         ColumnMetadata defCol = metadata.getColumn(new ColumnIdentifier("col", true));
         Row.Builder row = BTreeRow.unsortedBuilder();
@@ -282,7 +282,7 @@ public class PartitionImplementationTest
         // get
         for (int i=0; i < KEY_RANGE; ++i)
         {
-            Clustering cl = clustering(i);
+            Clustering<?> cl = clustering(i);
             assertRowsEqual(getRow(sortedContent, cl),
                             partition.getRow(cl));
         }
@@ -354,7 +354,7 @@ public class PartitionImplementationTest
         {
             int skip = rand.nextInt(KEY_RANGE / 10);
             pos += skip * mul;
-            Clustering cl = clustering(pos);
+            Clustering<?> cl = clustering(pos);
             Row row = searchIter.next(cl);  // returns row with deletion, incl. empty row with deletion
             if (row == null && skip == 0 && started)    // allowed to return null if already reported row
                 continue;
@@ -376,9 +376,9 @@ public class PartitionImplementationTest
             int skip = rand.nextInt(KEY_RANGE / 10) * (rand.nextInt(3) + 2 / 3); // increased chance of getting 0
             pos += skip;
             int sz = rand.nextInt(KEY_RANGE / 10) + (skip == 0 ? 1 : 0);    // if start is exclusive need at least sz 1
-            Clustering start = clustering(pos);
+            Clustering<ByteBuffer> start = clustering(pos);
             pos += sz;
-            Clustering end = clustering(pos);
+            Clustering<ByteBuffer> end = clustering(pos);
             Slice slice = Slice.make(skip == 0 ? exclusiveStartOf(start) : inclusiveStartOf(start), inclusiveEndOf(end));
             builder.add(slice);
         }
@@ -471,7 +471,7 @@ public class PartitionImplementationTest
         assertArrayEquals("Arrays differ. Expected " + a1s + " was " + a2s, a1, a2);
     }
 
-    private Row getRow(NavigableSet<Clusterable> sortedContent, Clustering cl)
+    private Row getRow(NavigableSet<Clusterable> sortedContent, Clustering<?> cl)
     {
         NavigableSet<Clusterable> nexts = sortedContent.tailSet(cl, true);
         if (nexts.isEmpty())

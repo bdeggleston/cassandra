@@ -1686,7 +1686,7 @@ public class ClusteringColumnRestrictionsTest
      *
      * @param bound the bound to check
      */
-    private static void assertEmptyStart(ClusteringBound bound)
+    private static void assertEmptyStart(ClusteringBound<?> bound)
     {
         assertTrue(bound.isBottom());
     }
@@ -1696,7 +1696,7 @@ public class ClusteringColumnRestrictionsTest
      *
      * @param bound the bound to check
      */
-    private static void assertEmptyEnd(ClusteringBound bound)
+    private static void assertEmptyEnd(ClusteringBound<?> bound)
     {
         assertTrue(bound.isTop());
     }
@@ -1708,7 +1708,7 @@ public class ClusteringColumnRestrictionsTest
      * @param isInclusive if the bound is expected to be inclusive
      * @param elements the expected elements of the clustering
      */
-    private static void assertStartBound(ClusteringBound bound, boolean isInclusive, ByteBuffer... elements)
+    private static void assertStartBound(ClusteringBound<?> bound, boolean isInclusive, ByteBuffer... elements)
     {
         assertBound(bound, true, isInclusive, elements);
     }
@@ -1720,12 +1720,12 @@ public class ClusteringColumnRestrictionsTest
      * @param isInclusive if the bound is expected to be inclusive
      * @param elements the expected elements of the clustering
      */
-    private static void assertEndBound(ClusteringBound bound, boolean isInclusive, ByteBuffer... elements)
+    private static void assertEndBound(ClusteringBound<?> bound, boolean isInclusive, ByteBuffer... elements)
     {
         assertBound(bound, false, isInclusive, elements);
     }
 
-    private static void assertBound(ClusteringBound bound, boolean isStart, boolean isInclusive, ByteBuffer... elements)
+    private static void assertBound(ClusteringBound<?> bound, boolean isStart, boolean isInclusive, ByteBuffer... elements)
     {
         assertEquals("the bound size is not the expected one:", elements.length, bound.size());
         assertEquals("the bound should be a " + (isStart ? "start" : "end") + " but is a " + (bound.isStart() ? "start" : "end"), isStart, bound.isStart());

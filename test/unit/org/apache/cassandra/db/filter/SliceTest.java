@@ -344,7 +344,7 @@ public class SliceTest
         assertTrue(Slice.isEmpty(cc, makeBound(INCL_START_BOUND, 5, 0), makeBound(EXCL_END_BOUND, 3, 0)));
     }
 
-    private static ClusteringBound makeBound(ClusteringPrefix.Kind kind, Integer... components)
+    private static ClusteringBound<?> makeBound(ClusteringPrefix.Kind kind, Integer... components)
     {
         ByteBuffer[] values = new ByteBuffer[components.length];
         for (int i = 0; i < components.length; i++)

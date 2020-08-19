@@ -111,12 +111,12 @@ public class RowTest
             while (merged.hasNext())
             {
                 RangeTombstoneBoundMarker openMarker = (RangeTombstoneBoundMarker)merged.next();
-                ClusteringBound openBound = openMarker.clustering();
+                ClusteringBound<?> openBound = openMarker.clustering();
                 DeletionTime openDeletion = new DeletionTime(openMarker.deletionTime().markedForDeleteAt(),
                                                                    openMarker.deletionTime().localDeletionTime());
 
                 RangeTombstoneBoundMarker closeMarker = (RangeTombstoneBoundMarker)merged.next();
-                ClusteringBound closeBound = closeMarker.clustering();
+                ClusteringBound<?> closeBound = closeMarker.clustering();
                 DeletionTime closeDeletion = new DeletionTime(closeMarker.deletionTime().markedForDeleteAt(),
                                                                     closeMarker.deletionTime().localDeletionTime());
 
@@ -188,7 +188,7 @@ public class RowTest
         assertEquals(Integer.valueOf(1), map.get(row));
     }
 
-    private void assertRangeTombstoneMarkers(ClusteringBound start, ClusteringBound end, DeletionTime deletionTime, Object[] expected)
+    private void assertRangeTombstoneMarkers(ClusteringBound<?> start, ClusteringBound<?> end, DeletionTime deletionTime, Object[] expected)
     {
         AbstractType clusteringType = (AbstractType) metadata.comparator.subtype(0);
 

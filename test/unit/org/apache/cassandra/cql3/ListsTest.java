@@ -143,7 +143,7 @@ public class ListsTest extends CQLTester
         DecoratedKey key = Murmur3Partitioner.instance.decorateKey(keyBuf);
         UpdateParameters parameters =
             new UpdateParameters(metaData, null, QueryOptions.DEFAULT, System.currentTimeMillis(), FBUtilities.nowInSeconds(), 1000, Collections.emptyMap());
-        Clustering clustering = Clustering.make(ByteBufferUtil.bytes(1));
+        Clustering<?> clustering = Clustering.make(ByteBufferUtil.bytes(1));
         parameters.newRow(clustering);
         prepender.execute(key, parameters);
 

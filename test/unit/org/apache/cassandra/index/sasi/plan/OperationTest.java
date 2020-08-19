@@ -663,12 +663,12 @@ public class OperationTest extends SchemaLoader
         return buildRow(Clustering.EMPTY, deletion, cells);
     }
 
-    private static Row buildRow(Clustering clustering, Cell<?>... cells)
+    private static Row buildRow(Clustering<?> clustering, Cell<?>... cells)
     {
         return buildRow(clustering, null, cells);
     }
 
-    private static Row buildRow(Clustering clustering, Row.Deletion deletion, Cell<?>... cells)
+    private static Row buildRow(Clustering<?> clustering, Row.Deletion deletion, Cell<?>... cells)
     {
         Row.Builder rowBuilder = BTreeRow.sortedBuilder();
         rowBuilder.newRow(clustering);

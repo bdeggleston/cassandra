@@ -53,7 +53,7 @@ public class RowsTest
     private static final TableMetadata kcvm;
     private static final ColumnMetadata v;
     private static final ColumnMetadata m;
-    private static final Clustering c1;
+    private static final Clustering<?> c1;
 
     static
     {
@@ -127,9 +127,9 @@ public class RowsTest
     private static class DiffListener implements RowDiffListener
     {
         int updates = 0;
-        Clustering clustering = null;
+        Clustering<?> clustering = null;
 
-        private void updateClustering(Clustering c)
+        private void updateClustering(Clustering<?> c)
         {
             assert clustering == null || clustering == c;
             clustering = c;
@@ -208,7 +208,7 @@ public class RowsTest
         return now * 1000000L;
     }
 
-    private static Row.Builder createBuilder(Clustering c, int now, ByteBuffer vVal, ByteBuffer mKey, ByteBuffer mVal)
+    private static Row.Builder createBuilder(Clustering<?> c, int now, ByteBuffer vVal, ByteBuffer mKey, ByteBuffer mVal)
     {
         long ts = secondToTs(now);
         Row.Builder builder = BTreeRow.unsortedBuilder();
