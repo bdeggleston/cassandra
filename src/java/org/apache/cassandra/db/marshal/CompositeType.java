@@ -368,11 +368,13 @@ public class CompositeType extends AbstractCompositeType
         return getClass().getName() + TypeParser.stringifyTypeParameters(types);
     }
 
+    @SafeVarargs
     public static <V> V build(ValueAccessor<V> accessor, V... values)
     {
         return build(accessor, false, values);
     }
 
+    @SafeVarargs
     public static <V> V build(ValueAccessor<V> accessor, boolean isStatic, V... values)
     {
         int totalLength = isStatic ? 2 : 0;

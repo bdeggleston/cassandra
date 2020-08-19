@@ -27,6 +27,7 @@ import java.nio.charset.Charset;
 
 import org.apache.cassandra.db.TypeSizes;
 
+// mostly copied from java.io.Bits
 public class ByteArrayUtil
 {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
