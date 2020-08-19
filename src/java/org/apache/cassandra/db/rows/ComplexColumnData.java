@@ -30,7 +30,6 @@ import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.marshal.ByteType;
 import org.apache.cassandra.db.marshal.SetType;
-import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.DroppedColumn;
 import org.apache.cassandra.utils.BiLongAccumulator;

@@ -56,6 +56,7 @@ import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.lifecycle.View;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -1314,7 +1315,7 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
                 indexer.finish();
         }
 
-        private boolean shouldCleanupOldValue(Cell<?> oldCell, Cell<?> newCell)
+        private <V1, V2> boolean shouldCleanupOldValue(Cell<V1> oldCell, Cell<V2> newCell)
         {
             // If either the value or timestamp is different, then we
             // should delete from the index. If not, then we can infer that
@@ -1325,7 +1326,7 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
             // Completely identical cells (including expiring columns with
             // identical ttl & localExpirationTime) will not get this far due
             // to the oldCell.equals(newCell) in StandardUpdater.update
-            return !oldCell.value().equals(newCell.value()) || oldCell.timestamp() != newCell.timestamp();
+            return !ValueAccessor.equals(oldCell, newCell) || oldCell.timestamp() != newCell.timestamp();
         }
     }
 
