@@ -210,7 +210,7 @@ public class ListType<T> extends CollectionType<List<T>>
         return sb.toString();
     }
 
-    public List<ByteBuffer> serializedValues(Iterator<Cell> cells)
+    public List<ByteBuffer> serializedValues(Iterator<Cell<?>> cells)
     {
         assert isMultiCell;
         List<ByteBuffer> bbs = new ArrayList<ByteBuffer>();

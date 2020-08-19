@@ -160,7 +160,7 @@ public abstract class AbstractRow implements Row
                     ComplexColumnData complexData = (ComplexColumnData)cd;
                     if (!complexData.complexDeletion().isLive())
                         sb.append("del(").append(cd.column().name).append(")=").append(complexData.complexDeletion());
-                    for (Cell cell : complexData)
+                    for (Cell<?> cell : complexData)
                         sb.append(", ").append(cell);
                 }
             }
@@ -168,7 +168,7 @@ public abstract class AbstractRow implements Row
             {
                 if (cd.column().isSimple())
                 {
-                    Cell cell = (Cell)cd;
+                    Cell<?> cell = (Cell<?>)cd;
                     sb.append(cell.column().name).append('=');
                     if (cell.isTombstone())
                         sb.append("<tombstone>");
@@ -179,7 +179,7 @@ public abstract class AbstractRow implements Row
                 {
                     sb.append(cd.column().name).append('=');
                     ComplexColumnData complexData = (ComplexColumnData) cd;
-                    Function<Cell, String> transform = null;
+                    Function<Cell<?>, String> transform = null;
                     if (cd.column().type.isCollection())
                     {
                         CollectionType ct = (CollectionType) cd.column().type;

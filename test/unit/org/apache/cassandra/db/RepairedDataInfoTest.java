@@ -243,7 +243,7 @@ public class RepairedDataInfoTest
         return getArray(info.getDigest());
     }
 
-    public static Cell cell(ColumnMetadata def, Object value)
+    public static Cell<?> cell(ColumnMetadata def, Object value)
     {
         ByteBuffer bb = value instanceof ByteBuffer ? (ByteBuffer)value : ((AbstractType)def.type).decompose(value);
         return new BufferCell(def, 1L, BufferCell.NO_TTL, BufferCell.NO_DELETION_TIME, bb, null);

@@ -176,7 +176,7 @@ public class MetadataCollector implements PartitionStatisticsCollector
         updateLocalDeletionTime(newInfo.localExpirationTime());
     }
 
-    public void update(Cell cell)
+    public void update(Cell<?> cell)
     {
         updateTimestamp(cell.timestamp());
         updateTTL(cell.ttl());

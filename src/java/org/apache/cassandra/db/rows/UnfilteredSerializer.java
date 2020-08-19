@@ -245,7 +245,7 @@ public class UnfilteredSerializer
                 try
                 {
                     if (cd.column.isSimple())
-                        Cell.serializer.serialize((Cell) cd, column, out, pkLiveness, header);
+                        Cell.serializer.serialize((Cell<?>) cd, column, out, pkLiveness, header);
                     else
                         writeComplexColumn((ComplexColumnData) cd, column, (flags & HAS_COMPLEX_DELETION) != 0, pkLiveness, header, out);
                 }
@@ -271,7 +271,7 @@ public class UnfilteredSerializer
             header.writeDeletionTime(data.complexDeletion(), out);
 
         out.writeUnsignedVInt(data.cellsCount());
-        for (Cell cell : data)
+        for (Cell<?> cell : data)
             Cell.serializer.serialize(cell, column, out, rowLiveness, header);
     }
 
@@ -360,7 +360,7 @@ public class UnfilteredSerializer
             assert column != null;
 
             if (data.column.isSimple())
-                return v + Cell.serializer.serializedSize((Cell) data, column, pkLiveness, header);
+                return v + Cell.serializer.serializedSize((Cell<?>) data, column, pkLiveness, header);
             else
                 return v + sizeOfComplexColumn((ComplexColumnData) data, column, hasComplexDeletion, pkLiveness, header);
         }, size);
@@ -374,7 +374,7 @@ public class UnfilteredSerializer
             size += header.deletionTimeSerializedSize(data.complexDeletion());
 
         size += TypeSizes.sizeofUnsignedVInt(data.cellsCount());
-        for (Cell cell : data)
+        for (Cell<?> cell : data)
             size += Cell.serializer.serializedSize(cell, column, rowLiveness, header);
 
         return size;
@@ -666,7 +666,7 @@ public class UnfilteredSerializer
             int count = (int) in.readUnsignedVInt();
             while (--count >= 0)
             {
-                Cell cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
+                Cell<byte[]> cell = Cell.serializer.deserialize(in, rowLiveness, column, header, helper);
                 if (helper.includes(cell, rowLiveness) && !helper.isDropped(cell, true))
                     builder.addCell(cell);
             }

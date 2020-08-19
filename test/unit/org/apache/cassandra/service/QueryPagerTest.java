@@ -516,7 +516,7 @@ public class QueryPagerTest
 
     private void assertCell(Row row, ColumnMetadata column, int value)
     {
-        Cell cell = row.getCell(column);
+        Cell<?> cell = row.getCell(column);
         assertNotNull(cell);
         assertEquals(value, ByteBufferUtil.toInt(cell.buffer()));
     }

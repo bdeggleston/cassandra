@@ -249,8 +249,8 @@ public class ColumnIndex
                 if (!row.isStatic())
                     return null;
             case REGULAR:
-                Cell cell = row.getCell(column);
-                return cell == null || !cell.isLive(nowInSecs) ? null : cell.accessor().toBuffer(cell.value());
+                Cell<?> cell = row.getCell(column);
+                return cell == null || !cell.isLive(nowInSecs) ? null : cell.buffer();
 
             default:
                 return null;

@@ -117,7 +117,7 @@ public class HintsReaderTest
                     Row row = mutation.getPartitionUpdates().iterator().next().iterator().next();
                     assertEquals(1, Iterables.size(row.cells()));
                     ValueAccessors.assertDataEquals(bytes(i), row.clustering().get(0));
-                    Cell cell = row.cells().iterator().next();
+                    Cell<?> cell = row.cells().iterator().next();
                     assertNotNull(cell);
                     ValueAccessors.assertDataEquals(bytes(i), cell.buffer());
                     assertEquals(timestamp * 1000, cell.timestamp());

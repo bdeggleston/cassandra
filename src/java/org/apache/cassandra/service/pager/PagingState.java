@@ -356,7 +356,7 @@ public class PagingState
                 // We need to be backward compatible with 2.1/2.2 nodes paging states. Which means we have to send
                 // the full cellname of the "last" cell in the row we get (since that's how 2.1/2.2 nodes will start after
                 // that last row if they get that paging state).
-                Iterator<Cell> cells = row.cellsInLegacyOrder(metadata, true).iterator();
+                Iterator<Cell<?>> cells = row.cellsInLegacyOrder(metadata, true).iterator();
                 if (!cells.hasNext())
                 {
                     // If the last returned row has no cell, this means in 2.1/2.2 terms that we stopped on the row
@@ -366,7 +366,7 @@ public class PagingState
                 }
                 else
                 {
-                    Cell cell = cells.next();
+                    Cell<?> cell = cells.next();
                     mark = encodeCellName(metadata, row.clustering(), cell.column().name.bytes, cell.column().isComplex() ? cell.path().get(0) : null);
                 }
             }

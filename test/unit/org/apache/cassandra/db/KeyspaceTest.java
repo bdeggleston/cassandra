@@ -166,7 +166,7 @@ public class KeyspaceTest extends CQLTester
                     for (int i = sliceEnd; i >= sliceStart; i--)
                     {
                         Row row = rowIterator.next();
-                        Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
+                        Cell<?> cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                         assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i), cell.buffer());
                     }
                 }
@@ -175,7 +175,7 @@ public class KeyspaceTest extends CQLTester
                     for (int i = sliceStart; i <= sliceEnd; i++)
                     {
                         Row row = rowIterator.next();
-                        Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
+                        Cell<?> cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                         assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i), cell.buffer());
                     }
                 }
@@ -235,7 +235,7 @@ public class KeyspaceTest extends CQLTester
                 try (RowIterator rowIterator = iterator.next())
                 {
                     Row row = rowIterator.next();
-                    Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
+                    Cell<?> cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                     assertEquals(ByteBufferUtil.bytes(i), cell.buffer());
                 }
             }
@@ -259,7 +259,7 @@ public class KeyspaceTest extends CQLTester
                 for (int expected : columnValues)
                 {
                     Row row = rowIterator.next();
-                    Cell cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
+                    Cell<?> cell = row.getCell(cfs.metadata().getColumn(new ColumnIdentifier("c", false)));
                     assertEquals(
                             String.format("Expected %s, but got %s", ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(expected)), ByteBufferUtil.bytesToHex(cell.buffer())),
                             ByteBufferUtil.bytes(expected), cell.buffer());

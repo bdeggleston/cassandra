@@ -427,7 +427,7 @@ public class RowAndDeletionMergeIteratorTest
         update.add(BTreeRow.singleCellRow(update.metadata().comparator.make(col1), makeCell(defA, a, 0)));
     }
 
-    private Cell makeCell(ColumnMetadata columnMetadata, int value, long timestamp)
+    private Cell<?> makeCell(ColumnMetadata columnMetadata, int value, long timestamp)
     {
         return BufferCell.live(columnMetadata, timestamp, ((AbstractType) columnMetadata.cellValueType()).decompose(value));
     }

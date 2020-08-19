@@ -567,35 +567,35 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
     }
 
 
-    private static Row createRow(int ck, Cell... columns)
+    private static Row createRow(int ck, Cell<?>... columns)
     {
         return createRow(ck, ck, columns);
     }
 
-    private static Row createRow(int ck1, int ck2, Cell... columns)
+    private static Row createRow(int ck1, int ck2, Cell<?>... columns)
     {
         BTreeRow.Builder builder = new BTreeRow.Builder(true);
         builder.newRow(Util.clustering(metadata.comparator, ck1, ck2));
-        for (Cell cell : columns)
+        for (Cell<?> cell : columns)
             builder.addCell(cell);
         return builder.build();
     }
 
-    private static Row createStaticRow(Cell... columns)
+    private static Row createStaticRow(Cell<?>... columns)
     {
         Row.Builder builder = new BTreeRow.Builder(true);
         builder.newRow(Clustering.STATIC_CLUSTERING);
-        for (Cell cell : columns)
+        for (Cell<?> cell : columns)
             builder.addCell(cell);
         return builder.build();
     }
 
-    private static Cell createCell(ColumnMetadata metadata, int v)
+    private static Cell<?> createCell(ColumnMetadata metadata, int v)
     {
         return createCell(metadata, v, 100L, BufferCell.NO_DELETION_TIME);
     }
 
-    private static Cell createCell(ColumnMetadata metadata, int v, long timestamp, int localDeletionTime)
+    private static Cell<?> createCell(ColumnMetadata metadata, int v, long timestamp, int localDeletionTime)
     {
         return new BufferCell(metadata,
                               timestamp,

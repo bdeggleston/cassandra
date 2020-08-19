@@ -244,11 +244,6 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         validate(cellValue, accessor);
     }
 
-    public final void validateCellValue(ByteBuffer cellValue) throws MarshalException
-    {
-        validateCellValue(cellValue, ByteBufferAccessor.instance);
-    }
-
     /* Most of our internal type should override that. */
     public CQL3Type asCQL3Type()
     {

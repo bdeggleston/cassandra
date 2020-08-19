@@ -65,7 +65,7 @@ public abstract class AbstractCell<V> extends Cell<V>
         return ttl() != NO_TTL;
     }
 
-    public Cell markCounterLocalToBeCleared()
+    public Cell<?> markCounterLocalToBeCleared()
     {
         if (!isCounterCell())
             return this;
@@ -75,7 +75,7 @@ public abstract class AbstractCell<V> extends Cell<V>
         return marked == value ? this : new BufferCell(column, timestamp(), ttl(), localDeletionTime(), marked, path());
     }
 
-    public Cell purge(DeletionPurger purger, int nowInSec)
+    public Cell<?> purge(DeletionPurger purger, int nowInSec)
     {
         if (!isLive(nowInSec))
         {
@@ -98,14 +98,14 @@ public abstract class AbstractCell<V> extends Cell<V>
         return this;
     }
 
-    public Cell copy(AbstractAllocator allocator)
+    public Cell<?> copy(AbstractAllocator allocator)
     {
         CellPath path = path();
         return new BufferCell(column, timestamp(), ttl(), localDeletionTime(), allocator.clone(buffer()), path == null ? null : path.copy(allocator));
     }
 
     // note: while the cell returned may be different, the value is the same, so if the value is offheap it must be referenced inside a guarded context (or copied)
-    public Cell updateAllTimestamp(long newTimestamp)
+    public Cell<?> updateAllTimestamp(long newTimestamp)
     {
         return new BufferCell(column, isTombstone() ? newTimestamp - 1 : newTimestamp, ttl(), localDeletionTime(), buffer(), path());
     }
@@ -162,6 +162,17 @@ public abstract class AbstractCell<V> extends Cell<V>
         return timestamp();
     }
 
+    public static <V1, V2> boolean equals(Cell<V1> left, Cell<V2> right)
+    {
+        return left.column().equals(right.column())
+               && left.isCounterCell() == right.isCounterCell()
+               && left.timestamp() == right.timestamp()
+               && left.ttl() == right.ttl()
+               && left.localDeletionTime() == right.localDeletionTime()
+               && ValueAccessor.equals(left.value(), left.accessor(), right.value(), right.accessor())
+               && Objects.equals(left.path(), right.path());
+    }
+
     @Override
     public boolean equals(Object other)
     {
@@ -171,14 +182,7 @@ public abstract class AbstractCell<V> extends Cell<V>
         if(!(other instanceof Cell))
             return false;
 
-        Cell that = (Cell)other;
-        return this.column().equals(that.column())
-               && this.isCounterCell() == that.isCounterCell()
-               && this.timestamp() == that.timestamp()
-               && this.ttl() == that.ttl()
-               && this.localDeletionTime() == that.localDeletionTime()
-               && ValueAccessor.equals(this.value(), this.accessor(), that.value(), that.accessor())
-               && Objects.equals(this.path(), that.path());
+        return equals(this, (Cell<?>) other);
     }
 
     @Override

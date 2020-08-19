@@ -46,7 +46,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
     public static final int NO_DELETION_TIME = Integer.MAX_VALUE;
     public static final int MAX_DELETION_TIME = Integer.MAX_VALUE - 1;
 
-    public final static Comparator<Cell> comparator = (c1, c2) ->
+    public final static Comparator<Cell<?>> comparator = (c1, c2) ->
     {
         int cmp = c1.column().compareTo(c2.column());
         if (cmp != 0)
@@ -137,21 +137,21 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
      */
     public abstract CellPath path();
 
-    public abstract Cell withUpdatedColumn(ColumnMetadata newColumn);
+    public abstract Cell<?> withUpdatedColumn(ColumnMetadata newColumn);
 
-    public abstract Cell withUpdatedValue(ByteBuffer newValue);
+    public abstract Cell<?> withUpdatedValue(ByteBuffer newValue);
 
-    public abstract Cell withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime);
+    public abstract Cell<?> withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime);
 
-    public abstract Cell copy(AbstractAllocator allocator);
-
-    @Override
-    // Overrides super type to provide a more precise return type.
-    public abstract Cell markCounterLocalToBeCleared();
+    public abstract Cell<?> copy(AbstractAllocator allocator);
 
     @Override
     // Overrides super type to provide a more precise return type.
-    public abstract Cell purge(DeletionPurger purger, int nowInSec);
+    public abstract Cell<?> markCounterLocalToBeCleared();
+
+    @Override
+    // Overrides super type to provide a more precise return type.
+    public abstract Cell<?> purge(DeletionPurger purger, int nowInSec);
 
     /**
      * The serialization format for cell is:
@@ -180,7 +180,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
         private final static int USE_ROW_TIMESTAMP_MASK      = 0x08; // Wether the cell has the same timestamp than the row this is a cell of.
         private final static int USE_ROW_TTL_MASK            = 0x10; // Wether the cell has the same ttl than the row this is a cell of.
 
-        public void serialize(Cell cell, ColumnMetadata column, DataOutputPlus out, LivenessInfo rowLiveness, SerializationHeader header) throws IOException
+        public <T> void serialize(Cell<T> cell, ColumnMetadata column, DataOutputPlus out, LivenessInfo rowLiveness, SerializationHeader header) throws IOException
         {
             assert cell != null;
             boolean hasValue = cell.valueSize() > 0;
@@ -260,7 +260,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
             return new ArrayCell(column, timestamp, ttl, localDeletionTime, value, path);
         }
 
-        public long serializedSize(Cell cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)
+        public <T> long serializedSize(Cell<T> cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)
         {
             long size = 1; // flags
             boolean hasValue = cell.valueSize() > 0;

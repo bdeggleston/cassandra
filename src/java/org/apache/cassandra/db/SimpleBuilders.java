@@ -446,7 +446,7 @@ public abstract class SimpleBuilders
             return column;
         }
 
-        private Cell cell(ColumnMetadata column, ByteBuffer value, CellPath path)
+        private Cell<?> cell(ColumnMetadata column, ByteBuffer value, CellPath path)
         {
             if (value == null)
                 return BufferCell.tombstone(column, timestamp, nowInSec, path);

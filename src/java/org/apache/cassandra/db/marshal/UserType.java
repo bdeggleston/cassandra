@@ -157,7 +157,7 @@ public class UserType extends TupleType implements SchemaElement
         return ShortType.instance;
     }
 
-    public ByteBuffer serializeForNativeProtocol(Iterator<Cell> cells, ProtocolVersion protocolVersion)
+    public ByteBuffer serializeForNativeProtocol(Iterator<Cell<?>> cells, ProtocolVersion protocolVersion)
     {
         assert isMultiCell;
 
@@ -165,14 +165,14 @@ public class UserType extends TupleType implements SchemaElement
         short fieldPosition = 0;
         while (cells.hasNext())
         {
-            Cell cell = cells.next();
+            Cell<?> cell = cells.next();
 
             // handle null fields that aren't at the end
             short fieldPositionOfCell = ByteBufferUtil.toShort(cell.path().get(0));
             while (fieldPosition < fieldPositionOfCell)
                 components[fieldPosition++] = null;
 
-            components[fieldPosition++] = cell.accessor().toBuffer(cell.value());
+            components[fieldPosition++] = cell.buffer();
         }
 
         // append trailing nulls for missing cells

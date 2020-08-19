@@ -146,9 +146,9 @@ public class UpdateParameters
 
     public void addCell(ColumnMetadata column, CellPath path, ByteBuffer value) throws InvalidRequestException
     {
-        Cell cell = ttl == LivenessInfo.NO_TTL
-                  ? BufferCell.live(column, timestamp, value, path)
-                  : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
+        Cell<?> cell = ttl == LivenessInfo.NO_TTL
+                       ? BufferCell.live(column, timestamp, value, path)
+                       : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
         builder.addCell(cell);
     }
 

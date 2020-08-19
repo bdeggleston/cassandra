@@ -59,7 +59,7 @@ public class CollectionEntryIndex extends CollectionKeyIndexBase
         ByteBuffer mapValue = components[1];
 
         ColumnMetadata columnDef = indexedColumn;
-        Cell cell = data.getCell(columnDef, CellPath.create(mapKey));
+        Cell<?> cell = data.getCell(columnDef, CellPath.create(mapKey));
         if (cell == null || !cell.isLive(nowInSec))
             return true;
 

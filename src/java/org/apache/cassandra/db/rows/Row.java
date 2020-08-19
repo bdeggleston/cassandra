@@ -125,7 +125,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      * @param c the simple column for which to fetch the cell.
      * @return the corresponding cell or {@code null} if the row has no such cell.
      */
-    public Cell getCell(ColumnMetadata c);
+    public Cell<?> getCell(ColumnMetadata c);
 
     /**
      * Return a cell for a given complex column and cell path.
@@ -134,7 +134,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      * @param path the cell path for which to fetch the cell.
      * @return the corresponding cell or {@code null} if the row has no such cell.
      */
-    public Cell getCell(ColumnMetadata c, CellPath path);
+    public Cell<?> getCell(ColumnMetadata c, CellPath path);
 
     /**
      * The data for a complex column.
@@ -153,7 +153,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      *
      * @return an iterable over the cells of this row.
      */
-    public Iterable<Cell> cells();
+    public Iterable<Cell<?>> cells();
 
     /**
      * A collection of the ColumnData representation of this row, for columns with some data (possibly not live) present
@@ -175,7 +175,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      * @param reversed if cells should returned in reverse order.
      * @return an iterable over the cells of this row in "legacy order".
      */
-    public Iterable<Cell> cellsInLegacyOrder(TableMetadata metadata, boolean reversed);
+    public Iterable<Cell<?>> cellsInLegacyOrder(TableMetadata metadata, boolean reversed);
 
     /**
      * Whether the row stores any (non-live) complex deletion for any complex column.
@@ -397,7 +397,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
             return time.deletes(info);
         }
 
-        public boolean deletes(Cell cell)
+        public boolean deletes(Cell<?> cell)
         {
             return time.deletes(cell);
         }
@@ -743,7 +743,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
             private DeletionTime activeDeletion;
 
             private final ComplexColumnData.Builder complexBuilder;
-            private final List<Iterator<Cell>> complexCells;
+            private final List<Iterator<Cell<?>>> complexCells;
             private final CellReducer cellReducer;
 
             public ColumnDataReducer(int size, boolean hasComplex)
@@ -785,10 +785,10 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
             {
                 if (column.isSimple())
                 {
-                    Cell merged = null;
+                    Cell<?> merged = null;
                     for (int i=0, isize=versions.size(); i<isize; i++)
                     {
-                        Cell cell = (Cell) versions.get(i);
+                        Cell<?> cell = (Cell<?>) versions.get(i);
                         if (!activeDeletion.deletes(cell))
                             merged = merged == null ? cell : Cells.reconcile(merged, cell);
                     }
@@ -818,10 +818,10 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
                         cellReducer.setActiveDeletion(activeDeletion);
                     }
 
-                    Iterator<Cell> cells = MergeIterator.get(complexCells, Cell.comparator, cellReducer);
+                    Iterator<Cell<?>> cells = MergeIterator.get(complexCells, Cell.comparator, cellReducer);
                     while (cells.hasNext())
                     {
-                        Cell merged = cells.next();
+                        Cell<?> merged = cells.next();
                         if (merged != null)
                             complexBuilder.addCell(merged);
                     }
@@ -836,10 +836,10 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
             }
         }
 
-        private static class CellReducer extends MergeIterator.Reducer<Cell, Cell>
+        private static class CellReducer extends MergeIterator.Reducer<Cell<?>, Cell<?>>
         {
             private DeletionTime activeDeletion;
-            private Cell merged;
+            private Cell<?> merged;
 
             public void setActiveDeletion(DeletionTime activeDeletion)
             {
@@ -847,13 +847,13 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
                 onKeyChange();
             }
 
-            public void reduce(int idx, Cell cell)
+            public void reduce(int idx, Cell<?> cell)
             {
                 if (!activeDeletion.deletes(cell))
                     merged = merged == null ? cell : Cells.reconcile(merged, cell);
             }
 
-            protected Cell getReduced()
+            protected Cell<?> getReduced()
             {
                 return merged;
             }

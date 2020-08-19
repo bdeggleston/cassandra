@@ -726,7 +726,7 @@ public class DataResolverTest extends AbstractReadResponseTest
         return ByteBufferUtil.bytes(b);
     }
 
-    private Cell mapCell(int k, int v, long ts)
+    private Cell<?> mapCell(int k, int v, long ts)
     {
         return BufferCell.live(m, ts, bb(v), CellPath.create(bb(k)));
     }
@@ -752,7 +752,7 @@ public class DataResolverTest extends AbstractReadResponseTest
         builder.newRow(Clustering.EMPTY);
         DeletionTime expectedCmplxDelete = new DeletionTime(ts[1] - 1, nowInSec);
         builder.addComplexDeletion(m, expectedCmplxDelete);
-        Cell expectedCell = mapCell(1, 1, ts[1]);
+        Cell<?> expectedCell = mapCell(1, 1, ts[1]);
         builder.addCell(expectedCell);
 
         InetAddressAndPort peer2 = replicas.get(1).endpoint();
@@ -842,7 +842,7 @@ public class DataResolverTest extends AbstractReadResponseTest
         builder.newRow(Clustering.EMPTY);
         DeletionTime expectedCmplxDelete = new DeletionTime(ts[0] - 1, nowInSec);
         builder.addComplexDeletion(m, expectedCmplxDelete);
-        Cell expectedCell = mapCell(0, 0, ts[0]);
+        Cell<?> expectedCell = mapCell(0, 0, ts[0]);
         builder.addCell(expectedCell);
 
         // empty map column
@@ -899,7 +899,7 @@ public class DataResolverTest extends AbstractReadResponseTest
         builder.newRow(Clustering.EMPTY);
         DeletionTime expectedCmplxDelete = new DeletionTime(ts[1] - 1, nowInSec);
         builder.addComplexDeletion(m, expectedCmplxDelete);
-        Cell expectedCell = mapCell(1, 1, ts[1]);
+        Cell<?> expectedCell = mapCell(1, 1, ts[1]);
         builder.addCell(expectedCell);
 
         InetAddressAndPort peer2 = replicas.get(1).endpoint();

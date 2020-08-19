@@ -395,13 +395,13 @@ public class PartitionUpdate extends AbstractBTreePartition
             {
                 if (cd.column().isSimple())
                 {
-                    maxTimestamp = Math.max(maxTimestamp, ((Cell)cd).timestamp());
+                    maxTimestamp = Math.max(maxTimestamp, ((Cell<?>)cd).timestamp());
                 }
                 else
                 {
                     ComplexColumnData complexData = (ComplexColumnData)cd;
                     maxTimestamp = Math.max(maxTimestamp, complexData.complexDeletion().markedForDeleteAt());
-                    for (Cell cell : complexData)
+                    for (Cell<?> cell : complexData)
                         maxTimestamp = Math.max(maxTimestamp, cell.timestamp());
                 }
             }
@@ -413,13 +413,13 @@ public class PartitionUpdate extends AbstractBTreePartition
             {
                 if (cd.column().isSimple())
                 {
-                    maxTimestamp = Math.max(maxTimestamp, ((Cell) cd).timestamp());
+                    maxTimestamp = Math.max(maxTimestamp, ((Cell<?>) cd).timestamp());
                 }
                 else
                 {
                     ComplexColumnData complexData = (ComplexColumnData) cd;
                     maxTimestamp = Math.max(maxTimestamp, complexData.complexDeletion().markedForDeleteAt());
-                    for (Cell cell : complexData)
+                    for (Cell<?> cell : complexData)
                         maxTimestamp = Math.max(maxTimestamp, cell.timestamp());
                 }
             }
@@ -447,7 +447,7 @@ public class PartitionUpdate extends AbstractBTreePartition
 
     private static void addMarksForRow(Row row, List<CounterMark> marks)
     {
-        for (Cell cell : row.cells())
+        for (Cell<?> cell : row.cells())
         {
             if (cell.isCounterCell())
                 marks.add(new CounterMark(row, cell.column(), cell.path()));

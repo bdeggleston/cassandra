@@ -244,13 +244,13 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         return sb.toString();
     }
 
-    public List<ByteBuffer> serializedValues(Iterator<Cell> cells)
+    public List<ByteBuffer> serializedValues(Iterator<Cell<?>> cells)
     {
         assert isMultiCell;
         List<ByteBuffer> bbs = new ArrayList<ByteBuffer>();
         while (cells.hasNext())
         {
-            Cell c = cells.next();
+            Cell<?> c = cells.next();
             bbs.add(c.path().get(0));
             bbs.add(c.buffer());
         }

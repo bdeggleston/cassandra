@@ -75,7 +75,7 @@ public class KeysIndex extends CassandraIndex
         if (row == null)
             return true;
 
-        Cell cell = row.getCell(indexedColumn);
+        Cell<?> cell = row.getCell(indexedColumn);
 
         return (cell == null
              || !cell.isLive(nowInSec)
