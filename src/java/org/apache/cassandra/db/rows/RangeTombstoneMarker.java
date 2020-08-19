@@ -125,25 +125,24 @@ public interface RangeTombstoneMarker extends Unfiltered
             if (reversed)
                 isBeforeClustering = !isBeforeClustering;
 
-            ByteBuffer[] values = bound.getBufferArray(); // FIXME: does this need to be a buffer array?
             RangeTombstoneMarker merged;
             if (previousDeletionTimeInMerged.isLive())
             {
                 merged = isBeforeClustering
-                       ? RangeTombstoneBoundMarker.inclusiveOpen(reversed, values, newDeletionTimeInMerged)
-                       : RangeTombstoneBoundMarker.exclusiveOpen(reversed, values, newDeletionTimeInMerged);
+                       ? RangeTombstoneBoundMarker.inclusiveOpen(reversed, bound, newDeletionTimeInMerged)
+                       : RangeTombstoneBoundMarker.exclusiveOpen(reversed, bound, newDeletionTimeInMerged);
             }
             else if (newDeletionTimeInMerged.isLive())
             {
                 merged = isBeforeClustering
-                       ? RangeTombstoneBoundMarker.exclusiveClose(reversed, values, previousDeletionTimeInMerged)
-                       : RangeTombstoneBoundMarker.inclusiveClose(reversed, values, previousDeletionTimeInMerged);
+                       ? RangeTombstoneBoundMarker.exclusiveClose(reversed, bound, previousDeletionTimeInMerged)
+                       : RangeTombstoneBoundMarker.inclusiveClose(reversed, bound, previousDeletionTimeInMerged);
             }
             else
             {
                 merged = isBeforeClustering
-                       ? RangeTombstoneBoundaryMarker.exclusiveCloseInclusiveOpen(reversed, values, previousDeletionTimeInMerged, newDeletionTimeInMerged)
-                       : RangeTombstoneBoundaryMarker.inclusiveCloseExclusiveOpen(reversed, values, previousDeletionTimeInMerged, newDeletionTimeInMerged);
+                       ? RangeTombstoneBoundaryMarker.exclusiveCloseInclusiveOpen(reversed, bound, previousDeletionTimeInMerged, newDeletionTimeInMerged)
+                       : RangeTombstoneBoundaryMarker.inclusiveCloseExclusiveOpen(reversed, bound, previousDeletionTimeInMerged, newDeletionTimeInMerged);
             }
 
             return merged;

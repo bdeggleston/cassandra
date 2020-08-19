@@ -50,6 +50,7 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.RowUpdateBuilder;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.partitions.AbstractUnfilteredPartitionIterator;
@@ -319,13 +320,12 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
                 }
                 else
                 {
-                    ByteBuffer[] byteBuffers = expected.clustering().getBufferArray();
                     RangeTombstoneBoundMarker closeMarker = RangeTombstoneBoundMarker.exclusiveClose(isRevered,
-                                                                                                     byteBuffers,
+                                                                                                     expected.clustering(),
                                                                                                      openDeletionTime);
 
                     RangeTombstoneBoundMarker nextOpenMarker = RangeTombstoneBoundMarker.inclusiveOpen(isRevered,
-                                                                                                       byteBuffers,
+                                                                                                       expected.clustering(),
                                                                                                        openDeletionTime);
                     assertEquals(closeMarker, data);
                     assertEquals(nextOpenMarker, output.get(index + 1));

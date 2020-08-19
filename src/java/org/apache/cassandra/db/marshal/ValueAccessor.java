@@ -26,9 +26,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.apache.cassandra.db.BufferClusteringBound;
+import org.apache.cassandra.db.BufferClusteringBoundary;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.ClusteringBoundOrBoundary;
+import org.apache.cassandra.db.ClusteringBoundary;
 import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.db.TypeSizes;
@@ -39,6 +42,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
+
+import static org.apache.cassandra.db.ClusteringPrefix.Kind.*;
 
 public interface ValueAccessor<V>
 {
@@ -51,10 +56,60 @@ public interface ValueAccessor<V>
         Clustering<V> clustering();
         ClusteringBound<V> bound(ClusteringPrefix.Kind kind, V... values);
         ClusteringBound<V> bound(ClusteringPrefix.Kind kind);
-        ClusteringBoundOrBoundary<V> boundary(ClusteringPrefix.Kind kind, V... values);
+        ClusteringBoundary<V> boundary(ClusteringPrefix.Kind kind, V... values);
         default ClusteringBoundOrBoundary<V> boundOrBoundary(ClusteringPrefix.Kind kind, V... values)
         {
             return kind.isBoundary() ? boundary(kind, values) : bound(kind, values);
+        }
+
+        default ClusteringBound<V> inclusiveStartOf(V[] from)
+        {
+            return bound(INCL_START_BOUND, from);
+        }
+
+        default ClusteringBound<V> inclusiveEndOf(V[] from)
+        {
+            return bound(INCL_END_BOUND, from);
+        }
+
+        default ClusteringBound<V> exclusiveStartOf(V[] from)
+        {
+            return bound(EXCL_START_BOUND, from);
+        }
+
+        default ClusteringBound<V> exclusiveEndOf(V[] from)
+        {
+            return bound(EXCL_END_BOUND, from);
+        }
+
+        default ClusteringBound<V> inclusiveOpen(boolean reversed, V[] boundValues)
+        {
+            return bound(reversed ? INCL_END_BOUND : INCL_START_BOUND, boundValues);
+        }
+
+        default ClusteringBound<V> exclusiveOpen(boolean reversed, V[] boundValues)
+        {
+            return bound(reversed ? EXCL_END_BOUND : EXCL_START_BOUND, boundValues);
+        }
+
+        default ClusteringBound<V> inclusiveClose(boolean reversed, V[] boundValues)
+        {
+            return bound(reversed ? INCL_START_BOUND : INCL_END_BOUND, boundValues);
+        }
+
+        default ClusteringBound<V> exclusiveClose(boolean reversed, V[] boundValues)
+        {
+            return bound(reversed ? EXCL_START_BOUND : EXCL_END_BOUND, boundValues);
+        }
+
+        default ClusteringBoundary<V> inclusiveCloseExclusiveOpen(boolean reversed, V[] boundValues)
+        {
+            return boundary(reversed ? EXCL_END_INCL_START_BOUNDARY : INCL_END_EXCL_START_BOUNDARY, boundValues);
+        }
+
+        default ClusteringBoundary<V> exclusiveCloseInclusiveOpen(boolean reversed, V[] boundValues)
+        {
+            return boundary(reversed ? INCL_END_EXCL_START_BOUNDARY : EXCL_END_INCL_START_BOUNDARY, boundValues);
         }
     }
 

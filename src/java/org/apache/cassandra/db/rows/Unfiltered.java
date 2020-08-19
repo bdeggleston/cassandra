@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db.rows;
 
+import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.Clusterable;
@@ -36,6 +37,8 @@ public interface Unfiltered extends Clusterable
      * The kind of the atom: either row or range tombstone marker.
      */
     public Kind kind();
+
+    ClusteringPrefix<?> clustering();
 
     /**
      * Digest the atom using the provided {@link Digest}.

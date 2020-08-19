@@ -80,7 +80,7 @@ public class UpdateParameters
             throw new InvalidRequestException(String.format("Out of bound timestamp, must be in [%d, %d]", Long.MIN_VALUE + 1, Long.MAX_VALUE));
     }
 
-    public void newRow(Clustering<?> clustering) throws InvalidRequestException
+    public <V> void newRow(Clustering<V> clustering) throws InvalidRequestException
     {
         if (clustering == Clustering.STATIC_CLUSTERING)
         {
