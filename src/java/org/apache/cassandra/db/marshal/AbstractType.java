@@ -159,7 +159,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getString(bytes, ByteBufferAccessor.instance);
     }
 
-    public final String getString(ValueAware vv)
+    public final <V> String getString(ValueAware<V> vv)
     {
         return getString(vv.value(), vv.accessor());
     }

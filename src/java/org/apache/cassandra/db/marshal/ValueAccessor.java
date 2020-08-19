@@ -152,6 +152,11 @@ public interface ValueAccessor<V>
         return Objects.equals(accessorL.toBuffer(left), accessorR.toBuffer(right));  // FIXME
     }
 
+    public static <L, R> boolean equals(ValueAware<L> left, ValueAware<R> right)
+    {
+        return equals(left.value(), left.accessor(), right.value(), right.accessor());
+    }
+
     public static <T> int hashCode(T value, ValueAccessor<T> accessor)
     {
         return Objects.hashCode(accessor.toBuffer(value));  // FIXME
