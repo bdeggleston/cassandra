@@ -21,13 +21,26 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary implements ClusteringBoundary<ByteBuffer>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClusteringBoundary(Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
+
     protected BufferClusteringBoundary(Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
     }
 
     public ClusteringPrefix<ByteBuffer> minimize()

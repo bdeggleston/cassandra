@@ -19,9 +19,12 @@
 package org.apache.cassandra.db;
 
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ObjectSizes;
 
 public class ArrayClustering extends AbstractArrayClusteringPrefix implements Clustering<byte[]>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ArrayClustering(EMPTY_VALUES_ARRAY));
+
     public static final Clustering<byte[]> EMPTY = new ArrayClustering() {
         public String toString(TableMetadata metadata)
         {
@@ -32,6 +35,16 @@ public class ArrayClustering extends AbstractArrayClusteringPrefix implements Cl
     public ArrayClustering(byte[]... values)
     {
         super(Kind.CLUSTERING, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
     }
 
     public static ArrayClustering make(byte[]... values)

@@ -20,8 +20,12 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.utils.ObjectSizes;
+
 public abstract class BufferClusteringBoundOrBoundary extends AbstractBufferClusteringPrefix implements ClusteringBoundOrBoundary<ByteBuffer>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClusteringBound(Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
+
     protected BufferClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
     {
         super(kind, values);

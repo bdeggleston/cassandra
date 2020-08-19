@@ -20,6 +20,7 @@ package org.apache.cassandra.db;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 
 /**
  * The clustering column values for a row.
@@ -34,9 +35,21 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  */
 public class BufferClustering extends AbstractBufferClusteringPrefix implements Clustering<ByteBuffer>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClustering(EMPTY_VALUES_ARRAY));
+
     BufferClustering(ByteBuffer... values)
     {
         super(Kind.CLUSTERING, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
     }
 
     public ClusteringPrefix<ByteBuffer> minimize()

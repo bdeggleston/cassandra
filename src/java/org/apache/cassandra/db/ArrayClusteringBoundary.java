@@ -18,15 +18,25 @@
 
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.utils.memory.AbstractAllocator;
+import org.apache.cassandra.utils.ObjectSizes;
 
 public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary implements ClusteringBoundary<byte[]>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ArrayClusteringBoundary(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
+
     public ArrayClusteringBoundary(Kind kind, byte[][] values)
     {
         super(kind, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
     }
 
     public static ClusteringBoundary<byte[]> create(Kind kind, byte[][] values)

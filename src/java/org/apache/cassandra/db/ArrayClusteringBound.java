@@ -20,10 +20,12 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary implements ClusteringBound<byte[]>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ArrayClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY));
     /** The smallest start bound, i.e. the one that starts before any row. */
     public static final ArrayClusteringBound BOTTOM = new ArrayClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, EMPTY_VALUES_ARRAY);
     /** The biggest end bound, i.e. the one that ends after any row. */
@@ -32,6 +34,16 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
     public ArrayClusteringBound(Kind kind, byte[][] values)
     {
         super(kind, values);
+    }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
     }
 
     @Override
