@@ -80,15 +80,15 @@ public class UpdateParameters
             throw new InvalidRequestException(String.format("Out of bound timestamp, must be in [%d, %d]", Long.MIN_VALUE + 1, Long.MAX_VALUE));
     }
 
-    public void newRow(Clustering<?> clustering) throws InvalidRequestException
+    public <V> void newRow(Clustering<V> clustering) throws InvalidRequestException
     {
         if (metadata.isDense() && !metadata.isCompound())
         {
             // If it's a COMPACT STORAGE table with a single clustering column and for backward compatibility we
             // don't want to allow that to be empty (even though this would be fine for the storage engine).
             assert clustering.size() == 1;
-            ByteBuffer value = clustering.bufferAt(0);
-            if (value == null || !value.hasRemaining())
+            V value = clustering.get(0);
+            if (value == null || clustering.accessor().size(value) == 0)
                 throw new InvalidRequestException("Invalid empty or null value for column " + metadata.clusteringColumns().get(0).name);
         }
 

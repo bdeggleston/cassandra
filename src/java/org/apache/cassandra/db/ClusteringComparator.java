@@ -181,6 +181,11 @@ public class ClusteringComparator implements Comparator<Clusterable>
         return clusteringTypes.get(i).compare(v1, accessor1, v2, accessor2);
     }
 
+    public <V1, V2> int compareComponent(int i, Clustering<V1> v1, Clustering<V2> v2)
+    {
+        return compareComponent(i, v1.get(i), v1.accessor(), v2.get(i), v2.accessor());
+    }
+
     /**
      * Returns whether this clustering comparator is compatible with the provided one,
      * that is if the provided one can be safely replaced by this new one.

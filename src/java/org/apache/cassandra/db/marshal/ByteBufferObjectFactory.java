@@ -25,7 +25,7 @@ import org.apache.cassandra.db.BufferClusteringBound;
 import org.apache.cassandra.db.BufferClusteringBoundary;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
-import org.apache.cassandra.db.ClusteringBoundOrBoundary;
+import org.apache.cassandra.db.ClusteringBoundary;
 import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.rows.BufferCell;
 import org.apache.cassandra.db.rows.Cell;
@@ -79,7 +79,7 @@ class ByteBufferObjectFactory implements ValueAccessor.ObjectFactory<ByteBuffer>
         return kind.isStart() ? BOTTOM_BOUND : TOP_BOUND;
     }
 
-    public ClusteringBoundOrBoundary<ByteBuffer> boundary(ClusteringPrefix.Kind kind, ByteBuffer... values)
+    public ClusteringBoundary<ByteBuffer> boundary(ClusteringPrefix.Kind kind, ByteBuffer... values)
     {
         return new BufferClusteringBoundary(kind, values);
     }

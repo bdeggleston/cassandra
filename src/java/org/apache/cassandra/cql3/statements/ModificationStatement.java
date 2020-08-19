@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.auth.Permission;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
@@ -748,17 +749,23 @@ public abstract class ModificationStatement implements CQLStatement
                 {
                     for (Clustering<?> clustering : clusterings)
                     {
-                        for (ByteBuffer c : clustering.getBufferArray())
-                        {
-                            if (c != null && c.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)
-                                throw new InvalidRequestException(String.format("Key length of %d is longer than maximum of %d",
-                                                                                clustering.dataSize(),
-                                                                                FBUtilities.MAX_UNSIGNED_SHORT));
-                        }
+                        validateClustering(clustering);
                         addUpdateForKey(updateBuilder, clustering, params);
                     }
                 }
             }
+        }
+    }
+
+    private <V> void validateClustering(Clustering<V> clustering)
+    {
+        ValueAccessor<V> accessor = clustering.accessor();
+        for (V v : clustering.getRawValues())
+        {
+            if (v != null && accessor.size(v) > FBUtilities.MAX_UNSIGNED_SHORT)
+                throw new InvalidRequestException(String.format("Key length of %d is longer than maximum of %d",
+                                                                clustering.dataSize(),
+                                                                FBUtilities.MAX_UNSIGNED_SHORT));
         }
     }
 
