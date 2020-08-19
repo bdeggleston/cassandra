@@ -29,6 +29,7 @@ import org.apache.cassandra.db.BufferClusteringBound;
 import org.apache.cassandra.db.BufferClusteringBoundary;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
+import org.apache.cassandra.db.ClusteringBoundOrBoundary;
 import org.apache.cassandra.db.ClusteringBoundary;
 import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.TypeSizes;
@@ -50,7 +51,7 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     private static final ObjectFactory<ByteBuffer> factory = new ObjectFactory<ByteBuffer>()
     {
-        public Cell<ByteBuffer> createCell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, ByteBuffer value, CellPath path)
+        public Cell<ByteBuffer> cell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, ByteBuffer value, CellPath path)
         {
             return new BufferCell(column, timestamp, ttl, localDeletionTime, value, path);
         }
@@ -60,34 +61,24 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
             return new BufferClustering(values);
         }
 
-        public ClusteringBound<ByteBuffer> inclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+        public Clustering<ByteBuffer> clustering()
         {
-            return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_END_BOUND : ClusteringPrefix.Kind.INCL_START_BOUND, boundValues);
+            return BufferClustering.EMPTY;
         }
 
-        public ClusteringBound<ByteBuffer> exclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
+        public ClusteringBound<ByteBuffer> bound(ClusteringPrefix.Kind kind, ByteBuffer... values)
         {
-            return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_END_BOUND : ClusteringPrefix.Kind.EXCL_START_BOUND, boundValues);
+            return new BufferClusteringBound(kind, values);
         }
 
-        public ClusteringBound<ByteBuffer> inclusiveClose(boolean reversed, ByteBuffer[] boundValues)
+        public ClusteringBound<ByteBuffer> bound(ClusteringPrefix.Kind kind)
         {
-            return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_START_BOUND : ClusteringPrefix.Kind.INCL_END_BOUND, boundValues);
+            return kind.isStart() ? BufferClusteringBound.BOTTOM : BufferClusteringBound.TOP;
         }
 
-        public ClusteringBound<ByteBuffer> exclusiveClose(boolean reversed, ByteBuffer[] boundValues)
+        public ClusteringBoundOrBoundary<ByteBuffer> boundary(ClusteringPrefix.Kind kind, ByteBuffer... values)
         {
-            return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_START_BOUND : ClusteringPrefix.Kind.EXCL_END_BOUND, boundValues);
-        }
-
-        public ClusteringBoundary<ByteBuffer> inclusiveCloseExclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-        {
-            return new BufferClusteringBoundary(reversed ? ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY : ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY, boundValues);
-        }
-
-        public ClusteringBoundary<ByteBuffer> exclusiveCloseInclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-        {
-            return new BufferClusteringBoundary(reversed ? ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY : ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY, boundValues);
+            return new BufferClusteringBoundary(kind, values);
         }
     };
 

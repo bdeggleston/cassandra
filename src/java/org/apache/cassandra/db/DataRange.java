@@ -19,6 +19,7 @@ package org.apache.cassandra.db;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.filter.*;
@@ -430,7 +431,7 @@ public class DataRange
             if (in.readBoolean())
             {
                 ClusteringComparator comparator = metadata.comparator;
-                Clustering<byte[]> lastReturned = Clustering.serializer.deserialize(in, version, comparator.subtypes());
+                Clustering<byte[]> lastReturned = Clustering.serializer.deserialize(ByteArrayAccessor.instance, in, version, comparator.subtypes());
                 boolean inclusive = in.readBoolean();
                 return new Paging(range, filter, comparator, lastReturned, inclusive);
             }

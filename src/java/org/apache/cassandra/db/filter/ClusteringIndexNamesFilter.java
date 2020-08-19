@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.partitions.*;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.transform.Transformation;
@@ -250,7 +251,7 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
             BTreeSet.Builder<Clustering<?>> clusterings = BTreeSet.builder(comparator);
             int size = (int)in.readUnsignedVInt();
             for (int i = 0; i < size; i++)
-                clusterings.add(Clustering.serializer.deserialize(in, version, comparator.subtypes()));
+                clusterings.add(Clustering.serializer.deserialize(ByteArrayAccessor.instance, in, version, comparator.subtypes()));
 
             return new ClusteringIndexNamesFilter(clusterings.build(), reversed);
         }

@@ -27,6 +27,7 @@ import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.sstable.format.Version;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -128,8 +129,8 @@ public class IndexInfo
 
         public IndexInfo deserialize(DataInputPlus in) throws IOException
         {
-            ClusteringPrefix<byte[]> firstName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
-            ClusteringPrefix<byte[]> lastName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> firstName = ClusteringPrefix.serializer.deserialize(ByteArrayAccessor.instance, in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> lastName = ClusteringPrefix.serializer.deserialize(ByteArrayAccessor.instance, in, version, clusteringTypes);
             long offset = in.readUnsignedVInt();
             long width = in.readVInt() + WIDTH_BASE;
             DeletionTime endOpenMarker = null;

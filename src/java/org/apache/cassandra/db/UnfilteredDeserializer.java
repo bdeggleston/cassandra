@@ -19,6 +19,7 @@ package org.apache.cassandra.db;
 
 import java.io.IOException;
 
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -36,7 +37,7 @@ public class UnfilteredDeserializer
     protected final DataInputPlus in;
     protected final DeserializationHelper helper;
 
-    private final ClusteringPrefix.Deserializer clusteringDeserializer;
+    private final ClusteringPrefix.Deserializer<byte[]> clusteringDeserializer;
     private final SerializationHeader header;
 
     private int nextFlags;
@@ -55,7 +56,7 @@ public class UnfilteredDeserializer
         this.in = in;
         this.helper = helper;
         this.header = header;
-        this.clusteringDeserializer = new ClusteringPrefix.Deserializer(metadata.comparator, in, header);
+        this.clusteringDeserializer = new ClusteringPrefix.Deserializer<>(metadata.comparator, in, header, ByteArrayAccessor.instance);
         this.builder = BTreeRow.sortedBuilder();
     }
 
