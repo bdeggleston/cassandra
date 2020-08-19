@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteArrayUtil;
@@ -49,6 +50,7 @@ public interface ValueAccessor<V>
 
     void write(V value, DataOutputPlus out) throws IOException;
     void write(V value, ByteBuffer out);
+    <V2> void copyTo(V src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size);
     V read(DataInputPlus in, int length) throws IOException;
     V slice(V input, int offset, int length);
     default V sliceWithShortLength(V input, int offset)
@@ -104,6 +106,8 @@ public interface ValueAccessor<V>
         write(value, out);
     }
 
+    int putShort(V dest, int offset, short value);
+
     default boolean isEmpty(V value)
     {
         return size(value) == 0;
@@ -129,6 +133,10 @@ public interface ValueAccessor<V>
     V valueOf(double v);
 
     V convert(Object o);
+
+    V allocate(int size);
+
+    Cell.Factory<V> cellFactory();
 
     public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
     {
@@ -160,5 +168,10 @@ public interface ValueAccessor<V>
     public static <T> int hashCode(T value, ValueAccessor<T> accessor)
     {
         return Objects.hashCode(accessor.toBuffer(value));  // FIXME
+    }
+
+    public static <V1, V2> void copy(V1 src, ValueAccessor<V1> srcAccessor, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
+    {
+        srcAccessor.copyTo(src, srcOffset, dst, dstAccessor, dstOffset, size);
     }
 }

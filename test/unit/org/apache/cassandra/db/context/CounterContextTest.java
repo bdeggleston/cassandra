@@ -401,26 +401,26 @@ public class CounterContextTest
         state = ContextState.allocate(0, 0, 1);
         state.writeRemote(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
+        assertFalse(cc.shouldClearLocal(state.context, ByteBufferAccessor.instance));
         marked = cc.markLocalToBeCleared(state.context);
         assertEquals(0, marked.getShort(marked.position()));
         assertSame(state.context, marked); // should return the original context
 
-        cleared = cc.clearAllLocal(marked);
+        cleared = cc.clearAllLocal(marked, ByteBufferAccessor.instance);
         assertSame(cleared, marked); // shouldn't alter anything either
 
         // a single local shard
         state = ContextState.allocate(0, 1, 0);
         state.writeLocal(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
+        assertFalse(cc.shouldClearLocal(state.context, ByteBufferAccessor.instance));
         marked = cc.markLocalToBeCleared(state.context);
-        assertTrue(cc.shouldClearLocal(marked));
+        assertTrue(cc.shouldClearLocal(marked, ByteBufferAccessor.instance));
         assertEquals(-1, marked.getShort(marked.position()));
         assertNotSame(state.context, marked); // shouldn't alter in place, as it used to do
 
-        cleared = cc.clearAllLocal(marked);
-        assertFalse(cc.shouldClearLocal(cleared));
+        cleared = cc.clearAllLocal(marked, ByteBufferAccessor.instance);
+        assertFalse(cc.shouldClearLocal(cleared, ByteBufferAccessor.instance));
         assertEquals(0, cleared.getShort(cleared.position()));
 
         // 2 global + 1 local shard
@@ -429,9 +429,9 @@ public class CounterContextTest
         state.writeGlobal(CounterId.fromInt(2), 2L, 2L);
         state.writeGlobal(CounterId.fromInt(3), 3L, 3L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
+        assertFalse(cc.shouldClearLocal(state.context, ByteBufferAccessor.instance));
         marked = cc.markLocalToBeCleared(state.context);
-        assertTrue(cc.shouldClearLocal(marked));
+        assertTrue(cc.shouldClearLocal(marked, ByteBufferAccessor.instance));
 
         assertEquals(-3, marked.getShort(marked.position()));
         assertEquals(0, marked.getShort(marked.position() + headerSizeLength));
@@ -451,8 +451,8 @@ public class CounterContextTest
         assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength));
         assertEquals(3L, marked.getLong(marked.position() + headerLength + 2 * stepLength + idLength + clockLength));
 
-        cleared = cc.clearAllLocal(marked);
-        assertFalse(cc.shouldClearLocal(cleared));
+        cleared = cc.clearAllLocal(marked, ByteBufferAccessor.instance);
+        assertFalse(cc.shouldClearLocal(cleared, ByteBufferAccessor.instance));
 
         assertEquals(2, cleared.getShort(cleared.position())); // 2 global shards
         assertEquals(Short.MIN_VALUE + 1, cleared.getShort(marked.position() + headerEltLength));
@@ -475,12 +475,12 @@ public class CounterContextTest
         state = ContextState.allocate(1, 0, 0);
         state.writeGlobal(CounterId.fromInt(1), 1L, 1L);
 
-        assertFalse(cc.shouldClearLocal(state.context));
+        assertFalse(cc.shouldClearLocal(state.context, ByteBufferAccessor.instance));
         marked = cc.markLocalToBeCleared(state.context);
         assertEquals(1, marked.getShort(marked.position()));
         assertSame(state.context, marked);
 
-        cleared = cc.clearAllLocal(marked);
+        cleared = cc.clearAllLocal(marked, ByteBufferAccessor.instance);
         assertSame(cleared, marked);
     }
 

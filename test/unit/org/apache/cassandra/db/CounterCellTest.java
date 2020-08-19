@@ -26,6 +26,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.BufferCell;
@@ -274,7 +275,7 @@ public class CounterCellTest
         Cell<?> original = createCounterCellFromContext(cfs, col, state, 5);
 
         ColumnMetadata cDef = cfs.metadata().getColumn(col);
-        Cell<?> cleared = BufferCell.live(cDef, 5, CounterContext.instance().clearAllLocal(state.context));
+        Cell<?> cleared = BufferCell.live(cDef, 5, CounterContext.instance().clearAllLocal(state.context, ByteBufferAccessor.instance));
 
         original.digest(digest1);
         cleared.digest(digest2);
