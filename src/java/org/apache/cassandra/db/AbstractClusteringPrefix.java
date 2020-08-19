@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
-
 public abstract class AbstractClusteringPrefix<T> implements ClusteringPrefix<T>
 {
     public ClusteringPrefix<T> clustering()
@@ -42,10 +40,8 @@ public abstract class AbstractClusteringPrefix<T> implements ClusteringPrefix<T>
         for (int i = 0; i < size(); i++)
         {
             T value = get(i);
-            // FIXME: Modify Digest to take a value and accessor?
-            ByteBuffer bb = accessor().toMutableBuffer(value);
-            if (bb != null)
-                digest.update(bb);
+            if (value != null)
+                digest.update(value, accessor());
         }
         digest.updateWithByte(kind().ordinal());
     }
