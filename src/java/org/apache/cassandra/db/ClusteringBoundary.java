@@ -37,14 +37,8 @@ public interface ClusteringBoundary<T> extends ClusteringBoundOrBoundary<T>
 
     public ClusteringBound<T> closeBound(boolean reversed);
 
-    public static ClusteringBoundary<?> create(ClusteringBound.Kind kind, ClusteringPrefix<?> from)
+    public static <V> ClusteringBoundary<V> create(ClusteringBound.Kind kind, ClusteringPrefix<V> from)
     {
-        switch (from.accessor().getBackingKind())
-        {
-            case BUFFER:
-                return BufferClusteringBoundary.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<ByteBuffer>) from));
-            default:
-                throw new UnsupportedOperationException("Unsupported backing kind: " + from.accessor().getBackingKind());
-        }
+        return from.accessor().factory().boundary(kind, from.getRawValues());
     }
 }

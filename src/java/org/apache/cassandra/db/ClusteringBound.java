@@ -97,17 +97,9 @@ public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
         return isInclusive() ? 0 : (isStart() ? 1 : -1);
     }
 
-    static ClusteringBound<?> create(ClusteringPrefix.Kind kind, ClusteringPrefix<?> from)
+    static <V> ClusteringBound<V> create(ClusteringPrefix.Kind kind, ClusteringPrefix<V> from)
     {
-        switch (from.accessor().getBackingKind())
-        {
-            case BUFFER:
-                return BufferClusteringBound.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<ByteBuffer>) from));
-            case ARRAY:
-                return ArrayClusteringBound.create(kind, ClusteringPrefix.extractValues((ClusteringPrefix<byte[]>) from));
-            default:
-                throw new UnsupportedOperationException("Unsupported backing kind: " + from.accessor().getBackingKind());
-        }
+        return from.accessor().factory().bound(kind, from.getRawValues());
     }
 
     public static ClusteringBound<?> inclusiveStartOf(ClusteringPrefix<?> from)

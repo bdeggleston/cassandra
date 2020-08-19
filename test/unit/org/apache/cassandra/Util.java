@@ -447,9 +447,9 @@ public class Util
 
     public static void assertCellValue(Object value, ColumnFamilyStore cfs, Row row, String columnName)
     {
-        Cell cell = cell(cfs, row, columnName);
+        Cell<?> cell = cell(cfs, row, columnName);
         assert cell != null : "Row " + row.toString(cfs.metadata()) + " has no cell for " + columnName;
-        assertEquals(value, cell.column().type.compose(cell.buffer()));
+        assertEquals(value, cell.column().type.compose(cell));
     }
 
     public static void consume(UnfilteredRowIterator iter)
