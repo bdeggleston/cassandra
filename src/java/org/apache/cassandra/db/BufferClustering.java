@@ -37,7 +37,7 @@ public class BufferClustering extends AbstractBufferClusteringPrefix implements 
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new BufferClustering(EMPTY_VALUES_ARRAY));
 
-    BufferClustering(ByteBuffer... values)
+    public BufferClustering(ByteBuffer... values)
     {
         super(Kind.CLUSTERING, values);
     }

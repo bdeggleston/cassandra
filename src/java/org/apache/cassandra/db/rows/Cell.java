@@ -28,8 +28,6 @@ import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.utils.ByteArrayUtil;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
@@ -263,7 +261,7 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
                 }
             }
 
-            return accessor.cellFactory().create(column, timestamp, ttl, localDeletionTime, value, path);
+            return accessor.factory().createCell(column, timestamp, ttl, localDeletionTime, value, path);
         }
 
         public <T> long serializedSize(Cell<T> cell, ColumnMetadata column, LivenessInfo rowLiveness, SerializationHeader header)

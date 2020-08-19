@@ -25,11 +25,20 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.UUID;
 
+import org.apache.cassandra.db.ArrayClustering;
+import org.apache.cassandra.db.ArrayClusteringBound;
+import org.apache.cassandra.db.ArrayClusteringBoundary;
+import org.apache.cassandra.db.Clustering;
+import org.apache.cassandra.db.ClusteringBound;
+import org.apache.cassandra.db.ClusteringBoundary;
+import org.apache.cassandra.db.ClusteringPrefix;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.rows.ArrayCell;
 import org.apache.cassandra.db.rows.Cell;
+import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FastByteOperations;
@@ -42,6 +51,49 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
     private static final byte[] EMPTY = new byte[0];
     private static final byte[] TRUE = new byte[]{1};
     private static final byte[] FALSE = new byte[]{0};
+
+    private static final ObjectFactory<byte[]> factory = new ObjectFactory<byte[]>()
+    {
+        public Cell<byte[]> createCell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, byte[] value, CellPath path)
+        {
+            return new ArrayCell(column, timestamp, ttl, localDeletionTime, value, path);
+        }
+
+        public Clustering<byte[]> clustering(byte[]... values)
+        {
+            return new ArrayClustering(values);
+        }
+
+        public ClusteringBound<byte[]> inclusiveOpen(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_END_BOUND : ClusteringPrefix.Kind.INCL_START_BOUND, boundValues);
+        }
+
+        public ClusteringBound<byte[]> exclusiveOpen(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_END_BOUND : ClusteringPrefix.Kind.EXCL_START_BOUND, boundValues);
+        }
+
+        public ClusteringBound<byte[]> inclusiveClose(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_START_BOUND : ClusteringPrefix.Kind.INCL_END_BOUND, boundValues);
+        }
+
+        public ClusteringBound<byte[]> exclusiveClose(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_START_BOUND : ClusteringPrefix.Kind.EXCL_END_BOUND, boundValues);
+        }
+
+        public ClusteringBoundary<byte[]> inclusiveCloseExclusiveOpen(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBoundary(reversed ? ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY : ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY, boundValues);
+        }
+
+        public ClusteringBoundary<byte[]> exclusiveCloseInclusiveOpen(boolean reversed, byte[][] boundValues)
+        {
+            return new ArrayClusteringBoundary(reversed ? ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY : ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY, boundValues);
+        }
+    };
 
     private ByteArrayAccessor() {}
 
@@ -274,8 +326,8 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return new byte[size];
     }
 
-    public Cell.Factory<byte[]> cellFactory()
+    public ObjectFactory<byte[]> factory()
     {
-        return ArrayCell::new;
+        return factory;
     }
 }
