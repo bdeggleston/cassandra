@@ -279,12 +279,12 @@ public abstract class AbstractReadResponseTest
 
     public RangeTombstone tombstone(Object start, boolean inclusiveStart, Object end, boolean inclusiveEnd, long markedForDeleteAt, int localDeletionTime)
     {
-        ClusteringBound startBound = rtBound(start, true, inclusiveStart);
-        ClusteringBound endBound = rtBound(end, false, inclusiveEnd);
+        ClusteringBound<?> startBound = rtBound(start, true, inclusiveStart);
+        ClusteringBound<?> endBound = rtBound(end, false, inclusiveEnd);
         return new RangeTombstone(Slice.make(startBound, endBound), new DeletionTime(markedForDeleteAt, localDeletionTime));
     }
 
-    public ClusteringBound rtBound(Object value, boolean isStart, boolean inclusive)
+    public ClusteringBound<?> rtBound(Object value, boolean isStart, boolean inclusive)
     {
         ClusteringBound.Kind kind = isStart
                                     ? (inclusive ? ClusteringPrefix.Kind.INCL_START_BOUND : ClusteringPrefix.Kind.EXCL_START_BOUND)

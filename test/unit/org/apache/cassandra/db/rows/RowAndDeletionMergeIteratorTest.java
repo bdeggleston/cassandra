@@ -369,7 +369,7 @@ public class RowAndDeletionMergeIteratorTest
         }
     }
 
-    private void assertRtMarker(Unfiltered unfiltered, ClusteringBoundOrBoundary bound)
+    private void assertRtMarker(Unfiltered unfiltered, ClusteringBoundOrBoundary<?> bound)
     {
         assertEquals(Unfiltered.Kind.RANGE_TOMBSTONE_MARKER, unfiltered.kind());
         assertEquals(bound, unfiltered.clustering());
@@ -454,8 +454,8 @@ public class RowAndDeletionMergeIteratorTest
 
     private static RangeTombstone rt(int start, boolean startInclusive, int end, boolean endInclusive, long tstamp, int delTime)
     {
-        ClusteringBound startBound = startInclusive ? BufferClusteringBound.inclusiveStartOf(bb(start)) : BufferClusteringBound.exclusiveStartOf(bb(start));
-        ClusteringBound endBound = endInclusive ? BufferClusteringBound.inclusiveEndOf(bb(end)) : BufferClusteringBound.exclusiveEndOf(bb(end));
+        ClusteringBound<?> startBound = startInclusive ? BufferClusteringBound.inclusiveStartOf(bb(start)) : BufferClusteringBound.exclusiveStartOf(bb(start));
+        ClusteringBound<?> endBound = endInclusive ? BufferClusteringBound.inclusiveEndOf(bb(end)) : BufferClusteringBound.exclusiveEndOf(bb(end));
 
         return new RangeTombstone(Slice.make(startBound, endBound), new DeletionTime(tstamp, delTime));
     }

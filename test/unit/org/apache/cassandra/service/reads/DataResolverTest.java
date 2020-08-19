@@ -702,7 +702,7 @@ public class DataResolverTest extends AbstractReadResponseTest
             return rt;
 
         Slice slice = rt.deletedSlice();
-        ClusteringBound newStart = ClusteringBound.create(Kind.EXCL_START_BOUND, slice.start());
+        ClusteringBound<?> newStart = ClusteringBound.create(Kind.EXCL_START_BOUND, slice.start());
         return condition
                ? new RangeTombstone(Slice.make(newStart, slice.end()), rt.deletionTime())
                : rt;
@@ -715,7 +715,7 @@ public class DataResolverTest extends AbstractReadResponseTest
             return rt;
 
         Slice slice = rt.deletedSlice();
-        ClusteringBound newEnd = ClusteringBound.create(Kind.EXCL_END_BOUND, slice.end());
+        ClusteringBound<?> newEnd = ClusteringBound.create(Kind.EXCL_END_BOUND, slice.end());
         return condition
                ? new RangeTombstone(Slice.make(slice.start(), newEnd), rt.deletionTime())
                : rt;

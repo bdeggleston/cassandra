@@ -239,7 +239,7 @@ public class UnfilteredRowIteratorsMergeTest
             if (prev != null && curr != null && prev.isClose(false) && curr.isOpen(false) && prev.clustering().invert().equals(curr.clustering()))
             {
                 // Join. Prefer not to use merger to check its correctness.
-                ClusteringBound b = ((RangeTombstoneBoundMarker) prev).clustering();
+                ClusteringBound<?> b = ((RangeTombstoneBoundMarker) prev).clustering();
                 ClusteringBoundary boundary = ClusteringBoundary.create(b.isInclusive()
                                                                         ? ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY
                                                                         : ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY,
@@ -376,19 +376,19 @@ public class UnfilteredRowIteratorsMergeTest
         return def;
     }
 
-    private static ClusteringBound boundFor(int pos, boolean start, boolean inclusive)
+    private static ClusteringBound<?> boundFor(int pos, boolean start, boolean inclusive)
     {
         return BufferClusteringBound.create(ClusteringBound.boundKind(start, inclusive), new ByteBuffer[] {Int32Type.instance.decompose(pos)});
     }
 
-    private static Clustering clusteringFor(int i)
+    private static Clustering<?> clusteringFor(int i)
     {
         return Clustering.make(Int32Type.instance.decompose(i));
     }
 
     static Row emptyRowAt(int pos, IntUnaryOperator timeGenerator)
     {
-        final Clustering clustering = clusteringFor(pos);
+        final Clustering<?> clustering = clusteringFor(pos);
         final LivenessInfo live = LivenessInfo.create(timeGenerator.applyAsInt(pos), nowInSec);
         return BTreeRow.noCellLiveRow(clustering, live);
     }
