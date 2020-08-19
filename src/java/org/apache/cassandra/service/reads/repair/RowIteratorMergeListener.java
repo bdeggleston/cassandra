@@ -141,7 +141,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
                     currentRow(i, clustering).addCell(merged);
             }
 
-            private boolean isQueried(Cell cell)
+            private boolean isQueried(Cell<?> cell)
             {
                 // When we read, we may have some cell that have been fetched but are not selected by the user. Those cells may
                 // have empty values as optimization (see CASSANDRA-10655) and hence they should not be included in the read-repair.

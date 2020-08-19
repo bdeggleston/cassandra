@@ -318,7 +318,7 @@ public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
             {
                 if (def.isSimple())
                 {
-                    Cell cell = row.getCell(def);
+                    Cell<?> cell = row.getCell(def);
                     if (cell != null)
                         data.put(def.name.toString(), cell.buffer());
                 }

@@ -577,7 +577,7 @@ public abstract class Lists
             // the read-before-write this operation requires limits its usefulness on big lists, so in practice
             // toDiscard will be small and keeping a list will be more efficient.
             List<ByteBuffer> toDiscard = ((Value)value).elements;
-            for (Cell cell : complexData)
+            for (Cell<?> cell : complexData)
             {
                 if (toDiscard.contains(cell.buffer()))
                     params.addTombstone(column, cell.path());

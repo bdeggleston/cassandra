@@ -450,7 +450,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 case CLUSTERING:
                     return row.clustering().bufferAt(column.position());
                 default:
-                    Cell cell = row.getCell(column);
+                    Cell<?> cell = row.getCell(column);
                     return cell == null ? null : cell.buffer();
             }
         }
@@ -645,7 +645,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                         ComplexColumnData complexData = row.getComplexColumnData(column);
                         if (complexData != null)
                         {
-                            for (Cell cell : complexData)
+                            for (Cell<?> cell : complexData)
                             {
                                 if (type.kind == CollectionType.Kind.SET)
                                 {
@@ -776,7 +776,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
             MapType<?, ?> mt = (MapType<?, ?>)column.type;
             if (column.isComplex())
             {
-                Cell cell = row.getCell(column, CellPath.create(key));
+                Cell<?> cell = row.getCell(column, CellPath.create(key));
                 return cell != null && mt.valueComparator().compare(cell.buffer(), value) == 0;
             }
             else

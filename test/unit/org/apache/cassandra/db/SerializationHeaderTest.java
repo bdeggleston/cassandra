@@ -98,7 +98,7 @@ public class SerializationHeaderTest
                     ColumnMetadata cd = schema.getColumn(v);
                     for (int i = 0 ; i < 5 ; ++i) {
                         final ByteBuffer value = Int32Type.instance.decompose(i);
-                        Cell cell = BufferCell.live(cd, 1L, value);
+                        Cell<?> cell = BufferCell.live(cd, 1L, value);
                         Clustering clustering = clusteringFunction.apply(value);
                         Row row = BTreeRow.singleCellRow(clustering, cell);
                         sstableWriter.append(PartitionUpdate.singleRowUpdate(schema, value, row).unfilteredIterator());

@@ -183,7 +183,7 @@ public class HintsBufferTest
         assertEquals(1, Iterables.size(row.cells()));
 
         ValueAccessors.assertDataEquals(bytes(idx), row.clustering().get(0));
-        Cell cell = row.cells().iterator().next();
+        Cell<?> cell = row.cells().iterator().next();
         assertEquals(TimeUnit.MILLISECONDS.toMicros(baseTimestamp + idx), cell.timestamp());
         ValueAccessors.assertDataEquals(bytes(idx), cell.buffer());
 

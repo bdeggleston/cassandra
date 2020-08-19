@@ -251,9 +251,9 @@ public class SinglePartitionSliceCommandTest
         UnfilteredRowIterator ri = pi.next();
         Assert.assertTrue(ri.columns().contains(s));
         Row staticRow = ri.staticRow();
-        Iterator<Cell> cellIterator = staticRow.cells().iterator();
+        Iterator<Cell<?>> cellIterator = staticRow.cells().iterator();
         Assert.assertTrue(staticRow.toString(metadata, true), cellIterator.hasNext());
-        Cell cell = cellIterator.next();
+        Cell<?> cell = cellIterator.next();
         Assert.assertEquals(s, cell.column());
         Assert.assertEquals(ByteBufferUtil.bytesToHex(cell.buffer()), ByteBufferUtil.bytes("s"), cell.buffer());
         Assert.assertFalse(cellIterator.hasNext());

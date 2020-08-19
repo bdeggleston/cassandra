@@ -122,7 +122,7 @@ public class RowCacheTest
             Row r = (Row) unfiltered;
             for (ColumnData c : r)
             {
-                assertEquals(((Cell)c).buffer(), ByteBufferUtil.bytes("val" + 0));
+                assertEquals(((Cell<?>)c).buffer(), ByteBufferUtil.bytes("val" + 0));
             }
         }
         cachedStore.truncateBlocking();
@@ -162,9 +162,9 @@ public class RowCacheTest
                 Row r = (Row)ai.next();
                 assertFalse(ai.hasNext());
 
-                Iterator<Cell> ci = r.cells().iterator();
+                Iterator<Cell<?>> ci = r.cells().iterator();
                 assert(ci.hasNext());
-                Cell cell = ci.next();
+                Cell<?> cell = ci.next();
 
                 assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
                 assert cell.buffer().equals(ByteBufferUtil.bytes("val" + i));
@@ -189,9 +189,9 @@ public class RowCacheTest
                 Row r = (Row)ai.next();
                 assertFalse(ai.hasNext());
 
-                Iterator<Cell> ci = r.cells().iterator();
+                Iterator<Cell<?>> ci = r.cells().iterator();
                 assert(ci.hasNext());
-                Cell cell = ci.next();
+                Cell<?> cell = ci.next();
 
                 assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
                 assert cell.buffer().equals(ByteBufferUtil.bytes("val" + i));
@@ -256,9 +256,9 @@ public class RowCacheTest
                 Row r = (Row)ai.next();
                 assertFalse(ai.hasNext());
 
-                Iterator<Cell> ci = r.cells().iterator();
+                Iterator<Cell<?>> ci = r.cells().iterator();
                 assert(ci.hasNext());
-                Cell cell = ci.next();
+                Cell<?> cell = ci.next();
 
                 assert cell.column().name.bytes.equals(ByteBufferUtil.bytes("val"));
                 assert cell.buffer().equals(ByteBufferUtil.bytes("val" + i));
@@ -465,7 +465,7 @@ public class RowCacheTest
 
             for (ColumnData c : r)
             {
-                assertEquals(((Cell)c).buffer(), ByteBufferUtil.bytes(values[i]));
+                assertEquals(((Cell<?>)c).buffer(), ByteBufferUtil.bytes(values[i]));
             }
             i++;
         }

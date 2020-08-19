@@ -152,7 +152,7 @@ public class ListsTest extends CQLTester
 
         int idx = 0;
         UUID last = null;
-        for (Cell cell : row.cells())
+        for (Cell<?> cell : row.cells())
         {
             UUID uuid = UUIDGen.getUUID(cell.path().get(0));
 

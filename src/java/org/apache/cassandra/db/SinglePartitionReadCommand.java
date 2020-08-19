@@ -984,7 +984,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
         for (ColumnMetadata column : requestedColumns)
         {
-            Cell cell = row.getCell(column);
+            Cell<?> cell = row.getCell(column);
             if (cell == null || cell.timestamp() <= sstableTimestamp)
                 return false;
         }

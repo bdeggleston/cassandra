@@ -162,7 +162,7 @@ public class CommitLogUpgradeTest
                     if (row.clustering().size() > 0 &&
                         AsciiType.instance.compose(row.clustering().bufferAt(0)).startsWith(CELLNAME))
                     {
-                        for (Cell cell : row.cells())
+                        for (Cell<?> cell : row.cells())
                         {
                             hash = hash(hash, cell.buffer());
                             ++cells;

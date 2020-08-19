@@ -84,7 +84,7 @@ public abstract class CollectionType<T> extends AbstractType<T>
     public abstract AbstractType<?> nameComparator();
     public abstract AbstractType<?> valueComparator();
 
-    protected abstract List<ByteBuffer> serializedValues(Iterator<Cell> cells);
+    protected abstract List<ByteBuffer> serializedValues(Iterator<Cell<?>> cells);
 
     @Override
     public abstract CollectionSerializer<T> getSerializer();
@@ -146,7 +146,7 @@ public abstract class CollectionType<T> extends AbstractType<T>
         return values.size();
     }
 
-    public ByteBuffer serializeForNativeProtocol(Iterator<Cell> cells, ProtocolVersion version)
+    public ByteBuffer serializeForNativeProtocol(Iterator<Cell<?>> cells, ProtocolVersion version)
     {
         assert isMultiCell();
         List<ByteBuffer> values = serializedValues(cells);

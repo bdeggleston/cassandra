@@ -112,22 +112,22 @@ public class BufferCell extends AbstractCell<ByteBuffer>
         return path;
     }
 
-    public Cell withUpdatedColumn(ColumnMetadata newColumn)
+    public Cell<?> withUpdatedColumn(ColumnMetadata newColumn)
     {
         return new BufferCell(newColumn, timestamp, ttl, localDeletionTime, value, path);
     }
 
-    public Cell withUpdatedValue(ByteBuffer newValue)
+    public Cell<?> withUpdatedValue(ByteBuffer newValue)
     {
         return new BufferCell(column, timestamp, ttl, localDeletionTime, newValue, path);
     }
 
-    public Cell withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime)
+    public Cell<?> withUpdatedTimestampAndLocalDeletionTime(long newTimestamp, int newLocalDeletionTime)
     {
         return new BufferCell(column, newTimestamp, ttl, newLocalDeletionTime, value, path);
     }
 
-    public Cell copy(AbstractAllocator allocator)
+    public Cell<?> copy(AbstractAllocator allocator)
     {
         if (!value.hasRemaining())
             return this;

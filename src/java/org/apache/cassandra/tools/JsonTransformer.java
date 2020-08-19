@@ -393,7 +393,7 @@ public final class JsonTransformer
     {
         if (cd.column().isSimple())
         {
-            serializeCell((Cell) cd, liveInfo);
+            serializeCell((Cell<?>) cd, liveInfo);
         }
         else
         {
@@ -416,13 +416,13 @@ public final class JsonTransformer
                     logger.error("Failure parsing ColumnData.", e);
                 }
             }
-            for (Cell cell : complexData){
+            for (Cell<?> cell : complexData){
                 serializeCell(cell, liveInfo);
             }
         }
     }
 
-    private void serializeCell(Cell cell, LivenessInfo liveInfo)
+    private <V> void serializeCell(Cell<V> cell, LivenessInfo liveInfo)
     {
         try
         {

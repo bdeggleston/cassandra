@@ -303,7 +303,7 @@ public class CounterMutation implements IMutation
         while (cmp == 0)
         {
             PartitionUpdate.CounterMark mark = markIter.next();
-            Cell cell = mark.path() == null ? row.getCell(mark.column()) : row.getCell(mark.column(), mark.path());
+            Cell<?> cell = mark.path() == null ? row.getCell(mark.column()) : row.getCell(mark.column(), mark.path());
             if (cell != null)
             {
                 updateWithCurrentValue(mark, CounterContext.instance().getLocalClockAndCount(cell.buffer()), cfs);

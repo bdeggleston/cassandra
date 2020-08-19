@@ -75,7 +75,7 @@ public class DeserializationHelper
         return columnsToFetch == null || columnsToFetch.fetches(column);
     }
 
-    public boolean includes(Cell cell, LivenessInfo rowLiveness)
+    public boolean includes(Cell<?> cell, LivenessInfo rowLiveness)
     {
         if (columnsToFetch == null)
             return true;
@@ -126,7 +126,7 @@ public class DeserializationHelper
         this.tester = null;
     }
 
-    public boolean isDropped(Cell cell, boolean isComplex)
+    public boolean isDropped(Cell<?> cell, boolean isComplex)
     {
         if (!hasDroppedColumns)
             return false;

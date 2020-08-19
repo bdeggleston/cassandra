@@ -86,7 +86,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
 
     private final Comparator<CellPath> cellPathComparator;
     private final Comparator<Object> asymmetricCellPathComparator;
-    private final Comparator<? super Cell> cellComparator;
+    private final Comparator<? super Cell<?>> cellComparator;
 
     private int hash;
 
@@ -171,7 +171,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         this.position = position;
         this.cellPathComparator = makeCellPathComparator(kind, type);
         this.cellComparator = cellPathComparator == null ? ColumnData.comparator : (a, b) -> cellPathComparator.compare(a.path(), b.path());
-        this.asymmetricCellPathComparator = cellPathComparator == null ? null : (a, b) -> cellPathComparator.compare(((Cell)a).path(), (CellPath) b);
+        this.asymmetricCellPathComparator = cellPathComparator == null ? null : (a, b) -> cellPathComparator.compare(((Cell<?>)a).path(), (CellPath) b);
         this.comparisonOrder = comparisonOrder(kind, isComplex(), Math.max(0, position), name);
     }
 
@@ -370,7 +370,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return asymmetricCellPathComparator;
     }
 
-    public Comparator<? super Cell> cellComparator()
+    public Comparator<? super Cell<?>> cellComparator()
     {
         return cellComparator;
     }
@@ -391,7 +391,7 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
         return CollectionType.cellPathSerializer;
     }
 
-    public void validateCell(Cell cell)
+    public <V> void validateCell(Cell<V> cell)
     {
         if (cell.isTombstone())
         {

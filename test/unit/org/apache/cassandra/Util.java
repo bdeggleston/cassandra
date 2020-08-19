@@ -433,7 +433,7 @@ public class Util
         return mutation.getPartitionUpdates().iterator().next().unfilteredIterator();
     }
 
-    public static Cell cell(ColumnFamilyStore cfs, Row row, String columnName)
+    public static Cell<?> cell(ColumnFamilyStore cfs, Row row, String columnName)
     {
         ColumnMetadata def = cfs.metadata().getColumn(ByteBufferUtil.bytes(columnName));
         assert def != null;
@@ -526,10 +526,10 @@ public class Util
     // moved & refactored from KeyspaceTest in < 3.0
     public static void assertColumns(Row row, String... expectedColumnNames)
     {
-        Iterator<Cell> cells = row == null ? Collections.emptyIterator() : row.cells().iterator();
-        String[] actual = Iterators.toArray(Iterators.transform(cells, new Function<Cell, String>()
+        Iterator<Cell<?>> cells = row == null ? Collections.emptyIterator() : row.cells().iterator();
+        String[] actual = Iterators.toArray(Iterators.transform(cells, new Function<Cell<?>, String>()
         {
-            public String apply(Cell cell)
+            public String apply(Cell<?> cell)
             {
                 return cell.column().name.toString();
             }
@@ -543,11 +543,11 @@ public class Util
 
     public static void assertColumn(TableMetadata cfm, Row row, String name, String value, long timestamp)
     {
-        Cell cell = row.getCell(cfm.getColumn(new ColumnIdentifier(name, true)));
+        Cell<?> cell = row.getCell(cfm.getColumn(new ColumnIdentifier(name, true)));
         assertColumn(cell, value, timestamp);
     }
 
-    public static void assertColumn(Cell cell, String value, long timestamp)
+    public static void assertColumn(Cell<?> cell, String value, long timestamp)
     {
         assertNotNull(cell);
         assertEquals(0, ByteBufferUtil.compareUnsigned(cell.buffer(), ByteBufferUtil.bytes(value)));

@@ -84,7 +84,7 @@ public final class ResultSetBuilder
         current.add(v);
     }
 
-    public void add(Cell c, int nowInSec)
+    public void add(Cell<?> c, int nowInSec)
     {
         if (c == null)
         {
@@ -101,7 +101,7 @@ public final class ResultSetBuilder
             ttls[current.size() - 1] = remainingTTL(c, nowInSec);
     }
 
-    private int remainingTTL(Cell c, int nowInSec)
+    private int remainingTTL(Cell<?> c, int nowInSec)
     {
         if (!c.isExpiring())
             return -1;
@@ -110,7 +110,7 @@ public final class ResultSetBuilder
         return remaining >= 0 ? remaining : -1;
     }
 
-    private ByteBuffer value(Cell c)
+    private <V> ByteBuffer value(Cell<V> c)
     {
         return c.isCounterCell()
              ? ByteBufferUtil.bytes(CounterContext.instance().total(c.value(), c.accessor()))

@@ -1314,7 +1314,7 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
                 indexer.finish();
         }
 
-        private boolean shouldCleanupOldValue(Cell oldCell, Cell newCell)
+        private boolean shouldCleanupOldValue(Cell<?> oldCell, Cell<?> newCell)
         {
             // If either the value or timestamp is different, then we
             // should delete from the index. If not, then we can infer that

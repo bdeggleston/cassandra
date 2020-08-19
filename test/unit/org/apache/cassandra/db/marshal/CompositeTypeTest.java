@@ -210,7 +210,7 @@ public class CompositeTypeTest
         compareValues(iter.next().getCell(cdef), "cname4");
         compareValues(iter.next().getCell(cdef), "cname5");
     }
-    private void compareValues(Cell c, String r) throws CharacterCodingException
+    private void compareValues(Cell<?> c, String r) throws CharacterCodingException
     {
         assert ByteBufferUtil.string(c.buffer()).equals(r) : "Expected: {" + ByteBufferUtil.string(c.buffer()) + "} got: {" + r + "}";
     }

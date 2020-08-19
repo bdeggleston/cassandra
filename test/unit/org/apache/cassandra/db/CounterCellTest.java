@@ -86,9 +86,9 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
         long delta = 3L;
 
-        Cell cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
+        Cell<?> cell = createLegacyCounterCell(cfs, ByteBufferUtil.bytes("val"), delta, 1);
 
-        assertEquals(delta, CounterContext.instance().total(cell.value(), cell.accessor()));
+        assertEquals(delta, CounterContext.instance().total(cell));
         assertEquals(1, cell.buffer().getShort(0));
         assertEquals(0, cell.buffer().getShort(2));
         Assert.assertTrue(CounterId.wrap(cell.buffer(), 4).isLocalId());
@@ -97,27 +97,27 @@ public class CounterCellTest
 
     }
 
-    private Cell createLegacyCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, long count, long ts)
+    private Cell<?> createLegacyCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         ByteBuffer val = CounterContext.instance().createLocal(count);
         return BufferCell.live(cDef, ts, val);
     }
 
-    private Cell createCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, CounterId id, long count, long ts)
+    private Cell<?> createCounterCell(ColumnFamilyStore cfs, ByteBuffer colName, CounterId id, long count, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         ByteBuffer val = CounterContext.instance().createGlobal(id, ts, count);
         return BufferCell.live(cDef, ts, val);
     }
 
-    private Cell createCounterCellFromContext(ColumnFamilyStore cfs, ByteBuffer colName, ContextState context, long ts)
+    private Cell<?> createCounterCellFromContext(ColumnFamilyStore cfs, ByteBuffer colName, ContextState context, long ts)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         return BufferCell.live(cDef, ts, context.context);
     }
 
-    private Cell createDeleted(ColumnFamilyStore cfs, ByteBuffer colName, long ts, int localDeletionTime)
+    private Cell<?> createDeleted(ColumnFamilyStore cfs, ByteBuffer colName, long ts, int localDeletionTime)
     {
         ColumnMetadata cDef = cfs.metadata().getColumn(colName);
         return BufferCell.tombstone(cDef, ts, localDeletionTime);
@@ -129,8 +129,8 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
         ByteBuffer col = ByteBufferUtil.bytes("val");
 
-        Cell left;
-        Cell right;
+        Cell<?> left;
+        Cell<?> right;
 
         // both deleted, diff deletion time, same ts
         left = createDeleted(cfs, col, 2, 5);
@@ -159,18 +159,18 @@ public class CounterCellTest
         // live + live
         left = createLegacyCounterCell(cfs, col, 1, 2);
         right = createLegacyCounterCell(cfs, col, 3, 5);
-        Cell reconciled = Cells.reconcile(left, right);
+        Cell<?> reconciled = Cells.reconcile(left, right);
         assertEquals(CounterContext.instance().total(reconciled), 4);
         assertEquals(reconciled.timestamp(), 5L);
 
         // Add, don't change TS
-        Cell addTen = createLegacyCounterCell(cfs, col, 10, 4);
+        Cell<?> addTen = createLegacyCounterCell(cfs, col, 10, 4);
         reconciled = Cells.reconcile(reconciled, addTen);
         assertEquals(CounterContext.instance().total(reconciled), 14);
         assertEquals(reconciled.timestamp(), 5L);
 
         // Add w/new TS
-        Cell addThree = createLegacyCounterCell(cfs, col, 3, 7);
+        Cell<?> addThree = createLegacyCounterCell(cfs, col, 3, 7);
         reconciled = Cells.reconcile(reconciled, addThree);
         assertEquals(CounterContext.instance().total(reconciled), 17);
         assertEquals(reconciled.timestamp(), 7L);
@@ -178,7 +178,7 @@ public class CounterCellTest
         // Confirm no deletion time
         assert reconciled.localDeletionTime() == Integer.MAX_VALUE;
 
-        Cell deleted = createDeleted(cfs, col, 8, 8);
+        Cell<?> deleted = createDeleted(cfs, col, 8, 8);
         reconciled = Cells.reconcile(reconciled, deleted);
         assert reconciled.localDeletionTime() == 8;
     }
@@ -189,8 +189,8 @@ public class CounterCellTest
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
         ByteBuffer col = ByteBufferUtil.bytes("val");
 
-        Cell leftCell;
-        Cell rightCell;
+        Cell<?> leftCell;
+        Cell<?> rightCell;
 
         // Equal count
         leftCell = createLegacyCounterCell(cfs, col, 2, 2);
@@ -271,10 +271,10 @@ public class CounterCellTest
         state.writeRemote(CounterId.fromInt(3), 4L, 4L);
         state.writeLocal(CounterId.fromInt(4), 4L, 4L);
 
-        Cell original = createCounterCellFromContext(cfs, col, state, 5);
+        Cell<?> original = createCounterCellFromContext(cfs, col, state, 5);
 
         ColumnMetadata cDef = cfs.metadata().getColumn(col);
-        Cell cleared = BufferCell.live(cDef, 5, CounterContext.instance().clearAllLocal(state.context));
+        Cell<?> cleared = BufferCell.live(cDef, 5, CounterContext.instance().clearAllLocal(state.context));
 
         original.digest(digest1);
         cleared.digest(digest2);

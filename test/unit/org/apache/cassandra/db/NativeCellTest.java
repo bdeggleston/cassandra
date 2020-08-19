@@ -117,7 +117,7 @@ public class NativeCellTest
                                   ColumnMetadata.Kind.REGULAR);
     }
 
-    private static Cell rndcell(ColumnMetadata col)
+    private static Cell<?> rndcell(ColumnMetadata col)
     {
         long timestamp = rand.nextLong();
         int ttl = rand.nextInt();
