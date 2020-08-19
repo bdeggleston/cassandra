@@ -126,6 +126,10 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getSerializer().deserialize(value, handle);
     }
 
+    public <V> T compose(ValueAware<V> value)
+    {
+        return compose(value.value(), value.accessor());
+    }
 
     public final ByteBuffer decompose(T value)
     {

@@ -169,6 +169,11 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
         return super.staticRow();
     }
 
+    private static <V> ClusteringBound<V> createInclusiveOpen(boolean isReversed, ClusteringPrefix<V> from)
+    {
+        return from.accessor().factory().inclusiveOpen(isReversed, from.getRawValues());
+    }
+
     /**
      * @return the lower bound stored on the index entry for this partition, if available.
      */
@@ -196,7 +201,7 @@ public class UnfilteredRowIteratorWithLowerBound extends LazilyInitializedUnfilt
                           lowerBoundPrefix.getRawValues().length,
                           metadata().comparator.size(),
                           sstable.getFilename());
-            return BufferClusteringBound.inclusiveOpen(filter.isReversed(), lowerBoundPrefix.getBufferArray());
+            return createInclusiveOpen(filter.isReversed(), lowerBoundPrefix);
         }
         catch (IOException e)
         {
