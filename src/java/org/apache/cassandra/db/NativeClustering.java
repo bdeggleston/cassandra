@@ -36,7 +36,7 @@ public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> imple
 
     private NativeClustering() { peer = 0; }
 
-    public ClusteringPrefix minimize()
+    public ClusteringPrefix<ByteBuffer> minimize()
     {
         return this;
     }

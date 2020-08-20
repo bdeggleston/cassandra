@@ -102,7 +102,7 @@ public class BufferCell extends AbstractCell<ByteBuffer>
         return value;
     }
 
-    public ValueAccessor accessor()
+    public ValueAccessor<ByteBuffer> accessor()
     {
         return ByteBufferAccessor.instance;
     }

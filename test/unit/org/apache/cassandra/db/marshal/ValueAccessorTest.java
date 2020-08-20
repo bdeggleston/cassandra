@@ -16,18 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.db;
+package org.apache.cassandra.db.marshal;
 
-public abstract class ArrayClusteringBoundOrBoundary extends AbstractArrayClusteringPrefix implements ClusteringBoundOrBoundary<byte[]>
+public class ValueAccessorTest
 {
-    public ArrayClusteringBoundOrBoundary(Kind kind, byte[][] values)
-    {
-        super(kind, values);
-    }
-    public static ClusteringBoundOrBoundary<byte[]> create(Kind kind, byte[][] values)
-    {
-        return kind.isBoundary()
-               ? new ArrayClusteringBoundary(kind, values)
-               : new ArrayClusteringBound(kind, values);
-    }
 }

@@ -126,13 +126,6 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return value;
     }
 
-    public ByteBuffer toMutableBuffer(ByteBuffer value)
-    {
-        if (value == null)
-            return null;
-        return value.duplicate();
-    }
-
     public byte[] toArray(ByteBuffer value)
     {
         if (value == null)

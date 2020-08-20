@@ -298,14 +298,6 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
 
     public ByteBuffer[] getBufferArray();
 
-    static <T> T[] extractValues(ClusteringPrefix<T> clustering)
-    {
-        T[] values = clustering.accessor().createArray(clustering.size());
-        for (int i = 0; i < clustering.size(); i++)
-            values[i] = clustering.get(i);
-        return values;
-    }
-
     /**
      * If the prefix contains byte buffers that can be minimized (see {@link ByteBufferUtil#minimalBufferFor(ByteBuffer)}),
      * this will return a copy of the prefix with minimized values, otherwise it returns itself.

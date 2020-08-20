@@ -43,13 +43,6 @@ public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary im
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
     }
 
-    public ClusteringPrefix<ByteBuffer> minimize()
-    {
-        if (!ByteBufferUtil.canMinimize(values))
-            return this;
-        return new BufferClusteringBoundary(kind, ByteBufferUtil.minimizeBuffers(values));
-    }
-    
     public static ClusteringBoundary<ByteBuffer> create(Kind kind, ByteBuffer[] values)
     {
         assert kind.isBoundary();
