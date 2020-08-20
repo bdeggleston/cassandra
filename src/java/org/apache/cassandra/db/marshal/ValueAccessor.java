@@ -153,6 +153,9 @@ public interface ValueAccessor<V>
 
     int compareUnsigned(V left, V right);
 
+    <V2> int compare(V left, V2 right, ValueAccessor<V2> accessor);
+    int hashCode(V value);
+
     ByteBuffer toBuffer(V value);
 
     /**
@@ -219,16 +222,14 @@ public interface ValueAccessor<V>
 
     ObjectFactory<V> factory();
 
-    public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
-    {
-        return leftAccessor.toBuffer(left).compareTo(rightAccessor.toBuffer(right)); /// FIXME:
-    }
-
     public static <L, R> int compareUnsigned(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
     {
-        if (leftAccessor.getBackingKind() == BackingKind.ARRAY && rightAccessor.getBackingKind() == BackingKind.ARRAY)
-            return ByteArrayUtil.compareUnsigned(leftAccessor.toArray(left), rightAccessor.toArray(right));
-        return ByteBufferUtil.compareUnsigned(leftAccessor.toBuffer(left), rightAccessor.toBuffer(right));  // FIXME
+        return leftAccessor.compare(left, right, rightAccessor);
+    }
+
+    public static <L, R> int compare(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
+    {
+        return compareUnsigned(left, leftAccessor, right, rightAccessor);
     }
 
     public static <L, R> int compare(ValueAware<L> left, ValueAware<R> right)
@@ -238,17 +239,12 @@ public interface ValueAccessor<V>
 
     public static <L, R> boolean equals(L left, ValueAccessor<L> accessorL, R right, ValueAccessor<R> accessorR)
     {
-        return Objects.equals(accessorL.toBuffer(left), accessorR.toBuffer(right));  // FIXME
+        return compare(left, accessorL, right, accessorR) == 0;
     }
 
     public static <L, R> boolean equals(ValueAware<L> left, ValueAware<R> right)
     {
         return equals(left.value(), left.accessor(), right.value(), right.accessor());
-    }
-
-    public static <T> int hashCode(T value, ValueAccessor<T> accessor)
-    {
-        return Objects.hashCode(accessor.toBuffer(value));  // FIXME
     }
 
     public static <V1, V2> void copy(V1 src, ValueAccessor<V1> srcAccessor, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)

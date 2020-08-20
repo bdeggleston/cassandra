@@ -103,6 +103,24 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return FastByteOperations.compareUnsigned(left, right);
     }
 
+    public <V2> int compare(ByteBuffer left, V2 right, ValueAccessor<V2> accessor)
+    {
+        switch (accessor.getBackingKind())
+        {
+            case ARRAY:
+                return ByteBufferUtil.compare(left, (byte[]) right);
+            case BUFFER:
+                return ByteBufferUtil.compareUnsigned(left, (ByteBuffer) right);
+            default:
+                throw new IllegalArgumentException("Unsupported compare type: " + accessor.getBackingKind());
+        }
+    }
+
+    public int hashCode(ByteBuffer value)
+    {
+        return value.hashCode();
+    }
+
     public ByteBuffer toBuffer(ByteBuffer value)
     {
         return value;

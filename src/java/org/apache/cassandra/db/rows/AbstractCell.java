@@ -188,7 +188,7 @@ public abstract class AbstractCell<V> extends Cell<V>
     @Override
     public int hashCode()
     {
-        return Objects.hash(column(), isCounterCell(), timestamp(), ttl(), localDeletionTime(), ValueAccessor.hashCode(value(), accessor()), path());
+        return Objects.hash(column(), isCounterCell(), timestamp(), ttl(), localDeletionTime(), accessor().hashCode(value()), path());
     }
 
     @Override
