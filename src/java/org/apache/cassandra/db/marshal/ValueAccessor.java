@@ -171,7 +171,13 @@ public interface ValueAccessor<V>
         write(value, out);
     }
 
-    int putShort(V dest, int offset, short value);
+    int putByte(V dst, int offset, byte value);
+    int putShort(V dst, int offset, short value);
+    int putInt(V dst, int offset, int value);
+    int putFloat(V dst, int offset, float value);
+    int putLong(V dst, int offset, long value);
+    int putDouble(V dst, int offset, double value);
+    int put(V dst, int offset, V src);
 
     default boolean isEmpty(V value)
     {

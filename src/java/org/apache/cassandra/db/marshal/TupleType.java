@@ -202,56 +202,69 @@ public class TupleType extends AbstractType<ByteBuffer>
     /**
      * Split a tuple value into its component values.
      */
-    public ByteBuffer[] split(ByteBuffer value)
+    public <V> V[] split(V value, ValueAccessor<V> accessor)
     {
-        ByteBuffer[] components = new ByteBuffer[size()];
-        ByteBuffer input = value.duplicate();
+        V[] components = accessor.createArray(size());
+        int offset = 0;
         for (int i = 0; i < size(); i++)
         {
-            if (!input.hasRemaining())
+            if (accessor.sizeFromOffset(value, offset) == 0)
                 return Arrays.copyOfRange(components, 0, i);
 
-            int size = input.getInt();
+            int size = accessor.getInt(value, offset);
+            offset += TypeSizes.INT_SIZE;
 
-            if (input.remaining() < size)
+            if (accessor.sizeFromOffset(value, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
             // size < 0 means null value
-            components[i] = size < 0 ? null : ByteBufferUtil.readBytes(input, size);
+            components[i] = size < 0 ? null : accessor.slice(value, offset, size);
+            offset += size;
         }
 
         // error out if we got more values in the tuple/UDT than we expected
-        if (input.hasRemaining())
+        if (accessor.sizeFromOffset(value, offset) != 0)
         {
             throw new InvalidRequestException(String.format(
-                    "Expected %s %s for %s column, but got more",
-                    size(), size() == 1 ? "value" : "values", this.asCQL3Type()));
+            "Expected %s %s for %s column, but got more",
+            size(), size() == 1 ? "value" : "values", this.asCQL3Type()));
         }
 
         return components;
     }
 
-    public static ByteBuffer buildValue(ByteBuffer[] components)
+    public ByteBuffer[] split(ByteBuffer value)
+    {
+        return split(value, ByteBufferAccessor.instance);
+    }
+
+    public static <V> V buildValue(V[] components, ValueAccessor<V> accessor)
     {
         int totalLength = 0;
-        for (ByteBuffer component : components)
-            totalLength += 4 + (component == null ? 0 : component.remaining());
+        for (V component : components)
+            totalLength += 4 + (component == null ? 0 : accessor.size(component));
 
-        ByteBuffer result = ByteBuffer.allocate(totalLength);
-        for (ByteBuffer component : components)
+        int offset = 0;
+        V result = accessor.allocate(totalLength);
+        for (V component : components)
         {
             if (component == null)
             {
-                result.putInt(-1);
+                offset += accessor.putInt(result, offset, -1);
+
             }
             else
             {
-                result.putInt(component.remaining());
-                result.put(component.duplicate());
+                offset += accessor.putInt(result, offset, accessor.size(component));
+                offset += accessor.put(result, offset, component);
             }
         }
-        result.rewind();
         return result;
+    }
+
+    public static ByteBuffer buildValue(ByteBuffer[] components)
+    {
+        return buildValue(components, ByteBufferAccessor.instance);
     }
 
     @Override

@@ -205,10 +205,46 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return UUIDGen.getUUID(value);
     }
 
-    public int putShort(ByteBuffer dest, int offset, short value)
+    public int putByte(ByteBuffer dst, int offset, byte value)
     {
-        dest.putShort(offset, value);
+        dst.put(dst.position(), value);
+        return TypeSizes.BYTE_SIZE;
+    }
+
+    public int putShort(ByteBuffer dst, int offset, short value)
+    {
+        dst.putShort(dst.position() + offset, value);
         return TypeSizes.SHORT_SIZE;
+    }
+
+    public int putInt(ByteBuffer dst, int offset, int value)
+    {
+        dst.putInt(dst.position() + offset, value);
+        return TypeSizes.INT_SIZE;
+    }
+
+    public int putFloat(ByteBuffer dst, int offset, float value)
+    {
+        dst.putFloat(dst.position() + offset, value);
+        return TypeSizes.FLOAT_SIZE;
+    }
+
+    public int putLong(ByteBuffer dst, int offset, long value)
+    {
+        dst.putLong(dst.position() + offset, value);
+        return TypeSizes.LONG_SIZE;
+    }
+
+    public int putDouble(ByteBuffer dst, int offset, double value)
+    {
+        dst.putDouble(dst.position() + offset, value);
+        return TypeSizes.DOUBLE_SIZE;
+    }
+
+    public int put(ByteBuffer dst, int offset, ByteBuffer src)
+    {
+        ByteBufferUtil.copyBytes(src, src.position(), dst, dst.position() + offset, src.remaining());
+        return src.remaining();
     }
 
     public ByteBuffer empty()
