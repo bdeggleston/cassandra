@@ -118,11 +118,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         }
     }
 
-    public int hashCode(byte[] value)
-    {
-        return Arrays.hashCode(value);
-    }
-
     public ByteBuffer toBuffer(byte[] value)
     {
         if (value == null)
