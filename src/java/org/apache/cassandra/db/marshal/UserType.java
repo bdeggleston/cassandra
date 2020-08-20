@@ -192,7 +192,7 @@ public class UserType extends TupleType implements SchemaElement
         return TupleType.buildValue(components);
     }
 
-    public void validateCell(Cell cell) throws MarshalException
+    public <V> void validateCell(Cell<V> cell) throws MarshalException
     {
         if (isMultiCell)
         {
