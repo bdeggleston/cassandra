@@ -129,7 +129,18 @@ public interface ValueAccessor<V>
     int compareUnsigned(V left, V right);
 
     <V2> int compare(V left, V2 right, ValueAccessor<V2> accessor);
-    int hashCode(V value);
+
+    default int hashCode(V value)
+    {
+        if (value == null)
+            return 0;
+
+        int result = 1;
+        for (int i=0, isize=size(value); i<isize; i++)
+            result = 31 * result + (int) getByte(value, i);
+
+        return result;
+    }
 
     ByteBuffer toBuffer(V value);
 

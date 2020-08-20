@@ -42,6 +42,11 @@ public class ByteArrayUtil
         return FastByteOperations.compareUnsigned(o1, off1, len, o2, off2, len);
     }
 
+    public static byte[] bytes(byte b)
+    {
+        return new byte[] {b};
+    }
+
     public static byte[] bytes(int v)
     {
         byte[] b = new byte[TypeSizes.sizeof(v)];

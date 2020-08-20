@@ -116,11 +116,6 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         }
     }
 
-    public int hashCode(ByteBuffer value)
-    {
-        return value.hashCode();
-    }
-
     public ByteBuffer toBuffer(ByteBuffer value)
     {
         return value;
