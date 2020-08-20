@@ -23,11 +23,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.UUID;
 
-import org.apache.cassandra.db.BufferClusteringBound;
-import org.apache.cassandra.db.BufferClusteringBoundary;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.ClusteringBoundOrBoundary;
@@ -40,14 +37,12 @@ import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.utils.ByteArrayUtil;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.db.ClusteringPrefix.Kind.*;
 
 public interface ValueAccessor<V>
 {
-    public enum BackingKind { BUFFER, ARRAY, NATIVE }
+    enum BackingKind { BUFFER, ARRAY, NATIVE }
 
     public interface ObjectFactory<V>
     {
@@ -60,26 +55,6 @@ public interface ValueAccessor<V>
         default ClusteringBoundOrBoundary<V> boundOrBoundary(ClusteringPrefix.Kind kind, V... values)
         {
             return kind.isBoundary() ? boundary(kind, values) : bound(kind, values);
-        }
-
-        default ClusteringBound<V> inclusiveStartOf(V[] from)
-        {
-            return bound(INCL_START_BOUND, from);
-        }
-
-        default ClusteringBound<V> inclusiveEndOf(V[] from)
-        {
-            return bound(INCL_END_BOUND, from);
-        }
-
-        default ClusteringBound<V> exclusiveStartOf(V[] from)
-        {
-            return bound(EXCL_START_BOUND, from);
-        }
-
-        default ClusteringBound<V> exclusiveEndOf(V[] from)
-        {
-            return bound(EXCL_END_BOUND, from);
         }
 
         default ClusteringBound<V> inclusiveOpen(boolean reversed, V[] boundValues)
@@ -157,11 +132,6 @@ public interface ValueAccessor<V>
     int hashCode(V value);
 
     ByteBuffer toBuffer(V value);
-
-    /**
-     * returns a modifiable buffer
-     */
-    ByteBuffer toMutableBuffer(V value);
 
     byte[] toArray(V value);
     byte[] toArray(V value, int offset, int length);

@@ -52,13 +52,6 @@ public class BufferClustering extends AbstractBufferClusteringPrefix implements 
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
     }
 
-    public ClusteringPrefix<ByteBuffer> minimize()
-    {
-        if (!ByteBufferUtil.canMinimize(values))
-            return this;
-        return new BufferClustering(ByteBufferUtil.minimizeBuffers(values));
-    }
-
     public static BufferClustering make(ByteBuffer... values)
     {
         return new BufferClustering(values);

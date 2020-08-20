@@ -54,13 +54,6 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
         return (ClusteringBound<ByteBuffer>) super.copy(allocator);
     }
 
-    public ClusteringPrefix<ByteBuffer> minimize()
-    {
-        if (!ByteBufferUtil.canMinimize(values))
-            return this;
-        return new BufferClusteringBound(kind, ByteBufferUtil.minimizeBuffers(values));
-    }
-    
     public static BufferClusteringBound create(ClusteringPrefix.Kind kind, ByteBuffer[] values)
     {
         assert !kind.isBoundary();

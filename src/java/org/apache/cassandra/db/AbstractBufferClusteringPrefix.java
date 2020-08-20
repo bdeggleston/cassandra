@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
 
 public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringPrefix<ByteBuffer>
@@ -69,5 +70,12 @@ public abstract class AbstractBufferClusteringPrefix extends AbstractClusteringP
     public ByteBuffer[] getBufferArray()
     {
         return getRawValues();
+    }
+
+    public ClusteringPrefix<ByteBuffer> minimize()
+    {
+        if (!ByteBufferUtil.canMinimize(values))
+            return this;
+        return new BufferClustering(ByteBufferUtil.minimizeBuffers(values));
     }
 }

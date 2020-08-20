@@ -130,13 +130,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return ByteBuffer.wrap(value);
     }
 
-    public ByteBuffer toMutableBuffer(byte[] value)
-    {
-        if (value == null)
-            return null;
-        return ByteBuffer.wrap(value);
-    }
-
     public byte[] toArray(byte[] value)
     {
         return value;
