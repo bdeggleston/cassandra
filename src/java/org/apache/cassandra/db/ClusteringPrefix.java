@@ -625,7 +625,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
     {
         int result = 31;
         for (int i = 0; i < prefix.size(); i++)
-            result += 31 * ValueAccessor.hashCode(prefix.get(i), prefix.accessor());
+            result += 31 * prefix.accessor().hashCode(prefix.get(i));
         return 31 * result + Objects.hashCode(prefix.kind());
     }
 
