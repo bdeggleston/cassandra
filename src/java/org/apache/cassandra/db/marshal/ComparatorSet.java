@@ -34,6 +34,8 @@ public class ComparatorSet
 
     public Comparator getForAccessor(ValueAccessor accessor)
     {
+        if (accessor == ByteArrayAccessor.instance)
+            return array;
         if (accessor == ByteBufferAccessor.instance)
             return buffer;
         throw new UnsupportedOperationException("Unsupported accessor: " + accessor.getClass().getName());
