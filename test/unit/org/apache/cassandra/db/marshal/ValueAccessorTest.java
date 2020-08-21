@@ -29,9 +29,10 @@ import org.junit.Test;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
+import static org.apache.cassandra.db.marshal.ValueAccessors.ACCESSORS;
+
 public class ValueAccessorTest
 {
-    private static final ValueAccessor[] ACCESSORS = new ValueAccessor[]{ ByteBufferAccessor.instance, ByteArrayAccessor.instance };
     private static byte[] randomBytes(int minSize, int maxSize, Random random)
     {
         int size = random.nextInt(maxSize - minSize + 1) + minSize;

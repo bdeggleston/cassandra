@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 
 public class ValueAccessors
 {
+    static final ValueAccessor[] ACCESSORS = new ValueAccessor[]{ ByteBufferAccessor.instance, ByteArrayAccessor.instance };
     private static <V> void assertEqual(V expected, ValueAccessor<V> accessor, Object actualValue, boolean equal)
     {
         V actual = accessor.convert(actualValue);
