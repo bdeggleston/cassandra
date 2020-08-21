@@ -23,35 +23,40 @@ import java.nio.ByteBuffer;
 public class ValueAccessors
 {
     static final ValueAccessor[] ACCESSORS = new ValueAccessor[]{ ByteBufferAccessor.instance, ByteArrayAccessor.instance };
-    private static <V> void assertEqual(V expected, ValueAccessor<V> accessor, Object actualValue, boolean equal)
+
+    public static <V1, V2> void assertDataEquals(V1 expected, ValueAccessor<V1> expectedAccessor, V2 actual, ValueAccessor<V2> actualAccessor)
     {
-        V actual = accessor.convert(actualValue);
-        if ((accessor.compareUnsigned(expected, actual) == 0) != equal)
+        if (expectedAccessor.compare(expected, actual, actualAccessor) != 0)
         {
-            String msg = String.format("Expected %s %s actual %s, but was %s",
-                                       accessor.toHex(expected), equal ? "=" : "!=",
-                                       accessor.toHex(actual), equal ? "!=" : "=");
-            throw new AssertionError(msg);
+            throw new AssertionError(String.format("%s != %s", expectedAccessor.toHex(expected), actualAccessor.toHex(actual)));
         }
+    }
+
+    public static <V1, V2> void assertDataNotEquals(V1 expected, ValueAccessor<V1> expectedAccessor, V2 actual, ValueAccessor<V2> actualAccessor)
+    {
+        if (expectedAccessor.compare(expected, actual, actualAccessor) == 0)
+        {
+            throw new AssertionError(String.format("unexpected data equality: %s", expectedAccessor.toHex(expected)));
+        }
+    }
+
+    private static ValueAccessor getAccessor(Object o)
+    {
+        if (o instanceof ByteBuffer)
+            return ByteBufferAccessor.instance;
+        if (o instanceof byte[])
+            return ByteArrayAccessor.instance;
+
+        throw new AssertionError("Unhandled type " + o.getClass().getName());
     }
 
     public static void assertDataEquals(Object expected, Object actual)
     {
-        if (expected instanceof ByteBuffer)
-            assertEqual((ByteBuffer) expected, ByteBufferAccessor.instance, actual, true);
-        else if (expected instanceof byte[])
-            assertEqual((byte[]) expected, ByteArrayAccessor.instance, actual, true);
-        else
-            throw new AssertionError("Unhandled type " + expected.getClass().getName());
+        assertDataEquals(expected, getAccessor(expected), actual, getAccessor(actual));
     }
 
     public static void assertDataNotEquals(Object expected, Object actual)
     {
-        if (expected instanceof ByteBuffer)
-            assertEqual((ByteBuffer) expected, ByteBufferAccessor.instance, actual, false);
-        else if (expected instanceof byte[])
-            assertEqual((byte[]) expected, ByteArrayAccessor.instance, actual, false);
-        else
-            throw new AssertionError("Unhandled type " + expected.getClass().getName());
+        assertDataNotEquals(expected, getAccessor(expected), actual, getAccessor(actual));
     }
 }
