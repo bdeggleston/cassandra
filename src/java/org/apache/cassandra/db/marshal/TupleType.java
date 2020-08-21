@@ -34,7 +34,6 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.*;
 import org.apache.cassandra.transport.ProtocolVersion;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
@@ -238,7 +237,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         return split(value, ByteBufferAccessor.instance);
     }
 
-    public static <V> V buildValue(V[] components, ValueAccessor<V> accessor)
+    public static <V> V buildValue(ValueAccessor<V> accessor, V[] components)
     {
         int totalLength = 0;
         for (V component : components)
@@ -264,7 +263,7 @@ public class TupleType extends AbstractType<ByteBuffer>
 
     public static ByteBuffer buildValue(ByteBuffer[] components)
     {
-        return buildValue(components, ByteBufferAccessor.instance);
+        return buildValue(ByteBufferAccessor.instance, components);
     }
 
     @Override
