@@ -19,7 +19,7 @@
 package org.apache.cassandra.db.marshal;
 
 import java.nio.ByteBuffer;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
@@ -74,6 +74,14 @@ public class ValueGenerator
         return GENERATORS.get(random.nextInt(GENERATORS.size()));
     }
 
+    public static List<AbstractType<?>> toTypes(ValueGenerator[] generators)
+    {
+        List<AbstractType<?>> types = new ArrayList<>(generators.length);
+        for (ValueGenerator generator : generators)
+            types.add(generator.getType());
+        return types;
+    }
+
     public static ValueGenerator[] randomGenerators(Random random, int maxSize)
     {
         int size = random.nextInt(maxSize);
@@ -83,44 +91,5 @@ public class ValueGenerator
             generators[i] = randomGenerator(random);
         }
         return generators;
-    }
-
-    public static Object[] createValues(ValueGenerator[] generators, Random random)
-    {
-        Object[] values = new Object[generators.length];
-        for (int i=0; i<generators.length; i++)
-            values[i] = generators[i].nextValue(random);
-        return values;
-    }
-
-    public static <V> V[] decompose(ValueGenerator[] generators, Object[] values, ValueAccessor<V> accessor)
-    {
-        assert generators.length == values.length;
-        V[] decomposed = accessor.createArray(generators.length);
-        for (int i=0; i<generators.length; i++)
-        {
-            decomposed[i] = ((AbstractType<Object>) generators[i].getType()).decompose(values[i], accessor);
-        }
-        return decomposed;
-    }
-
-    public static <S, D> D[] convert(S[] src, ValueAccessor<S> srcAccessor, ValueAccessor<D> dstAccessor)
-    {
-        D[] dst = dstAccessor.createArray(src.length);
-        for (int i=0; i<src.length; i++)
-            dst[i] = dstAccessor.convert(src[i], srcAccessor);
-        return dst;
-    }
-
-    public static <V> Object[] compose(ValueGenerator[] generators, V[] values, ValueAccessor<V> accessor)
-    {
-        assert generators.length == values.length;
-
-        Object[] composed = new Object[generators.length];
-        for (int i=0; i<generators.length; i++)
-        {
-            composed[i] = ((AbstractType<Object>) generators[i].getType()).compose(values[i], accessor);
-        }
-        return composed;
     }
 }
