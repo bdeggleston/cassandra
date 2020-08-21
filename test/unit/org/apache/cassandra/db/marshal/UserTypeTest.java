@@ -61,7 +61,7 @@ public class UserTypeTest
             ValueGenerator[] generators = ValueGenerator.randomGenerators(random, 100);
             Pair<List<FieldIdentifier>, List<AbstractType<?>>> p = getTypes(generators, random);
             UserType type = new UserType("ks", ByteBufferUtil.bytes(ValueGenerator.randomString(random)),
-                                         p.left, p.right, random.nextBoolean());
+                                         p.left, p.right, false);
 
             for (int j=0; j<100; j++)
             {
@@ -75,13 +75,13 @@ public class UserTypeTest
                     for (ValueAccessor<Object> dstAccessor : ACCESSORS)
                     {
                         // convert data types and deserialize with
-                        Object[] dstValues = ValueGenerator.convert(srcValues, dstAccessor);
+                        Object[] dstValues = ValueGenerator.convert(srcValues, srcAccessor, dstAccessor);
                         Object dstJoined = TupleType.buildValue(dstValues, dstAccessor);
                         String dstString = type.getString(dstJoined, dstAccessor);
 
                         Object[] composed = ValueGenerator.compose(generators, dstValues, dstAccessor);
                         Assert.assertArrayEquals(expected, composed);
-                        Assert.assertEquals(0, type.compare(srcJoined, srcAccessor, dstJoined, dstAccessor));
+                        ValueAccessors.assertDataEquals(srcJoined, srcAccessor, dstJoined, dstAccessor);
                         Assert.assertEquals(srcString, dstString);
                     }
                 }

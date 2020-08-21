@@ -104,11 +104,11 @@ public class ValueGenerator
         return decomposed;
     }
 
-    public static <S, D> D[] convert(S[] src, ValueAccessor<D> dstAccessor)
+    public static <S, D> D[] convert(S[] src, ValueAccessor<S> srcAccessor, ValueAccessor<D> dstAccessor)
     {
         D[] dst = dstAccessor.createArray(src.length);
         for (int i=0; i<src.length; i++)
-            dst[i] = dstAccessor.convert(src[i]);
+            dst[i] = dstAccessor.convert(src[i], srcAccessor);
         return dst;
     }
 
