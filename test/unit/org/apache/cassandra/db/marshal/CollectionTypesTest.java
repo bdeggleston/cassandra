@@ -29,6 +29,9 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.cassandra.cql3.CQL3Type;
+import org.apache.cassandra.transport.ProtocolVersion;
+
 import static org.apache.cassandra.db.marshal.ValueAccessors.ACCESSORS;
 
 public class CollectionTypesTest
@@ -41,6 +44,7 @@ public class CollectionTypesTest
         for (ValueGenerator valueType : ValueGenerator.GENERATORS)
         {
             CT type = typeFactory.createType(keyType != null ? keyType.getType() : null, valueType.getType());
+            CQL3Type.Collection cql3Type = new CQL3Type.Collection(type);
 
             for (int i=0; i<500; i++)
             {
@@ -52,15 +56,18 @@ public class CollectionTypesTest
                 {
                     Object srcBytes = type.decompose(expected, srcAccessor);
                     String srcString = type.getString(srcBytes, srcAccessor);
+                    String srcLiteral = cql3Type.toCQLLiteral(srcBytes, srcAccessor, ProtocolVersion.V4);
 
                     for (ValueAccessor<Object> dstAccessor : ACCESSORS)
                     {
                         Object dstBytes = dstAccessor.convert(srcBytes, srcAccessor);
                         String dstString = type.getString(dstBytes, dstAccessor);
+                        String dstLiteral = cql3Type.toCQLLiteral(dstBytes, dstAccessor, ProtocolVersion.V4);
                         T composed = (T) type.compose(dstBytes, dstAccessor);
                         Assert.assertEquals(expected, composed);
                         ValueAccessors.assertDataEquals(srcBytes, srcAccessor, dstBytes, dstAccessor);
                         Assert.assertEquals(srcString, dstString);
+                        Assert.assertEquals(srcLiteral, dstLiteral);
                     }
                 }
             }
