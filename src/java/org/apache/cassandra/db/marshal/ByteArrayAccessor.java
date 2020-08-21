@@ -306,13 +306,9 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return ByteArrayUtil.bytes(v);
     }
 
-    public byte[] convert(Object o)
+    public <V2> byte[] convert(V2 src, ValueAccessor<V2> accessor)
     {
-        if (o instanceof byte[])
-            return (byte[]) o;
-        if (o instanceof ByteBuffer)
-            return ByteBufferUtil.getArray((ByteBuffer) o);
-        throw new IllegalArgumentException("Unhandled type: " + o.getClass().getName());
+        return accessor.toArray(src);
     }
 
     public byte[] allocate(int size)

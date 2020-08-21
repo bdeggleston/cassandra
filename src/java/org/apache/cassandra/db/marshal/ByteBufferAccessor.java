@@ -302,13 +302,9 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return ByteBufferUtil.bytes(v);
     }
 
-    public ByteBuffer convert(Object o)
+    public <V2> ByteBuffer convert(V2 src, ValueAccessor<V2> accessor)
     {
-        if (o instanceof byte[])
-            return ByteBuffer.wrap((byte[]) o);
-        if (o instanceof ByteBuffer)
-            return (ByteBuffer) o;
-        throw new IllegalArgumentException("Unhandled type: " + o.getClass().getName());
+        return accessor.toBuffer(src);
     }
 
     public ByteBuffer allocate(int size)

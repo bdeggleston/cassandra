@@ -203,7 +203,7 @@ public interface ValueAccessor<V>
     V valueOf(float v);
     V valueOf(double v);
 
-    V convert(Object o);
+    <V2> V convert(V2 src, ValueAccessor<V2> accessor);
 
     V allocate(int size);
 
