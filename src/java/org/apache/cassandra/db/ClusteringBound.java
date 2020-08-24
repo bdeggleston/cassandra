@@ -29,7 +29,7 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
 /**
  * The start or end of a range of clusterings, either inclusive or exclusive.
  */
-public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
+public interface ClusteringBound<V> extends ClusteringBoundOrBoundary<V>
 {
     /** The smallest start bound, i.e. the one that starts before any row. */
     public static final ClusteringBound<?> BOTTOM = new BufferClusteringBound(ClusteringPrefix.Kind.INCL_START_BOUND, BufferClusteringBound.EMPTY_VALUES_ARRAY);
@@ -44,7 +44,7 @@ public interface ClusteringBound<T> extends ClusteringBoundOrBoundary<T>
     }
 
     @Override
-    ClusteringBound<T> invert();
+    ClusteringBound<V> invert();
 
     @Override
     ClusteringBound<ByteBuffer> copy(AbstractAllocator allocator);

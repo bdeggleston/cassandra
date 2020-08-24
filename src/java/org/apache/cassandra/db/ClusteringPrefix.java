@@ -23,7 +23,6 @@ import java.util.*;
 
 import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.ValueAccessor;
@@ -32,7 +31,6 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
-import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -48,7 +46,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  *   3) {@code ClusteringBoundary} represents the threshold between two adjacent range tombstones.
  * See those classes for more details.
  */
-public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
+public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 {
     public static final Serializer serializer = new Serializer();
 
@@ -227,9 +225,9 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
      *
      * @return the ith value of this prefix. Note that a value can be {@code null}.
      */
-    public T get(int i);
+    public V get(int i);
 
-    public ValueAccessor<T> accessor();
+    public ValueAccessor<V> accessor();
 
     default ByteBuffer bufferAt(int i)
     {
@@ -294,7 +292,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
      *
      * @return the values for this prefix as an array.
      */
-    public T[] getRawValues();
+    public V[] getRawValues();
 
     public ByteBuffer[] getBufferArray();
 
@@ -302,7 +300,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
      * If the prefix contains byte buffers that can be minimized (see {@link ByteBufferUtil#minimalBufferFor(ByteBuffer)}),
      * this will return a copy of the prefix with minimized values, otherwise it returns itself.
      */
-    public ClusteringPrefix<T> minimize();
+    public ClusteringPrefix<V> minimize();
 
     public static class Serializer
     {
@@ -353,11 +351,11 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 return ClusteringBoundOrBoundary.serializer.serializedSize((ClusteringBoundOrBoundary<?>)clustering, version, types);
         }
 
-        <T> void serializeValuesWithoutSize(ClusteringPrefix<T> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
+        <V> void serializeValuesWithoutSize(ClusteringPrefix<V> clustering, DataOutputPlus out, int version, List<AbstractType<?>> types) throws IOException
         {
             int offset = 0;
             int clusteringSize = clustering.size();
-            ValueAccessor<T> accessor = clustering.accessor();
+            ValueAccessor<V> accessor = clustering.accessor();
             // serialize in batches of 32, to avoid garbage when deserializing headers
             while (offset < clusteringSize)
             {
@@ -369,7 +367,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 out.writeUnsignedVInt(makeHeader(clustering, offset, limit));
                 while (offset < limit)
                 {
-                    T v = clustering.get(offset);
+                    V v = clustering.get(offset);
                     if (v != null && !accessor.isEmpty(v))
                         types.get(offset).writeValue(v, accessor, out);
                     offset++;
@@ -377,7 +375,7 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             }
         }
 
-        <T> long valuesWithoutSizeSerializedSize(ClusteringPrefix<T> clustering, int version, List<AbstractType<?>> types)
+        <V> long valuesWithoutSizeSerializedSize(ClusteringPrefix<V> clustering, int version, List<AbstractType<?>> types)
         {
             long result = 0;
             int offset = 0;
@@ -388,10 +386,10 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
                 result += TypeSizes.sizeofUnsignedVInt(makeHeader(clustering, offset, limit));
                 offset = limit;
             }
-            ValueAccessor<T> accessor = clustering.accessor();
+            ValueAccessor<V> accessor = clustering.accessor();
             for (int i = 0; i < clusteringSize; i++)
             {
-                T v = clustering.get(i);
+                V v = clustering.get(i);
                 if (v == null || accessor.isEmpty(v))
                     continue; // handled in the header
 
@@ -400,11 +398,11 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
             return result;
         }
 
-        <T> T[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types, ValueAccessor<T> accessor) throws IOException
+        <V> V[] deserializeValuesWithoutSize(DataInputPlus in, int size, int version, List<AbstractType<?>> types, ValueAccessor<V> accessor) throws IOException
         {
             // Callers of this method should handle the case where size = 0 (in all case we want to return a special value anyway).
             assert size > 0;
-            T[] values = accessor.createArray(size);
+            V[] values = accessor.createArray(size);
             int offset = 0;
             while (offset < size)
             {
@@ -445,13 +443,13 @@ public interface ClusteringPrefix<T> extends IMeasurableMemory, Clusterable<T>
          * empty values too. So for that, every clustering prefix includes a "header" that contains 2 bits per element in the prefix. For each element,
          * those 2 bits encode whether the element is null, empty, or none of those.
          */
-        private static <T> long makeHeader(ClusteringPrefix<T> clustering, int offset, int limit)
+        private static <V> long makeHeader(ClusteringPrefix<V> clustering, int offset, int limit)
         {
             long header = 0;
-            ValueAccessor<T> accessor = clustering.accessor();
+            ValueAccessor<V> accessor = clustering.accessor();
             for (int i = offset ; i < limit ; i++)
             {
-                T v = clustering.get(i);
+                V v = clustering.get(i);
                 // no need to do modulo arithmetic for i, since the left-shift execute on the modulus of RH operand by definition
                 if (v == null)
                     header |= (1L << (i * 2) + 1);

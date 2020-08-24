@@ -113,7 +113,7 @@ public class SimpleDateSerializer extends TypeSerializer<Integer>
         return Duration.ofDays(days + Integer.MIN_VALUE).toMillis();
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 4)
             throw new MarshalException(String.format("Expected 4 byte long for date (%d)", handle.size(value)));

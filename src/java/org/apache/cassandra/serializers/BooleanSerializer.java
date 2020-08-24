@@ -39,7 +39,7 @@ public class BooleanSerializer extends TypeSerializer<Boolean>
         return handle.valueOf(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 1 && handle.size(value) != 0)
             throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", handle.size(value)));

@@ -75,7 +75,7 @@ public final class DurationSerializer extends TypeSerializer<Duration>
         }
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) < 3)
             throw new MarshalException(String.format("Expected at least 3 bytes for a duration (%d)", handle.size(value)));

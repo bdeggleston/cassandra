@@ -37,7 +37,7 @@ public class FloatSerializer extends TypeSerializer<Float>
         return (value == null) ? handle.empty() : handle.valueOf(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         int size = handle.size(value);
         if (size != 4 && size != 0)

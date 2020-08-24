@@ -20,22 +20,18 @@
  */
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.utils.memory.AbstractAllocator;
-
 /**
  * The threshold between two different ranges, i.e. a shortcut for the combination of two ClusteringBounds -- one
  * specifying the end of one of the ranges, and its (implicit) complement specifying the beginning of the other.
  */
-public interface ClusteringBoundary<T> extends ClusteringBoundOrBoundary<T>
+public interface ClusteringBoundary<V> extends ClusteringBoundOrBoundary<V>
 {
     @Override
-    public ClusteringBoundary<T> invert();
+    public ClusteringBoundary<V> invert();
 
-    public ClusteringBound<T> openBound(boolean reversed);
+    public ClusteringBound<V> openBound(boolean reversed);
 
-    public ClusteringBound<T> closeBound(boolean reversed);
+    public ClusteringBound<V> closeBound(boolean reversed);
 
     public static <V> ClusteringBoundary<V> create(ClusteringBound.Kind kind, ClusteringPrefix<V> from)
     {

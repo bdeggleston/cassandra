@@ -36,7 +36,7 @@ public class IntegerSerializer extends TypeSerializer<BigInteger>
         return value == null ? handle.empty() : handle.valueOf(value.toByteArray());
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         // no invalid integers.
     }

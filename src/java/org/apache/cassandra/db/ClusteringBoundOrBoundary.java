@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -43,7 +42,7 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  *      iterator. See this comment for more details: https://goo.gl/yyB5mR.
  *   2) This saves some storage space.
  */
-public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
+public interface ClusteringBoundOrBoundary<V> extends ClusteringPrefix<V>
 {
     public static final ClusteringBoundOrBoundary.Serializer serializer = new Serializer();
 
@@ -96,7 +95,7 @@ public interface ClusteringBoundOrBoundary<T> extends ClusteringPrefix<T>
      * @return the invert of this bound. For instance, if this bound is an exlusive start, this return
      * an inclusive end with the same values.
      */
-    public abstract ClusteringBoundOrBoundary<T> invert();
+    public abstract ClusteringBoundOrBoundary<V> invert();
 
     public static class Serializer
     {

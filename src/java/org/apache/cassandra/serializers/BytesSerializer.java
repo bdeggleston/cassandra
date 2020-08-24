@@ -39,7 +39,7 @@ public class BytesSerializer extends TypeSerializer<ByteBuffer>
         return handle.toBuffer(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         // all bytes are legal.
     }

@@ -31,7 +31,7 @@ public class TupleSerializer extends BytesSerializer
         this.fields = fields;
     }
 
-    public <T> void validate(T input, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V input, ValueAccessor<V> handle) throws MarshalException
     {
         int offset = 0;
         for (int i = 0; i < fields.size(); i++)
@@ -53,7 +53,7 @@ public class TupleSerializer extends BytesSerializer
             if (handle.sizeFromOffset(input, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
-            T field = handle.slice(input, offset, size);
+            V field = handle.slice(input, offset, size);
             offset += size;
             fields.get(i).validate(field, handle);
         }

@@ -34,7 +34,7 @@ public class ByteSerializer extends TypeSerializer<Byte>
         return value == null ? handle.empty() : handle.valueOf(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 1)
             throw new MarshalException(String.format("Expected 1 byte for a tinyint (%d)", handle.size(value)));

@@ -30,7 +30,7 @@ public class UTF8Serializer extends AbstractTextSerializer
         super(StandardCharsets.UTF_8);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (!UTF8Validator.validate(value, handle))
             throw new MarshalException("String didn't validate.");

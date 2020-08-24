@@ -30,7 +30,7 @@ public class AsciiSerializer extends AbstractTextSerializer
         super(StandardCharsets.US_ASCII);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         // 0-127
         for (int i=0, size=handle.size(value); i < size; i++)

@@ -70,12 +70,12 @@ public abstract class AbstractRow implements Row
         apply(ColumnData::digest, digest);
     }
 
-    private <T> void validateClustering(TableMetadata metadata, Clustering<T> clustering)
+    private <V> void validateClustering(TableMetadata metadata, Clustering<V> clustering)
     {
-        ValueAccessor<T> accessor = clustering.accessor();
+        ValueAccessor<V> accessor = clustering.accessor();
         for (int i = 0; i < clustering.size(); i++)
         {
-            T value = clustering.get(i);
+            V value = clustering.get(i);
             if (value != null)
             {
                 try
