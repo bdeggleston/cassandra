@@ -25,14 +25,14 @@ import org.apache.cassandra.db.marshal.ValueAccessor;
 
 public abstract class TypeSerializer<T>
 {
-    public abstract <V> V serializeBuffer(T value, ValueAccessor<V> handle);
+    public abstract <V> V serializeBuffer(T value, ValueAccessor<V> accessor);
 
     public final ByteBuffer serializeBuffer(T value)
     {
         return serializeBuffer(value, ByteBufferAccessor.instance);
     }
 
-    public abstract <V> T deserialize(V value, ValueAccessor<V> handle);
+    public abstract <V> T deserialize(V value, ValueAccessor<V> accessor);
 
     /*
      * Does not modify the position or limit of the buffer even temporarily.
@@ -46,7 +46,7 @@ public abstract class TypeSerializer<T>
      * Validate that the byte array is a valid sequence for the type this represents.
      * This guarantees deserialize() can be called without errors.
      */
-    public abstract <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException;
+    public abstract <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException;
 
     /*
      * Does not modify the position or limit of the buffer even temporarily.

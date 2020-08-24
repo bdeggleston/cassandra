@@ -24,22 +24,22 @@ public class DoubleSerializer extends TypeSerializer<Double>
 {
     public static final DoubleSerializer instance = new DoubleSerializer();
 
-    public <V> Double deserialize(V value, ValueAccessor<V> handle)
+    public <V> Double deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (handle.isEmpty(value))
+        if (accessor.isEmpty(value))
             return null;
-        return handle.toDouble(value);
+        return accessor.toDouble(value);
     }
 
-    public <V> V serializeBuffer(Double value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Double value, ValueAccessor<V> accessor)
     {
-        return (value == null) ? handle.empty() : handle.valueOf(value);
+        return (value == null) ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <T> void validate(T value, ValueAccessor<T> accessor) throws MarshalException
     {
-        if (handle.size(value) != 8 && handle.size(value) != 0)
-            throw new MarshalException(String.format("Expected 8 or 0 byte value for a double (%d)", handle.size(value)));
+        if (accessor.size(value) != 8 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("Expected 8 or 0 byte value for a double (%d)", accessor.size(value)));
     }
 
     public String toString(Double value)

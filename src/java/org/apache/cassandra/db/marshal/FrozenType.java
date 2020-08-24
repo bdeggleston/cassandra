@@ -47,7 +47,7 @@ public class FrozenType extends AbstractType<Void>
         return innerType.freeze();
     }
 
-    public <V> String getString(V value, ValueAccessor<V> handle)
+    public <V> String getString(V value, ValueAccessor<V> accessor)
     {
         throw new UnsupportedOperationException();
     }

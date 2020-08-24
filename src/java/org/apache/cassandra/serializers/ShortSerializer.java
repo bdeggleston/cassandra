@@ -24,20 +24,20 @@ public class ShortSerializer extends TypeSerializer<Short>
 {
     public static final ShortSerializer instance = new ShortSerializer();
 
-    public <V> Short deserialize(V value, ValueAccessor<V> handle)
+    public <V> Short deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : handle.toShort(value);
+        return accessor.isEmpty(value) ? null : accessor.toShort(value);
     }
 
-    public <V> V serializeBuffer(Short value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Short value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value.shortValue());
+        return value == null ? accessor.empty() : accessor.valueOf(value.shortValue());
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 2)
-            throw new MarshalException(String.format("Expected 2 bytes for a smallint (%d)", handle.size(value)));
+        if (accessor.size(value) != 2)
+            throw new MarshalException(String.format("Expected 2 bytes for a smallint (%d)", accessor.size(value)));
     }
 
     public String toString(Short value)

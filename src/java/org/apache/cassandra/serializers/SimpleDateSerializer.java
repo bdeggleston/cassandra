@@ -45,14 +45,14 @@ public class SimpleDateSerializer extends TypeSerializer<Integer>
     private static final Pattern rawPattern = Pattern.compile("^-?\\d+$");
     public static final SimpleDateSerializer instance = new SimpleDateSerializer();
 
-    public <V> Integer deserialize(V value, ValueAccessor<V> handle)
+    public <V> Integer deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : handle.toInt(value);
+        return accessor.isEmpty(value) ? null : accessor.toInt(value);
     }
 
-    public <V> V serializeBuffer(Integer value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Integer value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
     public static int dateStringToDays(String source) throws MarshalException
@@ -113,10 +113,10 @@ public class SimpleDateSerializer extends TypeSerializer<Integer>
         return Duration.ofDays(days + Integer.MIN_VALUE).toMillis();
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 4)
-            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", handle.size(value)));
+        if (accessor.size(value) != 4)
+            throw new MarshalException(String.format("Expected 4 byte long for date (%d)", accessor.size(value)));
     }
 
     public String toString(Integer value)

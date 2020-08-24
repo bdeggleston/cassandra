@@ -26,17 +26,17 @@ public class IntegerSerializer extends TypeSerializer<BigInteger>
 {
     public static final IntegerSerializer instance = new IntegerSerializer();
 
-    public <V> BigInteger deserialize(V value, ValueAccessor<V> handle)
+    public <V> BigInteger deserialize(V value, ValueAccessor<V> accessor)
     {
-        return !handle.isEmpty(value) ? new BigInteger(handle.toArray(value)) : null;
+        return !accessor.isEmpty(value) ? new BigInteger(accessor.toArray(value)) : null;
     }
 
-    public <V> V serializeBuffer(BigInteger value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(BigInteger value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value.toByteArray());
+        return value == null ? accessor.empty() : accessor.valueOf(value.toByteArray());
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
         // no invalid integers.
     }

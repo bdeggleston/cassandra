@@ -50,11 +50,11 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         this.elements = elements;
     }
 
-    protected <V> List<V> serializeValues(List<T> values, ValueAccessor<V> handle)
+    protected <V> List<V> serializeValues(List<T> values, ValueAccessor<V> accessor)
     {
         List<V> output = new ArrayList<>(values.size());
         for (T value: values)
-            output.add(elements.serializeBuffer(value, handle));
+            output.add(elements.serializeBuffer(value, accessor));
         return output;
     }
 
@@ -63,20 +63,20 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         return value.size();
     }
 
-    public <V> void validateForNativeProtocol(V input, ValueAccessor<V> handle, ProtocolVersion version)
+    public <V> void validateForNativeProtocol(V input, ValueAccessor<V> accessor, ProtocolVersion version)
     {
         try
         {
-            int n = readCollectionSize(input, handle, version);
+            int n = readCollectionSize(input, accessor, version);
             int offset = TypeSizes.sizeof(n);
             for (int i = 0; i < n; i++)
             {
-                V value = readValue(input, handle, offset, version);
-                offset += sizeOfValue(value, handle, version);
-                elements.validate(value, handle);
+                V value = readValue(input, accessor, offset, version);
+                offset += sizeOfValue(value, accessor, version);
+                elements.validate(value, accessor);
             }
 
-            if (handle.sizeFromOffset(input, offset) > 0)
+            if (accessor.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
         }
         catch (BufferUnderflowException | IndexOutOfBoundsException e)
@@ -85,11 +85,11 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         }
     }
 
-    public <V> List<T> deserializeForNativeProtocol(V input, ValueAccessor<V> handle, ProtocolVersion version)
+    public <V> List<T> deserializeForNativeProtocol(V input, ValueAccessor<V> accessor, ProtocolVersion version)
     {
         try
         {
-            int n = readCollectionSize(input, handle, version);
+            int n = readCollectionSize(input, accessor, version);
             int offset = TypeSizes.sizeof(n);
 
             if (n < 0)
@@ -103,12 +103,12 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             for (int i = 0; i < n; i++)
             {
                 // We can have nulls in lists that are used for IN values
-                V databb = readValue(input, handle, offset, version);
-                offset += sizeOfValue(databb, handle, version);
+                V databb = readValue(input, accessor, offset, version);
+                offset += sizeOfValue(databb, accessor, version);
                 if (databb != null)
                 {
-                    elements.validate(databb, handle);
-                    l.add(elements.deserialize(databb, handle));
+                    elements.validate(databb, accessor);
+                    l.add(elements.deserialize(databb, accessor));
                 }
                 else
                 {
@@ -116,7 +116,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
                 }
             }
 
-            if (handle.sizeFromOffset(input, offset) > 0)
+            if (accessor.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after list value");
 
             return l;
@@ -133,21 +133,21 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
      * @param index the index to get
      * @return the serialized element at the given index, or null if the index exceeds the list size
      */
-    public <V> V getElement(V input, ValueAccessor<V> handle, int index)
+    public <V> V getElement(V input, ValueAccessor<V> accessor, int index)
     {
         try
         {
-            int n = readCollectionSize(input, handle, ProtocolVersion.V3);
+            int n = readCollectionSize(input, accessor, ProtocolVersion.V3);
             int offset = sizeOfCollectionSize(n, ProtocolVersion.V3);
             if (n <= index)
                 return null;
 
             for (int i = 0; i < index; i++)
             {
-                int length = handle.getInt(input, offset);
+                int length = accessor.getInt(input, offset);
                 offset += TypeSizes.sizeof(length) + length;
             }
-            return readValue(input, handle, offset, ProtocolVersion.V3);
+            return readValue(input, accessor, offset, ProtocolVersion.V3);
         }
         catch (BufferUnderflowException | IndexOutOfBoundsException e)
         {

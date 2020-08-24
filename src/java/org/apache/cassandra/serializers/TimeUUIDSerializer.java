@@ -24,14 +24,14 @@ public class TimeUUIDSerializer extends UUIDSerializer
 {
     public static final TimeUUIDSerializer instance = new TimeUUIDSerializer();
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        super.validate(value, handle);
+        super.validate(value, accessor);
         // Super class only validates the Time UUID
         // version is bits 4-7 of byte 6.
-        if (handle.size(value) > 0)
+        if (accessor.size(value) > 0)
         {
-            if ((handle.getByte(value, 6) & 0xf0) != 0x10)
+            if ((accessor.getByte(value, 6) & 0xf0) != 0x10)
                 throw new MarshalException("Invalid version for TimeUUID type.");
         }
     }

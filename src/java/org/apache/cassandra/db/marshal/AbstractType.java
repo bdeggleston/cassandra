@@ -121,9 +121,9 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getSerializer().deserialize(bytes);
     }
 
-    public <V> T compose(V value, ValueAccessor<V> handle)
+    public <V> T compose(V value, ValueAccessor<V> accessor)
     {
-        return getSerializer().deserialize(value, handle);
+        return getSerializer().deserialize(value, accessor);
     }
 
     public <V> T compose(ValueAware<V> value)
@@ -136,21 +136,21 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return decompose(value, ByteBufferAccessor.instance);
     }
 
-    <V> V decompose(T value, ValueAccessor<V> handle)
+    <V> V decompose(T value, ValueAccessor<V> accessor)
     {
-        return getSerializer().serializeBuffer(value, handle);
+        return getSerializer().serializeBuffer(value, accessor);
     }
 
     /** get a string representation of the bytes used for various identifier (NOT just for log messages) */
-    public <V> String getString(V value, ValueAccessor<V> handle)
+    public <V> String getString(V value, ValueAccessor<V> accessor)
     {
         if (value == null)
             return "null";
 
         TypeSerializer<T> serializer = getSerializer();
-        serializer.validate(value, handle);
+        serializer.validate(value, accessor);
 
-        return serializer.toString(serializer.deserialize(value, handle));
+        return serializer.toString(serializer.deserialize(value, accessor));
     }
 
     public final String getString(ByteBuffer bytes)
@@ -355,9 +355,9 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return compare(left, accessorL, right, accessorR);
     }
 
-    public <V> void validateCollectionMember(V value, V collectionName, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validateCollectionMember(V value, V collectionName, ValueAccessor<V> accessor) throws MarshalException
     {
-        getSerializer().validate(value, handle);
+        getSerializer().validate(value, accessor);
     }
 
     public boolean isCollection()
@@ -448,13 +448,13 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     }
 
     // This assumes that no empty values are passed
-    public  <V> void writeValue(V value, ValueAccessor<V> handle, DataOutputPlus out) throws IOException
+    public  <V> void writeValue(V value, ValueAccessor<V> accessor, DataOutputPlus out) throws IOException
     {
-        assert !handle.isEmpty(value);
+        assert !accessor.isEmpty(value);
         if (valueLengthIfFixed() >= 0)
-            handle.write(value, out);
+            accessor.write(value, out);
         else
-            handle.writeWithVIntLength(value, out);
+            accessor.writeWithVIntLength(value, out);
     }
 
     public long writtenLength(ByteBuffer value)
@@ -462,12 +462,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return writtenLength(value, ByteBufferAccessor.instance);
     }
 
-    public <V> long writtenLength(V value, ValueAccessor<V> handle)
+    public <V> long writtenLength(V value, ValueAccessor<V> accessor)
     {
-        assert !handle.isEmpty(value) : "bytes should not be empty for type " + this;
+        assert !accessor.isEmpty(value) : "bytes should not be empty for type " + this;
         return valueLengthIfFixed() >= 0
-               ? handle.size(value)
-               : handle.sizeWithVIntLength(value);
+               ? accessor.size(value)
+               : accessor.sizeWithVIntLength(value);
     }
 
     public ByteBuffer readBuffer(DataInputPlus in) throws IOException
@@ -485,12 +485,12 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return read(ByteArrayAccessor.instance, in, maxValueSize);
     }
 
-    public <V> V read(ValueAccessor<V> handle, DataInputPlus in, int maxValueSize) throws IOException
+    public <V> V read(ValueAccessor<V> accessor, DataInputPlus in, int maxValueSize) throws IOException
     {
         int length = valueLengthIfFixed();
 
         if (length >= 0)
-            return handle.read(in, length);
+            return accessor.read(in, length);
         else
         {
             int l = (int)in.readUnsignedVInt();
@@ -502,7 +502,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
                                                     "which is set via max_value_size_in_mb in cassandra.yaml",
                                                     l, maxValueSize));
 
-            return handle.read(in, l);
+            return accessor.read(in, l);
         }
     }
 

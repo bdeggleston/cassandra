@@ -34,21 +34,21 @@ public abstract class AbstractTextSerializer extends TypeSerializer<String>
         this.charset = charset;
     }
 
-    public <V> String deserialize(V value, ValueAccessor<V> handle)
+    public <V> String deserialize(V value, ValueAccessor<V> accessor)
     {
         try
         {
-            return handle.toString(value, charset);
+            return accessor.toString(value, charset);
         }
         catch (CharacterCodingException e)
         {
-            throw new MarshalException("Invalid " + charset + " bytes " + handle.toHex(value));
+            throw new MarshalException("Invalid " + charset + " bytes " + accessor.toHex(value));
         }
     }
 
-    public <V> V serializeBuffer(String value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(String value, ValueAccessor<V> accessor)
     {
-        return handle.valueOf(value, charset);
+        return accessor.valueOf(value, charset);
     }
 
     public String toString(String value)

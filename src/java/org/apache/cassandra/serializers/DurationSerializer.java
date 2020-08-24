@@ -29,10 +29,10 @@ public final class DurationSerializer extends TypeSerializer<Duration>
 {
     public static final DurationSerializer instance = new DurationSerializer();
 
-    public <V> V serializeBuffer(Duration duration, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Duration duration, ValueAccessor<V> accessor)
     {
         if (duration == null)
-            return handle.empty();
+            return accessor.empty();
 
         long months = duration.getMonths();
         long days = duration.getDays();
@@ -47,7 +47,7 @@ public final class DurationSerializer extends TypeSerializer<Duration>
             output.writeVInt(months);
             output.writeVInt(days);
             output.writeVInt(nanoseconds);
-            return handle.valueOf(output.buffer());
+            return accessor.valueOf(output.buffer());
         }
         catch (IOException e)
         {
@@ -56,12 +56,12 @@ public final class DurationSerializer extends TypeSerializer<Duration>
         }
     }
 
-    public <V> Duration deserialize(V value, ValueAccessor<V> handle)
+    public <V> Duration deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (handle.isEmpty(value))
+        if (accessor.isEmpty(value))
             return null;
 
-        try (DataInputBuffer in = new DataInputBuffer(handle.toBuffer(value), true))  // FIXME: value input buffer
+        try (DataInputBuffer in = new DataInputBuffer(accessor.toBuffer(value), true))  // FIXME: value input buffer
         {
             int months = (int) in.readVInt();
             int days = (int) in.readVInt();
@@ -75,12 +75,12 @@ public final class DurationSerializer extends TypeSerializer<Duration>
         }
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) < 3)
-            throw new MarshalException(String.format("Expected at least 3 bytes for a duration (%d)", handle.size(value)));
+        if (accessor.size(value) < 3)
+            throw new MarshalException(String.format("Expected at least 3 bytes for a duration (%d)", accessor.size(value)));
 
-        try (DataInputBuffer in = new DataInputBuffer(handle.toBuffer(value), true))  // FIXME: value input buffer
+        try (DataInputBuffer in = new DataInputBuffer(accessor.toBuffer(value), true))  // FIXME: value input buffer
         {
             long monthsAsLong = in.readVInt();
             long daysAsLong = in.readVInt();

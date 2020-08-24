@@ -94,21 +94,21 @@ public class CompositeType extends AbstractCompositeType
         return startingOffsetInternal(isStatic);
     }
 
-    protected static <V> boolean readIsStaticInternal(V value, ValueAccessor<V> handle)
+    protected static <V> boolean readIsStaticInternal(V value, ValueAccessor<V> accessor)
     {
-        if (handle.size(value) < 2)
+        if (accessor.size(value) < 2)
             return false;
 
-        int header = handle.getShort(value, 0);
+        int header = accessor.getShort(value, 0);
         if ((header & 0xFFFF) != STATIC_MARKER)
             return false;
 
         return true;
     }
 
-    protected <V> boolean readIsStatic(V value, ValueAccessor<V> handle)
+    protected <V> boolean readIsStatic(V value, ValueAccessor<V> accessor)
     {
-        return readIsStaticInternal(value, handle);
+        return readIsStaticInternal(value, accessor);
     }
 
     private static boolean readStatic(ByteBuffer bb)
@@ -138,7 +138,7 @@ public class CompositeType extends AbstractCompositeType
         this.types = ImmutableList.copyOf(types);
     }
 
-    protected <V> AbstractType<?> getComparator(int i, V value, ValueAccessor<V> handle, int offset)
+    protected <V> AbstractType<?> getComparator(int i, V value, ValueAccessor<V> accessor, int offset)
     {
         try
         {
@@ -160,7 +160,7 @@ public class CompositeType extends AbstractCompositeType
         return getComparator(i, left, accessorL, offset1);
     }
 
-    protected <V> AbstractType<?> getAndAppendComparator(int i, V value, ValueAccessor<V> handle, StringBuilder sb, int offset)
+    protected <V> AbstractType<?> getAndAppendComparator(int i, V value, ValueAccessor<V> accessor, StringBuilder sb, int offset)
     {
         return types.get(i);
     }
@@ -170,14 +170,14 @@ public class CompositeType extends AbstractCompositeType
         return new StaticParsedComparator(types.get(i), part);
     }
 
-    protected <V> AbstractType<?> validateComparator(int i, V value, ValueAccessor<V> handle, int offset) throws MarshalException
+    protected <V> AbstractType<?> validateComparator(int i, V value, ValueAccessor<V> accessor, int offset) throws MarshalException
     {
         if (i >= types.size())
             throw new MarshalException("Too many bytes for comparator");
         return types.get(i);
     }
 
-    protected <V> int getComparatorSize(int i, V value, ValueAccessor<V> handle, int offset)
+    protected <V> int getComparatorSize(int i, V value, ValueAccessor<V> accessor, int offset)
     {
         return 0;
     }

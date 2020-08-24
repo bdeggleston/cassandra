@@ -33,7 +33,7 @@ public class UserTypeSerializer extends BytesSerializer
     }
 
     @Override
-    public <V> void validate(V input, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V input, ValueAccessor<V> accessor) throws MarshalException
     {
         int i = -1;
         int offset = 0;
@@ -41,27 +41,27 @@ public class UserTypeSerializer extends BytesSerializer
         {
             i++;
             // we allow the input to have less fields than declared so as to support field addition.
-            if (handle.sizeFromOffset(input, offset) == 0)
+            if (accessor.sizeFromOffset(input, offset) == 0)
                 return;
 
-            if (handle.sizeFromOffset(input, offset) < 4)
+            if (accessor.sizeFromOffset(input, offset) < 4)
                 throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s", i, entry.getKey()));
 
-            int size = handle.getInt(input, offset);
+            int size = accessor.getInt(input, offset);
             offset += TypeSizes.sizeof(size);
 
             // size < 0 means null value
             if (size < 0)
                 continue;
 
-            if (handle.sizeFromOffset(input, offset) < size)
+            if (accessor.sizeFromOffset(input, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth field %s", i, entry.getKey()));
 
-            V field = handle.slice(input, offset, size);
+            V field = accessor.slice(input, offset, size);
             try
             {
                 offset += size;
-                entry.getValue().validate(field, handle);
+                entry.getValue().validate(field, accessor);
             }
             catch (MarshalException e)
             {
@@ -70,7 +70,7 @@ public class UserTypeSerializer extends BytesSerializer
         }
 
         // We're allowed to get less fields than declared, but not more
-        if (handle.sizeFromOffset(input, offset) != 0)
+        if (accessor.sizeFromOffset(input, offset) != 0)
             throw new MarshalException("Invalid remaining data after end of UDT value");
     }
 }

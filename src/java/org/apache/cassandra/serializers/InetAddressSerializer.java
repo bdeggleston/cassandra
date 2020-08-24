@@ -27,14 +27,14 @@ public class InetAddressSerializer extends TypeSerializer<InetAddress>
 {
     public static final InetAddressSerializer instance = new InetAddressSerializer();
 
-    public <V> InetAddress deserialize(V value, ValueAccessor<V> handle)
+    public <V> InetAddress deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (handle.isEmpty(value))
+        if (accessor.isEmpty(value))
             return null;
 
         try
         {
-            return InetAddress.getByAddress(handle.toArray(value));
+            return InetAddress.getByAddress(accessor.toArray(value));
         }
         catch (UnknownHostException e)
         {
@@ -42,23 +42,23 @@ public class InetAddressSerializer extends TypeSerializer<InetAddress>
         }
     }
 
-    public <V> V serializeBuffer(InetAddress value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(InetAddress value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value.getAddress());
+        return value == null ? accessor.empty() : accessor.valueOf(value.getAddress());
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.isEmpty(value))
+        if (accessor.isEmpty(value))
             return;
 
         try
         {
-            InetAddress.getByAddress(handle.toArray(value));
+            InetAddress.getByAddress(accessor.toArray(value));
         }
         catch (UnknownHostException e)
         {
-            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s", handle.toHex(value)));
+            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s", accessor.toHex(value)));
         }
     }
 
