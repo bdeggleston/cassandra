@@ -24,20 +24,20 @@ public class ByteSerializer extends TypeSerializer<Byte>
 {
     public static final ByteSerializer instance = new ByteSerializer();
 
-    public <V> Byte deserialize(V value, ValueAccessor<V> handle)
+    public <V> Byte deserialize(V value, ValueAccessor<V> accessor)
     {
-        return value == null || handle.isEmpty(value) ? null : handle.toByte(value);
+        return value == null || accessor.isEmpty(value) ? null : accessor.toByte(value);
     }
 
-    public <V> V serializeBuffer(Byte value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Byte value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 1)
-            throw new MarshalException(String.format("Expected 1 byte for a tinyint (%d)", handle.size(value)));
+        if (accessor.size(value) != 1)
+            throw new MarshalException(String.format("Expected 1 byte for a tinyint (%d)", accessor.size(value)));
     }
 
     public String toString(Byte value)

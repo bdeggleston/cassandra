@@ -27,19 +27,19 @@ public class BytesSerializer extends TypeSerializer<ByteBuffer>
 {
     public static final BytesSerializer instance = new BytesSerializer();
 
-    public <V> V serializeBuffer(ByteBuffer value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(ByteBuffer value, ValueAccessor<V> accessor)
     {
         // We make a copy in case the user modifies the input
-        return handle.valueOf(value.duplicate());
+        return accessor.valueOf(value.duplicate());
     }
 
-    public <V> ByteBuffer deserialize(V value, ValueAccessor<V> handle)
+    public <V> ByteBuffer deserialize(V value, ValueAccessor<V> accessor)
     {
         // This is from the DB, so it is not shared with someone else
-        return handle.toBuffer(value);
+        return accessor.toBuffer(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
         // all bytes are legal.
     }

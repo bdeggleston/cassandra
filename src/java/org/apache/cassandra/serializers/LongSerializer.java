@@ -24,20 +24,20 @@ public class LongSerializer extends TypeSerializer<Long>
 {
     public static final LongSerializer instance = new LongSerializer();
 
-    public <V> Long deserialize(V value, ValueAccessor<V> handle)
+    public <V> Long deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : handle.toLong(value);
+        return accessor.isEmpty(value) ? null : accessor.toLong(value);
     }
 
-    public <V> V serializeBuffer(Long value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Long value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 8 && handle.size(value) != 0)
-            throw new MarshalException(String.format("Expected 8 or 0 byte long (%d)", handle.size(value)));
+        if (accessor.size(value) != 8 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("Expected 8 or 0 byte long (%d)", accessor.size(value)));
     }
 
     public String toString(Long value)

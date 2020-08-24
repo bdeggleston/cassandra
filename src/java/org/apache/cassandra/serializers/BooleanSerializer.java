@@ -24,25 +24,25 @@ public class BooleanSerializer extends TypeSerializer<Boolean>
 
     public static final BooleanSerializer instance = new BooleanSerializer();
 
-    public <V> Boolean deserialize(V value, ValueAccessor<V> handle)
+    public <V> Boolean deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (value == null || handle.isEmpty(value))
+        if (value == null || accessor.isEmpty(value))
             return null;
 
-        return handle.getByte(value, 0) != 0;
+        return accessor.getByte(value, 0) != 0;
     }
 
-    public <V> V serializeBuffer(Boolean value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Boolean value, ValueAccessor<V> accessor)
     {
         if (value == null)
-            return handle.empty();
-        return handle.valueOf(value);
+            return accessor.empty();
+        return accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 1 && handle.size(value) != 0)
-            throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", handle.size(value)));
+        if (accessor.size(value) != 1 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", accessor.size(value)));
     }
 
     public String toString(Boolean value)

@@ -25,20 +25,20 @@ public class UUIDSerializer extends TypeSerializer<UUID>
 {
     public static final UUIDSerializer instance = new UUIDSerializer();
 
-    public <V> UUID deserialize(V value, ValueAccessor<V> handle)
+    public <V> UUID deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : handle.toUUID(value);
+        return accessor.isEmpty(value) ? null : accessor.toUUID(value);
     }
 
-    public <V> V serializeBuffer(UUID value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(UUID value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 16 && handle.size(value) != 0)
-            throw new MarshalException(String.format("UUID should be 16 or 0 bytes (%d)", handle.size(value)));
+        if (accessor.size(value) != 16 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("UUID should be 16 or 0 bytes (%d)", accessor.size(value)));
         // not sure what the version should be for this.
     }
 

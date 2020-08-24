@@ -31,35 +31,35 @@ public class TupleSerializer extends BytesSerializer
         this.fields = fields;
     }
 
-    public <V> void validate(V input, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V input, ValueAccessor<V> accessor) throws MarshalException
     {
         int offset = 0;
         for (int i = 0; i < fields.size(); i++)
         {
             // we allow the input to have less fields than declared so as to support field addition.
-            if (handle.sizeFromOffset(input, offset) == 0)
+            if (accessor.sizeFromOffset(input, offset) == 0)
                 return;
 
-            if (handle.sizeFromOffset(input, offset) < Integer.BYTES)
+            if (accessor.sizeFromOffset(input, offset) < Integer.BYTES)
                 throw new MarshalException(String.format("Not enough bytes to read size of %dth component", i));
 
-            int size = handle.getInt(input, offset);
+            int size = accessor.getInt(input, offset);
             offset += TypeSizes.sizeof(size);
 
             // size < 0 means null value
             if (size < 0)
                 continue;
 
-            if (handle.sizeFromOffset(input, offset) < size)
+            if (accessor.sizeFromOffset(input, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
-            V field = handle.slice(input, offset, size);
+            V field = accessor.slice(input, offset, size);
             offset += size;
-            fields.get(i).validate(field, handle);
+            fields.get(i).validate(field, accessor);
         }
 
         // We're allowed to get less fields than declared, but not more
-        if (handle.sizeFromOffset(input, offset) != 0)
+        if (accessor.sizeFromOffset(input, offset) != 0)
             throw new MarshalException("Invalid remaining data after end of tuple value");
     }
 }

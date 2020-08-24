@@ -30,9 +30,9 @@ public class UTF8Serializer extends AbstractTextSerializer
         super(StandardCharsets.UTF_8);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (!UTF8Validator.validate(value, handle))
+        if (!UTF8Validator.validate(value, accessor))
             throw new MarshalException("String didn't validate.");
     }
 
@@ -52,7 +52,7 @@ public class UTF8Serializer extends AbstractTextSerializer
 
         // since we're not converting to java strings, we don't need to worry about converting to surrogates.
         // buf has already been sliced/duplicated.
-        static <V> boolean validate(V value, ValueAccessor<V> handle)
+        static <V> boolean validate(V value, ValueAccessor<V> accessor)
         {
             if (value == null)
                 return false;
@@ -60,9 +60,9 @@ public class UTF8Serializer extends AbstractTextSerializer
             int b = 0;
             int offset = 0;
             State state = State.START;
-            while (handle.sizeFromOffset(value, offset) > 0)
+            while (accessor.sizeFromOffset(value, offset) > 0)
             {
-                b = handle.getByte(value, offset++);
+                b = accessor.getByte(value, offset++);
                 switch (state)
                 {
                     case START:

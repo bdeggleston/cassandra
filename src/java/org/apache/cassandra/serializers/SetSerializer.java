@@ -93,11 +93,11 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
         }
     }
 
-    public <V> Set<T> deserializeForNativeProtocol(V input, ValueAccessor<V> handle, ProtocolVersion version)
+    public <V> Set<T> deserializeForNativeProtocol(V input, ValueAccessor<V> accessor, ProtocolVersion version)
     {
         try
         {
-            int n = readCollectionSize(input, handle, version);
+            int n = readCollectionSize(input, accessor, version);
             int offset = TypeSizes.sizeof(n);
 
             if (n < 0)
@@ -111,12 +111,12 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
 
             for (int i = 0; i < n; i++)
             {
-                V value = readValue(input, handle, offset, version);
-                offset += sizeOfValue(value, handle, version);
-                elements.validate(value, handle);
-                l.add(elements.deserialize(value, handle));
+                V value = readValue(input, accessor, offset, version);
+                offset += sizeOfValue(value, accessor, version);
+                elements.validate(value, accessor);
+                l.add(elements.deserialize(value, accessor));
             }
-            if (handle.sizeFromOffset(input, offset) > 0)
+            if (accessor.sizeFromOffset(input, offset) > 0)
                 throw new MarshalException("Unexpected extraneous bytes after set value");
             return l;
         }

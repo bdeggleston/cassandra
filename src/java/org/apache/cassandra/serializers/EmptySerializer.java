@@ -24,20 +24,20 @@ public class EmptySerializer extends TypeSerializer<Void>
 {
     public static final EmptySerializer instance = new EmptySerializer();
 
-    public <V> Void deserialize(V value, ValueAccessor<V> handle)
+    public <V> Void deserialize(V value, ValueAccessor<V> accessor)
     {
-        validate(value, handle);
+        validate(value, accessor);
         return null;
     }
 
-    public <V> V serializeBuffer(Void value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Void value, ValueAccessor<V> accessor)
     {
-        return handle.empty();
+        return accessor.empty();
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) > 0)
+        if (accessor.size(value) > 0)
             throw new MarshalException("EmptyType only accept empty values");
     }
 

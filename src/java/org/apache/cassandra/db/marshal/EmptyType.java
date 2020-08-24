@@ -73,7 +73,7 @@ public class EmptyType extends AbstractType<Void>
         return 0;
     }
 
-    public <V> String getString(V value, ValueAccessor<V> handle)
+    public <V> String getString(V value, ValueAccessor<V> accessor)
     {
         return "";
     }

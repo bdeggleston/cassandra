@@ -24,22 +24,22 @@ public class FloatSerializer extends TypeSerializer<Float>
 {
     public static final FloatSerializer instance = new FloatSerializer();
 
-    public <V> Float deserialize(V value, ValueAccessor<V> handle)
+    public <V> Float deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (handle.isEmpty(value))
+        if (accessor.isEmpty(value))
             return null;
 
-        return handle.toFloat(value);
+        return accessor.toFloat(value);
     }
 
-    public <V> V serializeBuffer(Float value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Float value, ValueAccessor<V> accessor)
     {
-        return (value == null) ? handle.empty() : handle.valueOf(value);
+        return (value == null) ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        int size = handle.size(value);
+        int size = accessor.size(value);
         if (size != 4 && size != 0)
             throw new MarshalException(String.format("Expected 4 or 0 byte value for a float (%d)", size));
     }

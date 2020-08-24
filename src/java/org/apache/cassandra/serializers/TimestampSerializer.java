@@ -124,14 +124,14 @@ public class TimestampSerializer extends TypeSerializer<Date>
 
     public static final TimestampSerializer instance = new TimestampSerializer();
 
-    public <V> Date deserialize(V value, ValueAccessor<V> handle)
+    public <V> Date deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : new Date(handle.toLong(value));
+        return accessor.isEmpty(value) ? null : new Date(accessor.toLong(value));
     }
 
-    public <V> V serializeBuffer(Date value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Date value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value.getTime());
+        return value == null ? accessor.empty() : accessor.valueOf(value.getTime());
     }
 
     public static long dateStringToTimestamp(String source) throws MarshalException
@@ -168,10 +168,10 @@ public class TimestampSerializer extends TypeSerializer<Date>
     	return FORMATTER_TO_JSON.get();
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 8 && handle.size(value) != 0)
-            throw new MarshalException(String.format("Expected 8 or 0 byte long for date (%d)", handle.size(value)));
+        if (accessor.size(value) != 8 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("Expected 8 or 0 byte long for date (%d)", accessor.size(value)));
     }
 
     public String toString(Date value)

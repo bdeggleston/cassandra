@@ -54,20 +54,20 @@ public class PartitionerDefinedOrder extends AbstractType<ByteBuffer>
     }
 
     @Override
-    public <V> ByteBuffer compose(V value, ValueAccessor<V> handle)
+    public <V> ByteBuffer compose(V value, ValueAccessor<V> accessor)
     {
         throw new UnsupportedOperationException("You can't do this with a local partitioner.");
     }
 
     @Override
-    <V> V decompose(ByteBuffer value, ValueAccessor<V> handle)
+    <V> V decompose(ByteBuffer value, ValueAccessor<V> accessor)
     {
         throw new UnsupportedOperationException("You can't do this with a local partitioner.");
     }
 
-    public <V> String getString(V value, ValueAccessor<V> handle)
+    public <V> String getString(V value, ValueAccessor<V> accessor)
     {
-        return handle.toHex(value);
+        return accessor.toHex(value);
     }
 
     public ByteBuffer fromString(String source)

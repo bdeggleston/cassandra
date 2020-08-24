@@ -27,14 +27,14 @@ public class TimeSerializer extends TypeSerializer<Long>
     public static final Pattern timePattern = Pattern.compile("^-?\\d+$");
     public static final TimeSerializer instance = new TimeSerializer();
 
-    public <V> Long deserialize(V value, ValueAccessor<V> handle)
+    public <V> Long deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.size(value) == 0 ? null : handle.toLong(value);
+        return accessor.size(value) == 0 ? null : accessor.toLong(value);
     }
 
-    public <V> V serializeBuffer(Long value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Long value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
     public static Long timeStringToLong(String source) throws MarshalException
@@ -66,10 +66,10 @@ public class TimeSerializer extends TypeSerializer<Long>
         }
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 8)
-            throw new MarshalException(String.format("Expected 8 byte long for time (%d)", handle.size(value)));
+        if (accessor.size(value) != 8)
+            throw new MarshalException(String.format("Expected 8 byte long for time (%d)", accessor.size(value)));
     }
 
     public String toString(Long value)

@@ -82,7 +82,7 @@ public class DynamicCompositeType extends AbstractCompositeType
         this.aliases = aliases;
     }
 
-    protected <V> boolean readIsStatic(V value, ValueAccessor<V> handle)
+    protected <V> boolean readIsStatic(V value, ValueAccessor<V> accessor)
     {
         // We don't have the static nothing for DCT
         return false;
@@ -93,9 +93,9 @@ public class DynamicCompositeType extends AbstractCompositeType
         return 0;
     }
 
-    protected <V> int getComparatorSize(int i, V value, ValueAccessor<V> handle, int offset)
+    protected <V> int getComparatorSize(int i, V value, ValueAccessor<V> accessor, int offset)
     {
-        int header = handle.getShort(value, offset);
+        int header = accessor.getShort(value, offset);
         if ((header & 0x8000) == 0)
         {
             return 2 + header;
@@ -106,15 +106,15 @@ public class DynamicCompositeType extends AbstractCompositeType
         }
     }
 
-    private <V> AbstractType<?> getComparator(V value, ValueAccessor<V> handle, int offset)
+    private <V> AbstractType<?> getComparator(V value, ValueAccessor<V> accessor, int offset)
     {
         try
         {
-            int header = handle.getShort(value, offset);
+            int header = accessor.getShort(value, offset);
             if ((header & 0x8000) == 0)
             {
 
-                String name = handle.toString(handle.slice(value, offset + 2, header));
+                String name = accessor.toString(accessor.slice(value, offset + 2, header));
                 return TypeParser.parse(name);
             }
             else
@@ -128,9 +128,9 @@ public class DynamicCompositeType extends AbstractCompositeType
         }
     }
 
-    protected <V> AbstractType<?> getComparator(int i, V value, ValueAccessor<V> handle, int offset)
+    protected <V> AbstractType<?> getComparator(int i, V value, ValueAccessor<V> accessor, int offset)
     {
-        return getComparator(value, handle, offset);
+        return getComparator(value, accessor, offset);
     }
 
     protected <VL, VR> AbstractType<?> getComparator(int i, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, int offset1, int offset2)
@@ -175,14 +175,14 @@ public class DynamicCompositeType extends AbstractCompositeType
         return rawComp;
     }
 
-    protected <V> AbstractType<?> getAndAppendComparator(int i, V value, ValueAccessor<V> handle, StringBuilder sb, int offset)
+    protected <V> AbstractType<?> getAndAppendComparator(int i, V value, ValueAccessor<V> accessor, StringBuilder sb, int offset)
     {
         try
         {
-            int header = handle.getShort(value, offset);
+            int header = accessor.getShort(value, offset);
             if ((header & 0x8000) == 0)
             {
-                String name = handle.toString(handle.slice(value, offset + 2, header));
+                String name = accessor.toString(accessor.slice(value, offset + 2, header));
                 sb.append(name).append("@");
                 return TypeParser.parse(name);
             }
@@ -203,23 +203,23 @@ public class DynamicCompositeType extends AbstractCompositeType
         return new DynamicParsedComparator(part);
     }
 
-    protected <V> AbstractType<?> validateComparator(int i, V input, ValueAccessor<V> handle, int offset) throws MarshalException
+    protected <V> AbstractType<?> validateComparator(int i, V input, ValueAccessor<V> accessor, int offset) throws MarshalException
     {
         AbstractType<?> comparator = null;
-        if (handle.sizeFromOffset(input, offset) < 2)
+        if (accessor.sizeFromOffset(input, offset) < 2)
             throw new MarshalException("Not enough bytes to header of the comparator part of component " + i);
-        int header = handle.getShort(input, offset);
+        int header = accessor.getShort(input, offset);
         offset += 1;
         if ((header & 0x8000) == 0)
         {
-            if (handle.sizeFromOffset(input, offset) < header)
+            if (accessor.sizeFromOffset(input, offset) < header)
                 throw new MarshalException("Not enough bytes to read comparator name of component " + i);
 
-            V value = handle.slice(input, offset, header);
+            V value = accessor.slice(input, offset, header);
             String valueStr = null;
             try
             {
-                valueStr = handle.toString(value);
+                valueStr = accessor.toString(value);
                 comparator = TypeParser.parse(valueStr);
             }
             catch (CharacterCodingException ce)
@@ -398,17 +398,17 @@ public class DynamicCompositeType extends AbstractCompositeType
         }
 
         @Override
-        public <V> Void compose(V value, ValueAccessor<V> handle)
+        public <V> Void compose(V value, ValueAccessor<V> accessor)
         {
             throw new UnsupportedOperationException();
         }
 
-        <V> V decompose(Void value, ValueAccessor<V> handle)
+        <V> V decompose(Void value, ValueAccessor<V> accessor)
         {
             throw new UnsupportedOperationException();
         }
 
-        public <V> String getString(V value, ValueAccessor<V> handle)
+        public <V> String getString(V value, ValueAccessor<V> accessor)
         {
             throw new UnsupportedOperationException();
         }

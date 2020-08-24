@@ -267,7 +267,7 @@ public class TupleType extends AbstractType<ByteBuffer>
     }
 
     @Override
-    public <V> String getString(V input, ValueAccessor<V> handle)
+    public <V> String getString(V input, ValueAccessor<V> accessor)
     {
         if (input == null)
             return "null";
@@ -276,14 +276,14 @@ public class TupleType extends AbstractType<ByteBuffer>
         int offset = 0;
         for (int i = 0; i < size(); i++)
         {
-            if (handle.sizeFromOffset(input, offset) == 0)
+            if (accessor.sizeFromOffset(input, offset) == 0)
                 return sb.toString();
 
             if (i > 0)
                 sb.append(":");
 
             AbstractType<?> type = type(i);
-            int size = handle.getInt(input, offset);
+            int size = accessor.getInt(input, offset);
             offset += TypeSizes.sizeof(size);
             if (size < 0)
             {
@@ -291,10 +291,10 @@ public class TupleType extends AbstractType<ByteBuffer>
                 continue;
             }
 
-            V field = handle.slice(input, offset, size);
+            V field = accessor.slice(input, offset, size);
             offset += size;
             // We use ':' as delimiter, and @ to represent null, so escape them in the generated string
-            String fld = COLON_PAT.matcher(type.getString(field, handle)).replaceAll(ESCAPED_COLON);
+            String fld = COLON_PAT.matcher(type.getString(field, accessor)).replaceAll(ESCAPED_COLON);
             fld = AT_PAT.matcher(fld).replaceAll(ESCAPED_AT);
             sb.append(fld);
         }

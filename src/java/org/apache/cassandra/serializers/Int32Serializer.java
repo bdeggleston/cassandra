@@ -24,20 +24,20 @@ public class Int32Serializer extends TypeSerializer<Integer>
 {
     public static final Int32Serializer instance = new Int32Serializer();
 
-    public <V> Integer deserialize(V value, ValueAccessor<V> handle)
+    public <V> Integer deserialize(V value, ValueAccessor<V> accessor)
     {
-        return handle.isEmpty(value) ? null : handle.toInt(value);
+        return accessor.isEmpty(value) ? null : accessor.toInt(value);
     }
 
-    public <V> V serializeBuffer(Integer value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(Integer value, ValueAccessor<V> accessor)
     {
-        return value == null ? handle.empty() : handle.valueOf(value);
+        return value == null ? accessor.empty() : accessor.valueOf(value);
     }
 
-    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (handle.size(value) != 4 && handle.size(value) != 0)
-            throw new MarshalException(String.format("Expected 4 or 0 byte int (%d)", handle.size(value)));
+        if (accessor.size(value) != 4 && accessor.size(value) != 0)
+            throw new MarshalException(String.format("Expected 4 or 0 byte int (%d)", accessor.size(value)));
     }
 
     public String toString(Integer value)

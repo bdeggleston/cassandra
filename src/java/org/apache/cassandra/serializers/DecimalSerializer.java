@@ -27,21 +27,21 @@ public class DecimalSerializer extends TypeSerializer<BigDecimal>
 {
     public static final DecimalSerializer instance = new DecimalSerializer();
 
-    public <V> BigDecimal deserialize(V value, ValueAccessor<V> handle)
+    public <V> BigDecimal deserialize(V value, ValueAccessor<V> accessor)
     {
-        if (value == null || handle.isEmpty(value))
+        if (value == null || accessor.isEmpty(value))
             return null;
 
         // do not consume the contents of the ByteBuffer
-        int scale = handle.getInt(value, 0);
-        BigInteger bi = new BigInteger(handle.toArray(value, 4, handle.size(value) - 4));
+        int scale = accessor.getInt(value, 0);
+        BigInteger bi = new BigInteger(accessor.toArray(value, 4, accessor.size(value) - 4));
         return new BigDecimal(bi, scale);
     }
 
-    public <V> V serializeBuffer(BigDecimal value, ValueAccessor<V> handle)
+    public <V> V serializeBuffer(BigDecimal value, ValueAccessor<V> accessor)
     {
         if (value == null)
-            return handle.empty();
+            return accessor.empty();
 
         BigInteger bi = value.unscaledValue();
         int scale = value.scale();
@@ -51,14 +51,14 @@ public class DecimalSerializer extends TypeSerializer<BigDecimal>
         bytes.putInt(scale);
         bytes.put(bibytes);
         bytes.rewind();
-        return handle.valueOf(bytes);  // FIXME: value write ops
+        return accessor.valueOf(bytes);  // FIXME: value write ops
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <T> void validate(T value, ValueAccessor<T> accessor) throws MarshalException
     {
         // We at least store the scale.
-        if (handle.size(value) != 0 && handle.size(value) < 4)
-            throw new MarshalException(String.format("Expected 0 or at least 4 bytes (%d)", handle.size(value)));
+        if (accessor.size(value) != 0 && accessor.size(value) < 4)
+            throw new MarshalException(String.format("Expected 0 or at least 4 bytes (%d)", accessor.size(value)));
     }
 
     public String toString(BigDecimal value)
