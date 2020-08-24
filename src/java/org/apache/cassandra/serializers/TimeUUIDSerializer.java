@@ -24,7 +24,7 @@ public class TimeUUIDSerializer extends UUIDSerializer
 {
     public static final TimeUUIDSerializer instance = new TimeUUIDSerializer();
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         super.validate(value, handle);
         // Super class only validates the Time UUID

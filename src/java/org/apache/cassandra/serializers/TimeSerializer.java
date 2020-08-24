@@ -66,7 +66,7 @@ public class TimeSerializer extends TypeSerializer<Long>
         }
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 8)
             throw new MarshalException(String.format("Expected 8 byte long for time (%d)", handle.size(value)));

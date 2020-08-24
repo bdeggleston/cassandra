@@ -90,11 +90,11 @@ public abstract class CBuilder
     {
         return add(value, ByteBufferAccessor.instance);
     }
-    public final <T> CBuilder add(ClusteringPrefix<T> prefix, int i)
+    public final <V> CBuilder add(ClusteringPrefix<V> prefix, int i)
     {
         return add(prefix.get(i), prefix.accessor());
     }
-    public abstract <T> CBuilder add(T value, ValueAccessor<T> accessor);
+    public abstract <V> CBuilder add(V value, ValueAccessor<V> accessor);
     public abstract CBuilder add(Object value);
     public abstract Clustering<?> build();
     public abstract ClusteringBound<?> buildBound(boolean isStart, boolean isInclusive);
@@ -129,7 +129,7 @@ public abstract class CBuilder
             return type;
         }
 
-        public <T> CBuilder add(T value, ValueAccessor<T> accessor)
+        public <V> CBuilder add(V value, ValueAccessor<V> accessor)
         {
             if (isDone())
                 throw new IllegalStateException();

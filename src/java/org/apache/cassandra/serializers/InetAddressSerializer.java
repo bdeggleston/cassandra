@@ -47,7 +47,7 @@ public class InetAddressSerializer extends TypeSerializer<InetAddress>
         return value == null ? handle.empty() : handle.valueOf(value.getAddress());
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.isEmpty(value))
             return;

@@ -20,7 +20,6 @@ package org.apache.cassandra.serializers;
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.Date;
@@ -169,7 +168,7 @@ public class TimestampSerializer extends TypeSerializer<Date>
     	return FORMATTER_TO_JSON.get();
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 8 && handle.size(value) != 0)
             throw new MarshalException(String.format("Expected 8 or 0 byte long for date (%d)", handle.size(value)));

@@ -32,7 +32,7 @@ public class UserTypeSerializer extends BytesSerializer
         this.fields = fields;
     }
 
-    public <T> void validate(T input, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V input, ValueAccessor<V> handle) throws MarshalException
     {
         int i = 0;
         int offset = 0;
@@ -55,7 +55,7 @@ public class UserTypeSerializer extends BytesSerializer
             if (handle.sizeFromOffset(input, offset) < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth field %s", i, entry.getKey()));
 
-            T field = handle.slice(input, offset, size);
+            V field = handle.slice(input, offset, size);
             offset += size;
             entry.getValue().validate(field, handle);
             i++;

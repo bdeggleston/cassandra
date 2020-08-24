@@ -35,7 +35,7 @@ public class UUIDSerializer extends TypeSerializer<UUID>
         return value == null ? handle.empty() : handle.valueOf(value);
     }
 
-    public <T> void validate(T value, ValueAccessor<T> handle) throws MarshalException
+    public <V> void validate(V value, ValueAccessor<V> handle) throws MarshalException
     {
         if (handle.size(value) != 16 && handle.size(value) != 0)
             throw new MarshalException(String.format("UUID should be 16 or 0 bytes (%d)", handle.size(value)));
