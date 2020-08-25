@@ -31,7 +31,6 @@ import org.apache.cassandra.distributed.api.ICluster;
 import org.apache.cassandra.distributed.api.IInvokableInstance;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-//import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.distributed.api.Feature.NETWORK;
 import static org.apache.cassandra.distributed.shared.AssertUtils.*;

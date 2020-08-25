@@ -208,6 +208,11 @@ public class ColumnMetadata extends ColumnSpecification implements Selectable, C
         {
             super(table, name, type, position, kind);
         }
+
+        public boolean isPlaceholder()
+        {
+            return true;
+        }
     }
 
     public static ColumnMetadata placeholder(TableMetadata table, ByteBuffer name, boolean isStatic)
@@ -217,7 +222,7 @@ public class ColumnMetadata extends ColumnSpecification implements Selectable, C
 
     public boolean isPlaceholder()
     {
-        return this instanceof Placeholder;
+        return false;
     }
 
     public ColumnMetadata copy()
