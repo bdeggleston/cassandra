@@ -93,7 +93,7 @@ public class CounterContext
 
     private static final Logger logger = LoggerFactory.getLogger(CounterContext.class);
 
-    public static enum Relationship
+    public enum Relationship
     {
         EQUAL, GREATER_THAN, LESS_THAN, DISJOINT
     }

@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.db.rows;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.db.*;
