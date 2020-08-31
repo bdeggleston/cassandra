@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -66,7 +67,7 @@ public interface ClusteringBoundOrBoundary<V> extends ClusteringPrefix<V>
         ByteBuffer[] newValues = new ByteBuffer[size()];
         for (int i = 0; i < size(); i++)
             newValues[i] = allocator.clone(get(i), accessor());
-        return BufferClusteringBoundOrBoundary.create(kind(), newValues);
+        return ByteBufferAccessor.instance.factory().boundOrBoundary(kind(), newValues);
     }
 
     default String toString(TableMetadata metadata)
