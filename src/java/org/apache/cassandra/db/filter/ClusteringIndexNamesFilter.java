@@ -86,8 +86,8 @@ public class ClusteringIndexNamesFilter extends AbstractClusteringIndexFilter
     public ClusteringIndexNamesFilter forPaging(ClusteringComparator comparator, Clustering<?> lastReturned, boolean inclusive)
     {
         NavigableSet<Clustering<?>> newClusterings = reversed ?
-                                                  clusterings.headSet(lastReturned, inclusive) :
-                                                  clusterings.tailSet(lastReturned, inclusive);
+                                                     clusterings.headSet(lastReturned, inclusive) :
+                                                     clusterings.tailSet(lastReturned, inclusive);
 
         return new ClusteringIndexNamesFilter(newClusterings, reversed);
     }

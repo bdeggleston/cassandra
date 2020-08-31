@@ -230,37 +230,6 @@ public abstract class AbstractReadCommandBuilder
         }
     }
 
-    public static class SinglePartitionSliceBuilder extends AbstractReadCommandBuilder
-    {
-        private final DecoratedKey partitionKey;
-        private Slices.Builder sliceBuilder;
-
-        public SinglePartitionSliceBuilder(ColumnFamilyStore cfs, DecoratedKey key)
-        {
-            super(cfs);
-            this.partitionKey = key;
-            sliceBuilder = new Slices.Builder(cfs.getComparator());
-        }
-
-        public SinglePartitionSliceBuilder addSlice(Slice slice)
-        {
-            sliceBuilder.add(slice);
-            return this;
-        }
-
-        @Override
-        protected ClusteringIndexFilter makeFilter()
-        {
-            return new ClusteringIndexSliceFilter(sliceBuilder.build(), reversed);
-        }
-
-        @Override
-        public ReadCommand build()
-        {
-            return SinglePartitionReadCommand.create(cfs.metadata(), nowInSeconds, makeColumnFilter(), filter, makeLimits(), partitionKey, makeFilter());
-        }
-    }
-
     public static class PartitionRangeBuilder extends AbstractReadCommandBuilder
     {
         private DecoratedKey startKey;

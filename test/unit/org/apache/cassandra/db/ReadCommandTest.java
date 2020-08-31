@@ -33,9 +33,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -93,7 +90,6 @@ import static org.junit.Assert.fail;
 
 public class ReadCommandTest
 {
-    private static final Logger logger = LoggerFactory.getLogger(ReadCommandTest.class);
     private static final String KEYSPACE = "ReadCommandTest";
     private static final String CF1 = "Standard1";
     private static final String CF2 = "Standard2";
