@@ -22,46 +22,9 @@ import java.nio.ByteBuffer;
 
 public abstract class BufferClusteringBoundOrBoundary extends AbstractBufferClusteringPrefix implements ClusteringBoundOrBoundary<ByteBuffer>
 {
-    protected BufferClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
+    BufferClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
         assert values.length > 0 || !kind.isBoundary();
-    }
-
-    public static ClusteringBoundOrBoundary<ByteBuffer> create(Kind kind, ByteBuffer[] values)
-    {
-        return kind.isBoundary()
-               ? new BufferClusteringBoundary(kind, values)
-               : new BufferClusteringBound(kind, values);
-    }
-
-    public static ClusteringBound<ByteBuffer> inclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_END_BOUND : ClusteringPrefix.Kind.INCL_START_BOUND, boundValues);
-    }
-
-    public static ClusteringBound<ByteBuffer> exclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_END_BOUND : ClusteringPrefix.Kind.EXCL_START_BOUND, boundValues);
-    }
-
-    public static ClusteringBound<ByteBuffer> inclusiveClose(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.INCL_START_BOUND : ClusteringPrefix.Kind.INCL_END_BOUND, boundValues);
-    }
-
-    public static ClusteringBound<ByteBuffer> exclusiveClose(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBound(reversed ? ClusteringPrefix.Kind.EXCL_START_BOUND : ClusteringPrefix.Kind.EXCL_END_BOUND, boundValues);
-    }
-
-    public static ClusteringBoundary<ByteBuffer> inclusiveCloseExclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBoundary(reversed ? ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY : ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY, boundValues);
-    }
-
-    public static ClusteringBoundary<ByteBuffer> exclusiveCloseInclusiveOpen(boolean reversed, ByteBuffer[] boundValues)
-    {
-        return new BufferClusteringBoundary(reversed ? ClusteringPrefix.Kind.INCL_END_EXCL_START_BOUNDARY : ClusteringPrefix.Kind.EXCL_END_INCL_START_BOUNDARY, boundValues);
     }
 }
