@@ -32,7 +32,7 @@ public class TimeSerializer extends TypeSerializer<Long>
         return accessor.size(value) == 0 ? null : accessor.toLong(value);
     }
 
-    public <V> V serializeBuffer(Long value, ValueAccessor<V> accessor)
+    public <V> V serialize(Long value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value);
     }

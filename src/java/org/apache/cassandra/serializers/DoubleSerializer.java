@@ -31,7 +31,7 @@ public class DoubleSerializer extends TypeSerializer<Double>
         return accessor.toDouble(value);
     }
 
-    public <V> V serializeBuffer(Double value, ValueAccessor<V> accessor)
+    public <V> V serialize(Double value, ValueAccessor<V> accessor)
     {
         return (value == null) ? accessor.empty() : accessor.valueOf(value);
     }

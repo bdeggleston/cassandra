@@ -31,7 +31,7 @@ public class IntegerSerializer extends TypeSerializer<BigInteger>
         return !accessor.isEmpty(value) ? new BigInteger(accessor.toArray(value)) : null;
     }
 
-    public <V> V serializeBuffer(BigInteger value, ValueAccessor<V> accessor)
+    public <V> V serialize(BigInteger value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value.toByteArray());
     }

@@ -30,7 +30,7 @@ public class EmptySerializer extends TypeSerializer<Void>
         return null;
     }
 
-    public <V> V serializeBuffer(Void value, ValueAccessor<V> accessor)
+    public <V> V serialize(Void value, ValueAccessor<V> accessor)
     {
         return accessor.empty();
     }

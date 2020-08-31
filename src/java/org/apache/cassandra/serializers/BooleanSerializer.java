@@ -32,7 +32,7 @@ public class BooleanSerializer extends TypeSerializer<Boolean>
         return accessor.getByte(value, 0) != 0;
     }
 
-    public <V> V serializeBuffer(Boolean value, ValueAccessor<V> accessor)
+    public <V> V serialize(Boolean value, ValueAccessor<V> accessor)
     {
         if (value == null)
             return accessor.empty();

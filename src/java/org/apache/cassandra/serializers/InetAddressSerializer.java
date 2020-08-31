@@ -42,7 +42,7 @@ public class InetAddressSerializer extends TypeSerializer<InetAddress>
         }
     }
 
-    public <V> V serializeBuffer(InetAddress value, ValueAccessor<V> accessor)
+    public <V> V serialize(InetAddress value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value.getAddress());
     }
