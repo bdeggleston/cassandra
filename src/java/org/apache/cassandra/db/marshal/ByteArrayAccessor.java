@@ -202,12 +202,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return new UUID(getLong(value, 0), getLong(value, 8));
     }
 
-    public int putByte(byte[] dst, int offset, byte value)
-    {
-        dst[offset] = value;
-        return TypeSizes.BYTE_SIZE;
-    }
-
     public int putShort(byte[] dst, int offset, short value)
     {
         ByteArrayUtil.putShort(dst, offset, value);
@@ -220,22 +214,10 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return TypeSizes.INT_SIZE;
     }
 
-    public int putFloat(byte[] dst, int offset, float value)
-    {
-        ByteArrayUtil.putFloat(dst, offset, value);
-        return TypeSizes.FLOAT_SIZE;
-    }
-
     public int putLong(byte[] dst, int offset, long value)
     {
         ByteArrayUtil.putLong(dst, offset, value);
         return TypeSizes.LONG_SIZE;
-    }
-
-    public int putDouble(byte[] dst, int offset, double value)
-    {
-        ByteArrayUtil.putDouble(dst, offset, value);
-        return TypeSizes.DOUBLE_SIZE;
     }
 
     public int put(byte[] dst, int offset, byte[] src)
