@@ -670,7 +670,7 @@ public class CounterContext
             offset += accessor.putShort(cleared, offset + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
 
         int origHeaderLength = headerLength(context, accessor);
-        ValueAccessor.copy(context, accessor, 0, cleared, accessor, headerLength(cleared, accessor), accessor.size(context) - origHeaderLength);
+        accessor.copyTo(context, 0, cleared, accessor, headerLength(cleared, accessor), accessor.size(context) - origHeaderLength);
 
         return cleared;
     }

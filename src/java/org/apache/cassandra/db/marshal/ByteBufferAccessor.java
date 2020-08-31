@@ -45,11 +45,6 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
         return value.remaining();
     }
 
-    public BackingKind getBackingKind()
-    {
-        return BackingKind.BUFFER;
-    }
-
     public ByteBuffer[] createArray(int length)
     {
         return new ByteBuffer[length];
@@ -67,17 +62,17 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public <V2> void copyTo(ByteBuffer src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
     {
-        switch (dstAccessor.getBackingKind())
-        {
-            case BUFFER:
-                FastByteOperations.copy(src, srcOffset, (ByteBuffer) dst, dstOffset, size);
-                return;
-            case ARRAY:
-                FastByteOperations.copy(src, srcOffset, (byte[]) dst, dstOffset, size);
-                return;
-            default:
-                throw new IllegalArgumentException("Unsupported copy dest: " + dstAccessor.getBackingKind());
-        }
+        dstAccessor.copyByteBufferTo(src, srcOffset, dst, dstAccessor, dstOffset, size);
+    }
+
+    public void copyByteArrayTo(byte[] src, int srcOffset, ByteBuffer dst, ValueAccessor<ByteBuffer> dstAccessor, int dstOffset, int size)
+    {
+        FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
+    }
+
+    public void copyByteBufferTo(ByteBuffer src, int srcOffset, ByteBuffer dst, ValueAccessor<ByteBuffer> dstAccessor, int dstOffset, int size)
+    {
+        FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
     }
 
     public void digest(ByteBuffer value, int offset, int size, Digest digest)
@@ -105,15 +100,17 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public <V2> int compare(ByteBuffer left, V2 right, ValueAccessor<V2> accessor)
     {
-        switch (accessor.getBackingKind())
-        {
-            case ARRAY:
-                return ByteBufferUtil.compare(left, (byte[]) right);
-            case BUFFER:
-                return ByteBufferUtil.compareUnsigned(left, (ByteBuffer) right);
-            default:
-                throw new IllegalArgumentException("Unsupported compare type: " + accessor.getBackingKind());
-        }
+        return accessor.compareByteBufferTo(left, right, accessor);
+    }
+
+    public int compareByteArrayTo(byte[] left, ByteBuffer right, ValueAccessor<ByteBuffer> accessor)
+    {
+        return ByteBufferUtil.compare(left, right);
+    }
+
+    public int compareByteBufferTo(ByteBuffer left, ByteBuffer right, ValueAccessor<ByteBuffer> accessor)
+    {
+        return ByteBufferUtil.compareUnsigned(left, right);
     }
 
     public ByteBuffer toBuffer(ByteBuffer value)
