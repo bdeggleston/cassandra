@@ -43,7 +43,7 @@ public abstract class CollectionSerializer<T> extends TypeSerializer<T>
 
     public abstract <V> void validateForNativeProtocol(V value, ValueAccessor<V> accessor, ProtocolVersion version);
 
-    public <V> V serializeBuffer(T input, ValueAccessor<V> accessor)
+    public <V> V serialize(T input, ValueAccessor<V> accessor)
     {
         List<V> values = serializeValues(input, accessor);
         // See deserialize() for why using the protocol v3 variant is the right thing to do.

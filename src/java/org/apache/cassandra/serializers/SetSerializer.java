@@ -59,7 +59,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
     {
         List<V> buffers = new ArrayList<>(values.size());
         for (T value : values)
-            buffers.add(elements.serializeBuffer(value, accessor));
+            buffers.add(elements.serialize(value, accessor));
         Collections.sort(buffers, comparators.getForAccessor(accessor));
         return buffers;
     }

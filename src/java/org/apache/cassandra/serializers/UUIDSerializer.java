@@ -30,7 +30,7 @@ public class UUIDSerializer extends TypeSerializer<UUID>
         return accessor.isEmpty(value) ? null : accessor.toUUID(value);
     }
 
-    public <V> V serializeBuffer(UUID value, ValueAccessor<V> accessor)
+    public <V> V serialize(UUID value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value);
     }

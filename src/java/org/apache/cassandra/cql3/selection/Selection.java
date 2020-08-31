@@ -328,7 +328,7 @@ public abstract class Selection
         }
         sb.append("}");
 
-        jsonRow[0] = UTF8Type.instance.getSerializer().serializeBuffer(sb.toString(), ByteBufferAccessor.instance);
+        jsonRow[0] = UTF8Type.instance.getSerializer().serialize(sb.toString(), ByteBufferAccessor.instance);
         return Arrays.asList(jsonRow);
     }
 

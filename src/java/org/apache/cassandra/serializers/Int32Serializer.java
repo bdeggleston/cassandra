@@ -29,7 +29,7 @@ public class Int32Serializer extends TypeSerializer<Integer>
         return accessor.isEmpty(value) ? null : accessor.toInt(value);
     }
 
-    public <V> V serializeBuffer(Integer value, ValueAccessor<V> accessor)
+    public <V> V serialize(Integer value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value);
     }

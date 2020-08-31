@@ -129,7 +129,7 @@ public class TimestampSerializer extends TypeSerializer<Date>
         return accessor.isEmpty(value) ? null : new Date(accessor.toLong(value));
     }
 
-    public <V> V serializeBuffer(Date value, ValueAccessor<V> accessor)
+    public <V> V serialize(Date value, ValueAccessor<V> accessor)
     {
         return value == null ? accessor.empty() : accessor.valueOf(value.getTime());
     }
