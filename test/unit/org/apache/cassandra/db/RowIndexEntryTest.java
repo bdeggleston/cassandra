@@ -127,7 +127,7 @@ public class RowIndexEntryTest extends CQLTester
 
     private static DecoratedKey partitionKey(long l)
     {
-        ByteBuffer key = LongSerializer.instance.serialize(l, ByteBufferAccessor.instance);
+        ByteBuffer key = LongSerializer.instance.serializeBuffer(l);
         Token token = Murmur3Partitioner.instance.getToken(key);
         return new BufferDecoratedKey(token, key);
     }
