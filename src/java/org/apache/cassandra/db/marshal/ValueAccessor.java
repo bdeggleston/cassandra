@@ -42,8 +42,6 @@ import static org.apache.cassandra.db.ClusteringPrefix.Kind.*;
 
 public interface ValueAccessor<V>
 {
-    enum BackingKind { BUFFER, ARRAY, NATIVE }
-
     public interface ObjectFactory<V>
     {
         Cell<V> cell(ColumnMetadata column, long timestamp, int ttl, int localDeletionTime, V value, CellPath path);
@@ -90,8 +88,6 @@ public interface ValueAccessor<V>
 
     int size(V value);
 
-    BackingKind getBackingKind();
-
     default int sizeFromOffset(V value, int offset)
     {
         return size(value) - offset;
@@ -101,7 +97,12 @@ public interface ValueAccessor<V>
 
     void write(V value, DataOutputPlus out) throws IOException;
     void write(V value, ByteBuffer out);
+
     <V2> void copyTo(V src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size);
+
+    void copyByteArrayTo(byte[] src, int srcOffset, V dst, ValueAccessor<V> dstAccessor, int dstOffset, int size);
+    void copyByteBufferTo(ByteBuffer src, int srcOffset, V dst, ValueAccessor<V> dstAccessor, int dstOffset, int size);
+
     void digest(V value, int offset, int size, Digest digest);
     default void digest(V value, Digest digest)
     {
@@ -129,6 +130,9 @@ public interface ValueAccessor<V>
     int compareUnsigned(V left, V right);
 
     <V2> int compare(V left, V2 right, ValueAccessor<V2> accessor);
+
+    int compareByteArrayTo(byte[] left, V right, ValueAccessor<V> accessor);
+    int compareByteBufferTo(ByteBuffer left, V right, ValueAccessor<V> accessor);
 
     default int hashCode(V value)
     {
@@ -232,10 +236,5 @@ public interface ValueAccessor<V>
     public static <L, R> boolean equals(ValueAware<L> left, ValueAware<R> right)
     {
         return equals(left.value(), left.accessor(), right.value(), right.accessor());
-    }
-
-    public static <V1, V2> void copy(V1 src, ValueAccessor<V1> srcAccessor, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
-    {
-        srcAccessor.copyTo(src, srcOffset, dst, dstAccessor, dstOffset, size);
     }
 }
