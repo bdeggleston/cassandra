@@ -221,11 +221,16 @@ public class ByteArrayUtil
     {
         int length = buffer.length;
         assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT
+<<<<<<< HEAD
         : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
+=======
+         : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
+>>>>>>> a7730e6b13ad5d2c62d72a8d49176e1bd247d2ba
         out.writeShort(length);
         out.write(buffer);
     }
 
+<<<<<<< HEAD
     public static byte[] readWithLength(DataInput in) throws IOException
     {
         byte[] b = new byte[in.readInt()];
@@ -233,6 +238,8 @@ public class ByteArrayUtil
         return b;
     }
 
+=======
+>>>>>>> a7730e6b13ad5d2c62d72a8d49176e1bd247d2ba
     public static byte[] readWithShortLength(DataInput in) throws IOException
     {
         byte[] b = new byte[in.readUnsignedShort()];

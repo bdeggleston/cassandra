@@ -21,12 +21,12 @@ package org.apache.cassandra.db.marshal;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 
-public class ComparatorSet
+public class ValueComparators
 {
     public final Comparator<byte[]> array;
     public final Comparator<ByteBuffer> buffer;
 
-    public ComparatorSet(Comparator<byte[]> array, Comparator<ByteBuffer> buffer)
+    public ValueComparators(Comparator<byte[]> array, Comparator<ByteBuffer> buffer)
     {
         this.array = array;
         this.buffer = buffer;
