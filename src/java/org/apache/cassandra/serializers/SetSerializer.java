@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
-import org.apache.cassandra.db.marshal.ComparatorSet;
+import org.apache.cassandra.db.marshal.ValueComparators;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.transport.ProtocolVersion;
 
@@ -39,9 +39,9 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
     private static final ConcurrentMap<TypeSerializer<?>, SetSerializer> instances = new ConcurrentHashMap<TypeSerializer<?>, SetSerializer>();
 
     public final TypeSerializer<T> elements;
-    private final ComparatorSet comparators;
+    private final ValueComparators comparators;
 
-    public static <T> SetSerializer<T> getInstance(TypeSerializer<T> elements, ComparatorSet comparators)
+    public static <T> SetSerializer<T> getInstance(TypeSerializer<T> elements, ValueComparators comparators)
     {
         SetSerializer<T> t = instances.get(elements);
         if (t == null)
@@ -49,7 +49,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
         return t;
     }
 
-    public SetSerializer(TypeSerializer<T> elements, ComparatorSet comparators)
+    public SetSerializer(TypeSerializer<T> elements, ValueComparators comparators)
     {
         this.elements = elements;
         this.comparators = comparators;

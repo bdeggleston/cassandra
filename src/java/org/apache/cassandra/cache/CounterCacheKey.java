@@ -137,8 +137,8 @@ public final class CounterCacheKey extends CacheKey
     public void write(DataOutputPlus out)
     throws IOException
     {
-        ByteBufferUtil.writeWithLength(partitionKey, out);
-        ByteBufferUtil.writeWithLength(cellName, out);
+        ByteArrayUtil.writeWithLength(partitionKey, out);
+        ByteArrayUtil.writeWithLength(cellName, out);
     }
 
     public static CounterCacheKey read(TableMetadata tableMetadata, DataInputPlus in)

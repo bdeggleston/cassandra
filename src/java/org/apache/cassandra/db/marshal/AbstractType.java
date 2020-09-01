@@ -76,7 +76,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     public final ComparisonType comparisonType;
     public final boolean isByteOrderComparable;
-    public final ComparatorSet comparatorSet;
+    public final ValueComparators comparatorSet;
 
     protected AbstractType(ComparisonType comparisonType)
     {
@@ -96,8 +96,8 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
             throw new IllegalStateException();
         }
 
-        comparatorSet = new ComparatorSet((l, r) -> compare(l, ByteArrayAccessor.instance, r, ByteArrayAccessor.instance),
-                                          (l, r) -> compare(l, ByteBufferAccessor.instance, r, ByteBufferAccessor.instance));
+        comparatorSet = new ValueComparators((l, r) -> compare(l, ByteArrayAccessor.instance, r, ByteArrayAccessor.instance),
+                                             (l, r) -> compare(l, ByteBufferAccessor.instance, r, ByteBufferAccessor.instance));
     }
 
     static <VL, VR, T extends Comparable<T>> int compareComposed(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, AbstractType<T> type)

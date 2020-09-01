@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
-import org.apache.cassandra.db.marshal.ComparatorSet;
+import org.apache.cassandra.db.marshal.ValueComparators;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -40,9 +40,9 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 
     public final TypeSerializer<K> keys;
     public final TypeSerializer<V> values;
-    private final ComparatorSet comparators;
+    private final ValueComparators comparators;
 
-    public static <K, V> MapSerializer<K, V> getInstance(TypeSerializer<K> keys, TypeSerializer<V> values, ComparatorSet comparators)
+    public static <K, V> MapSerializer<K, V> getInstance(TypeSerializer<K> keys, TypeSerializer<V> values, ValueComparators comparators)
     {
         Pair<TypeSerializer<?>, TypeSerializer<?>> p = Pair.create(keys, values);
         MapSerializer<K, V> t = instances.get(p);
@@ -51,7 +51,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         return t;
     }
 
-    private MapSerializer(TypeSerializer<K> keys, TypeSerializer<V> values, ComparatorSet comparators)
+    private MapSerializer(TypeSerializer<K> keys, TypeSerializer<V> values, ValueComparators comparators)
     {
         this.keys = keys;
         this.values = values;

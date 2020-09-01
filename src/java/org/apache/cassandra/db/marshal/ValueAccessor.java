@@ -167,6 +167,10 @@ public interface ValueAccessor<V>
     long getLong(V value, int offset);
     float toFloat(V value);
     double toDouble(V value);
+    default void readUnsignedVInt(V value, int offset)
+    {
+
+    }
     UUID toUUID(V value);
 
     default void writeWithVIntLength(V value, DataOutputPlus out) throws IOException

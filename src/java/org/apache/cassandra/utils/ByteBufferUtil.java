@@ -342,24 +342,9 @@ public class ByteBufferUtil
         out.write(bytes);
     }
 
-    public static void writeWithLength(byte[] bytes, DataOutput out) throws IOException
-    {
-        out.writeInt(bytes.length);
-        out.write(bytes);
-    }
-
     public static void writeWithShortLength(ByteBuffer buffer, DataOutputPlus out) throws IOException
     {
         int length = buffer.remaining();
-        assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT
-            : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
-        out.writeShort(length);
-        out.write(buffer);
-    }
-
-    public static void writeWithShortLength(byte[] buffer, DataOutput out) throws IOException
-    {
-        int length = buffer.length;
         assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT
             : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
         out.writeShort(length);
