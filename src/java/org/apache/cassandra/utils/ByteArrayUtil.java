@@ -226,6 +226,13 @@ public class ByteArrayUtil
         out.write(buffer);
     }
 
+    public static byte[] readWithLength(DataInput in) throws IOException
+    {
+        byte[] b = new byte[in.readInt()];
+        in.readFully(b);
+        return b;
+    }
+
     public static byte[] readWithShortLength(DataInput in) throws IOException
     {
         byte[] b = new byte[in.readUnsignedShort()];
