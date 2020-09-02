@@ -20,6 +20,8 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
@@ -55,7 +57,7 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
 
     public static ArrayClusteringBound create(ClusteringPrefix.Kind kind, byte[][] values)
     {
-        assert !kind.isBoundary();
+        Preconditions.checkArgument(!kind.isBoundary(), "Expected bound clustering kind, got %s", kind);
         return new ArrayClusteringBound(kind, values);
     }
 }

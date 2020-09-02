@@ -20,6 +20,8 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
@@ -45,7 +47,7 @@ public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary im
 
     public static ClusteringBoundary<ByteBuffer> create(Kind kind, ByteBuffer[] values)
     {
-        assert kind.isBoundary();
+        Preconditions.checkArgument(kind.isBoundary(), "Expected boundary clustering kind, got %s", kind);
         return new BufferClusteringBoundary(kind, values);
     }
 

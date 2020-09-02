@@ -20,11 +20,14 @@ package org.apache.cassandra.db;
 
 import java.nio.ByteBuffer;
 
+import com.google.common.base.Preconditions;
+
 public abstract class BufferClusteringBoundOrBoundary extends AbstractBufferClusteringPrefix implements ClusteringBoundOrBoundary<ByteBuffer>
 {
     BufferClusteringBoundOrBoundary(Kind kind, ByteBuffer[] values)
     {
         super(kind, values);
-        assert values.length > 0 || !kind.isBoundary();
+        Preconditions.checkArgument(values.length > 0 || !kind.isBoundary(),
+                                    "Cannot create bounds/boundary objects without clustering values");
     }
 }

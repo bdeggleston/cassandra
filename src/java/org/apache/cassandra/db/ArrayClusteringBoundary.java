@@ -18,6 +18,8 @@
 
 package org.apache.cassandra.db;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.utils.ObjectSizes;
 
 public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary implements ClusteringBoundary<byte[]>
@@ -41,7 +43,7 @@ public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary impl
 
     public static ClusteringBoundary<byte[]> create(Kind kind, byte[][] values)
     {
-        assert kind.isBoundary();
+        Preconditions.checkArgument(kind.isBoundary(), "Expected boundary clustering kind, got %s", kind);
         return new ArrayClusteringBoundary(kind, values);
     }
 

@@ -18,11 +18,15 @@
 
 package org.apache.cassandra.db;
 
+import com.google.common.base.Preconditions;
+
 public abstract class ArrayClusteringBoundOrBoundary extends AbstractArrayClusteringPrefix implements ClusteringBoundOrBoundary<byte[]>
 {
     public ArrayClusteringBoundOrBoundary(Kind kind, byte[][] values)
     {
         super(kind, values);
+        Preconditions.checkArgument(values.length > 0 || !kind.isBoundary(),
+                                    "Cannot create bounds/boundary objects without clustering values");
     }
     public static ClusteringBoundOrBoundary<byte[]> create(Kind kind, byte[][] values)
     {
