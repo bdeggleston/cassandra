@@ -52,6 +52,8 @@ import org.apache.cassandra.gms.ApplicationState;
 import org.apache.cassandra.gms.EndpointState;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.IEndpointStateChangeSubscriber;
+import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.net.IAsyncCallbackWithFailure;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
@@ -61,7 +63,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.WaitQueue;
 import org.apache.mina.util.ConcurrentHashSet;
 
-public class MigrationCoordinator
+public class MigrationCoordinator implements IEndpointStateChangeSubscriber
 {
     private static final Logger logger = LoggerFactory.getLogger(MigrationCoordinator.class);
     private static final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
@@ -114,6 +116,7 @@ public class MigrationCoordinator
 
     public void start()
     {
+        Gossiper.instance.register(this);
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(this::pullUnreceivedSchemaVersions, 1, 1, TimeUnit.MINUTES);
     }
 
@@ -495,5 +498,42 @@ public class MigrationCoordinator
             if (signal != null)
                 signal.cancel();
         }
+    }
+
+    public void onJoin(InetAddress endpoint, EndpointState epState)
+    {
+        reportEndpointVersion(endpoint, Gossiper.instance.getEndpointStateForEndpoint(endpoint));
+    }
+
+    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey, VersionedValue newValue)
+    {
+
+    }
+
+    public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value)
+    {
+        if (state != ApplicationState.SCHEMA)
+            return;
+        reportEndpointVersion(endpoint, Gossiper.instance.getEndpointStateForEndpoint(endpoint));
+    }
+
+    public void onAlive(InetAddress endpoint, EndpointState state)
+    {
+        reportEndpointVersion(endpoint, Gossiper.instance.getEndpointStateForEndpoint(endpoint));
+    }
+
+    public void onDead(InetAddress endpoint, EndpointState state)
+    {
+
+    }
+
+    public void onRemove(InetAddress endpoint)
+    {
+
+    }
+
+    public void onRestart(InetAddress endpoint, EndpointState state)
+    {
+
     }
 }
