@@ -36,7 +36,7 @@ public class LongSerializer extends TypeSerializer<Long>
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (accessor.size(value) != 8 && accessor.size(value) != 0)
+        if (accessor.size(value) != 8 && !accessor.isEmpty(value))
             throw new MarshalException(String.format("Expected 8 or 0 byte long (%d)", accessor.size(value)));
     }
 

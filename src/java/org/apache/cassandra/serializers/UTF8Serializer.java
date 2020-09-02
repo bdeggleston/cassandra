@@ -60,7 +60,7 @@ public class UTF8Serializer extends AbstractTextSerializer
             int b = 0;
             int offset = 0;
             State state = State.START;
-            while (accessor.sizeFromOffset(value, offset) > 0)
+            while (!accessor.isEmptyFromOffset(value, offset))
             {
                 b = accessor.getByte(value, offset++);
                 switch (state)

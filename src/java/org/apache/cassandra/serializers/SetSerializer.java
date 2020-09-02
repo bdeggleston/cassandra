@@ -74,7 +74,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
         try
         {
             // Empty values are still valid.
-            if (accessor.size(input) == 0) return;
+            if (accessor.isEmpty(input)) return;
             
             int n = readCollectionSize(input, accessor, version);
             int offset = TypeSizes.sizeof(n);
@@ -84,7 +84,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
                 offset += sizeOfValue(value, accessor, version);
                 elements.validate(value, accessor);
             }
-            if (accessor.sizeFromOffset(input, offset) > 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after set value");
         }
         catch (BufferUnderflowException | IndexOutOfBoundsException e)
@@ -116,7 +116,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
                 elements.validate(value, accessor);
                 l.add(elements.deserialize(value, accessor));
             }
-            if (accessor.sizeFromOffset(input, offset) > 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after set value");
             return l;
         }

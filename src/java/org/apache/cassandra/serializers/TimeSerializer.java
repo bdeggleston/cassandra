@@ -29,7 +29,7 @@ public class TimeSerializer extends TypeSerializer<Long>
 
     public <V> Long deserialize(V value, ValueAccessor<V> accessor)
     {
-        return accessor.size(value) == 0 ? null : accessor.toLong(value);
+        return accessor.isEmpty(value) ? null : accessor.toLong(value);
     }
 
     public <V> V serialize(Long value, ValueAccessor<V> accessor)

@@ -346,7 +346,7 @@ public interface CQL3Type
             for (int i = 0; i < type.size(); i++)
             {
                 // we allow the input to have less fields than declared so as to support field addition.
-                if (accessor.sizeFromOffset(value, offset) == 0)
+                if (accessor.isEmptyFromOffset(value, offset))
                     break;
 
                 if (accessor.sizeFromOffset(value, offset) < 4)
@@ -436,7 +436,7 @@ public interface CQL3Type
             for (int i = 0; i < type.size(); i++)
             {
                 // we allow the input to have less fields than declared so as to support field addition.
-                if (accessor.sizeFromOffset(value, offset) == 0)
+                if (accessor.isEmptyFromOffset(value, offset))
                     break;
 
                 if (accessor.sizeFromOffset(value, offset) < 4)

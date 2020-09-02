@@ -39,7 +39,7 @@ public class UserTypeSerializer extends BytesSerializer
         for (Entry<String, TypeSerializer<?>> entry : fields.entrySet())
         {
             // we allow the input to have less fields than declared so as to support field addition.
-            if (accessor.sizeFromOffset(input, offset) == 0)
+            if (accessor.isEmptyFromOffset(input, offset))
                 return;
 
             if (accessor.sizeFromOffset(input, offset) < 4)
@@ -62,7 +62,7 @@ public class UserTypeSerializer extends BytesSerializer
         }
 
         // We're allowed to get less fields than declared, but not more
-        if (accessor.sizeFromOffset(input, offset) != 0)
+        if (!accessor.isEmptyFromOffset(input, offset))
             throw new MarshalException("Invalid remaining data after end of UDT value");
     }
 }

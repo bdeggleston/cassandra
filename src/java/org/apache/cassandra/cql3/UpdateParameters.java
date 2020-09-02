@@ -88,7 +88,7 @@ public class UpdateParameters
             // don't want to allow that to be empty (even though this would be fine for the storage engine).
             assert clustering.size() == 1;
             V value = clustering.get(0);
-            if (value == null || clustering.accessor().size(value) == 0)
+            if (value == null || clustering.accessor().isEmpty(value))
                 throw new InvalidRequestException("Invalid empty or null value for column " + metadata.clusteringColumns().get(0).name);
         }
 

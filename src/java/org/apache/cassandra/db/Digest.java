@@ -148,7 +148,7 @@ public class Digest
     public <V> Digest updateWithCounterContext(V context, ValueAccessor<V> accessor)
     {
         // context can be empty due to the optimization from CASSANDRA-10657
-        if (accessor.size(context) == 0)
+        if (accessor.isEmpty(context))
             return this;
 
         int pos = CounterContext.headerLength(context, accessor);

@@ -84,7 +84,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         try
         {
             // Empty values are still valid.
-            if (accessor.size(input) == 0) return;
+            if (accessor.isEmpty(input)) return;
             
             int n = readCollectionSize(input, accessor, version);
             int offset = TypeSizes.sizeof(n);
@@ -98,7 +98,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
                 offset += sizeOfValue(value, accessor, version);
                 values.validate(value, accessor);
             }
-            if (accessor.sizeFromOffset(input, offset) != 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after map value");
         }
         catch (BufferUnderflowException | IndexOutOfBoundsException e)
@@ -134,7 +134,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
 
                 m.put(keys.deserialize(key, accessor), values.deserialize(value, accessor));
             }
-            if (accessor.sizeFromOffset(input, offset) != 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after map value");
             return m;
         }

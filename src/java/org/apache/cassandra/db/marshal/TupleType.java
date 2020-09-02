@@ -150,7 +150,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         int offset1 = 0;
         int offset2 = 0;
 
-        for (int i = 0; accessorL.sizeFromOffset(left, offset1) > 0 && accessorR.sizeFromOffset(right, offset2) > 0; i++)
+        for (int i = 0; !accessorL.isEmptyFromOffset(left, offset1) && !accessorR.isEmptyFromOffset(right, offset2); i++)
         {
             AbstractType<?> comparator = types.get(i);
 
@@ -179,7 +179,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         }
 
         // handle trailing nulls
-        while (accessorL.sizeFromOffset(left, offset1) > 0)
+        while (!accessorL.isEmptyFromOffset(left, offset1))
         {
             int size = accessorL.getInt(left, offset1);
             offset1 += TypeSizes.sizeof(size);
@@ -187,7 +187,7 @@ public class TupleType extends AbstractType<ByteBuffer>
                 return 1;
         }
 
-        while (accessorR.sizeFromOffset(right, offset2) > 0)
+        while (!accessorR.isEmptyFromOffset(right, offset2))
         {
             int size = accessorR.getInt(right, offset2);
             offset2 += TypeSizes.sizeof(size);
@@ -207,7 +207,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         int offset = 0;
         for (int i = 0; i < size(); i++)
         {
-            if (accessor.sizeFromOffset(value, offset) == 0)
+            if (accessor.isEmptyFromOffset(value, offset))
                 return Arrays.copyOfRange(components, 0, i);
 
             int size = accessor.getInt(value, offset);
@@ -222,7 +222,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         }
 
         // error out if we got more values in the tuple/UDT than we expected
-        if (accessor.sizeFromOffset(value, offset) != 0)
+        if (!accessor.isEmptyFromOffset(value, offset))
         {
             throw new InvalidRequestException(String.format(
             "Expected %s %s for %s column, but got more",
@@ -276,7 +276,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         int offset = 0;
         for (int i = 0; i < size(); i++)
         {
-            if (accessor.sizeFromOffset(input, offset) == 0)
+            if (accessor.isEmptyFromOffset(input, offset))
                 return sb.toString();
 
             if (i > 0)

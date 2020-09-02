@@ -41,7 +41,7 @@ public class BooleanSerializer extends TypeSerializer<Boolean>
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (accessor.size(value) != 1 && accessor.size(value) != 0)
+        if (accessor.size(value) > 1)
             throw new MarshalException(String.format("Expected 1 or 0 byte value (%d)", accessor.size(value)));
     }
 

@@ -37,7 +37,7 @@ public class EmptySerializer extends TypeSerializer<Void>
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        if (accessor.size(value) > 0)
+        if (!accessor.isEmpty(value))
             throw new MarshalException("EmptyType only accept empty values");
     }
 
