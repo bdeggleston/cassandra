@@ -39,8 +39,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 {
     public static final ValueAccessor<byte[]> instance = new ByteArrayAccessor();
     private static final byte[] EMPTY = new byte[0];
-    private static final byte[] TRUE = new byte[]{1};
-    private static final byte[] FALSE = new byte[]{0};
 
     private ByteArrayAccessor() {}
 
@@ -253,7 +251,7 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 
     public byte[] valueOf(boolean v)
     {
-        return v ? TRUE : FALSE;
+        return v ? new byte[] {1} : new byte[] {0};
     }
 
     public byte[] valueOf(byte v)
