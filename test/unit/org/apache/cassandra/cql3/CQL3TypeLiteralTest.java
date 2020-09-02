@@ -44,7 +44,7 @@ public class CQL3TypeLiteralTest
 {
     private static final Pattern QUOTE = Pattern.compile("'");
 
-    private static final Random r = new Random(0);
+    private static final Random r = new Random();
     /**
      * Container holding the expected CQL literal for a type and serialized value.
      * The CQL literal is generated independently from the code in {@link CQL3Type}.
