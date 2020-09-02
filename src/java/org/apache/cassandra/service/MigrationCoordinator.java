@@ -23,7 +23,9 @@ import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +78,7 @@ public class MigrationCoordinator
 
         final Set<InetAddress> endpoints           = new ConcurrentHashSet<>();
         final Set<InetAddress> outstandingRequests = new ConcurrentHashSet<>();
+        final Deque<InetAddress> requestQueue      = new LinkedList<>();
 
         private final WaitQueue waitQueue = new WaitQueue();
 
@@ -145,9 +148,22 @@ public class MigrationCoordinator
         if (info.outstandingRequests.size() >= getMaxOutstandingVersionRequests())
             return FINISHED_FUTURE;
 
-        for (InetAddress endpoint : info.endpoints)
+        for (int i=0, isize=info.requestQueue.size(); i<isize; i++)
+        {
+            InetAddress endpoint = info.requestQueue.remove();
+            if (!info.endpoints.contains(endpoint))
+                continue;
+
             if (shouldPullFromEndpoint(endpoint) && info.outstandingRequests.add(endpoint))
+            {
                 return scheduleSchemaPull(endpoint, info);
+            }
+            else
+            {
+                // return to queue
+                info.requestQueue.offer(endpoint);
+            }
+        }
 
         // no suitable endpoints were found, check again in a minute, the periodic task will pick it up
         return null;
@@ -214,6 +230,9 @@ public class MigrationCoordinator
     {
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null)
+            return false;
+
+        if (state.isAlive())
             return false;
 
         UUID theirVersion = state.getSchemaVersion();
@@ -293,6 +312,7 @@ public class MigrationCoordinator
         if (isLocalVersion(version))
             info.markReceived();
         info.endpoints.add(endpoint);
+        info.requestQueue.addFirst(endpoint);
 
         // disassociate this endpoint from its (now) previous schema version
         removeEndpointFromVersion(endpoint, current);
@@ -430,6 +450,7 @@ public class MigrationCoordinator
             info.markReceived();
 
         info.outstandingRequests.remove(endpoint);
+        info.requestQueue.add(endpoint);
         return maybePullSchema(info);
     }
 
