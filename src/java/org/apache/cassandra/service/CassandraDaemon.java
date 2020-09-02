@@ -255,7 +255,6 @@ public class CassandraDaemon
 
         // load schema from disk
         Schema.instance.loadFromDisk();
-        MigrationCoordinator.instance.start();
 
         SSTableHeaderFix.fixNonFrozenUDTIfUpgradeFrom30();
 

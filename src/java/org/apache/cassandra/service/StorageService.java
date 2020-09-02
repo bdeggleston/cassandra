@@ -803,6 +803,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @VisibleForTesting
     public void prepareToJoin() throws ConfigurationException
     {
+        MigrationCoordinator.instance.start();
         if (!joined)
         {
             Map<ApplicationState, VersionedValue> appStates = new EnumMap<>(ApplicationState.class);
@@ -2049,7 +2050,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                         break;
                     case SCHEMA:
                         SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value), executor);
-                        MigrationCoordinator.instance.reportEndpointVersion(endpoint, epState);
+                        MigrationCoordinator.instance.reportEndpointVersion(endpoint, UUID.fromString(value.value));
                         break;
                     case HOST_ID:
                         SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value), executor);
@@ -2815,8 +2816,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void onAlive(InetAddress endpoint, EndpointState state)
     {
-        MigrationCoordinator.instance.reportEndpointVersion(endpoint, state);
-
         if (tokenMetadata.isMember(endpoint))
             notifyUp(endpoint);
     }
