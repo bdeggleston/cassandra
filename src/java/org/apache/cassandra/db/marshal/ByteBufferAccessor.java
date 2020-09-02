@@ -35,8 +35,6 @@ import org.apache.cassandra.utils.UUIDGen;
 public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 {
     public static final ValueAccessor<ByteBuffer> instance = new ByteBufferAccessor();
-    private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
-    private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
 
     private ByteBufferAccessor() {}
 
@@ -248,7 +246,7 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public ByteBuffer valueOf(boolean v)
     {
-        return v ? TRUE : FALSE;
+        return v ? ByteBuffer.wrap(new byte[] {1}) : ByteBuffer.wrap(new byte[] {0});
     }
 
     public ByteBuffer valueOf(byte v)
