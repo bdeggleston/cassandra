@@ -4,7 +4,7 @@
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+     * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -221,16 +221,11 @@ public class ByteArrayUtil
     {
         int length = buffer.length;
         assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT
-<<<<<<< HEAD
-        : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
-=======
          : String.format("Attempted serializing to buffer exceeded maximum of %s bytes: %s", FBUtilities.MAX_UNSIGNED_SHORT, length);
->>>>>>> a7730e6b13ad5d2c62d72a8d49176e1bd247d2ba
         out.writeShort(length);
         out.write(buffer);
     }
 
-<<<<<<< HEAD
     public static byte[] readWithLength(DataInput in) throws IOException
     {
         byte[] b = new byte[in.readInt()];
@@ -238,8 +233,6 @@ public class ByteArrayUtil
         return b;
     }
 
-=======
->>>>>>> a7730e6b13ad5d2c62d72a8d49176e1bd247d2ba
     public static byte[] readWithShortLength(DataInput in) throws IOException
     {
         byte[] b = new byte[in.readUnsignedShort()];
