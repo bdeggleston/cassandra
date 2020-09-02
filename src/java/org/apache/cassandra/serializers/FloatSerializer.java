@@ -39,9 +39,8 @@ public class FloatSerializer extends TypeSerializer<Float>
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {
-        int size = accessor.size(value);
-        if (size != 4 && size != 0)
-            throw new MarshalException(String.format("Expected 4 or 0 byte value for a float (%d)", size));
+        if (accessor.size(value) != 4 && !accessor.isEmpty(value))
+            throw new MarshalException(String.format("Expected 4 or 0 byte value for a float (%d)", accessor.size(value)));
     }
 
     public String toString(Float value)

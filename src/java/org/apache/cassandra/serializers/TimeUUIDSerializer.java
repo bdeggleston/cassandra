@@ -29,7 +29,7 @@ public class TimeUUIDSerializer extends UUIDSerializer
         super.validate(value, accessor);
         // Super class only validates the Time UUID
         // version is bits 4-7 of byte 6.
-        if (accessor.size(value) > 0)
+        if (!accessor.isEmpty(value))
         {
             if ((accessor.getByte(value, 6) & 0xf0) != 0x10)
                 throw new MarshalException("Invalid version for TimeUUID type.");

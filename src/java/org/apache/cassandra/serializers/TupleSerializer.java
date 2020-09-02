@@ -37,7 +37,7 @@ public class TupleSerializer extends BytesSerializer
         for (int i = 0; i < fields.size(); i++)
         {
             // we allow the input to have less fields than declared so as to support field addition.
-            if (accessor.sizeFromOffset(input, offset) == 0)
+            if (accessor.isEmptyFromOffset(input, offset))
                 return;
 
             if (accessor.sizeFromOffset(input, offset) < Integer.BYTES)
@@ -59,7 +59,7 @@ public class TupleSerializer extends BytesSerializer
         }
 
         // We're allowed to get less fields than declared, but not more
-        if (accessor.sizeFromOffset(input, offset) != 0)
+        if (!accessor.isEmptyFromOffset(input, offset))
             throw new MarshalException("Invalid remaining data after end of tuple value");
     }
 }

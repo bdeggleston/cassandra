@@ -76,7 +76,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
                 elements.validate(value, accessor);
             }
 
-            if (accessor.sizeFromOffset(input, offset) > 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after list value");
         }
         catch (BufferUnderflowException | IndexOutOfBoundsException e)
@@ -116,7 +116,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
                 }
             }
 
-            if (accessor.sizeFromOffset(input, offset) > 0)
+            if (!accessor.isEmptyFromOffset(input, offset))
                 throw new MarshalException("Unexpected extraneous bytes after list value");
 
             return l;

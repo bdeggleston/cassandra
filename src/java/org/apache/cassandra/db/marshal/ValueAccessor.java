@@ -88,9 +88,19 @@ public interface ValueAccessor<V>
 
     int size(V value);
 
+    default boolean isEmpty(V value)
+    {
+        return size(value) == 0;
+    }
+
     default int sizeFromOffset(V value, int offset)
     {
         return size(value) - offset;
+    }
+
+    default boolean isEmptyFromOffset(V value, int offset)
+    {
+        return sizeFromOffset(value, offset) == 0;
     }
 
     V[] createArray(int length);
@@ -184,11 +194,6 @@ public interface ValueAccessor<V>
     int putLong(V dst, int offset, long value);
 
     int put(V dst, int offset, V src);
-
-    default boolean isEmpty(V value)
-    {
-        return size(value) == 0;
-    }
 
     default int sizeWithVIntLength(V value)
     {

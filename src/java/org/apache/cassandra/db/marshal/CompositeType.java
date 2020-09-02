@@ -217,7 +217,7 @@ public class CompositeType extends AbstractCompositeType
         List<V> l = new ArrayList<>();
         boolean isStatic = readIsStaticInternal(name, accessor);
         int offset = startingOffsetInternal(isStatic);
-        while (accessor.sizeFromOffset(name, offset) > 0)
+        while (!accessor.isEmptyFromOffset(name, offset))
         {
             V value = accessor.sliceWithShortLength(name, offset);
             offset += accessor.sizeWithShortLength(value);

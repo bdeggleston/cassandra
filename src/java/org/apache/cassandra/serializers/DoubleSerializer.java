@@ -38,7 +38,7 @@ public class DoubleSerializer extends TypeSerializer<Double>
 
     public <T> void validate(T value, ValueAccessor<T> accessor) throws MarshalException
     {
-        if (accessor.size(value) != 8 && accessor.size(value) != 0)
+        if (accessor.size(value) != 8 && !accessor.isEmpty(value))
             throw new MarshalException(String.format("Expected 8 or 0 byte value for a double (%d)", accessor.size(value)));
     }
 
