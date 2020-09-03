@@ -77,7 +77,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
             if (accessor.isEmpty(input)) return;
             
             int n = readCollectionSize(input, accessor, version);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, version);
             for (int i = 0; i < n; i++)
             {
                 V value = readValue(input, accessor, offset, version);
@@ -98,7 +98,7 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
         try
         {
             int n = readCollectionSize(input, accessor, version);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, version);
 
             if (n < 0)
                 throw new MarshalException("The data cannot be deserialized as a set");

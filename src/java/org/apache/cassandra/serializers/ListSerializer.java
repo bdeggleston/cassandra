@@ -68,7 +68,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         try
         {
             int n = readCollectionSize(input, accessor, version);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, version);
             for (int i = 0; i < n; i++)
             {
                 V value = readValue(input, accessor, offset, version);
@@ -90,7 +90,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         try
         {
             int n = readCollectionSize(input, accessor, version);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, version);
 
             if (n < 0)
                 throw new MarshalException("The data cannot be deserialized as a list");
@@ -145,7 +145,7 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             for (int i = 0; i < index; i++)
             {
                 int length = accessor.getInt(input, offset);
-                offset += TypeSizes.sizeof(length) + length;
+                offset += TypeSizes.INT_SIZE + length;
             }
             return readValue(input, accessor, offset, ProtocolVersion.V3);
         }

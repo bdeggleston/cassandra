@@ -155,9 +155,9 @@ public class TupleType extends AbstractType<ByteBuffer>
             AbstractType<?> comparator = types.get(i);
 
             int size1 = accessorL.getInt(left, offset1);
-            offset1 += TypeSizes.sizeof(size1);
+            offset1 += TypeSizes.INT_SIZE;
             int size2 = accessorR.getInt(right, offset2);
-            offset2 += TypeSizes.sizeof(size2);
+            offset2 += TypeSizes.INT_SIZE;
 
             // Handle nulls
             if (size1 < 0)
@@ -182,7 +182,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         while (!accessorL.isEmptyFromOffset(left, offset1))
         {
             int size = accessorL.getInt(left, offset1);
-            offset1 += TypeSizes.sizeof(size);
+            offset1 += TypeSizes.INT_SIZE;
             if (size > 0) // non-null
                 return 1;
         }
@@ -190,7 +190,7 @@ public class TupleType extends AbstractType<ByteBuffer>
         while (!accessorR.isEmptyFromOffset(right, offset2))
         {
             int size = accessorR.getInt(right, offset2);
-            offset2 += TypeSizes.sizeof(size);
+            offset2 += TypeSizes.INT_SIZE;
             if (size > 0) // non-null
                 return -1;
         }
@@ -284,7 +284,7 @@ public class TupleType extends AbstractType<ByteBuffer>
 
             AbstractType<?> type = type(i);
             int size = accessor.getInt(input, offset);
-            offset += TypeSizes.sizeof(size);
+            offset += TypeSizes.INT_SIZE;
             if (size < 0)
             {
                 sb.append("@");

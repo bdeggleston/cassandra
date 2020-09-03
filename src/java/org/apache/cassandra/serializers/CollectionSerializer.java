@@ -103,7 +103,7 @@ public abstract class CollectionSerializer<T> extends TypeSerializer<T>
 
     public static int sizeOfCollectionSize(int elements, ProtocolVersion version)
     {
-        return 4;
+        return TypeSizes.INT_SIZE;
     }
 
     public static <V> void writeValue(ByteBuffer output, V value, ValueAccessor<V> accessor, ProtocolVersion version)

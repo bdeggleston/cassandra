@@ -87,7 +87,7 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
             if (accessor.isEmpty(input)) return;
             
             int n = readCollectionSize(input, accessor, version);
-            int offset = TypeSizes.sizeof(n);
+            int offset = sizeOfCollectionSize(n, version);
             for (int i = 0; i < n; i++)
             {
                 T key = readValue(input, accessor, offset, version);

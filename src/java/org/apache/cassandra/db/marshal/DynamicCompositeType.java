@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cql3.Term;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.MarshalException;
@@ -209,7 +210,7 @@ public class DynamicCompositeType extends AbstractCompositeType
         if (accessor.sizeFromOffset(input, offset) < 2)
             throw new MarshalException("Not enough bytes to header of the comparator part of component " + i);
         int header = accessor.getShort(input, offset);
-        offset += 1;
+        offset += TypeSizes.SHORT_SIZE;
         if ((header & 0x8000) == 0)
         {
             if (accessor.sizeFromOffset(input, offset) < header)

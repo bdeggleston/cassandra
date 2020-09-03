@@ -48,7 +48,7 @@ public class UserTypeSerializer extends BytesSerializer
                 throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s", i, entry.getKey()));
 
             int size = accessor.getInt(input, offset);
-            offset += TypeSizes.sizeof(size);
+            offset += TypeSizes.INT_SIZE;
 
             // size < 0 means null value
             if (size < 0)

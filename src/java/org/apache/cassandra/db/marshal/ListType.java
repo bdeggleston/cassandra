@@ -177,9 +177,9 @@ public class ListType<T> extends CollectionType<List<T>>
             return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
         int size1 = CollectionSerializer.readCollectionSize(left, accessorL, ProtocolVersion.V3);
-        int offset1 = TypeSizes.sizeof(size1);
+        int offset1 = CollectionSerializer.sizeOfCollectionSize(size1, ProtocolVersion.V3);
         int size2 = CollectionSerializer.readCollectionSize(right, accessorR, ProtocolVersion.V3);
-        int offset2 = TypeSizes.sizeof(size2);
+        int offset2 = TypeSizes.INT_SIZE;
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {

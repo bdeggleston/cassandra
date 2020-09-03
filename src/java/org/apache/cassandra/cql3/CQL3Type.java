@@ -356,7 +356,7 @@ public interface CQL3Type
                     throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s", i, type.fieldName(i)));
 
                 int size = accessor.getInt(value, offset);
-                offset += TypeSizes.sizeof(size);
+                offset += TypeSizes.INT_SIZE;
 
                 if (i > 0)
                     target.append(", ");
@@ -446,7 +446,7 @@ public interface CQL3Type
                     throw new MarshalException(String.format("Not enough bytes to read size of %dth component", i));
 
                 int size = accessor.getInt(value, offset);
-                offset += TypeSizes.sizeof(size);
+                offset += TypeSizes.INT_SIZE;
 
                 if (first)
                     first = false;

@@ -194,8 +194,8 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         int size1 = CollectionSerializer.readCollectionSize(left, accessorL, protocolVersion);
         int size2 = CollectionSerializer.readCollectionSize(right, accessorR, protocolVersion);
 
-        int offset1 = TypeSizes.sizeof(size1);
-        int offset2 = TypeSizes.sizeof(size2);
+        int offset1 = CollectionSerializer.sizeOfCollectionSize(size1, protocolVersion);
+        int offset2 = CollectionSerializer.sizeOfCollectionSize(size2, protocolVersion);
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {

@@ -44,7 +44,7 @@ public class TupleSerializer extends BytesSerializer
                 throw new MarshalException(String.format("Not enough bytes to read size of %dth component", i));
 
             int size = accessor.getInt(input, offset);
-            offset += TypeSizes.sizeof(size);
+            offset += TypeSizes.INT_SIZE;
 
             // size < 0 means null value
             if (size < 0)
