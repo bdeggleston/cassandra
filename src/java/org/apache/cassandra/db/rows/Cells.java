@@ -22,8 +22,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 
 import org.apache.cassandra.db.context.CounterContext;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ValueAccessor;
-import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
@@ -357,6 +357,21 @@ public abstract class Cells
 
     public static <L, R> boolean valueEqual(Cell<L> left, Cell<R> right)
     {
-        return compareValues(left, right) == 0;
+        return ValueAccessor.equals(left.value(), left.accessor(), right.value(), right.accessor());
+    }
+
+    public static <T, V> T composeValue(Cell<V> cell, AbstractType<T> type)
+    {
+        return type.compose(cell.value(), cell.accessor());
+    }
+
+    public static <V> String valueString(Cell<V> cell, AbstractType<?> type)
+    {
+        return type.getString(cell.value(), cell.accessor());
+    }
+
+    public static <V> String valueString(Cell<V> cell)
+    {
+        return valueString(cell, cell.column().type);
     }
 }

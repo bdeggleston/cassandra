@@ -173,7 +173,7 @@ public abstract class AbstractRow implements Row
                     if (cell.isTombstone())
                         sb.append("<tombstone>");
                     else
-                        sb.append(cell.column().type.getString(cell));
+                        sb.append(Cells.valueString(cell));
                 }
                 else
                 {
@@ -185,7 +185,7 @@ public abstract class AbstractRow implements Row
                         CollectionType ct = (CollectionType) cd.column().type;
                         transform = cell -> String.format("%s -> %s",
                                                   ct.nameComparator().getString(cell.path().get(0)),
-                                                  ct.valueComparator().getString(cell));
+                                                  Cells.valueString(cell, ct.valueComparator()));
 
                     }
                     else if (cd.column().type.isUDT())
@@ -195,7 +195,7 @@ public abstract class AbstractRow implements Row
                             Short fId = ut.nameComparator().getSerializer().deserialize(cell.path().get(0));
                             return String.format("%s -> %s",
                                                  ut.fieldNameAsString(fId),
-                                                 ut.fieldType(fId).getString(cell));
+                                                 Cells.valueString(cell, ut.fieldType(fId)));
                         };
                     }
                     else

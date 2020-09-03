@@ -24,7 +24,6 @@ import java.util.Comparator;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.ValueAccessor;
-import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -39,7 +38,7 @@ import org.apache.cassandra.utils.memory.AbstractAllocator;
  *   2) expiring cells: on top of regular cells, those have a ttl and a local deletion time (when they are expired).
  *   3) tombstone cells: those won't have value, but they have a local deletion time (when the tombstone was created).
  */
-public abstract class Cell<V> extends ColumnData implements ValueAware<V>
+public abstract class Cell<V> extends ColumnData
 {
     public static final int NO_TTL = 0;
     public static final int NO_DELETION_TIME = Integer.MAX_VALUE;
@@ -73,6 +72,10 @@ public abstract class Cell<V> extends ColumnData implements ValueAware<V>
      * @return whether the cell is a counter cell or not.
      */
     public abstract boolean isCounterCell();
+
+    public abstract V value();
+
+    public abstract ValueAccessor<V> accessor();
 
     public int valueSize()
     {

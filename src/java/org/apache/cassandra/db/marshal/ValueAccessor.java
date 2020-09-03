@@ -399,4 +399,9 @@ public interface ValueAccessor<V>
     {
         return leftAccessor.compare(left, right, rightAccessor);
     }
+
+    public static <L, R> boolean equals(L left, ValueAccessor<L> leftAccessor, R right, ValueAccessor<R> rightAccessor)
+    {
+        return compare(left, leftAccessor, right, rightAccessor) == 0;
+    }
 }

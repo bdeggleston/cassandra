@@ -449,7 +449,7 @@ public class Util
     {
         Cell<?> cell = cell(cfs, row, columnName);
         assert cell != null : "Row " + row.toString(cfs.metadata()) + " has no cell for " + columnName;
-        assertEquals(value, cell.column().type.compose(cell));
+        assertEquals(value, Cells.composeValue(cell, cell.column().type));
     }
 
     public static void consume(UnfilteredRowIterator iter)
