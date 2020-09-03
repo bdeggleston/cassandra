@@ -62,19 +62,22 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         out.put(value);
     }
 
-    public <V2> void copyTo(byte[] src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
+    public <V2> int copyTo(byte[] src, int srcOffset, V2 dst, ValueAccessor<V2> dstAccessor, int dstOffset, int size)
     {
-        dstAccessor.copyByteArrayTo(src, srcOffset, dst, dstAccessor, dstOffset, size);
+        dstAccessor.copyByteArrayTo(src, srcOffset, dst, dstOffset, size);
+        return size;
     }
 
-    public void copyByteArrayTo(byte[] src, int srcOffset, byte[] dst, ValueAccessor<byte[]> dstAccessor, int dstOffset, int size)
+    public int copyByteArrayTo(byte[] src, int srcOffset, byte[] dst, int dstOffset, int size)
     {
         FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
+        return size;
     }
 
-    public void copyByteBufferTo(ByteBuffer src, int srcOffset, byte[] dst, ValueAccessor<byte[]> dstAccessor, int dstOffset, int size)
+    public int copyByteBufferTo(ByteBuffer src, int srcOffset, byte[] dst, int dstOffset, int size)
     {
         FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
+        return size;
     }
 
     public void digest(byte[] value, int offset, int size, Digest digest)
@@ -94,22 +97,17 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
         return Arrays.copyOfRange(input, offset, offset + length);
     }
 
-    public int compareUnsigned(byte[] left, byte[] right)
+    public <V2> int compare(byte[] left, V2 right, ValueAccessor<V2> accessorR)
+    {
+        return accessorR.compareByteArrayTo(left, right);
+    }
+
+    public int compareByteArrayTo(byte[] left, byte[] right)
     {
         return ByteArrayUtil.compareUnsigned(left, right);
     }
 
-    public <V2> int compare(byte[] left, V2 right, ValueAccessor<V2> accessor)
-    {
-        return accessor.compareByteArrayTo(left, right, accessor);
-    }
-
-    public int compareByteArrayTo(byte[] left, byte[] right, ValueAccessor<byte[]> accessor)
-    {
-        return ByteArrayUtil.compareUnsigned(left, right);
-    }
-
-    public int compareByteBufferTo(ByteBuffer left, byte[] right, ValueAccessor<byte[]> accessor)
+    public int compareByteBufferTo(ByteBuffer left, byte[] right)
     {
         return ByteBufferUtil.compare(left, right);
     }
@@ -216,12 +214,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
     {
         ByteArrayUtil.putLong(dst, offset, value);
         return TypeSizes.LONG_SIZE;
-    }
-
-    public int put(byte[] dst, int offset, byte[] src)
-    {
-        System.arraycopy(src, 0, dst, offset, src.length);
-        return src.length;
     }
 
     public byte[] empty()

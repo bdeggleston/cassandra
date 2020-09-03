@@ -54,7 +54,7 @@ public class LongType extends NumberType<Long>
         if (diff != 0)
             return diff;
 
-        return ValueAccessor.compareUnsigned(left, accessorL, right, accessorR);
+        return ValueAccessor.compare(left, accessorL, right, accessorR);
     }
 
     public ByteBuffer fromString(String source) throws MarshalException

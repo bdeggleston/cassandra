@@ -1326,7 +1326,7 @@ public class SecondaryIndexManager implements IndexRegistry, INotificationConsum
             // Completely identical cells (including expiring columns with
             // identical ttl & localExpirationTime) will not get this far due
             // to the oldCell.equals(newCell) in StandardUpdater.update
-            return !ValueAccessor.equals(oldCell, newCell) || oldCell.timestamp() != newCell.timestamp();
+            return !Cells.valueEqual(oldCell, newCell) || oldCell.timestamp() != newCell.timestamp();
         }
     }
 

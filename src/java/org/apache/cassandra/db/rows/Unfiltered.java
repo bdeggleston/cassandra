@@ -28,6 +28,11 @@ import org.apache.cassandra.db.Clusterable;
  * In practice, an Unfiltered is either a row or a range tombstone marker. Unfiltereds
  * are uniquely identified by their clustering information and can be sorted according
  * to those.
+ *
+ * We don't set the type parameter for Clusterable here because it doesn't make sense in
+ * the context of an Unfiltered. Merge iterators can produce rows containing clustering
+ * and cell values with multiple backing types. Also, by the time you're dealing with
+ * Unfiltered objects, the backing type should be considered opaque.
  */
 public interface Unfiltered extends Clusterable
 {

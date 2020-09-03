@@ -255,7 +255,7 @@ public class TupleType extends AbstractType<ByteBuffer>
             else
             {
                 offset += accessor.putInt(result, offset, accessor.size(component));
-                offset += accessor.put(result, offset, component);
+                offset += accessor.copyTo(component, 0, result, accessor, offset, accessor.size(component));
             }
         }
         return result;

@@ -23,6 +23,7 @@ import java.util.Iterator;
 
 import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.db.marshal.ValueAware;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.partitions.PartitionStatisticsCollector;
@@ -163,7 +164,7 @@ public abstract class Cells
                 return leftLocalDeletionTime > rightLocalDeletionTime ? left : right;
         }
 
-        return ValueAccessor.compare(left, right) >= 0 ? left : right;
+        return compareValues(left, right) >= 0 ? left : right;
     }
 
     private static Cell<?> resolveCounter(Cell<?> left, Cell<?> right)
@@ -347,5 +348,15 @@ public abstract class Cells
     private static Cell<?> getNext(Iterator<Cell<?>> iterator)
     {
         return iterator == null || !iterator.hasNext() ? null : iterator.next();
+    }
+
+    private static <L, R> int compareValues(Cell<L> left, Cell<R> right)
+    {
+        return ValueAccessor.compare(left.value(), left.accessor(), right.value(), right.accessor());
+    }
+
+    public static <L, R> boolean valueEqual(Cell<L> left, Cell<R> right)
+    {
+        return compareValues(left, right) == 0;
     }
 }

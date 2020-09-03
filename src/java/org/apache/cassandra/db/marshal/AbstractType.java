@@ -209,7 +209,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     public final <VL, VR> int compare(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
     {
-        return isByteOrderComparable ? ValueAccessor.compareUnsigned(left, accessorL, right, accessorR) : compareCustom(left, accessorL, right, accessorR);
+        return isByteOrderComparable ? ValueAccessor.compare(left, accessorL, right, accessorR) : compareCustom(left, accessorL, right, accessorR);
     }
 
     /**
