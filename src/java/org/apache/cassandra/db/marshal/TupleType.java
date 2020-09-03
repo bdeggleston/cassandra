@@ -147,50 +147,50 @@ public class TupleType extends AbstractType<ByteBuffer>
         if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
             return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
-        int offset1 = 0;
-        int offset2 = 0;
+        int offsetL = 0;
+        int offsetR = 0;
 
-        for (int i = 0; !accessorL.isEmptyFromOffset(left, offset1) && !accessorR.isEmptyFromOffset(right, offset2); i++)
+        for (int i = 0; !accessorL.isEmptyFromOffset(left, offsetL) && !accessorR.isEmptyFromOffset(right, offsetR); i++)
         {
             AbstractType<?> comparator = types.get(i);
 
-            int size1 = accessorL.getInt(left, offset1);
-            offset1 += TypeSizes.INT_SIZE;
-            int size2 = accessorR.getInt(right, offset2);
-            offset2 += TypeSizes.INT_SIZE;
+            int sizeL = accessorL.getInt(left, offsetL);
+            offsetL += TypeSizes.INT_SIZE;
+            int sizeR = accessorR.getInt(right, offsetR);
+            offsetR += TypeSizes.INT_SIZE;
 
             // Handle nulls
-            if (size1 < 0)
+            if (sizeL < 0)
             {
-                if (size2 < 0)
+                if (sizeR < 0)
                     continue;
                 return -1;
             }
-            if (size2 < 0)
+            if (sizeR < 0)
                 return 1;
 
-            VL value1 = accessorL.slice(left, offset1, size1);
-            offset1 += size1;
-            VR value2 = accessorR.slice(right, offset2, size2);
-            offset2 += size2;
-            int cmp = comparator.compare(value1, accessorL, value2, accessorR);
+            VL valueL = accessorL.slice(left, offsetL, sizeL);
+            offsetL += sizeL;
+            VR valueR = accessorR.slice(right, offsetR, sizeR);
+            offsetR += sizeR;
+            int cmp = comparator.compare(valueL, accessorL, valueR, accessorR);
             if (cmp != 0)
                 return cmp;
         }
 
         // handle trailing nulls
-        while (!accessorL.isEmptyFromOffset(left, offset1))
+        while (!accessorL.isEmptyFromOffset(left, offsetL))
         {
-            int size = accessorL.getInt(left, offset1);
-            offset1 += TypeSizes.INT_SIZE;
+            int size = accessorL.getInt(left, offsetL);
+            offsetL += TypeSizes.INT_SIZE;
             if (size > 0) // non-null
                 return 1;
         }
 
-        while (!accessorR.isEmptyFromOffset(right, offset2))
+        while (!accessorR.isEmptyFromOffset(right, offsetR))
         {
-            int size = accessorR.getInt(right, offset2);
-            offset2 += TypeSizes.INT_SIZE;
+            int size = accessorR.getInt(right, offsetR);
+            offsetR += TypeSizes.INT_SIZE;
             if (size > 0) // non-null
                 return -1;
         }

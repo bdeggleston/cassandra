@@ -36,7 +36,6 @@ import org.apache.cassandra.schema.Types;
 import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static java.util.stream.Collectors.toList;
 
@@ -232,7 +231,7 @@ public interface CQL3Type
             return target.toString();
         }
 
-        private <V> int generateMapCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size)
+        private <V> void generateMapCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size)
         {
             CQL3Type keys = ((MapType) type).getKeysType().asCQL3Type();
             CQL3Type values = ((MapType) type).getValuesType().asCQL3Type();
@@ -248,10 +247,9 @@ public interface CQL3Type
                 offset += CollectionSerializer.sizeOfValue(element, accessor, version);
                 target.append(values.toCQLLiteral(element, accessor, version));
             }
-            return offset;
         }
 
-        private static <V> int generateSetOrListCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size, CQL3Type elements)
+        private static <V> void generateSetOrListCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size, CQL3Type elements)
         {
             for (int i = 0; i < size; i++)
             {
@@ -261,7 +259,6 @@ public interface CQL3Type
                 offset += CollectionSerializer.sizeOfValue(element, accessor, version);
                 target.append(elements.toCQLLiteral(element, accessor, version));
             }
-            return offset;
         }
 
         @Override

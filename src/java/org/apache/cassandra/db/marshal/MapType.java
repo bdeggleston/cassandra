@@ -191,32 +191,32 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
 
 
         ProtocolVersion protocolVersion = ProtocolVersion.V3;
-        int size1 = CollectionSerializer.readCollectionSize(left, accessorL, protocolVersion);
-        int size2 = CollectionSerializer.readCollectionSize(right, accessorR, protocolVersion);
+        int sizeL = CollectionSerializer.readCollectionSize(left, accessorL, protocolVersion);
+        int sizeR = CollectionSerializer.readCollectionSize(right, accessorR, protocolVersion);
 
-        int offset1 = CollectionSerializer.sizeOfCollectionSize(size1, protocolVersion);
-        int offset2 = CollectionSerializer.sizeOfCollectionSize(size2, protocolVersion);
+        int offsetL = CollectionSerializer.sizeOfCollectionSize(sizeL, protocolVersion);
+        int offsetR = CollectionSerializer.sizeOfCollectionSize(sizeR, protocolVersion);
 
-        for (int i = 0; i < Math.min(size1, size2); i++)
+        for (int i = 0; i < Math.min(sizeL, sizeR); i++)
         {
-            VL k1 = CollectionSerializer.readValue(left, accessorL, offset1, protocolVersion);
-            offset1 += CollectionSerializer.sizeOfValue(k1, accessorL, protocolVersion);
-            VR k2 = CollectionSerializer.readValue(right, accessorR, offset2, protocolVersion);
-            offset2 += CollectionSerializer.sizeOfValue(k2, accessorR, protocolVersion);
+            VL k1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
+            offsetL += CollectionSerializer.sizeOfValue(k1, accessorL, protocolVersion);
+            VR k2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
+            offsetR += CollectionSerializer.sizeOfValue(k2, accessorR, protocolVersion);
             int cmp = keysComparator.compare(k1, accessorL, k2, accessorR);
             if (cmp != 0)
                 return cmp;
 
-            VL v1 = CollectionSerializer.readValue(left, accessorL, offset1, protocolVersion);
-            offset1 += CollectionSerializer.sizeOfValue(v1, accessorL, protocolVersion);
-            VR v2 = CollectionSerializer.readValue(right, accessorR, offset2, protocolVersion);
-            offset2 += CollectionSerializer.sizeOfValue(v2, accessorR, protocolVersion);
+            VL v1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
+            offsetL += CollectionSerializer.sizeOfValue(v1, accessorL, protocolVersion);
+            VR v2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
+            offsetR += CollectionSerializer.sizeOfValue(v2, accessorR, protocolVersion);
             cmp = valuesComparator.compare(v1, accessorL, v2, accessorR);
             if (cmp != 0)
                 return cmp;
         }
 
-        return size1 == size2 ? 0 : (size1 < size2 ? -1 : 1);
+        return sizeL == sizeR ? 0 : (sizeL < sizeR ? -1 : 1);
     }
 
     @Override

@@ -176,23 +176,23 @@ public class ListType<T> extends CollectionType<List<T>>
         if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
             return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
 
-        int size1 = CollectionSerializer.readCollectionSize(left, accessorL, ProtocolVersion.V3);
-        int offset1 = CollectionSerializer.sizeOfCollectionSize(size1, ProtocolVersion.V3);
-        int size2 = CollectionSerializer.readCollectionSize(right, accessorR, ProtocolVersion.V3);
-        int offset2 = TypeSizes.INT_SIZE;
+        int sizeL = CollectionSerializer.readCollectionSize(left, accessorL, ProtocolVersion.V3);
+        int offsetL = CollectionSerializer.sizeOfCollectionSize(sizeL, ProtocolVersion.V3);
+        int sizeR = CollectionSerializer.readCollectionSize(right, accessorR, ProtocolVersion.V3);
+        int offsetR = TypeSizes.INT_SIZE;
 
-        for (int i = 0; i < Math.min(size1, size2); i++)
+        for (int i = 0; i < Math.min(sizeL, sizeR); i++)
         {
-            VL v1 = CollectionSerializer.readValue(left, accessorL, offset1, ProtocolVersion.V3);
-            offset1 += CollectionSerializer.sizeOfValue(v1, accessorL, ProtocolVersion.V3);
-            VR v2 = CollectionSerializer.readValue(right, accessorR, offset2, ProtocolVersion.V3);
-            offset2 += CollectionSerializer.sizeOfValue(v2, accessorR, ProtocolVersion.V3);
+            VL v1 = CollectionSerializer.readValue(left, accessorL, offsetL, ProtocolVersion.V3);
+            offsetL += CollectionSerializer.sizeOfValue(v1, accessorL, ProtocolVersion.V3);
+            VR v2 = CollectionSerializer.readValue(right, accessorR, offsetR, ProtocolVersion.V3);
+            offsetR += CollectionSerializer.sizeOfValue(v2, accessorR, ProtocolVersion.V3);
             int cmp = elementsComparator.compare(v1, accessorL, v2, accessorR);
             if (cmp != 0)
                 return cmp;
         }
 
-        return size1 == size2 ? 0 : (size1 < size2 ? -1 : 1);
+        return sizeL == sizeR ? 0 : (sizeL < sizeR ? -1 : 1);
     }
 
     @Override
