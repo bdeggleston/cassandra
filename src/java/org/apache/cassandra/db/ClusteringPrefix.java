@@ -199,12 +199,12 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
     default boolean isBottom()
     {
-        return kind() == Kind.INCL_START_BOUND && getRawValues().length == 0;
+        return kind() == Kind.INCL_START_BOUND && size() == 0;
     }
 
     default boolean isTop()
     {
-        return kind() == Kind.INCL_END_BOUND && getRawValues().length == 0;
+        return kind() == Kind.INCL_END_BOUND && size() == 0;
     }
 
     public Kind kind();
