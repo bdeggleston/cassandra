@@ -249,7 +249,16 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
      *
      * @param digest the Digest instance to which to add this prefix.
      */
-    public void digest(Digest digest);
+    default void digest(Digest digest)
+    {
+        for (int i = 0; i < size(); i++)
+        {
+            V value = get(i);
+            if (value != null)
+                digest.update(value, accessor());
+        }
+        digest.updateWithByte(kind().ordinal());
+    }
 
     /**
      * The size of the data hold by this prefix.
@@ -257,7 +266,16 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
      * @return the size of the data hold by this prefix (this is not the size of the object in memory, just
      * the size of the data it stores).
      */
-    public int dataSize();
+    default int dataSize()
+    {
+        int size = 0;
+        for (int i = 0; i < size(); i++)
+        {
+            V v = get(i);
+            size += v == null ? 0 : accessor().size(v);
+        }
+        return size;
+    }
 
     /**
      * Generates a proper string representation of the prefix.

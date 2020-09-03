@@ -28,7 +28,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.MemoryUtil;
 import org.apache.cassandra.utils.memory.NativeAllocator;
 
-public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> implements Clustering<ByteBuffer>
+public class NativeClustering implements Clustering<ByteBuffer>
 {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new NativeClustering());
 
@@ -86,6 +86,11 @@ public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> imple
         return Kind.CLUSTERING;
     }
 
+    public ClusteringPrefix<ByteBuffer> clustering()
+    {
+        return this;
+    }
+
     public int size()
     {
         return MemoryUtil.getShort(peer);
@@ -127,7 +132,8 @@ public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> imple
 
     public ValueAccessor<ByteBuffer> accessor()
     {
-        return ByteBufferAccessor.instance;  // FIXME
+        // TODO: add a native accessor
+        return ByteBufferAccessor.instance;
     }
 
     public long unsharedHeapSize()
@@ -138,5 +144,17 @@ public class NativeClustering extends AbstractClusteringPrefix<ByteBuffer> imple
     public long unsharedHeapSizeExcludingData()
     {
         return EMPTY_SIZE;
+    }
+
+    @Override
+    public final int hashCode()
+    {
+        return ClusteringPrefix.hashCode(this);
+    }
+
+    @Override
+    public final boolean equals(Object o)
+    {
+        return ClusteringPrefix.equals(this, o);
     }
 }

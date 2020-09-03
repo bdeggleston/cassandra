@@ -17,43 +17,50 @@
  */
 package org.apache.cassandra.db;
 
-public abstract class AbstractClusteringPrefix<T> implements ClusteringPrefix<T>
+public abstract class AbstractOnHeapClusteringPrefix<V> implements ClusteringPrefix<V>
 {
-    public ClusteringPrefix<T> clustering()
+    protected final Kind kind;
+    protected final V[] values;
+
+    public AbstractOnHeapClusteringPrefix(Kind kind, V[] values)
+    {
+        this.kind = kind;
+        this.values = values;
+    }
+
+    public Kind kind()
+    {
+        return kind;
+    }
+
+    public ClusteringPrefix<V> clustering()
     {
         return this;
     }
 
-    public int dataSize()
+    public int size()
     {
-        int size = 0;
-        for (int i = 0; i < size(); i++)
-        {
-            T v = get(i);
-            size += v == null ? 0 : accessor().size(v);
-        }
-        return size;
+        return values.length;
     }
 
-    public void digest(Digest digest)
+    public V get(int i)
     {
-        for (int i = 0; i < size(); i++)
-        {
-            T value = get(i);
-            if (value != null)
-                digest.update(value, accessor());
-        }
-        digest.updateWithByte(kind().ordinal());
+        return values[i];
+    }
+
+    public V[] getRawValues()
+    {
+        return values;
     }
 
     @Override
-    public final int hashCode()
+    public int hashCode()
     {
         return ClusteringPrefix.hashCode(this);
     }
 
     @Override
-    public final boolean equals(Object o)
+    public boolean equals(Object o)
     {
         return ClusteringPrefix.equals(this, o);
     }

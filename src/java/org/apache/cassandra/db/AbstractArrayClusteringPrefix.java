@@ -23,48 +23,19 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ValueAccessor;
-import org.apache.cassandra.utils.ObjectSizes;
 
-public abstract class AbstractArrayClusteringPrefix extends AbstractClusteringPrefix<byte[]>
+public abstract class AbstractArrayClusteringPrefix extends AbstractOnHeapClusteringPrefix<byte[]>
 {
     public static final byte[][] EMPTY_VALUES_ARRAY = new byte[0][];
-    protected final Kind kind;
-    protected final byte[][] values;
 
     public AbstractArrayClusteringPrefix(Kind kind, byte[][] values)
     {
-        this.kind = kind;
-        this.values = values;
-    }
-
-    public Kind kind()
-    {
-        return kind;
+        super(kind, values);
     }
 
     public ValueAccessor<byte[]> accessor()
     {
         return ByteArrayAccessor.instance;
-    }
-
-    public ClusteringPrefix<byte[]> clustering()
-    {
-        return this;
-    }
-
-    public int size()
-    {
-        return values.length;
-    }
-
-    public byte[] get(int i)
-    {
-        return values[i];
-    }
-
-    public byte[][] getRawValues()
-    {
-        return values;
     }
 
     public ByteBuffer[] getBufferArray()
