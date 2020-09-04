@@ -594,7 +594,7 @@ public class CounterContext
      */
     public <V>  boolean hasLegacyShards(V context, ValueAccessor<V> accessor)
     {
-        int totalCount = (headerLength(context, accessor)) / STEP_LENGTH;
+        int totalCount = (accessor.size(context) - headerLength(context, accessor)) / STEP_LENGTH;
         int localAndGlobalCount = Math.abs(accessor.getShort(context, 0));
 
         if (localAndGlobalCount < totalCount)

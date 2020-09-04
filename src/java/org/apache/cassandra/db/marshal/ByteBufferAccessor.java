@@ -82,7 +82,7 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public void digest(ByteBuffer value, int offset, int size, Digest digest)
     {
-        digest.update(value, offset, size);
+        digest.update(value, value.position() + offset, size);
     }
 
     public ByteBuffer read(DataInputPlus in, int length) throws IOException
