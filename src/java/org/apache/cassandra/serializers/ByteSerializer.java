@@ -18,7 +18,10 @@
 
 package org.apache.cassandra.serializers;
 
+import java.nio.ByteBuffer;
+
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ByteSerializer extends TypeSerializer<Byte>
 {
@@ -29,9 +32,9 @@ public class ByteSerializer extends TypeSerializer<Byte>
         return value == null || accessor.isEmpty(value) ? null : accessor.toByte(value);
     }
 
-    public <V> V serialize(Byte value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Byte value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value);
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
     }
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException

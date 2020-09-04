@@ -20,7 +20,6 @@ package org.apache.cassandra.cql3.functions;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.serializers.UUIDSerializer;
 import org.apache.cassandra.transport.ProtocolVersion;
@@ -36,7 +35,7 @@ public abstract class UuidFcts
     {
         public ByteBuffer execute(ProtocolVersion protocolVersion, List<ByteBuffer> parameters)
         {
-            return UUIDSerializer.instance.serializeBuffer(UUID.randomUUID());
+            return UUIDSerializer.instance.serialize(UUID.randomUUID());
         }
     };
 }

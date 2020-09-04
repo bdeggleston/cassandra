@@ -19,9 +19,11 @@
 package org.apache.cassandra.serializers;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 
 public class InetAddressSerializer extends TypeSerializer<InetAddress>
 {
@@ -42,9 +44,9 @@ public class InetAddressSerializer extends TypeSerializer<InetAddress>
         }
     }
 
-    public <V> V serialize(InetAddress value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(InetAddress value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value.getAddress());
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.getAddress());
     }
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException

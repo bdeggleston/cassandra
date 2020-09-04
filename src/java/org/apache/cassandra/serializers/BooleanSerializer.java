@@ -17,10 +17,15 @@
  */
 package org.apache.cassandra.serializers;
 
+import java.nio.ByteBuffer;
+
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class BooleanSerializer extends TypeSerializer<Boolean>
 {
+    private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
+    private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
 
     public static final BooleanSerializer instance = new BooleanSerializer();
 
@@ -32,11 +37,10 @@ public class BooleanSerializer extends TypeSerializer<Boolean>
         return accessor.getByte(value, 0) != 0;
     }
 
-    public <V> V serialize(Boolean value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Boolean value)
     {
-        if (value == null)
-            return accessor.empty();
-        return accessor.valueOf(value);
+        return (value == null) ? ByteBufferUtil.EMPTY_BYTE_BUFFER
+                               : value ? TRUE : FALSE; // false
     }
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException

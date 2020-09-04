@@ -66,7 +66,7 @@ public class ColumnConditionTest
             for (int i = 0, m = values.size(); i < m; i++)
             {
                 UUID uuid = UUIDGen.getTimeUUID(now, i);
-                ByteBuffer key = TimeUUIDSerializer.instance.serializeBuffer(uuid);
+                ByteBuffer key = TimeUUIDSerializer.instance.serialize(uuid);
                 ByteBuffer value = values.get(i);
                 BufferCell cell = new BufferCell(definition,
                                                  0L,

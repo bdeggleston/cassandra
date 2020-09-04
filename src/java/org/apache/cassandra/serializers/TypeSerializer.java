@@ -25,12 +25,7 @@ import org.apache.cassandra.db.marshal.ValueAccessor;
 
 public abstract class TypeSerializer<T>
 {
-    public abstract <V> V serialize(T value, ValueAccessor<V> accessor);
-
-    public final ByteBuffer serializeBuffer(T value)
-    {
-        return serialize(value, ByteBufferAccessor.instance);
-    }
+    public abstract ByteBuffer serialize(T value);
 
     public abstract <V> T deserialize(V value, ValueAccessor<V> accessor);
 

@@ -128,7 +128,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
     public ByteBuffer decompose(T value)
     {
-        return getSerializer().serialize(value, ByteBufferAccessor.instance);
+        return getSerializer().serialize(value);
     }
 
     /** get a string representation of the bytes used for various identifier (NOT just for log messages) */

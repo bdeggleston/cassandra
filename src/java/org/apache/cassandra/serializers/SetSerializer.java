@@ -55,12 +55,12 @@ public class SetSerializer<T> extends CollectionSerializer<Set<T>>
         this.comparators = comparators;
     }
 
-    protected <V> List<V> serializeValues(Set<T> values, ValueAccessor<V> accessor)
+    public List<ByteBuffer> serializeValues(Set<T> values)
     {
-        List<V> buffers = new ArrayList<>(values.size());
+        List<ByteBuffer> buffers = new ArrayList<>(values.size());
         for (T value : values)
-            buffers.add(elements.serialize(value, accessor));
-        Collections.sort(buffers, comparators.getForAccessor(accessor));
+            buffers.add(elements.serialize(value));
+        Collections.sort(buffers, comparators.buffer);
         return buffers;
     }
 

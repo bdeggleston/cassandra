@@ -58,20 +58,19 @@ public class MapSerializer<K, V> extends CollectionSerializer<Map<K, V>>
         this.comparators = comparators;
     }
 
-    protected <O> List<O> serializeValues(Map<K, V> map, ValueAccessor<O> accessor)
+    public List<ByteBuffer> serializeValues(Map<K, V> map)
     {
-        List<Pair<O, O>> pairs = new ArrayList<>(map.size());
+        List<Pair<ByteBuffer, ByteBuffer>> pairs = new ArrayList<>(map.size());
         for (Map.Entry<K, V> entry : map.entrySet())
-            pairs.add(Pair.create(keys.serialize(entry.getKey(), accessor), values.serialize(entry.getValue(), accessor)));
-
-        Collections.sort(pairs, (l, r) -> comparators.getForAccessor(accessor).compare(l.left, r.left));
-        List<O> output = new ArrayList<>(pairs.size() * 2);
-        for (Pair<O, O> p : pairs)
+            pairs.add(Pair.create(keys.serialize(entry.getKey()), values.serialize(entry.getValue())));
+        Collections.sort(pairs, (l, r) -> comparators.buffer.compare(l.left, r.left));
+        List<ByteBuffer> buffers = new ArrayList<>(pairs.size() * 2);
+        for (Pair<ByteBuffer, ByteBuffer> p : pairs)
         {
-            output.add(p.left);
-            output.add(p.right);
+            buffers.add(p.left);
+            buffers.add(p.right);
         }
-        return output;
+        return buffers;
     }
 
     public int getElementCount(Map<K, V> value)

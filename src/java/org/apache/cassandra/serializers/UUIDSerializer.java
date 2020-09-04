@@ -17,9 +17,12 @@
  */
 package org.apache.cassandra.serializers;
 
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.UUIDGen;
 
 public class UUIDSerializer extends TypeSerializer<UUID>
 {
@@ -30,10 +33,11 @@ public class UUIDSerializer extends TypeSerializer<UUID>
         return accessor.isEmpty(value) ? null : accessor.toUUID(value);
     }
 
-    public <V> V serialize(UUID value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(UUID value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value);
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : UUIDGen.toByteBuffer(value);
     }
+
 
     public <V> void validate(V value, ValueAccessor<V> accessor) throws MarshalException
     {

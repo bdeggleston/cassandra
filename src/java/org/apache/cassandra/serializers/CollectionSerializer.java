@@ -31,7 +31,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class CollectionSerializer<T> extends TypeSerializer<T>
 {
-    protected abstract <V> List<V> serializeValues(T value, ValueAccessor<V> accessor);
+    protected abstract List<ByteBuffer> serializeValues(T value);
     protected abstract int getElementCount(T value);
 
     public abstract <V> T deserializeForNativeProtocol(V value, ValueAccessor<V> accessor, ProtocolVersion version);
@@ -43,11 +43,11 @@ public abstract class CollectionSerializer<T> extends TypeSerializer<T>
 
     public abstract <V> void validateForNativeProtocol(V value, ValueAccessor<V> accessor, ProtocolVersion version);
 
-    public <V> V serialize(T input, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(T input)
     {
-        List<V> values = serializeValues(input, accessor);
+        List<ByteBuffer> values = serializeValues(input);
         // See deserialize() for why using the protocol v3 variant is the right thing to do.
-        return pack(values, accessor, getElementCount(input), ProtocolVersion.V3);
+        return pack(values, ByteBufferAccessor.instance, getElementCount(input), ProtocolVersion.V3);
     }
 
     public <V> T deserialize(V value, ValueAccessor<V> accessor)

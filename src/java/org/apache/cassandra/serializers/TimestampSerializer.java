@@ -19,7 +19,9 @@ package org.apache.cassandra.serializers;
 
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -129,9 +131,9 @@ public class TimestampSerializer extends TypeSerializer<Date>
         return accessor.isEmpty(value) ? null : new Date(accessor.toLong(value));
     }
 
-    public <V> V serialize(Date value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Date value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value.getTime());
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value.getTime());
     }
 
     public static long dateStringToTimestamp(String source) throws MarshalException

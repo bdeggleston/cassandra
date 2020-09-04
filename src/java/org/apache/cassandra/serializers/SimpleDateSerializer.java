@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.serializers;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.ResolverStyle.STRICT;
@@ -50,9 +52,9 @@ public class SimpleDateSerializer extends TypeSerializer<Integer>
         return accessor.isEmpty(value) ? null : accessor.toInt(value);
     }
 
-    public <V> V serialize(Integer value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Integer value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value);
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
     }
 
     public static int dateStringToDays(String source) throws MarshalException

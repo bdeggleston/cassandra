@@ -34,31 +34,31 @@ public class TimeTypeTest extends CQLTester
     {
         Long t1 = TimeSerializer.timeStringToLong("01:00:00.123456789");
         Long t2 = new Long((1L * 60L * 60L * 1000L * 1000L * 1000L) + 123456789);
-        ByteBuffer b1 = TimeSerializer.instance.serializeBuffer(t1);
-        ByteBuffer b2 = TimeSerializer.instance.serializeBuffer(t2);
+        ByteBuffer b1 = TimeSerializer.instance.serialize(t1);
+        ByteBuffer b2 = TimeSerializer.instance.serialize(t2);
         assert TimeType.instance.compare(b1, b2) == 0 : "Failed == comparison";
 
-        b2 = TimeSerializer.instance.serializeBuffer(123456789L);
+        b2 = TimeSerializer.instance.serialize(123456789L);
         assert TimeType.instance.compare(b1, b2) > 0 : "Failed > comparison";
 
         t2 = new Long(2L * 60L * 60L * 1000L * 1000L * 1000L + 123456789);
-        b2 = TimeSerializer.instance.serializeBuffer(t2);
+        b2 = TimeSerializer.instance.serialize(t2);
         assert TimeType.instance.compare(b1, b2) < 0 : "Failed < comparison";
 
-        b1 = TimeSerializer.instance.serializeBuffer(0L);
-        b2 = TimeSerializer.instance.serializeBuffer(0L);
+        b1 = TimeSerializer.instance.serialize(0L);
+        b2 = TimeSerializer.instance.serialize(0L);
         assert TimeType.instance.compare(b1, b2) == 0 : "Failed == comparison on 0";
 
-        b1 = TimeSerializer.instance.serializeBuffer(0L);
-        b2 = TimeSerializer.instance.serializeBuffer(10000000L);
+        b1 = TimeSerializer.instance.serialize(0L);
+        b2 = TimeSerializer.instance.serialize(10000000L);
         assert TimeType.instance.compare(b1, b2) < 0 : "Failed < comparison on 0";
 
-        b1 = TimeSerializer.instance.serializeBuffer(0L);
-        b2 = TimeSerializer.instance.serializeBuffer(TimeUnit.DAYS.toNanos(1));
+        b1 = TimeSerializer.instance.serialize(0L);
+        b2 = TimeSerializer.instance.serialize(TimeUnit.DAYS.toNanos(1));
         assert TimeType.instance.compare(b1, b2) < 0 : "Failed < comparison against max range.";
 
-        b1 = TimeSerializer.instance.serializeBuffer(TimeUnit.DAYS.toNanos(1));
-        b2 = TimeSerializer.instance.serializeBuffer(0L);
+        b1 = TimeSerializer.instance.serialize(TimeUnit.DAYS.toNanos(1));
+        b2 = TimeSerializer.instance.serialize(0L);
         assert TimeType.instance.compare(b1, b2) > 0 : "Failed > comparison against max range.";
     }
 

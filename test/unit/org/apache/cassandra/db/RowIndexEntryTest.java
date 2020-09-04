@@ -37,7 +37,6 @@ import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.db.columniterator.AbstractSSTableIterator;
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.partitions.ImmutableBTreePartition;
@@ -127,7 +126,7 @@ public class RowIndexEntryTest extends CQLTester
 
     private static DecoratedKey partitionKey(long l)
     {
-        ByteBuffer key = LongSerializer.instance.serializeBuffer(l);
+        ByteBuffer key = LongSerializer.instance.serialize(l);
         Token token = Murmur3Partitioner.instance.getToken(key);
         return new BufferDecoratedKey(token, key);
     }

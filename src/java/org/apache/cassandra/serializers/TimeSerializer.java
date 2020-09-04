@@ -17,10 +17,12 @@
  */
 package org.apache.cassandra.serializers;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class TimeSerializer extends TypeSerializer<Long>
 {
@@ -32,9 +34,9 @@ public class TimeSerializer extends TypeSerializer<Long>
         return accessor.isEmpty(value) ? null : accessor.toLong(value);
     }
 
-    public <V> V serialize(Long value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Long value)
     {
-        return value == null ? accessor.empty() : accessor.valueOf(value);
+        return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
     }
 
     public static Long timeStringToLong(String source) throws MarshalException

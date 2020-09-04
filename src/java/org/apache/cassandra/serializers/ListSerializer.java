@@ -50,11 +50,11 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
         this.elements = elements;
     }
 
-    protected <V> List<V> serializeValues(List<T> values, ValueAccessor<V> accessor)
+    protected List<ByteBuffer> serializeValues(List<T> values)
     {
-        List<V> output = new ArrayList<>(values.size());
+        List<ByteBuffer> output = new ArrayList<>(values.size());
         for (T value: values)
-            output.add(elements.serialize(value, accessor));
+            output.add(elements.serialize(value));
         return output;
     }
 

@@ -18,21 +18,23 @@
 package org.apache.cassandra.serializers;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBufferFixed;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.vint.VIntCoding;
 
 public final class DurationSerializer extends TypeSerializer<Duration>
 {
     public static final DurationSerializer instance = new DurationSerializer();
 
-    public <V> V serialize(Duration duration, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(Duration duration)
     {
         if (duration == null)
-            return accessor.empty();
+            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
 
         long months = duration.getMonths();
         long days = duration.getDays();
@@ -47,7 +49,7 @@ public final class DurationSerializer extends TypeSerializer<Duration>
             output.writeVInt(months);
             output.writeVInt(days);
             output.writeVInt(nanoseconds);
-            return accessor.valueOf(output.buffer());
+            return output.buffer();
         }
         catch (IOException e)
         {

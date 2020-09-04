@@ -302,36 +302,36 @@ public class PreparedStatementsTest extends CQLTester
             // This is a _successful_ LWT update
             verifyMetadataFlagsWithLWTsUpdate(simpleClient,
                                               prepUpdate,
-                                              Arrays.asList(Int32Serializer.instance.serializeBuffer(10),
-                                                            Int32Serializer.instance.serializeBuffer(20),
-                                                            Int32Serializer.instance.serializeBuffer(1)),
+                                              Arrays.asList(Int32Serializer.instance.serialize(10),
+                                                            Int32Serializer.instance.serialize(20),
+                                                            Int32Serializer.instance.serialize(1)),
                                               Arrays.asList("[applied]"),
-                                              Arrays.asList(BooleanSerializer.instance.serializeBuffer(true)));
+                                              Arrays.asList(BooleanSerializer.instance.serialize(true)));
 
             prepSelect = verifyMetadataFlagsWithLWTsSelect(simpleClient,
                                                            prepSelect,
                                                            Arrays.asList("pk", "v1", "v2"),
-                                                           Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                                         Int32Serializer.instance.serializeBuffer(10),
-                                                                         Int32Serializer.instance.serializeBuffer(20)),
+                                                           Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                                         Int32Serializer.instance.serialize(10),
+                                                                         Int32Serializer.instance.serialize(20)),
                                                            EnumSet.of(org.apache.cassandra.cql3.ResultSet.Flag.GLOBAL_TABLES_SPEC));
 
             // This is an _unsuccessful_ LWT update (as the condition fails)
             verifyMetadataFlagsWithLWTsUpdate(simpleClient,
                                               prepUpdate,
-                                              Arrays.asList(Int32Serializer.instance.serializeBuffer(10),
-                                                            Int32Serializer.instance.serializeBuffer(20),
-                                                            Int32Serializer.instance.serializeBuffer(1)),
+                                              Arrays.asList(Int32Serializer.instance.serialize(10),
+                                                            Int32Serializer.instance.serialize(20),
+                                                            Int32Serializer.instance.serialize(1)),
                                               Arrays.asList("[applied]", "v1"),
-                                              Arrays.asList(BooleanSerializer.instance.serializeBuffer(false),
-                                                            Int32Serializer.instance.serializeBuffer(10)));
+                                              Arrays.asList(BooleanSerializer.instance.serialize(false),
+                                                            Int32Serializer.instance.serialize(10)));
 
             prepSelect = verifyMetadataFlagsWithLWTsSelect(simpleClient,
                                                            prepSelect,
                                                            Arrays.asList("pk", "v1", "v2"),
-                                                           Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                                         Int32Serializer.instance.serializeBuffer(10),
-                                                                         Int32Serializer.instance.serializeBuffer(20)),
+                                                           Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                                         Int32Serializer.instance.serialize(10),
+                                                                         Int32Serializer.instance.serialize(20)),
                                                            EnumSet.of(org.apache.cassandra.cql3.ResultSet.Flag.GLOBAL_TABLES_SPEC));
 
             // force a schema change on that table
@@ -342,9 +342,9 @@ public class PreparedStatementsTest extends CQLTester
             try
             {
                 simpleClient.executePrepared(prepUpdate,
-                                             Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                           Int32Serializer.instance.serializeBuffer(30),
-                                                           Int32Serializer.instance.serializeBuffer(10)),
+                                             Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                           Int32Serializer.instance.serialize(30),
+                                                           Int32Serializer.instance.serialize(10)),
                                              ConsistencyLevel.LOCAL_ONE);
                 fail();
             }
@@ -359,7 +359,7 @@ public class PreparedStatementsTest extends CQLTester
             try
             {
                 simpleClient.executePrepared(prepSelect,
-                                             Arrays.asList(Int32Serializer.instance.serializeBuffer(1)),
+                                             Arrays.asList(Int32Serializer.instance.serialize(1)),
                                              ConsistencyLevel.LOCAL_ONE);
                 fail();
             }
@@ -375,20 +375,20 @@ public class PreparedStatementsTest extends CQLTester
             // This is a _successful_ LWT update
             verifyMetadataFlagsWithLWTsUpdate(simpleClient,
                                               prepUpdate,
-                                              Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                            Int32Serializer.instance.serializeBuffer(30),
-                                                            Int32Serializer.instance.serializeBuffer(10)),
+                                              Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                            Int32Serializer.instance.serialize(30),
+                                                            Int32Serializer.instance.serialize(10)),
                                               Arrays.asList("[applied]"),
-                                              Arrays.asList(BooleanSerializer.instance.serializeBuffer(true)));
+                                              Arrays.asList(BooleanSerializer.instance.serialize(true)));
 
             // Re-assign prepSelect here, as the resultset metadata changed to submit the updated
             // resultset-metadata-ID in the next SELECT. This behavior does not apply to LWT statements.
             prepSelect = verifyMetadataFlagsWithLWTsSelect(simpleClient,
                                                            prepSelect,
                                                            Arrays.asList("pk", "v1", "v2", "v3"),
-                                                           Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                                         Int32Serializer.instance.serializeBuffer(1),
-                                                                         Int32Serializer.instance.serializeBuffer(30),
+                                                           Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                                         Int32Serializer.instance.serialize(1),
+                                                                         Int32Serializer.instance.serialize(30),
                                                                          null),
                                                            EnumSet.of(org.apache.cassandra.cql3.ResultSet.Flag.GLOBAL_TABLES_SPEC,
                                                                       org.apache.cassandra.cql3.ResultSet.Flag.METADATA_CHANGED));
@@ -396,19 +396,19 @@ public class PreparedStatementsTest extends CQLTester
             // This is an _unsuccessful_ LWT update (as the condition fails)
             verifyMetadataFlagsWithLWTsUpdate(simpleClient,
                                               prepUpdate,
-                                              Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                            Int32Serializer.instance.serializeBuffer(30),
-                                                            Int32Serializer.instance.serializeBuffer(10)),
+                                              Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                            Int32Serializer.instance.serialize(30),
+                                                            Int32Serializer.instance.serialize(10)),
                                               Arrays.asList("[applied]", "v1"),
-                                              Arrays.asList(BooleanSerializer.instance.serializeBuffer(false),
-                                                            Int32Serializer.instance.serializeBuffer(1)));
+                                              Arrays.asList(BooleanSerializer.instance.serialize(false),
+                                                            Int32Serializer.instance.serialize(1)));
 
             verifyMetadataFlagsWithLWTsSelect(simpleClient,
                                               prepSelect,
                                               Arrays.asList("pk", "v1", "v2", "v3"),
-                                              Arrays.asList(Int32Serializer.instance.serializeBuffer(1),
-                                                            Int32Serializer.instance.serializeBuffer(1),
-                                                            Int32Serializer.instance.serializeBuffer(30),
+                                              Arrays.asList(Int32Serializer.instance.serialize(1),
+                                                            Int32Serializer.instance.serialize(1),
+                                                            Int32Serializer.instance.serialize(30),
                                                             null),
                                               EnumSet.of(org.apache.cassandra.cql3.ResultSet.Flag.GLOBAL_TABLES_SPEC));
         }
@@ -421,7 +421,7 @@ public class PreparedStatementsTest extends CQLTester
                                                                      EnumSet<org.apache.cassandra.cql3.ResultSet.Flag> expectedFlags)
     {
         ResultMessage result = simpleClient.executePrepared(prepSelect,
-                                                            Collections.singletonList(Int32Serializer.instance.serializeBuffer(1)),
+                                                            Collections.singletonList(Int32Serializer.instance.serialize(1)),
                                                             ConsistencyLevel.LOCAL_ONE);
         ResultMessage.Rows rows = (ResultMessage.Rows) result;
         EnumSet<org.apache.cassandra.cql3.ResultSet.Flag> resultFlags = rows.result.metadata.getFlags();

@@ -64,7 +64,7 @@ public class SimpleDateSerializerTest
             try
             {
                 Integer days = SimpleDateSerializer.dateStringToDays(date);
-                ByteBuffer value = SimpleDateSerializer.instance.serializeBuffer(days);
+                ByteBuffer value = SimpleDateSerializer.instance.serialize(days);
                 Integer deserialized = SimpleDateSerializer.instance.deserialize(value);
 
                 String toStringValue = SimpleDateSerializer.instance.toString(deserialized);

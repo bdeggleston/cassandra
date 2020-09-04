@@ -75,7 +75,7 @@ public class BooleanType extends AbstractType<Boolean>
             throw new MarshalException(String.format(
                     "Expected a boolean value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));
 
-        return new Constants.Value(getSerializer().serializeBuffer((Boolean) parsed));
+        return new Constants.Value(getSerializer().serialize((Boolean) parsed));
     }
 
     @Override

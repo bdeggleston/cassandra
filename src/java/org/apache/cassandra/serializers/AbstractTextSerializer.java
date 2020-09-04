@@ -24,6 +24,7 @@ import java.nio.charset.Charset;
 import org.apache.commons.lang3.StringUtils;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public abstract class AbstractTextSerializer extends TypeSerializer<String>
 {
@@ -46,12 +47,13 @@ public abstract class AbstractTextSerializer extends TypeSerializer<String>
         }
     }
 
-    public <V> V serialize(String value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(String value)
     {
-        return accessor.valueOf(value, charset);
+        return ByteBufferUtil.bytes(value, charset);
     }
 
-    public String toString(String value)
+
+        public String toString(String value)
     {
         return value;
     }

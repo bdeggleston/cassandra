@@ -18,6 +18,7 @@
 package org.apache.cassandra.serializers;
 
 import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -38,10 +39,10 @@ public class DecimalSerializer extends TypeSerializer<BigDecimal>
         return new BigDecimal(bi, scale);
     }
 
-    public <V> V serialize(BigDecimal value, ValueAccessor<V> accessor)
+    public ByteBuffer serialize(BigDecimal value)
     {
         if (value == null)
-            return accessor.empty();
+            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
 
         BigInteger bi = value.unscaledValue();
         int scale = value.scale();
@@ -51,7 +52,7 @@ public class DecimalSerializer extends TypeSerializer<BigDecimal>
         bytes.putInt(scale);
         bytes.put(bibytes);
         bytes.rewind();
-        return accessor.valueOf(bytes);  // FIXME: value write ops
+        return bytes;
     }
 
     public <T> void validate(T value, ValueAccessor<T> accessor) throws MarshalException

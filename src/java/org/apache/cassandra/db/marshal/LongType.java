@@ -89,7 +89,7 @@ public class LongType extends NumberType<Long>
             if (!(parsedNumber instanceof Integer || parsedNumber instanceof Long))
                 throw new MarshalException(String.format("Expected a bigint value, but got a %s: %s", parsed.getClass().getSimpleName(), parsed));
 
-            return new Constants.Value(getSerializer().serializeBuffer(parsedNumber.longValue()));
+            return new Constants.Value(getSerializer().serialize(parsedNumber.longValue()));
         }
         catch (ClassCastException exc)
         {

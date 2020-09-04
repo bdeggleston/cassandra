@@ -152,7 +152,7 @@ public class TimeSerializerTest
         String source = "01:01:01.123123123";
         Long nt = TimeSerializer.timeStringToLong(source);
 
-        ByteBuffer buf = TimeSerializer.instance.serializeBuffer(nt);
+        ByteBuffer buf = TimeSerializer.instance.serialize(nt);
         TimeSerializer.instance.validate(buf);
 
         Long result = TimeSerializer.instance.deserialize(buf);
