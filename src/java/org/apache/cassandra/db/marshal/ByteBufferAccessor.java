@@ -70,13 +70,13 @@ public class ByteBufferAccessor implements ValueAccessor<ByteBuffer>
 
     public int copyByteArrayTo(byte[] src, int srcOffset, ByteBuffer dst, int dstOffset, int size)
     {
-        FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
+        FastByteOperations.copy(src, srcOffset, dst, dst.position() + dstOffset, size);
         return size;
     }
 
     public int copyByteBufferTo(ByteBuffer src, int srcOffset, ByteBuffer dst, int dstOffset, int size)
     {
-        FastByteOperations.copy(src, srcOffset, dst, dstOffset, size);
+        FastByteOperations.copy(src, src.position() + srcOffset, dst, dst.position() + dstOffset, size);
         return size;
     }
 
