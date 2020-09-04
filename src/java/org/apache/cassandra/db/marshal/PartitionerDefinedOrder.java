@@ -60,7 +60,7 @@ public class PartitionerDefinedOrder extends AbstractType<ByteBuffer>
     }
 
     @Override
-    <V> V decompose(ByteBuffer value, ValueAccessor<V> accessor)
+    public ByteBuffer decompose(ByteBuffer value)
     {
         throw new UnsupportedOperationException("You can't do this with a local partitioner.");
     }

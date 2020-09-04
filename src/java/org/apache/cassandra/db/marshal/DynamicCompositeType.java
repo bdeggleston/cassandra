@@ -245,7 +245,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             return comparator;
     }
 
-    public <V> V decompose(ValueAccessor<V> accessor, Object... objects)
+    public ByteBuffer decompose(Object... objects)
     {
         throw new UnsupportedOperationException();
     }
@@ -402,7 +402,7 @@ public class DynamicCompositeType extends AbstractCompositeType
             throw new UnsupportedOperationException();
         }
 
-        <V> V decompose(Void value, ValueAccessor<V> accessor)
+        public ByteBuffer decompose(Void value)
         {
             throw new UnsupportedOperationException();
         }

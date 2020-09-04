@@ -310,7 +310,7 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         }
     }
 
-    public abstract <V> V decompose(ValueAccessor<V> accessor, Object... objects);
+    public abstract ByteBuffer decompose(Object... objects);
 
     public TypeSerializer<ByteBuffer> getSerializer()
     {

@@ -50,9 +50,9 @@ public class CounterColumnType extends NumberType<Long>
     }
 
     @Override
-    <V> V decompose(Long value, ValueAccessor<V> accessor)
+    public ByteBuffer decompose(Long value)
     {
-        return accessor.valueOf(value);
+        return ByteBufferUtil.bytes(value);
     }
 
     @Override

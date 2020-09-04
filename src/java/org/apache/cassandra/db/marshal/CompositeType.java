@@ -182,18 +182,18 @@ public class CompositeType extends AbstractCompositeType
         return 0;
     }
 
-    public <V> V decompose(ValueAccessor<V> accessor, Object... objects)
+    public ByteBuffer decompose(Object... objects)
     {
         assert objects.length == types.size();
 
-        V[] serialized = accessor.createArray(objects.length);
+        ByteBuffer[] serialized = new ByteBuffer[objects.length];
         for (int i = 0; i < objects.length; i++)
         {
-            serialized[i] = (V) ((AbstractType) types.get(i)).decompose(objects[i], accessor);
+            ByteBuffer buffer = ((AbstractType) types.get(i)).decompose(objects[i]);
+            serialized[i] = buffer;
         }
-        return build(accessor, serialized);
+        return build(ByteBufferAccessor.instance, serialized);
     }
-
     // Overriding the one of AbstractCompositeType because we can do a tad better
     @Override
     public ByteBuffer[] split(ByteBuffer name)
