@@ -37,7 +37,7 @@ public class UnfilteredDeserializer
     protected final DataInputPlus in;
     protected final DeserializationHelper helper;
 
-    private final ClusteringPrefix.Deserializer<byte[]> clusteringDeserializer;
+    private final ClusteringPrefix.Deserializer clusteringDeserializer;
     private final SerializationHeader header;
 
     private int nextFlags;
@@ -56,7 +56,7 @@ public class UnfilteredDeserializer
         this.in = in;
         this.helper = helper;
         this.header = header;
-        this.clusteringDeserializer = new ClusteringPrefix.Deserializer<>(metadata.comparator, in, header, ByteArrayAccessor.instance);
+        this.clusteringDeserializer = new ClusteringPrefix.Deserializer(metadata.comparator, in, header);
         this.builder = BTreeRow.sortedBuilder();
     }
 

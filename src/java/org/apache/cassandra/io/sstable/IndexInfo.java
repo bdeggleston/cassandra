@@ -129,8 +129,8 @@ public class IndexInfo
 
         public IndexInfo deserialize(DataInputPlus in) throws IOException
         {
-            ClusteringPrefix<byte[]> firstName = ClusteringPrefix.serializer.deserialize(ByteArrayAccessor.instance, in, version, clusteringTypes);
-            ClusteringPrefix<byte[]> lastName = ClusteringPrefix.serializer.deserialize(ByteArrayAccessor.instance, in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> firstName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
+            ClusteringPrefix<byte[]> lastName = ClusteringPrefix.serializer.deserialize(in, version, clusteringTypes);
             long offset = in.readUnsignedVInt();
             long width = in.readVInt() + WIDTH_BASE;
             DeletionTime endOpenMarker = null;

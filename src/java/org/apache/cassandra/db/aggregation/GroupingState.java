@@ -118,7 +118,7 @@ public final class GroupingState
             ByteBuffer partitionKey = ByteBufferUtil.readWithVIntLength(in);
             Clustering<byte[]> clustering = null;
             if (in.readBoolean())
-                clustering = Clustering.serializer.deserialize(ByteArrayAccessor.instance, in, version, comparator.subtypes());
+                clustering = Clustering.serializer.deserialize(in, version, comparator.subtypes());
 
             return new GroupingState(partitionKey, clustering);
         }

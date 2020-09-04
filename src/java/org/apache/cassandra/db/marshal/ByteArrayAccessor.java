@@ -38,6 +38,7 @@ import org.apache.cassandra.utils.UUIDGen;
 public class ByteArrayAccessor implements ValueAccessor<byte[]>
 {
     public static final ValueAccessor<byte[]> instance = new ByteArrayAccessor();
+    public static final ObjectFactory<byte[]> factory = ByteArrayObjectFactory.instance;
     private static final byte[] EMPTY = new byte[0];
 
     private ByteArrayAccessor() {}
@@ -288,6 +289,6 @@ public class ByteArrayAccessor implements ValueAccessor<byte[]>
 
     public ObjectFactory<byte[]> factory()
     {
-        return ByteArrayObjectFactory.instance;
+        return factory;
     }
 }

@@ -470,6 +470,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return read(ByteBufferAccessor.instance, in, maxValueSize);
     }
 
+    public byte[] readArray(DataInputPlus in, int maxValueSize) throws IOException
+    {
+        return read(ByteArrayAccessor.instance, in, maxValueSize);
+    }
+
     public <V> V read(ValueAccessor<V> accessor, DataInputPlus in, int maxValueSize) throws IOException
     {
         int length = valueLengthIfFixed();

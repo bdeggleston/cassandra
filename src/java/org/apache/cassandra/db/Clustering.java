@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.apache.cassandra.db.marshal.ValueAccessor;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -156,20 +156,20 @@ public interface Clustering<V> extends ClusteringPrefix<V>
                 ClusteringPrefix.serializer.skipValuesWithoutSize(in, types.size(), version, types);
         }
 
-        public <V> Clustering<V> deserialize(ValueAccessor<V> accessor, DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public Clustering<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             if (types.isEmpty())
-                return accessor.factory().clustering();
+                return ByteArrayAccessor.factory.clustering();
 
-            V[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types, accessor);
-            return accessor.factory().clustering(values);
+            byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, types.size(), version, types);
+            return ByteArrayAccessor.factory.clustering(values);
         }
 
-        public <V> Clustering<V> deserialize(ValueAccessor<V> accessor, ByteBuffer in, int version, List<AbstractType<?>> types)
+        public Clustering<byte[]> deserialize(ByteBuffer in, int version, List<AbstractType<?>> types)
         {
             try (DataInputBuffer buffer = new DataInputBuffer(in, true))
             {
-                return deserialize(accessor, buffer, version, types);
+                return deserialize(buffer, version, types);
             }
             catch (IOException e)
             {

@@ -24,8 +24,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
-import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -114,10 +114,10 @@ public interface ClusteringBoundOrBoundary<V> extends ClusteringPrefix<V>
                  + ClusteringPrefix.serializer.valuesWithoutSizeSerializedSize(bound, version, types);
         }
 
-        public <V> ClusteringBoundOrBoundary<V> deserialize(ValueAccessor<V> accessor, DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
+        public ClusteringBoundOrBoundary<byte[]> deserialize(DataInputPlus in, int version, List<AbstractType<?>> types) throws IOException
         {
             Kind kind = Kind.values()[in.readByte()];
-            return deserializeValues(accessor, in, kind, version, types);
+            return deserializeValues(in, kind, version, types);
         }
 
         public void skipValues(DataInputPlus in, Kind kind, int version, List<AbstractType<?>> types) throws IOException
@@ -129,14 +129,14 @@ public interface ClusteringBoundOrBoundary<V> extends ClusteringPrefix<V>
             ClusteringPrefix.serializer.skipValuesWithoutSize(in, size, version, types);
         }
 
-        public <V> ClusteringBoundOrBoundary<V> deserializeValues(ValueAccessor<V> accessor, DataInputPlus in, Kind kind, int version, List<AbstractType<?>> types) throws IOException
+        public ClusteringBoundOrBoundary<byte[]> deserializeValues(DataInputPlus in, Kind kind, int version, List<AbstractType<?>> types) throws IOException
         {
             int size = in.readUnsignedShort();
             if (size == 0)
-                return accessor.factory().bound(kind);
+                return ByteArrayAccessor.factory.bound(kind);
 
-            V[] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types, accessor);
-            return accessor.factory().boundOrBoundary(kind, values);
+            byte[][] values = ClusteringPrefix.serializer.deserializeValuesWithoutSize(in, size, version, types);
+            return ByteArrayAccessor.factory.boundOrBoundary(kind, values);
         }
     }
 }
