@@ -137,9 +137,7 @@ public class DynamicCompositeType extends AbstractCompositeType
     protected <VL, VR> AbstractType<?> getComparator(int i, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR, int offsetL, int offsetR)
     {
         AbstractType<?> comp1 = getComparator(left, accessorL, offsetL);
-        offsetL += getComparatorSize(i, left, accessorL, offsetL);
         AbstractType<?> comp2 = getComparator(right, accessorR, offsetR);
-        offsetR += getComparatorSize(i, right, accessorR, offsetR);
         AbstractType<?> rawComp = comp1;
 
         /*

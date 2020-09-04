@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.cassandra.cql3.Json;
 import org.apache.cassandra.cql3.Maps;
 import org.apache.cassandra.cql3.Term;
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
@@ -76,7 +75,7 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
     }
 
     @Override
-    public <V> boolean referencesUserType(V name, ValueAccessor<V> accessor)
+    public <T> boolean referencesUserType(T name, ValueAccessor<T> accessor)
     {
         return keys.referencesUserType(name, accessor) || values.referencesUserType(name, accessor);
     }
@@ -179,12 +178,12 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         return keys.isCompatibleWith(tprev.keys) && values.isValueCompatibleWith(tprev.values);
     }
 
-    public <VL, VR> int compareCustom(VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
+    public <RL, TR> int compareCustom(RL left, ValueAccessor<RL> accessorL, TR right, ValueAccessor<TR> accessorR)
     {
         return compareMaps(keys, values, left, accessorL, right, accessorR);
     }
 
-    public static <VL, VR> int compareMaps(AbstractType<?> keysComparator, AbstractType<?> valuesComparator, VL left, ValueAccessor<VL> accessorL, VR right, ValueAccessor<VR> accessorR)
+    public static <TL, TR> int compareMaps(AbstractType<?> keysComparator, AbstractType<?> valuesComparator, TL left, ValueAccessor<TL> accessorL, TR right, ValueAccessor<TR> accessorR)
     {
         if (accessorL.isEmpty(left) || accessorR.isEmpty(right))
             return Boolean.compare(accessorR.isEmpty(right), accessorL.isEmpty(left));
@@ -199,17 +198,17 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
 
         for (int i = 0; i < Math.min(sizeL, sizeR); i++)
         {
-            VL k1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
+            TL k1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
             offsetL += CollectionSerializer.sizeOfValue(k1, accessorL, protocolVersion);
-            VR k2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
+            TR k2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
             offsetR += CollectionSerializer.sizeOfValue(k2, accessorR, protocolVersion);
             int cmp = keysComparator.compare(k1, accessorL, k2, accessorR);
             if (cmp != 0)
                 return cmp;
 
-            VL v1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
+            TL v1 = CollectionSerializer.readValue(left, accessorL, offsetL, protocolVersion);
             offsetL += CollectionSerializer.sizeOfValue(v1, accessorL, protocolVersion);
-            VR v2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
+            TR v2 = CollectionSerializer.readValue(right, accessorR, offsetR, protocolVersion);
             offsetR += CollectionSerializer.sizeOfValue(v2, accessorR, protocolVersion);
             cmp = valuesComparator.compare(v1, accessorL, v2, accessorR);
             if (cmp != 0)
