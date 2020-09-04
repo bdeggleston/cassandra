@@ -40,11 +40,6 @@ public class BufferClusteringBound extends BufferClusteringBoundOrBoundary imple
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
     }
 
-    public long unsharedHeapSizeExcludingData()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
-    }
-
     @Override
     public ClusteringBound<ByteBuffer> invert()
     {

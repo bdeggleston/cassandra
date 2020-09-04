@@ -40,11 +40,6 @@ public class BufferClusteringBoundary extends BufferClusteringBoundOrBoundary im
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(values);
     }
 
-    public long unsharedHeapSizeExcludingData()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(values);
-    }
-
     public static ClusteringBoundary<ByteBuffer> create(Kind kind, ByteBuffer[] values)
     {
         Preconditions.checkArgument(kind.isBoundary(), "Expected boundary clustering kind, got %s", kind);

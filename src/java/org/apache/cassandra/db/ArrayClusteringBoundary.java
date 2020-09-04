@@ -36,11 +36,6 @@ public class ArrayClusteringBoundary extends ArrayClusteringBoundOrBoundary impl
         return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
     }
 
-    public long unsharedHeapSizeExcludingData()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
-    }
-
     public static ClusteringBoundary<byte[]> create(Kind kind, byte[][] values)
     {
         Preconditions.checkArgument(kind.isBoundary(), "Expected boundary clustering kind, got %s", kind);

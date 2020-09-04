@@ -39,11 +39,6 @@ public class ArrayClusteringBound extends ArrayClusteringBoundOrBoundary impleme
         return EMPTY_SIZE + ObjectSizes.sizeOfArray(values) + values.length;
     }
 
-    public long unsharedHeapSizeExcludingData()
-    {
-        return EMPTY_SIZE + ObjectSizes.sizeOfArray(values);
-    }
-
     @Override
     public ClusteringBound<byte[]> invert()
     {
