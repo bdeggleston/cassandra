@@ -199,10 +199,10 @@ public class TimestampSerializer extends TypeSerializer<Date>
      * @see #FORMATTER_UTC
      */
     @Override
-    public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor)
+    public String toCQLLiteral(ByteBuffer buffer)
     {
-        return value == null || accessor.isEmpty(value)
-             ? "null"
-             : FORMATTER_UTC.get().format(deserialize(value, accessor));
+        return buffer == null || !buffer.hasRemaining()
+               ? "null"
+               : FORMATTER_UTC.get().format(deserialize(buffer));
     }
 }

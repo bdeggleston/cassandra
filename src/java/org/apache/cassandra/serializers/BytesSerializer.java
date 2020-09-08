@@ -55,10 +55,10 @@ public class BytesSerializer extends TypeSerializer<ByteBuffer>
     }
 
     @Override
-    public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor)
+    public String toCQLLiteral(ByteBuffer buffer)
     {
-        return value == null
-             ? "null"
-             : "0x" + toString(deserialize(value, accessor));
+        return buffer == null
+               ? "null"
+               : "0x" + toString(deserialize(buffer));
     }
 }

@@ -68,10 +68,10 @@ public abstract class AbstractTextSerializer extends TypeSerializer<String>
      * Caveat: it does only generate literals with single quotes and not pg-style literals.
      */
     @Override
-    public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor)
+    public String toCQLLiteral(ByteBuffer buffer)
     {
-        return value == null
-             ? "null"
-             : '\'' + StringUtils.replace(deserialize(value, accessor), "'", "''") + '\'';
+        return buffer == null
+               ? "null"
+               : '\'' + StringUtils.replace(deserialize(buffer), "'", "''") + '\'';
     }
 }

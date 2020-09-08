@@ -24,7 +24,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.db.marshal.CollectionType.Kind;
@@ -36,6 +35,7 @@ import org.apache.cassandra.schema.Types;
 import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static java.util.stream.Collectors.toList;
 
@@ -57,22 +57,11 @@ public interface CQL3Type
 
     /**
      * Generates CQL literal from a binary value of this type.
-     *  @param value the value to convert to a CQL literal. This value must be
+     *  @param bytes the value to convert to a CQL literal. This value must be
      * serialized with {@code version} of the native protocol.
-     * @param accessor value accessor
      * @param version the native protocol version in which {@code buffer} is encoded.
      */
-    public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version);
-
-    default String toCQLLiteral(ByteBuffer bytes, ProtocolVersion version)
-    {
-        return toCQLLiteral(bytes, ByteBufferAccessor.instance, version);
-    }
-
-   default public String toCQLLiteral(byte[] bytes, ProtocolVersion version)
-   {
-       return toCQLLiteral(bytes, ByteArrayAccessor.instance, version);
-   }
+    String toCQLLiteral(ByteBuffer bytes, ProtocolVersion version);
 
     public enum Native implements CQL3Type
     {
@@ -118,9 +107,9 @@ public interface CQL3Type
          * {@link org.apache.cassandra.serializers.TypeSerializer#toString(Object)}
          * {@link org.apache.cassandra.serializers.TypeSerializer#deserialize(ByteBuffer)} implementations.
          */
-        public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version)
+        public String toCQLLiteral(ByteBuffer buffer, ProtocolVersion version)
         {
-            return type.getSerializer().toCQLLiteral(value, accessor);
+            return type.getSerializer().toCQLLiteral(buffer);
         }
 
         @Override
@@ -150,10 +139,10 @@ public interface CQL3Type
         }
 
         @Override
-        public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version)
+        public String toCQLLiteral(ByteBuffer buffer, ProtocolVersion version)
         {
             // *always* use the 'blob' syntax to express custom types in CQL
-            return Native.BLOB.toCQLLiteral(value, accessor, version);
+            return Native.BLOB.toCQLLiteral(buffer, version);
         }
 
         @Override
@@ -199,39 +188,39 @@ public interface CQL3Type
         }
 
         @Override
-        public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version)
+        public String toCQLLiteral(ByteBuffer buffer, ProtocolVersion version)
         {
-            if (value == null)
+            if (buffer == null)
                 return "null";
 
             StringBuilder target = new StringBuilder();
-            int size = CollectionSerializer.readCollectionSize(value, accessor, version);
-            int offset = CollectionSerializer.sizeOfCollectionSize(size, version);
+            buffer = buffer.duplicate();
+            int size = CollectionSerializer.readCollectionSize(buffer, version);
 
             switch (type.kind)
             {
                 case LIST:
                     CQL3Type elements = ((ListType) type).getElementsType().asCQL3Type();
                     target.append('[');
-                    generateSetOrListCQLLiteral(value, accessor, offset, version, target, size, elements);
+                    generateSetOrListCQLLiteral(buffer, version, target, size, elements);
                     target.append(']');
                     break;
                 case SET:
                     elements = ((SetType) type).getElementsType().asCQL3Type();
                     target.append('{');
-                    generateSetOrListCQLLiteral(value, accessor, offset, version, target, size, elements);
+                    generateSetOrListCQLLiteral(buffer, version, target, size, elements);
                     target.append('}');
                     break;
                 case MAP:
                     target.append('{');
-                    generateMapCQLLiteral(value, accessor, offset, version, target, size);
+                    generateMapCQLLiteral(buffer, version, target, size);
                     target.append('}');
                     break;
             }
             return target.toString();
         }
 
-        private <V> void generateMapCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size)
+        private void generateMapCQLLiteral(ByteBuffer buffer, ProtocolVersion version, StringBuilder target, int size)
         {
             CQL3Type keys = ((MapType) type).getKeysType().asCQL3Type();
             CQL3Type values = ((MapType) type).getValuesType().asCQL3Type();
@@ -239,25 +228,22 @@ public interface CQL3Type
             {
                 if (i > 0)
                     target.append(", ");
-                V element = CollectionSerializer.readValue(value, accessor, offset, version);
-                offset += CollectionSerializer.sizeOfValue(element, accessor, version);
-                target.append(keys.toCQLLiteral(element, accessor, version));
+                ByteBuffer element = CollectionSerializer.readValue(buffer, ByteBufferAccessor.instance, 0, version);
+                target.append(keys.toCQLLiteral(element, version));
                 target.append(": ");
-                element = CollectionSerializer.readValue(value, accessor, offset, version);
-                offset += CollectionSerializer.sizeOfValue(element, accessor, version);
-                target.append(values.toCQLLiteral(element, accessor, version));
+                element = CollectionSerializer.readValue(buffer, ByteBufferAccessor.instance, 0, version);
+                target.append(values.toCQLLiteral(element, version));
             }
         }
 
-        private static <V> void generateSetOrListCQLLiteral(V value, ValueAccessor<V> accessor, int offset, ProtocolVersion version, StringBuilder target, int size, CQL3Type elements)
+        private static void generateSetOrListCQLLiteral(ByteBuffer buffer, ProtocolVersion version, StringBuilder target, int size, CQL3Type elements)
         {
             for (int i = 0; i < size; i++)
             {
                 if (i > 0)
                     target.append(", ");
-                V element = CollectionSerializer.readValue(value, accessor, offset, version);
-                offset += CollectionSerializer.sizeOfValue(element, accessor, version);
-                target.append(elements.toCQLLiteral(element, accessor, version));
+                ByteBuffer element = CollectionSerializer.readValue(buffer, ByteBufferAccessor.instance, 0, version);
+                target.append(elements.toCQLLiteral(element, version));
             }
         }
 
@@ -335,25 +321,25 @@ public interface CQL3Type
         }
 
         @Override
-        public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version)
+        public String toCQLLiteral(ByteBuffer buffer, ProtocolVersion version)
         {
-            if (value == null)
+            if (buffer == null)
                 return "null";
 
-            int offset = 0;
+
             StringBuilder target = new StringBuilder();
+            buffer = buffer.duplicate();
             target.append('{');
             for (int i = 0; i < type.size(); i++)
             {
                 // we allow the input to have less fields than declared so as to support field addition.
-                if (accessor.isEmptyFromOffset(value, offset))
+                if (!buffer.hasRemaining())
                     break;
 
-                if (accessor.sizeFromOffset(value, offset) < 4)
+                if (buffer.remaining() < 4)
                     throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s", i, type.fieldName(i)));
 
-                int size = accessor.getInt(value, offset);
-                offset += TypeSizes.INT_SIZE;
+                int size = buffer.getInt();
 
                 if (i > 0)
                     target.append(", ");
@@ -368,12 +354,11 @@ public interface CQL3Type
                     continue;
                 }
 
-                if (accessor.sizeFromOffset(value, offset) < size)
+                if (buffer.remaining() < size)
                     throw new MarshalException(String.format("Not enough bytes to read %dth field %s", i, type.fieldName(i)));
 
-                V field = accessor.slice(value, offset, size);
-                offset += size;
-                target.append(type.fieldType(i).asCQL3Type().toCQLLiteral(field, accessor, version));
+                ByteBuffer field = ByteBufferUtil.readBytes(buffer, size);
+                target.append(type.fieldType(i).asCQL3Type().toCQLLiteral(field, version));
             }
             target.append('}');
             return target.toString();
@@ -424,26 +409,25 @@ public interface CQL3Type
             return type;
         }
 
-        public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor, ProtocolVersion version)
+        public String toCQLLiteral(ByteBuffer buffer, ProtocolVersion version)
         {
-            if (value == null)
+            if (buffer == null)
                 return "null";
 
             StringBuilder target = new StringBuilder();
+            buffer = buffer.duplicate();
             target.append('(');
             boolean first = true;
-            int offset = 0;
             for (int i = 0; i < type.size(); i++)
             {
                 // we allow the input to have less fields than declared so as to support field addition.
-                if (accessor.isEmptyFromOffset(value, offset))
+                if (!buffer.hasRemaining())
                     break;
 
-                if (accessor.sizeFromOffset(value, offset) < 4)
+                if (buffer.remaining() < 4)
                     throw new MarshalException(String.format("Not enough bytes to read size of %dth component", i));
 
-                int size = accessor.getInt(value, offset);
-                offset += TypeSizes.INT_SIZE;
+                int size = buffer.getInt();
 
                 if (first)
                     first = false;
@@ -457,12 +441,11 @@ public interface CQL3Type
                     continue;
                 }
 
-                if (accessor.sizeFromOffset(value, offset) < size)
+                if (buffer.remaining() < size)
                     throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
-                V field = accessor.slice(value, offset, size);
-                offset += size;
-                target.append(type.type(i).asCQL3Type().toCQLLiteral(field, accessor, version));
+                ByteBuffer field = ByteBufferUtil.readBytes(buffer, size);
+                target.append(type.type(i).asCQL3Type().toCQLLiteral(field, version));
             }
             target.append(')');
             return target.toString();

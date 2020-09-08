@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db.marshal;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,20 +55,18 @@ public class CollectionTypesTest
 
                 for (ValueAccessor<Object> srcAccessor : ACCESSORS)
                 {
-                    Object srcBytes = type.decompose(expected, srcAccessor);
+                    ByteBuffer srcBuffer = type.decompose(expected);
+                    Object srcBytes = srcAccessor.convert(srcBuffer, ByteBufferAccessor.instance);
                     String srcString = type.getString(srcBytes, srcAccessor);
-                    String srcLiteral = cql3Type.toCQLLiteral(srcBytes, srcAccessor, ProtocolVersion.V4);
 
                     for (ValueAccessor<Object> dstAccessor : ACCESSORS)
                     {
                         Object dstBytes = dstAccessor.convert(srcBytes, srcAccessor);
                         String dstString = type.getString(dstBytes, dstAccessor);
-                        String dstLiteral = cql3Type.toCQLLiteral(dstBytes, dstAccessor, ProtocolVersion.V4);
                         T composed = (T) type.compose(dstBytes, dstAccessor);
                         Assert.assertEquals(expected, composed);
                         ValueAccessors.assertDataEquals(srcBytes, srcAccessor, dstBytes, dstAccessor);
                         Assert.assertEquals(srcString, dstString);
-                        Assert.assertEquals(srcLiteral, dstLiteral);
                     }
                 }
             }

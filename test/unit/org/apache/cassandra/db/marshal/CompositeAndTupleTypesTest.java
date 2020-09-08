@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db.marshal;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -43,13 +44,13 @@ public class CompositeAndTupleTypesTest
         return values;
     }
 
-    public static <V> V[] decompose(ValueGenerator[] generators, Object[] values, ValueAccessor<V> accessor)
+    public static ByteBuffer[] decompose(ValueGenerator[] generators, Object[] values)
     {
         assert generators.length == values.length;
-        V[] decomposed = accessor.createArray(generators.length);
+        ByteBuffer[] decomposed = new ByteBuffer[generators.length];
         for (int i=0; i<generators.length; i++)
         {
-            decomposed[i] = ((AbstractType<Object>) generators[i].getType()).decompose(values[i], accessor);
+            decomposed[i] = ((AbstractType<Object>) generators[i].getType()).decompose(values[i]);
         }
         return decomposed;
     }
@@ -87,7 +88,8 @@ public class CompositeAndTupleTypesTest
                 Object[] expected = createValues(generators, random);
                 for (ValueAccessor<Object> srcAccessor : ACCESSORS)
                 {
-                    Object[] srcValues = decompose(generators, expected, srcAccessor);
+                    ByteBuffer[] srcBuffers = decompose(generators, expected);
+                    Object[] srcValues = convert(srcBuffers, ByteBufferAccessor.instance, srcAccessor);
                     Object srcJoined = combiner.combine(srcAccessor, srcValues);
                     String srcString  = type.getString(srcJoined, srcAccessor);
 

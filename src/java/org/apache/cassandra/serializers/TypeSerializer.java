@@ -55,16 +55,11 @@ public abstract class TypeSerializer<T>
 
     public abstract Class<T> getType();
 
-    public final String toCQLLiteral(ByteBuffer buffer)
+    public String toCQLLiteral(ByteBuffer buffer)
     {
-        return toCQLLiteral(buffer, ByteBufferAccessor.instance);
-    }
-
-    public <V> String toCQLLiteral(V value, ValueAccessor<V> accessor)
-    {
-        return value == null || accessor.isEmpty(value)
+        return buffer == null || !buffer.hasRemaining()
                ? "null"
-               : toString(deserialize(value, accessor));
+               : toString(deserialize(buffer));
     }
 }
 
