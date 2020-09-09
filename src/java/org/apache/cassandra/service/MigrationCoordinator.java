@@ -460,8 +460,10 @@ public class MigrationCoordinator
      */
     public boolean awaitSchemaRequests(long waitMillis)
     {
-        WaitQueue.Signal signal = null;
+        if (!FBUtilities.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))
+            Gossiper.waitToSettle();
 
+        WaitQueue.Signal signal = null;
         try
         {
             synchronized (this)
