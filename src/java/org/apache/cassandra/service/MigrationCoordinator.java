@@ -235,9 +235,6 @@ public class MigrationCoordinator
         if (state == null)
             return false;
 
-        if (state.isAlive())
-            return false;
-
         final String releaseVersion = state.getApplicationState(ApplicationState.RELEASE_VERSION).value;
         final String ourMajorVersion = FBUtilities.getReleaseVersionMajor();
 
