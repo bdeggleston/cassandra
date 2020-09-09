@@ -231,15 +231,14 @@ public class MigrationCoordinator implements IEndpointStateChangeSubscriber
     @VisibleForTesting
     protected boolean shouldPullFromEndpoint(InetAddress endpoint)
     {
+        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+            return false;
+
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null)
             return false;
 
         if (state.isAlive())
-            return false;
-
-        UUID theirVersion = state.getSchemaVersion();
-        if (!endpoint.equals(FBUtilities.getBroadcastAddress()) && theirVersion != null)
             return false;
 
         final String releaseVersion = state.getApplicationState(ApplicationState.RELEASE_VERSION).value;
