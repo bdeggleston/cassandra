@@ -220,6 +220,11 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
      */
     public int size();
 
+    default boolean isEmpty()
+    {
+        return size() == 0;
+    }
+
     /**
      * Retrieves the ith value of this prefix.
      *

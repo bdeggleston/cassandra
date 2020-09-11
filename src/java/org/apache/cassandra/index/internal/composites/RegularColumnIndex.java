@@ -20,6 +20,8 @@ package org.apache.cassandra.index.internal.composites;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.db.rows.Row;
@@ -98,11 +100,16 @@ public class RegularColumnIndex extends CassandraIndex
                               indexedEntryClustering);
     }
 
+    private static <V> boolean valueIsEqual(AbstractType<?> type, Cell<V> cell, ByteBuffer value)
+    {
+        return type.compare(cell.value(), cell.accessor(), value, ByteBufferAccessor.instance) == 0;
+    }
+
     public boolean isStale(Row data, ByteBuffer indexValue, int nowInSec)
     {
         Cell<?> cell = data.getCell(indexedColumn);
         return cell == null
             || !cell.isLive(nowInSec)
-            || indexedColumn.type.compare(indexValue, cell.buffer()) != 0;
+            || !valueIsEqual(indexedColumn.type, cell, indexValue);
     }
 }
