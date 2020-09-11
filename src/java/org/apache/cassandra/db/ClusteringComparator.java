@@ -181,7 +181,7 @@ public class ClusteringComparator implements Comparator<Clusterable>
         return clusteringTypes.get(i).compare(v1, accessor1, v2, accessor2);
     }
 
-    public <V1, V2> int compareComponent(int i, Clustering<V1> v1, Clustering<V2> v2)
+    public <V1, V2> int compareComponent(int i, ClusteringPrefix<V1> v1, ClusteringPrefix<V2> v2)
     {
         return compareComponent(i, v1.get(i), v1.accessor(), v2.get(i), v2.accessor());
     }

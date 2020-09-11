@@ -1737,7 +1737,7 @@ public class ClusteringColumnRestrictionsTest
                                      i,
                                      ByteBufferUtil.toInt(element),
                                      ByteBufferUtil.toInt(bound.bufferAt(i))),
-                       element.equals(bound.get(i)));
+                       bound.bufferAt(i).equals(element));
         }
     }
 

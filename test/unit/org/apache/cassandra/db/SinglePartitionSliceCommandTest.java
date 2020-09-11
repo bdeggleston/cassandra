@@ -220,7 +220,7 @@ public class SinglePartitionSliceCommandTest
                 Clustering<?> clustering = Util.clustering(CFM_SLICES.comparator, ck1, count / 2);
                 for (int i = 0; i < CFM_SLICES.comparator.size(); i++)
                 {
-                    int cmp = CFM_SLICES.comparator.compareComponent(i, clustering, (Clustering<?>) marker.clustering());
+                    int cmp = CFM_SLICES.comparator.compareComponent(i, clustering, marker.clustering());
                     assertEquals(0, cmp);
                 }
                 open = !open;

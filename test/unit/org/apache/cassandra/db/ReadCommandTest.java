@@ -825,7 +825,7 @@ public class ReadCommandTest
                 Row r = (Row)u;
                 assertTrue(!r.hasDeletion(cmd.nowInSec())
                            || (key.equals(keys[2]) && r.clustering()
-                                                       .get(0)
+                                                       .bufferAt(0)
                                                        .equals(AsciiType.instance.fromString("cc"))));
 
             });
