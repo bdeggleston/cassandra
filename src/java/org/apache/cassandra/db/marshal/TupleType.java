@@ -34,6 +34,7 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.*;
 import org.apache.cassandra.transport.ProtocolVersion;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
@@ -201,28 +202,26 @@ public class TupleType extends AbstractType<ByteBuffer>
     /**
      * Split a tuple value into its component values.
      */
-    public <V> V[] split(V value, ValueAccessor<V> accessor)
+    public ByteBuffer[] split(ByteBuffer value)
     {
-        V[] components = accessor.createArray(size());
-        int offset = 0;
+        ByteBuffer[] components = new ByteBuffer[size()];
+        ByteBuffer input = value.duplicate();
         for (int i = 0; i < size(); i++)
         {
-            if (accessor.isEmptyFromOffset(value, offset))
+            if (!input.hasRemaining())
                 return Arrays.copyOfRange(components, 0, i);
 
-            int size = accessor.getInt(value, offset);
-            offset += TypeSizes.INT_SIZE;
+            int size = input.getInt();
 
-            if (accessor.sizeFromOffset(value, offset) < size)
+            if (input.remaining() < size)
                 throw new MarshalException(String.format("Not enough bytes to read %dth component", i));
 
             // size < 0 means null value
-            components[i] = size < 0 ? null : accessor.slice(value, offset, size);
-            offset += size;
+            components[i] = size < 0 ? null : ByteBufferUtil.readBytes(input, size);
         }
 
         // error out if we got more values in the tuple/UDT than we expected
-        if (!accessor.isEmptyFromOffset(value, offset))
+        if (input.hasRemaining())
         {
             throw new InvalidRequestException(String.format(
             "Expected %s %s for %s column, but got more",
@@ -230,11 +229,6 @@ public class TupleType extends AbstractType<ByteBuffer>
         }
 
         return components;
-    }
-
-    public ByteBuffer[] split(ByteBuffer value)
-    {
-        return split(value, ByteBufferAccessor.instance);
     }
 
     public static <V> V buildValue(ValueAccessor<V> accessor, V[] components)

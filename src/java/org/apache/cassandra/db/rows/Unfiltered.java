@@ -36,7 +36,7 @@ import org.apache.cassandra.db.Clusterable;
  */
 public interface Unfiltered extends Clusterable
 {
-    public enum Kind { ROW, RANGE_TOMBSTONE_MARKER };
+    public enum Kind { ROW, RANGE_TOMBSTONE_MARKER }
 
     /**
      * The kind of the atom: either row or range tombstone marker.

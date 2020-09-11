@@ -63,7 +63,7 @@ public final class DurationSerializer extends TypeSerializer<Duration>
         if (accessor.isEmpty(value))
             return null;
 
-        try (DataInputBuffer in = new DataInputBuffer(accessor.toBuffer(value), true))  // FIXME: value input buffer
+        try (DataInputBuffer in = new DataInputBuffer(accessor.toBuffer(value), true))  // TODO: make a value input buffer
         {
             int months = (int) in.readVInt();
             int days = (int) in.readVInt();

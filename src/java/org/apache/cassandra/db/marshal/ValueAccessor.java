@@ -150,7 +150,6 @@ public interface ValueAccessor<V>
     /**
      * allocate an instance of the accessors backing type
      * @param length size of backing typ to allocate
-     * @return
      */
     V[] createArray(int length);
 
@@ -166,7 +165,7 @@ public interface ValueAccessor<V>
     }
 
     /**
-     * Write the contents of the given value into the a ByteBuffer
+     * Write the contents of the given value into the ByteBuffer
      */
     void write(V value, ByteBuffer out);
 
@@ -208,7 +207,7 @@ public interface ValueAccessor<V>
     V read(DataInputPlus in, int length) throws IOException;
 
     /**
-     * Returns a value with the contents of {@param input} from {@prarm offset} to {@param length}.
+     * Returns a value with the contents of {@param input} from {@param offset} to {@param length}.
      *
      * Depending on the accessor implementation, this method may:
      *  * allocate a new {@param <V>} object of {@param length}, and copy data into it
@@ -237,17 +236,16 @@ public interface ValueAccessor<V>
     /**
      * lexicographically compare {@param left} to {@param right}
      * @param <VR> backing type of
-     * @return
      */
     <VR> int compare(V left, VR right, ValueAccessor<VR> accessorR);
 
     /**
-     * compare a byte array on the left with a {@parame <V>} on the right}
+     * compare a byte array on the left with a {@param <V>} on the right}
      */
     int compareByteArrayTo(byte[] left, V right);
 
     /**
-     * compare a byte buffer on the left with a {@parame <V>} on the right}
+     * compare a byte buffer on the left with a {@param <V>} on the right}
      */
     int compareByteBufferTo(ByteBuffer left, V right);
 
