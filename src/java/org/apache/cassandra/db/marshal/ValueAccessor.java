@@ -296,6 +296,13 @@ public interface ValueAccessor<V>
     }
 
     String toHex(V value);
+
+    /** returns a boolean from offset {@param offset} */
+    default boolean getBoolean(V value, int offset)
+    {
+        return getByte(value, offset) != 0;
+    }
+
     /** returns a byte from offset 0 */
     byte toByte(V value);
     /** returns a byte from offset {@param offset} */

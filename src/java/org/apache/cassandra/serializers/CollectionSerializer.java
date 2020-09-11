@@ -124,7 +124,7 @@ public abstract class CollectionSerializer<T> extends TypeSerializer<T>
         if (size < 0)
             return null;
 
-        return accessor.slice(input, offset + 4, size);
+        return accessor.slice(input, offset + TypeSizes.INT_SIZE, size);
     }
 
     protected static void skipValue(ByteBuffer input, ProtocolVersion version)
