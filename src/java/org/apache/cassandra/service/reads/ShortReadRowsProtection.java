@@ -118,7 +118,7 @@ class ShortReadRowsProtection extends Transformation implements MoreRows<Unfilte
          * This is a table with no clustering columns, and has at most one row per partition - with EMPTY clustering.
          * We already have the row, so there is no point in asking for more from the partition.
          */
-        if (Clustering.EMPTY == lastClustering)
+        if (lastClustering.isEmpty())
             return null;
 
         lastFetched = singleResultCounter.rowsCountedInCurrentPartition() - lastCounted;
