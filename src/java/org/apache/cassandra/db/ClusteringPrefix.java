@@ -651,8 +651,19 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
             return false;
 
         for (int i = 0; i < left.size(); i++)
-            if (!ValueAccessor.equals(left.get(i), left.accessor(), right.get(i), right.accessor()))
+        {
+            V1 lVal = left.get(i);
+            V2 rVal = right.get(i);
+
+            if (lVal == null && rVal == null)
+                continue;
+
+            if (lVal == null || rVal == null)
                 return false;
+
+            if (!ValueAccessor.equals(lVal, left.accessor(), rVal, right.accessor()))
+                return false;
+        }
 
         return true;
     }
