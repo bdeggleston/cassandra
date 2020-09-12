@@ -664,13 +664,17 @@ public class CounterContext
         // allocate a smaller BB for the cleared context - with no local header elts.
         V cleared = accessor.allocate(accessor.size(context) - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH);
 
-        int offset = 0;
-        offset += accessor.putShort(cleared, offset, (short) globalShardIndexes.size());
+        accessor.putShort(cleared, 0, (short) globalShardIndexes.size());
         for (int i = 0; i < globalShardIndexes.size(); i++)
-            offset += accessor.putShort(cleared, offset + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
+            accessor.putShort(cleared, HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH, globalShardIndexes.get(i));
 
         int origHeaderLength = headerLength(context, accessor);
-        accessor.copyTo(context, origHeaderLength, cleared, accessor, headerLength(cleared, accessor), accessor.size(context) - origHeaderLength);
+        accessor.copyTo(context,
+                        origHeaderLength,
+                        cleared,
+                        accessor,
+                        headerLength(cleared, accessor),
+                        accessor.size(context) - origHeaderLength);
 
         return cleared;
     }
