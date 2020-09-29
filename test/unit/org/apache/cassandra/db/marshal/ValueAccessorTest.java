@@ -30,8 +30,12 @@ import org.junit.Test;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.assertj.core.api.Assertions;
+import org.quicktheories.core.Gen;
+import org.quicktheories.generators.SourceDSL;
 
 import static org.apache.cassandra.db.marshal.ValueAccessors.ACCESSORS;
+import static org.quicktheories.QuickTheory.qt;
 
 public class ValueAccessorTest
 {
@@ -157,5 +161,26 @@ public class ValueAccessorTest
             for (ValueAccessor<?> accessor: ACCESSORS)
                 testReadWriteWithShortLength(accessor, length);
         }
+    }
+
+    @Test
+    public void testUnsignedShort()
+    {
+        Gen<Integer> gen = SourceDSL.integers().between(0, Short.MAX_VALUE * 2 + 1);
+
+        qt().forAll(gen).checkAssert(jint -> {
+            int size = jint;
+            for (ValueAccessor<Object> accessor: ACCESSORS)
+            {
+                Object value = accessor.allocate(5);
+                for (int offset : Arrays.asList(0, 3))
+                {
+                    accessor.putShort(value, offset, (short) size); // testing signed
+                    Assertions.assertThat(accessor.getUnsignedShort(value, offset))
+                              .as("getUnsignedShort(putShort(unsigned_short)) != unsigned_short for %s", accessor.getClass())
+                              .isEqualTo(size);
+                }
+            }
+        });
     }
 }
