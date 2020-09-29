@@ -216,7 +216,7 @@ public interface ValueAccessor<V>
     V slice(V input, int offset, int length);
 
     /**
-     * same as {@link ValueAccessor#slice(Object, int, int)}, except the length is taked from the first
+     * same as {@link ValueAccessor#slice(Object, int, int)}, except the length is taken from the first
      * 2 bytes from the given offset (and not included in the return value)
      */
     default V sliceWithShortLength(V input, int offset)
