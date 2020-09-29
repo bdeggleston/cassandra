@@ -324,13 +324,23 @@ public class CompositeTypeTest
         return bb;
     }
 
+    private static <V> void testToFromString(ByteBuffer bytes, ValueAccessor<V> accessor, CompositeType type)
+    {
+        V value = accessor.valueOf(bytes);
+        String s = type.getString(value, accessor);
+        ByteBuffer fromString = type.fromString(s);
+        Assert.assertEquals(bytes, fromString);
+    }
+
+
     @Test
     public void testLargeValues()
     {
-        CompositeType comp = CompositeType.getInstance(Lists.newArrayList(BytesType.instance));
+        CompositeType type = CompositeType.getInstance(Lists.newArrayList(BytesType.instance));
         ByteBuffer expected = ByteBuffer.allocate(0xFFFE);
         new Random(0).nextBytes(expected.array());
         ByteBuffer serialized = CompositeType.build(ByteBufferAccessor.instance, expected);
-        Assert.assertArrayEquals(comp.split(serialized), new ByteBuffer[]{expected});
+        for (ValueAccessor<?> accessor : ValueAccessors.ACCESSORS)
+            testToFromString(serialized, accessor, type);
     }
 }
