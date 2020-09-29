@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
+import com.google.common.collect.Lists;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.fail;
@@ -320,5 +322,15 @@ public class CompositeTypeTest
         }
         bb.rewind();
         return bb;
+    }
+
+    @Test
+    public void testLargeValues()
+    {
+        CompositeType comp = CompositeType.getInstance(Lists.newArrayList(BytesType.instance));
+        ByteBuffer expected = ByteBuffer.allocate(0xFFFE);
+        new Random(0).nextBytes(expected.array());
+        ByteBuffer serialized = CompositeType.build(ByteBufferAccessor.instance, expected);
+        Assert.assertArrayEquals(comp.split(serialized), new ByteBuffer[]{expected});
     }
 }
