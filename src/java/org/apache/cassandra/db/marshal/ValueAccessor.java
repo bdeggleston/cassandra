@@ -221,7 +221,7 @@ public interface ValueAccessor<V>
      */
     default V sliceWithShortLength(V input, int offset)
     {
-        int size = getShort(input, offset);
+        int size = getUnsignedShort(input, offset);
         return slice(input, offset + 2, size);
     }
 
@@ -311,6 +311,8 @@ public interface ValueAccessor<V>
     short toShort(V value);
     /** returns a short from offset {@param offset} */
     short getShort(V value, int offset);
+    /** returns an unsigned short from offset {@param offset} */
+    int getUnsignedShort(V value, int offset);
     /** returns an int from offset 0 */
     int toInt(V value);
     /** returns an int from offset {@param offset} */

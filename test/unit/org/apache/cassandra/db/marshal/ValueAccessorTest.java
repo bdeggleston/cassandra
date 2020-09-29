@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db.marshal;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
@@ -26,6 +27,7 @@ import com.google.common.primitives.Shorts;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -127,6 +129,34 @@ public class ValueAccessorTest
             Random random = new Random(i);
             for (ValueAccessor<?> accessor: ACCESSORS)
                 testTypeConversion(i, accessor, random);
+        }
+    }
+
+    private static <V> void testReadWriteWithShortLength(ValueAccessor<V> accessor, int size) throws IOException
+    {
+        Random random = new Random(size);
+        byte[] bytes = new byte[size];
+        random.nextBytes(bytes);
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+        try (DataOutputBuffer out = new DataOutputBuffer(size + 2))
+        {
+            ByteBufferUtil.writeWithShortLength(buffer, out);
+            out.flush();
+            V flushed = accessor.valueOf(out.toByteArray());
+            V value = accessor.sliceWithShortLength(flushed, 0);
+            Assert.assertArrayEquals(bytes, accessor.toArray(value));
+        }
+    }
+
+    @Test
+    public void testReadWriteWithShortLength() throws IOException
+    {
+        int[] lengths = new int[]{0, 1, 2, 256, 0x8001, 0xFFFF};
+        for (int length : lengths)
+        {
+            for (ValueAccessor<?> accessor: ACCESSORS)
+                testReadWriteWithShortLength(accessor, length);
         }
     }
 }
