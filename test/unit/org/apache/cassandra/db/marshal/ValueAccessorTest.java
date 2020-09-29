@@ -142,7 +142,6 @@ public class ValueAccessorTest
         try (DataOutputBuffer out = new DataOutputBuffer(size + 2))
         {
             ByteBufferUtil.writeWithShortLength(buffer, out);
-            out.flush();
             V flushed = accessor.valueOf(out.toByteArray());
             V value = accessor.sliceWithShortLength(flushed, 0);
             Assert.assertArrayEquals(bytes, accessor.toArray(value));
