@@ -803,6 +803,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @VisibleForTesting
     public void prepareToJoin() throws ConfigurationException
     {
+        MigrationCoordinator.instance.start();
         if (!joined)
         {
             Map<ApplicationState, VersionedValue> appStates = new EnumMap<>(ApplicationState.class);
