@@ -2050,6 +2050,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                         break;
                     case SCHEMA:
                         SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value), executor);
+                        MigrationCoordinator.instance.reportEndpointVersion(endpoint, UUID.fromString(value.value));
                         break;
                     case HOST_ID:
                         SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value), executor);
@@ -2810,6 +2811,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             onChange(endpoint, entry.getKey(), entry.getValue());
         }
+        MigrationCoordinator.instance.reportEndpointVersion(endpoint, epState);
     }
 
     public void onAlive(InetAddress endpoint, EndpointState state)
