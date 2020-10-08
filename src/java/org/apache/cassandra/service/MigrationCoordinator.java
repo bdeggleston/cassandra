@@ -142,9 +142,7 @@ public class MigrationCoordinator
 
     synchronized Future<Void> maybePullSchema(VersionInfo info)
     {
-        Preconditions.checkArgument(!info.endpoints.isEmpty());
-
-        if (info.wasReceived() || !shouldPullSchema(info.version))
+        if (info.endpoints.isEmpty() || info.wasReceived() || !shouldPullSchema(info.version))
             return FINISHED_FUTURE;
 
         if (info.outstandingRequests.size() >= getMaxOutstandingVersionRequests())
