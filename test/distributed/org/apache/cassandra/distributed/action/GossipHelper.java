@@ -47,6 +47,7 @@ import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.schema.MigrationCoordinator;
 import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.service.PendingRangeCalculatorService;
 import org.apache.cassandra.service.StorageService;
@@ -224,8 +225,8 @@ public class GossipHelper
             pullTo.acceptsOnInstance((InetSocketAddress pullFrom) -> {
                 InetAddressAndPort endpoint = toCassandraInetAddressAndPort(pullFrom);
                 EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
-                MigrationManager.scheduleSchemaPull(endpoint, state);
-                MigrationManager.waitUntilReadyForBootstrap();
+                MigrationCoordinator.instance.reportEndpointVersion(endpoint, state);
+                MigrationCoordinator.instance.awaitSchemaRequests(TimeUnit.SECONDS.toMillis(10));
             }).accept(pullFrom);
         }
     }
