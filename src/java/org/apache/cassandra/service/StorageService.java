@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import javax.annotation.Nullable;
@@ -5315,5 +5316,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         {
             Runtime.getRuntime().removeShutdownHook(drainOnShutdown);
         }
+    }
+
+    @Override
+    public Map<String, Set<InetAddress>> getOutstandingSchemaVersions()
+    {
+        Map<UUID, Set<InetAddress>> outstanding = MigrationCoordinator.instance.outstandingVersions();
+        return outstanding.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toString(), Entry::getValue));
     }
 }

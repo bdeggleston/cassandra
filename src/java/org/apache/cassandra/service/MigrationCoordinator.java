@@ -21,11 +21,11 @@ package org.apache.cassandra.service;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +35,6 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
@@ -80,7 +79,7 @@ public class MigrationCoordinator
 
         final Set<InetAddress> endpoints           = Sets.newConcurrentHashSet();
         final Set<InetAddress> outstandingRequests = Sets.newConcurrentHashSet();
-        final Deque<InetAddress> requestQueue      = new LinkedList<>();
+        final Deque<InetAddress> requestQueue      = new ArrayDeque<>();
 
         private final WaitQueue waitQueue = new WaitQueue();
 
@@ -133,7 +132,7 @@ public class MigrationCoordinator
                 continue;
 
             Future<Void> future = maybePullSchema(info);
-            if (future != null)
+            if (future != null && future != FINISHED_FUTURE)
                 futures.add(future);
         }
 
@@ -291,7 +290,7 @@ public class MigrationCoordinator
     /**
      * If a previous schema update brought our version the same as the incoming schema, don't apply it
      */
-    synchronized boolean shouldApplySchemaFrom(InetAddress endpoint, VersionInfo info)
+    synchronized boolean shouldApplySchemaFor(VersionInfo info)
     {
         if (info.wasReceived())
             return false;
@@ -398,8 +397,18 @@ public class MigrationCoordinator
         {
             synchronized (info)
             {
-                if (shouldApplySchemaFrom(endpoint, info))
-                    mergeSchemaFrom(endpoint, mutations);
+                if (shouldApplySchemaFor(info))
+                {
+                    try
+                    {
+                        mergeSchemaFrom(endpoint, mutations);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error(String.format("Unable to merge schema from %s", endpoint), e);
+                        return fail();
+                    }
+                }
                 return pullComplete(endpoint, info, true);
             }
         }
