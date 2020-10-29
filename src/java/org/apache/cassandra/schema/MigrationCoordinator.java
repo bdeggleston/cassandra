@@ -20,11 +20,11 @@ package org.apache.cassandra.schema;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -84,7 +84,7 @@ public class MigrationCoordinator
 
         final Set<InetAddressAndPort> endpoints           = Sets.newConcurrentHashSet();
         final Set<InetAddressAndPort> outstandingRequests = Sets.newConcurrentHashSet();
-        final Deque<InetAddressAndPort> requestQueue      = new LinkedList<>();
+        final Deque<InetAddressAndPort> requestQueue      = new ArrayDeque<>();
 
         private final WaitQueue waitQueue = new WaitQueue();
 
@@ -138,7 +138,7 @@ public class MigrationCoordinator
                 continue;
 
             Future<Void> future = maybePullSchema(info);
-            if (future != null)
+            if (future != null && future != FINISHED_FUTURE)
                 futures.add(future);
         }
 
@@ -294,7 +294,7 @@ public class MigrationCoordinator
     /**
      * If a previous schema update brought our version the same as the incoming schema, don't apply it
      */
-    synchronized boolean shouldApplySchemaFrom(InetAddressAndPort endpoint, VersionInfo info)
+    synchronized boolean shouldApplySchemaFor(VersionInfo info)
     {
         if (info.wasReceived())
             return false;
@@ -400,8 +400,18 @@ public class MigrationCoordinator
         {
             synchronized (info)
             {
-                if (shouldApplySchemaFrom(endpoint, info))
-                    mergeSchemaFrom(endpoint, mutations);
+                if (shouldApplySchemaFor(info))
+                {
+                    try
+                    {
+                        mergeSchemaFrom(endpoint, mutations);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error(String.format("Unable to merge schema from %s", endpoint), e);
+                        return fail();
+                    }
+                }
                 return pullComplete(endpoint, info, true);
             }
         }
