@@ -452,7 +452,10 @@ public class GossipHelper
         }
         finally
         {
-            System.setProperty(prop, before == null ? "true" : before);
+            if (before == null)
+                System.clearProperty(prop);
+            else
+                System.setProperty(prop, before);
         }
     }
 }
