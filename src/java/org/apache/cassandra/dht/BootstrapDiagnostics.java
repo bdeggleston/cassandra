@@ -50,12 +50,12 @@ final class BootstrapDiagnostics
                                                ImmutableList.copyOf(initialTokens)));
     }
 
-    static void useRandomTokens(InetAddressAndPort address, TokenMetadata metadata, int numTokens, Collection<Token> tokens)
+    static void useRandomTokens(InetAddressAndPort address, int numTokens, Collection<Token> tokens)
     {
         if (isEnabled(BootstrapEventType.BOOTSTRAP_USING_RANDOM_TOKENS))
             service.publish(new BootstrapEvent(BootstrapEventType.BOOTSTRAP_USING_RANDOM_TOKENS,
                                                address,
-                                               metadata.cloneOnlyTokenMap(),
+                                               null,
                                                null,
                                                null,
                                                numTokens,

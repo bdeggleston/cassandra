@@ -504,6 +504,33 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         daemon.deactivate();
     }
 
+    private static Collection<Token> tokensFromEpState(IPartitioner partitioner, EndpointState epState)
+    {
+        VersionedValue vv = epState.getApplicationState(ApplicationState.TOKENS);
+        if (vv == null)
+            return null;
+        try
+        {
+            return TokenSerializer.deserialize(partitioner, new DataInputStream(new ByteArrayInputStream(vv.toBytes())));
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Set<Token> tokensFromEpStates(Collection<EndpointState> epStates)
+    {
+        Set<Token> tokens = new HashSet<>();
+        for (EndpointState epState : epStates)
+        {
+            Collection<Token> epTokens = tokensFromEpState(DatabaseDescriptor.getPartitioner(), epState);
+            if (epTokens != null)
+                tokens.addAll(epTokens);
+        }
+        return tokens;
+    }
+
     private synchronized UUID prepareForReplacement() throws ConfigurationException
     {
         if (SystemKeyspace.bootstrapComplete())
@@ -528,66 +555,61 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         validateEndpointSnitch(epStates.values().iterator());
 
-        try
+        VersionedValue tokensVersionedValue = state.getApplicationState(ApplicationState.TOKENS);
+        if (tokensVersionedValue == null)
+            throw new RuntimeException(String.format("Could not find tokens for %s to replace", replaceAddress));
+
+        Collection<Token> tokens = tokensFromEpState(tokenMetadata.partitioner, epStates.get(DatabaseDescriptor.getReplaceAddress()));
+        if (tokens == null)
+            throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
+        bootstrapTokens = validateReplacementBootstrapTokens(tokenMetadata, replaceAddress, tokens);
+
+        if (state.isEmptyWithoutStatus() && REPLACEMENT_ALLOW_EMPTY.getBoolean())
         {
-            VersionedValue tokensVersionedValue = state.getApplicationState(ApplicationState.TOKENS);
-            if (tokensVersionedValue == null)
-                throw new RuntimeException(String.format("Could not find tokens for %s to replace", replaceAddress));
+            logger.warn("Gossip state not present for replacing node {}. Adding temporary entry to continue.", replaceAddress);
 
-            Collection<Token> tokens = TokenSerializer.deserialize(tokenMetadata.partitioner, new DataInputStream(new ByteArrayInputStream(tokensVersionedValue.toBytes())));
-            bootstrapTokens = validateReplacementBootstrapTokens(tokenMetadata, replaceAddress, tokens);
+            // When replacing a node, we take ownership of all its tokens.
+            // If that node is currently down and not present in the gossip info
+            // of any other live peers, then we will not be able to take ownership
+            // of its tokens during bootstrap as they have no way of being propagated
+            // to this node's TokenMetadata. TM is loaded at startup (in which case
+            // it will be/ empty for a new replacement node) and only updated with
+            // tokens for an endpoint during normal state propagation (which will not
+            // occur if no peers have gossip state for it).
+            // However, the presence of host id and tokens in the system tables implies
+            // that the node managed to complete bootstrap at some point in the past.
+            // Peers may include this information loaded directly from system tables
+            // in a GossipDigestAck *only if* the GossipDigestSyn was sent as part of a
+            // shadow round (otherwise, a GossipDigestAck contains only state about peers
+            // learned via gossip).
+            // It is safe to do this here as since we completed a shadow round we know
+            // that :
+            // * replaceAddress successfully bootstrapped at some point and owned these
+            //   tokens
+            // * we know that no other node currently owns these tokens
+            // * we are going to completely take over replaceAddress's ownership of
+            //   these tokens.
+            tokenMetadata.updateNormalTokens(bootstrapTokens, replaceAddress);
+            UUID hostId = Gossiper.instance.getHostId(replaceAddress, epStates);
+            if (hostId != null)
+                tokenMetadata.updateHostId(hostId, replaceAddress);
 
-            if (state.isEmptyWithoutStatus() && REPLACEMENT_ALLOW_EMPTY.getBoolean())
-            {
-                logger.warn("Gossip state not present for replacing node {}. Adding temporary entry to continue.", replaceAddress);
-
-                // When replacing a node, we take ownership of all its tokens.
-                // If that node is currently down and not present in the gossip info
-                // of any other live peers, then we will not be able to take ownership
-                // of its tokens during bootstrap as they have no way of being propagated
-                // to this node's TokenMetadata. TM is loaded at startup (in which case
-                // it will be/ empty for a new replacement node) and only updated with
-                // tokens for an endpoint during normal state propagation (which will not
-                // occur if no peers have gossip state for it).
-                // However, the presence of host id and tokens in the system tables implies
-                // that the node managed to complete bootstrap at some point in the past.
-                // Peers may include this information loaded directly from system tables
-                // in a GossipDigestAck *only if* the GossipDigestSyn was sent as part of a
-                // shadow round (otherwise, a GossipDigestAck contains only state about peers
-                // learned via gossip).
-                // It is safe to do this here as since we completed a shadow round we know
-                // that :
-                // * replaceAddress successfully bootstrapped at some point and owned these
-                //   tokens
-                // * we know that no other node currently owns these tokens
-                // * we are going to completely take over replaceAddress's ownership of
-                //   these tokens.
-                tokenMetadata.updateNormalTokens(bootstrapTokens, replaceAddress);
-                UUID hostId = Gossiper.instance.getHostId(replaceAddress, epStates);
-                if (hostId != null)
-                    tokenMetadata.updateHostId(hostId, replaceAddress);
-
-                // If we were only able to learn about the node being replaced through the
-                // shadow gossip round (i.e. there is no state in gossip across the cluster
-                // about it, perhaps because the entire cluster has been bounced since it went
-                // down), then we're safe to proceed with the replacement. In this case, there
-                // will be no local endpoint state as we discard the results of the shadow
-                // round after preparing replacement info. We inject a minimal EndpointState
-                // to keep FailureDetector::isAlive and Gossiper::compareEndpointStartup from
-                // failing later in the replacement, as they both expect the replaced node to
-                // be fully present in gossip.
-                // Otherwise, if the replaced node is present in gossip, we need check that
-                // it is not in fact live.
-                // We choose to not include the EndpointState provided during the shadow round
-                // as its possible to include more state than is desired, so by creating a
-                // new empty endpoint without that information we can control what is in our
-                // local gossip state
-                Gossiper.instance.initializeUnreachableNodeUnsafe(replaceAddress);
-            }
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
+            // If we were only able to learn about the node being replaced through the
+            // shadow gossip round (i.e. there is no state in gossip across the cluster
+            // about it, perhaps because the entire cluster has been bounced since it went
+            // down), then we're safe to proceed with the replacement. In this case, there
+            // will be no local endpoint state as we discard the results of the shadow
+            // round after preparing replacement info. We inject a minimal EndpointState
+            // to keep FailureDetector::isAlive and Gossiper::compareEndpointStartup from
+            // failing later in the replacement, as they both expect the replaced node to
+            // be fully present in gossip.
+            // Otherwise, if the replaced node is present in gossip, we need check that
+            // it is not in fact live.
+            // We choose to not include the EndpointState provided during the shadow round
+            // as its possible to include more state than is desired, so by creating a
+            // new empty endpoint without that information we can control what is in our
+            // local gossip state
+            Gossiper.instance.initializeUnreachableNodeUnsafe(replaceAddress);
         }
 
         UUID localHostId = SystemKeyspace.getLocalHostId();
@@ -630,16 +652,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return bootstrapTokens;
     }
 
-    private synchronized void checkForEndpointCollision(UUID localHostId, Set<InetAddressAndPort> peers) throws ConfigurationException
+    private synchronized Collection<Token> checkForEndpointCollision(UUID localHostId, Set<InetAddressAndPort> peers) throws ConfigurationException
     {
+        logger.debug("Starting shadow gossip round to check for endpoint collision");
+        Map<InetAddressAndPort, EndpointState> epStates = Gossiper.instance.doShadowRound(peers);
+        Set<Token> existingTokens = tokensFromEpStates(epStates.values());
+
         if (Boolean.getBoolean("cassandra.allow_unsafe_join"))
         {
             logger.warn("Skipping endpoint collision check as cassandra.allow_unsafe_join=true");
-            return;
+            return existingTokens;
         }
-
-        logger.debug("Starting shadow gossip round to check for endpoint collision");
-        Map<InetAddressAndPort, EndpointState> epStates = Gossiper.instance.doShadowRound(peers);
 
         if (epStates.isEmpty() && DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddressAndPort()))
             logger.info("Unable to gossip with any peers but continuing anyway since node is in its own seed list");
@@ -678,6 +701,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
             }
         }
+
+        return existingTokens;
     }
 
     private static void validateEndpointSnitch(Iterator<EndpointState> endpointStates)
@@ -921,10 +946,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     appStates.put(ApplicationState.STATUS_WITH_PORT, valueFactory.hibernate(true));
                     appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
                 }
+                else
+                {
+                    appStates.put(ApplicationState.STATUS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress().address));
+                    appStates.put(ApplicationState.STATUS_WITH_PORT, valueFactory.bootReplacingWithPort(DatabaseDescriptor.getReplaceAddress()));
+                }
             }
             else
             {
-                checkForEndpointCollision(localHostId, SystemKeyspace.loadHostIds().keySet());
+                Collection<Token> existingTokens = checkForEndpointCollision(localHostId, SystemKeyspace.loadHostIds().keySet());
                 if (SystemKeyspace.bootstrapComplete())
                 {
                     Preconditions.checkState(!Config.isClientMode());
@@ -933,6 +963,16 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     Collection<Token> savedTokens = SystemKeyspace.getSavedTokens();
                     if (!savedTokens.isEmpty())
                         appStates.put(ApplicationState.TOKENS, valueFactory.tokens(savedTokens));
+                }
+                else
+                {
+                    bootstrapTokens = BootStrapper.getBootstrapTokens(existingTokens::contains, FBUtilities.getBroadcastAddressAndPort());
+                    if (bootstrapTokens != null)
+                    {
+                        appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
+                        appStates.put(ApplicationState.STATUS, valueFactory.bootstrapping(bootstrapTokens));
+                        appStates.put(ApplicationState.STATUS_WITH_PORT, valueFactory.bootstrapping(bootstrapTokens));
+                    }
                 }
             }
 
@@ -1037,7 +1077,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             bootstrapTokens = SystemKeyspace.getSavedTokens();
             if (bootstrapTokens.isEmpty())
             {
-                bootstrapTokens = BootStrapper.getBootstrapTokens(tokenMetadata, FBUtilities.getBroadcastAddressAndPort(), schemaTimeoutMillis);
+                bootstrapTokens = BootStrapper.getBootstrapOrKeyspaceTokens(tokenMetadata, FBUtilities.getBroadcastAddressAndPort(), schemaTimeoutMillis);
             }
             else
             {
@@ -1639,8 +1679,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 String s = "This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
                 throw new UnsupportedOperationException(s);
             }
-            setMode(Mode.JOINING, "getting bootstrap token", true);
-            bootstrapTokens = BootStrapper.getBootstrapTokens(tokenMetadata, FBUtilities.getBroadcastAddressAndPort(), schemaDelay);
+
+            if (bootstrapTokens == null)
+            {
+                setMode(Mode.JOINING, "getting bootstrap token", true);
+                bootstrapTokens = BootStrapper.allocateTokensForKeyspace(tokenMetadata, FBUtilities.getBroadcastAddressAndPort(), schemaDelay);
+            }
         }
         else
         {

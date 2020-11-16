@@ -19,7 +19,9 @@ package org.apache.cassandra.dht;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.slf4j.Logger;
@@ -33,7 +35,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.InetAddressAndPort;
-import org.apache.cassandra.locator.NetworkTopologyStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.*;
@@ -148,11 +149,10 @@ public class BootStrapper extends ProgressEventNotifierSupport
     }
 
     /**
-     * if initialtoken was specified, use that (split on comma).
-     * otherwise, if allocationKeyspace is specified use the token allocation algorithm to generate suitable tokens
-     * else choose num_tokens tokens at random
+     * if initialtoken was specified, use that (split on comma). Otherwise allocate random tokens if an allocation
+     * keyspace has not been configured.
      */
-    public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata, InetAddressAndPort address, long schemaWaitDelay) throws ConfigurationException
+    public static Collection<Token> getBootstrapTokens(Predicate<Token> tokenExists, InetAddressAndPort address) throws ConfigurationException
     {
         String allocationKeyspace = DatabaseDescriptor.getAllocateTokensForKeyspace();
         Integer allocationLocalRf = DatabaseDescriptor.getAllocateTokensForLocalRf();
@@ -163,38 +163,63 @@ public class BootStrapper extends ProgressEventNotifierSupport
         // if user specified tokens, use those
         if (initialTokens.size() > 0)
         {
-            Collection<Token> tokens = getSpecifiedTokens(metadata, initialTokens);
+            Collection<Token> tokens = getSpecifiedTokens(DatabaseDescriptor.getPartitioner(), initialTokens, tokenExists);
             BootstrapDiagnostics.useSpecifiedTokens(address, allocationKeyspace, tokens, DatabaseDescriptor.getNumTokens());
             return tokens;
         }
+
+        if (allocationKeyspace != null || allocationLocalRf != null)
+            return null;
 
         int numTokens = DatabaseDescriptor.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");
 
-        if (allocationKeyspace != null)
-            return allocateTokens(metadata, address, allocationKeyspace, numTokens, schemaWaitDelay);
-
-        if (allocationLocalRf != null)
-            return allocateTokens(metadata, address, allocationLocalRf, numTokens, schemaWaitDelay);
-
         if (numTokens == 1)
             logger.warn("Picking random token for a single vnode.  You should probably add more vnodes and/or use the automatic token allocation mechanism.");
 
-        Collection<Token> tokens = getRandomTokens(metadata, numTokens);
-        BootstrapDiagnostics.useRandomTokens(address, metadata, numTokens, tokens);
+        Collection<Token> tokens = getRandomTokens(DatabaseDescriptor.getPartitioner(), tokenExists, numTokens);
+        BootstrapDiagnostics.useRandomTokens(address, numTokens, tokens);
         return tokens;
     }
 
-    private static Collection<Token> getSpecifiedTokens(final TokenMetadata metadata,
-                                                        Collection<String> initialTokens)
+    /**
+     * if initialtoken was specified, use that (split on comma).
+     * otherwise, if allocationKeyspace is specified use the token allocation algorithm to generate suitable tokens
+     * else choose num_tokens tokens at random
+     */
+    public static Collection<Token> allocateTokensForKeyspace(final TokenMetadata metadata, InetAddressAndPort address, long schemaWaitDelay) throws ConfigurationException
+    {
+        Preconditions.checkState(DatabaseDescriptor.getInitialTokens().isEmpty());
+
+        String allocationKeyspace = DatabaseDescriptor.getAllocateTokensForKeyspace();
+        Integer allocationLocalRf = DatabaseDescriptor.getAllocateTokensForLocalRf();
+        Preconditions.checkArgument(allocationKeyspace != null || allocationLocalRf != null);
+
+        int numTokens = DatabaseDescriptor.getNumTokens();
+        if (numTokens < 1)
+            throw new ConfigurationException("num_tokens must be >= 1");
+
+        return allocationKeyspace != null ? allocateTokens(metadata, address, allocationKeyspace, numTokens, schemaWaitDelay)
+                                          : allocateTokens(metadata, address, allocationLocalRf, numTokens, schemaWaitDelay);
+    }
+
+    public static Collection<Token> getBootstrapOrKeyspaceTokens(final TokenMetadata metadata, InetAddressAndPort address, long schemaWaitDelay) throws ConfigurationException
+    {
+        Collection<Token> tokens = getBootstrapTokens(t -> metadata.getEndpoint(t) != null, address);
+        if (tokens != null)
+            return tokens;
+        return allocateTokensForKeyspace(metadata, address, schemaWaitDelay);
+    }
+
+    private static Collection<Token> getSpecifiedTokens(IPartitioner partitioner, Collection<String> initialTokens, Predicate<Token> tokenExists)
     {
         logger.info("tokens manually specified as {}",  initialTokens);
         List<Token> tokens = new ArrayList<>(initialTokens.size());
         for (String tokenString : initialTokens)
         {
-            Token token = metadata.partitioner.getTokenFactory().fromString(tokenString);
-            if (metadata.getEndpoint(token) != null)
+            Token token = partitioner.getTokenFactory().fromString(tokenString);
+            if (tokenExists.test(token))
                 throw new ConfigurationException("Bootstrapping to existing token " + tokenString + " is not allowed (decommission/removenode the old node first).");
             tokens.add(token);
         }
@@ -237,17 +262,22 @@ public class BootStrapper extends ProgressEventNotifierSupport
         return tokens;
     }
 
-    public static Collection<Token> getRandomTokens(TokenMetadata metadata, int numTokens)
+    public static Collection<Token> getRandomTokens(IPartitioner partitioner, Predicate<Token> tokenExists, int numTokens)
     {
         Set<Token> tokens = new HashSet<>(numTokens);
         while (tokens.size() < numTokens)
         {
-            Token token = metadata.partitioner.getRandomToken();
-            if (metadata.getEndpoint(token) == null)
+            Token token = partitioner.getRandomToken();
+            if (!tokenExists.test(token))
                 tokens.add(token);
         }
 
         logger.info("Generated random tokens. tokens are {}", tokens);
         return tokens;
+    }
+
+    public static Collection<Token> getRandomTokens(TokenMetadata tokenMetadata, int numTokens)
+    {
+        return getRandomTokens(tokenMetadata.partitioner, t -> tokenMetadata.getEndpoint(t) != null, numTokens);
     }
 }
