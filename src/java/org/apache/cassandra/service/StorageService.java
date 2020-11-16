@@ -559,6 +559,34 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         daemon.deactivate();
     }
 
+    private static Collection<Token> tokensFromEpState(IPartitioner partitioner, EndpointState epState)
+    {
+        VersionedValue vv = epState.getApplicationState(ApplicationState.TOKENS);
+        if (vv == null)
+            return null;
+        try
+        {
+            return TokenSerializer.deserialize(partitioner, new DataInputStream(new ByteArrayInputStream(vv.toBytes())));
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Set<Token> tokensFromEpStates(Collection<EndpointState> epStates)
+    {
+        Set<Token> tokens = new HashSet<>();
+        for (EndpointState epState : epStates)
+        {
+            Collection<Token> epTokens = tokensFromEpState(DatabaseDescriptor.getPartitioner(), epState);
+            if (epTokens != null)
+                tokens.addAll(epTokens);
+        }
+        return tokens;
+    }
+
+
     public synchronized Collection<Token> prepareReplacementInfo() throws ConfigurationException
     {
         logger.info("Gathering node replacement information for {}", DatabaseDescriptor.getReplaceAddress());
@@ -571,26 +599,19 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (epStates.get(DatabaseDescriptor.getReplaceAddress())== null)
             throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress() + " because it doesn't exist in gossip");
         replacingId = Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress(), epStates);
-        try
-        {
-            VersionedValue tokensVersionedValue = epStates.get(DatabaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS);
-            if (tokensVersionedValue == null)
-                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
-            Collection<Token> tokens = TokenSerializer.deserialize(tokenMetadata.partitioner, new DataInputStream(new ByteArrayInputStream(tokensVersionedValue.toBytes())));
 
-            if (isReplacingSameAddress())
-            {
-                SystemKeyspace.setLocalHostId(replacingId); // use the replacee's host Id as our own so we receive hints, etc
-            }
-            return tokens;
-        }
-        catch (IOException e)
+        Collection<Token> tokens = tokensFromEpState(tokenMetadata.partitioner, epStates.get(DatabaseDescriptor.getReplaceAddress()));
+        if (tokens == null)
+            throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
+
+        if (isReplacingSameAddress())
         {
-            throw new RuntimeException(e);
+            SystemKeyspace.setLocalHostId(replacingId); // use the replacee's host Id as our own so we receive hints, etc
         }
+        return tokens;
     }
 
-    public synchronized void checkForEndpointCollision() throws ConfigurationException
+    public synchronized Collection<Token> prepareForBootstrap() throws ConfigurationException
     {
         logger.debug("Starting shadow gossip round to check for endpoint collision");
         if (!MessagingService.instance().isListening())
@@ -602,6 +623,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                                      "Use cassandra.replace_address if you want to replace this node.",
                                                      FBUtilities.getBroadcastAddress()));
         }
+
         if (useStrictConsistency && !allowSimultaneousMoves())
         {
             for (Map.Entry<InetAddress, EndpointState> entry : epStates.entrySet())
@@ -616,6 +638,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
             }
         }
+
+        Set<Token> existingTokens = tokensFromEpStates(epStates.values());
+        return BootStrapper.getBootstrapTokens(existingTokens::contains);
     }
 
     private boolean allowSimultaneousMoves()
@@ -817,10 +842,20 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
                     appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
                 }
+                else
+                {
+                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
+                }
             }
             else if (shouldBootstrap())
             {
-                checkForEndpointCollision();
+                bootstrapTokens = prepareForBootstrap();
+                if (bootstrapTokens != null)
+                {
+                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.bootstrapping(bootstrapTokens));
+                }
             }
             else if (SystemKeyspace.bootstrapComplete())
             {
@@ -960,8 +995,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     String s = "This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
                     throw new UnsupportedOperationException(s);
                 }
-                setMode(Mode.JOINING, "getting bootstrap token", true);
-                bootstrapTokens = BootStrapper.getBootstrapTokens(tokenMetadata, FBUtilities.getBroadcastAddress());
+                if (bootstrapTokens == null)
+                {
+                    setMode(Mode.JOINING, "getting bootstrap token", true);
+                    bootstrapTokens = BootStrapper.allocateTokensForKeyspace(tokenMetadata, FBUtilities.getBroadcastAddress());
+                }
             }
             else
             {
