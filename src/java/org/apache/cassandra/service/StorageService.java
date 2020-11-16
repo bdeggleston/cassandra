@@ -564,6 +564,33 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         daemon.deactivate();
     }
 
+    private static Collection<Token> tokensFromEpState(IPartitioner partitioner, EndpointState epState)
+    {
+        VersionedValue vv = epState.getApplicationState(ApplicationState.TOKENS);
+        if (vv == null)
+            return null;
+        try
+        {
+            return TokenSerializer.deserialize(partitioner, new DataInputStream(new ByteArrayInputStream(vv.toBytes())));
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Set<Token> tokensFromEpStates(Collection<EndpointState> epStates)
+    {
+        Set<Token> tokens = new HashSet<>();
+        for (EndpointState epState : epStates)
+        {
+            Collection<Token> epTokens = tokensFromEpState(DatabaseDescriptor.getPartitioner(), epState);
+            if (epTokens != null)
+                tokens.addAll(epTokens);
+        }
+        return tokens;
+    }
+
     private synchronized UUID prepareForReplacement() throws ConfigurationException
     {
         if (SystemKeyspace.bootstrapComplete())
@@ -585,18 +612,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (epStates.get(replaceAddress) == null)
             throw new RuntimeException(String.format("Cannot replace_address %s because it doesn't exist in gossip", replaceAddress));
 
-        try
-        {
-            VersionedValue tokensVersionedValue = epStates.get(replaceAddress).getApplicationState(ApplicationState.TOKENS);
-            if (tokensVersionedValue == null)
-                throw new RuntimeException(String.format("Could not find tokens for %s to replace", replaceAddress));
-
-            bootstrapTokens = TokenSerializer.deserialize(tokenMetadata.partitioner, new DataInputStream(new ByteArrayInputStream(tokensVersionedValue.toBytes())));
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
+        bootstrapTokens = tokensFromEpState(tokenMetadata.partitioner, epStates.get(DatabaseDescriptor.getReplaceAddress()));
+        if (bootstrapTokens == null)
+            throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
 
         UUID localHostId = SystemKeyspace.getLocalHostId();
 
@@ -609,16 +627,18 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return localHostId;
     }
 
-    private synchronized void checkForEndpointCollision(UUID localHostId, Set<InetAddress> peers) throws ConfigurationException
+    // TODO: rename prepareForBootstrap
+    private synchronized Collection<Token> checkForEndpointCollision(UUID localHostId, Set<InetAddress> peers) throws ConfigurationException
     {
+        logger.debug("Starting shadow gossip round to check for endpoint collision");
+        Map<InetAddress, EndpointState> epStates = Gossiper.instance.doShadowRound(peers);
+        Set<Token> existingTokens = tokensFromEpStates(epStates.values());
+
         if (Boolean.getBoolean("cassandra.allow_unsafe_join"))
         {
             logger.warn("Skipping endpoint collision check as cassandra.allow_unsafe_join=true");
-            return;
+            return existingTokens;
         }
-
-        logger.debug("Starting shadow gossip round to check for endpoint collision");
-        Map<InetAddress, EndpointState> epStates = Gossiper.instance.doShadowRound(peers);
 
         if (epStates.isEmpty() && DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()))
             logger.info("Unable to gossip with any peers but continuing anyway since node is in its own seed list");
@@ -648,6 +668,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
             }
         }
+
+        return existingTokens;
     }
 
     private boolean allowSimultaneousMoves()
@@ -874,10 +896,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                 DatabaseDescriptor.getReplaceAddress());
                     appStates.put(ApplicationState.STATUS, valueFactory.hibernate(true));
                 }
+                else
+                {
+                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
+                }
             }
             else
             {
-                checkForEndpointCollision(localHostId, SystemKeyspace.loadHostIds().keySet());
+                Collection<Token> existingTokens = checkForEndpointCollision(localHostId, SystemKeyspace.loadHostIds().keySet());
                 if (SystemKeyspace.bootstrapComplete())
                 {
                     Preconditions.checkState(!Config.isClientMode());
@@ -886,6 +913,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     Collection<Token> savedTokens = SystemKeyspace.getSavedTokens();
                     if (!savedTokens.isEmpty())
                         appStates.put(ApplicationState.TOKENS, valueFactory.tokens(savedTokens));
+                }
+                else
+                {
+                    bootstrapTokens = BootStrapper.getBootstrapTokens(existingTokens::contains);
+                    if (bootstrapTokens != null)
+                    {
+                        appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
+                        appStates.put(ApplicationState.TOKENS, valueFactory.bootstrapping(bootstrapTokens));
+                    }
                 }
             }
 
@@ -1013,8 +1049,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     String s = "This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
                     throw new UnsupportedOperationException(s);
                 }
-                setMode(Mode.JOINING, "getting bootstrap token", true);
-                bootstrapTokens = BootStrapper.getBootstrapTokens(tokenMetadata, FBUtilities.getBroadcastAddress(), delay);
+                if (bootstrapTokens == null)
+                {
+                    setMode(Mode.JOINING, "getting bootstrap token", true);
+                    bootstrapTokens = BootStrapper.allocateTokensForKeyspace(tokenMetadata, FBUtilities.getBroadcastAddress(), delay);
+                }
             }
             else
             {
@@ -1070,7 +1109,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             bootstrapTokens = SystemKeyspace.getSavedTokens();
             if (bootstrapTokens.isEmpty())
             {
-                bootstrapTokens = BootStrapper.getBootstrapTokens(tokenMetadata, FBUtilities.getBroadcastAddress(), delay);
+                bootstrapTokens = BootStrapper.getBootstrapOrKeyspaceTokens(tokenMetadata, FBUtilities.getBroadcastAddress(), delay);
             }
             else
             {

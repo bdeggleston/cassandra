@@ -22,6 +22,8 @@ import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.slf4j.Logger;
@@ -154,11 +156,10 @@ public class BootStrapper extends ProgressEventNotifierSupport
     }
 
     /**
-     * if initialtoken was specified, use that (split on comma).
-     * otherwise, if allocationKeyspace is specified use the token allocation algorithm to generate suitable tokens
-     * else choose num_tokens tokens at random
+     * if initialtoken was specified, use that (split on comma). Otherwise allocate random tokens if an allocation
+     * keyspace has not been configured.
      */
-    public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata, InetAddress address, int schemaWaitDelay) throws ConfigurationException
+    public static Collection<Token> getBootstrapTokens(Predicate<Token> tokenExists) throws ConfigurationException
     {
         String allocationKeyspace = DatabaseDescriptor.getAllocateTokensForKeyspace();
         Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
@@ -167,30 +168,56 @@ public class BootStrapper extends ProgressEventNotifierSupport
 
         // if user specified tokens, use those
         if (initialTokens.size() > 0)
-            return getSpecifiedTokens(metadata, initialTokens);
+            return getSpecifiedTokens(DatabaseDescriptor.getPartitioner(), initialTokens, tokenExists);
+
+        if (allocationKeyspace != null)
+            return null;
 
         int numTokens = DatabaseDescriptor.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");
 
-        if (allocationKeyspace != null)
-            return allocateTokens(metadata, address, allocationKeyspace, numTokens, schemaWaitDelay);
-
         if (numTokens == 1)
             logger.warn("Picking random token for a single vnode.  You should probably add more vnodes and/or use the automatic token allocation mechanism.");
 
-        return getRandomTokens(metadata, numTokens);
+        return getRandomTokens(DatabaseDescriptor.getPartitioner(), tokenExists, numTokens);
     }
 
-    private static Collection<Token> getSpecifiedTokens(final TokenMetadata metadata,
-                                                        Collection<String> initialTokens)
+    /**
+     * if initialtoken was specified, use that (split on comma).
+     * otherwise, if allocationKeyspace is specified use the token allocation algorithm to generate suitable tokens
+     * else choose num_tokens tokens at random
+     */
+    public static Collection<Token> allocateTokensForKeyspace(final TokenMetadata metadata, InetAddress address, int schemaWaitDelay) throws ConfigurationException
+    {
+        Preconditions.checkState(DatabaseDescriptor.getInitialTokens().isEmpty());
+
+        String allocationKeyspace = DatabaseDescriptor.getAllocateTokensForKeyspace();
+        Preconditions.checkArgument(allocationKeyspace != null);
+
+        int numTokens = DatabaseDescriptor.getNumTokens();
+        if (numTokens < 1)
+            throw new ConfigurationException("num_tokens must be >= 1");
+
+        return allocateTokens(metadata, address, allocationKeyspace, numTokens, schemaWaitDelay);
+    }
+
+    public static Collection<Token> getBootstrapOrKeyspaceTokens(final TokenMetadata metadata, InetAddress address, int schemaWaitDelay) throws ConfigurationException
+    {
+        Collection<Token> tokens = getBootstrapTokens(t -> metadata.getEndpoint(t) != null);
+        if (tokens != null)
+            return tokens;
+        return allocateTokensForKeyspace(metadata, address, schemaWaitDelay);
+    }
+
+    private static Collection<Token> getSpecifiedTokens(IPartitioner partitioner, Collection<String> initialTokens, Predicate<Token> tokenExists)
     {
         logger.info("tokens manually specified as {}",  initialTokens);
         List<Token> tokens = new ArrayList<>(initialTokens.size());
         for (String tokenString : initialTokens)
         {
-            Token token = metadata.partitioner.getTokenFactory().fromString(tokenString);
-            if (metadata.getEndpoint(token) != null)
+            Token token = partitioner.getTokenFactory().fromString(tokenString);
+            if (tokenExists.apply(token))
                 throw new ConfigurationException("Bootstrapping to existing token " + tokenString + " is not allowed (decommission/removenode the old node first).");
             tokens.add(token);
         }
@@ -215,18 +242,23 @@ public class BootStrapper extends ProgressEventNotifierSupport
         return TokenAllocation.allocateTokens(metadata, rs, address, numTokens);
     }
 
-    public static Collection<Token> getRandomTokens(TokenMetadata metadata, int numTokens)
+    public static Collection<Token> getRandomTokens(IPartitioner partitioner, Predicate<Token> tokenExists, int numTokens)
     {
         Set<Token> tokens = new HashSet<>(numTokens);
         while (tokens.size() < numTokens)
         {
-            Token token = metadata.partitioner.getRandomToken();
-            if (metadata.getEndpoint(token) == null)
+            Token token = partitioner.getRandomToken();
+            if (!tokenExists.apply(token))
                 tokens.add(token);
         }
 
         logger.info("Generated random tokens. tokens are {}", tokens);
         return tokens;
+    }
+
+    public static Collection<Token> getRandomTokens(TokenMetadata tokenMetadata, int numTokens)
+    {
+        return getRandomTokens(tokenMetadata.partitioner, t -> tokenMetadata.getEndpoint(t) != null, numTokens);
     }
 
     public static class StringSerializer implements IVersionedSerializer<String>
