@@ -627,7 +627,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return localHostId;
     }
 
-    // TODO: rename prepareForBootstrap
     private synchronized Collection<Token> checkForEndpointCollision(UUID localHostId, Set<InetAddress> peers) throws ConfigurationException
     {
         logger.debug("Starting shadow gossip round to check for endpoint collision");
@@ -898,8 +897,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 }
                 else
                 {
-                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
-                    appStates.put(ApplicationState.TOKENS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
+                    appStates.put(ApplicationState.STATUS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
                 }
             }
             else
@@ -919,8 +918,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     bootstrapTokens = BootStrapper.getBootstrapTokens(existingTokens::contains);
                     if (bootstrapTokens != null)
                     {
-                        appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
-                        appStates.put(ApplicationState.TOKENS, valueFactory.bootstrapping(bootstrapTokens));
+                        appStates.put(ApplicationState.STATUS, valueFactory.bootstrapping(bootstrapTokens));
+                        appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
                     }
                 }
             }
