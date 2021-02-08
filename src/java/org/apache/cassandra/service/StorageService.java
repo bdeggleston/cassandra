@@ -844,8 +844,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 }
                 else
                 {
-                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
-                    appStates.put(ApplicationState.TOKENS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
+                    appStates.put(ApplicationState.STATUS, valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()));
                 }
             }
             else if (shouldBootstrap())
@@ -853,8 +853,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 bootstrapTokens = prepareForBootstrap();
                 if (bootstrapTokens != null)
                 {
-                    appStates.put(ApplicationState.STATUS, valueFactory.tokens(bootstrapTokens));
-                    appStates.put(ApplicationState.TOKENS, valueFactory.bootstrapping(bootstrapTokens));
+                    appStates.put(ApplicationState.TOKENS, valueFactory.tokens(bootstrapTokens));
+                    appStates.put(ApplicationState.STATUS, valueFactory.bootstrapping(bootstrapTokens));
                 }
             }
             else if (SystemKeyspace.bootstrapComplete())
