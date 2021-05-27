@@ -21,6 +21,7 @@ package org.apache.cassandra.distributed.test;
 import java.net.InetAddress;
 import java.util.UUID;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.distributed.Cluster;
@@ -35,6 +36,15 @@ import static org.apache.cassandra.distributed.api.Feature.NETWORK;
 
 public class MigrationCoordinatorTest extends TestBaseImpl
 {
+
+    @Before
+    public void setUp()
+    {
+        System.clearProperty("cassandra.replace_address");
+        System.clearProperty("cassandra.consistent.rangemovement");
+        System.clearProperty(MigrationCoordinator.IGNORED_ENDPOINTS_PROP);
+        System.clearProperty(MigrationCoordinator.IGNORED_VERSIONS_PROP);
+    }
     /**
      * We shouldn't wait on versions only available from a node being replaced
      * see CASSANDRA-
