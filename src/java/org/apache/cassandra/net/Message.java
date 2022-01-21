@@ -129,11 +129,6 @@ public class Message<T>
         return header.expiresAtNanos;
     }
 
-    public long sendAtNanos()
-    {
-        return createdAtNanos();
-    }
-
     /** For how long the message has lived. */
     public long elapsedSinceCreated(TimeUnit units)
     {
