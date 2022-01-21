@@ -122,8 +122,7 @@ public class Config
 
     public volatile long counter_write_request_timeout_in_ms = 5000L;
 
-    // TODO (next): bump to 1800L
-    public volatile long cas_contention_timeout_in_ms = 1000L;
+    public volatile long cas_contention_timeout_in_ms = 1800L;
 
     public volatile long truncate_request_timeout_in_ms = 60000L;
 
@@ -650,12 +649,8 @@ public class Config
         legacy, // writes with TTLs; once transitioned from cannot be returned to
         gc_grace, // similar to legacy, but performed at compaction rather than at write time so can be used at any time
         repaired; // only purge state once we're certain paxos state has been agreed by a quorum
-
-        public static PaxosStatePurging fromBoolean(boolean enabled)
-        {
-            return enabled ? repaired : gc_grace;
-        }
     }
+
     public volatile PaxosVariant paxos_variant = PaxosVariant.v1;
 
     public volatile boolean skip_paxos_repair_on_topology_change = Boolean.getBoolean("cassandra.skip_paxos_repair_on_topology_change");
