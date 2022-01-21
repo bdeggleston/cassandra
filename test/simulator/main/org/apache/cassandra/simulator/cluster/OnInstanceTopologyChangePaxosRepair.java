@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.simulator.cluster;
 
-import org.apache.cassandra.distributed.api.IIsolatedExecutor;
 import org.apache.cassandra.distributed.api.IIsolatedExecutor.SerializableRunnable;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.concurrent.Condition;
@@ -28,7 +27,7 @@ import static org.apache.cassandra.net.Verb.MUTATION_REQ;
 import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_COMPLETE_REQ;
 import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_FINISH_PREPARE_REQ;
 import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_REQ;
-import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_RSP2;
+import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_RSP;
 import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_START_PREPARE_REQ;
 import static org.apache.cassandra.net.Verb.READ_REQ;
 import static org.apache.cassandra.net.Verb.SCHEMA_PULL_REQ;
@@ -53,7 +52,7 @@ class OnInstanceTopologyChangePaxosRepair extends ClusterAction
         setMessageModifiers(PAXOS2_CLEANUP_REQ, RELIABLE, RELIABLE);
         setMessageModifiers(PAXOS2_CLEANUP_FINISH_PREPARE_REQ, RELIABLE, RELIABLE);
         setMessageModifiers(PAXOS2_CLEANUP_COMPLETE_REQ, RELIABLE, RELIABLE);
-        setMessageModifiers(PAXOS2_CLEANUP_RSP2, RELIABLE, RELIABLE);
+        setMessageModifiers(PAXOS2_CLEANUP_RSP, RELIABLE, RELIABLE);
         setMessageModifiers(MUTATION_REQ, RELIABLE, RELIABLE);
         setMessageModifiers(READ_REQ, RELIABLE, RELIABLE);
     }

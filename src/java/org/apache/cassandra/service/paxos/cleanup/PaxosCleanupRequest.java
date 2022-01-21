@@ -43,7 +43,7 @@ import org.apache.cassandra.utils.UUIDSerializer;
 
 import static org.apache.cassandra.net.MessagingService.instance;
 import static org.apache.cassandra.net.NoPayload.noPayload;
-import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_RSP2;
+import static org.apache.cassandra.net.Verb.PAXOS2_CLEANUP_RSP;
 
 // TODO: send the high bound as a minimum commit point, so later repairs can terminate early if a later commit has been witnessed
 public class PaxosCleanupRequest
@@ -75,7 +75,7 @@ public class PaxosCleanupRequest
         {
             String msg = String.format("Rejecting cleanup request %s from %s. Some ranges are not replicated (%s)",
                                        request.session, in.from(), request.ranges);
-            Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP2, PaxosCleanupResponse.failed(request.session, msg));
+            Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP, PaxosCleanupResponse.failed(request.session, msg));
             instance().send(response, in.respondTo());
             return;
         }
@@ -86,13 +86,13 @@ public class PaxosCleanupRequest
         {
             public void onSuccess(@Nullable PaxosCleanupResponse finished)
             {
-                Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP2, coordinator.getNow());
+                Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP, coordinator.getNow());
                 instance().send(response, in.respondTo());
             }
 
             public void onFailure(Throwable throwable)
             {
-                Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP2, PaxosCleanupResponse.failed(request.session, throwable.getMessage()));
+                Message<PaxosCleanupResponse> response = Message.out(PAXOS2_CLEANUP_RSP, PaxosCleanupResponse.failed(request.session, throwable.getMessage()));
                 instance().send(response, in.respondTo());
             }
         });
