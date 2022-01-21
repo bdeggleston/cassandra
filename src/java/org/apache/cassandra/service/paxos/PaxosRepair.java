@@ -436,7 +436,6 @@ public class PaxosRepair extends AbstractPaxosRepair
         if (isResult(state))
             return state;
 
-        // TODO: assureSufficientLiveNodes?
         participants = Participants.get(table, partitionKey(), paxosConsistency);
 
         if (waitUntil > Long.MIN_VALUE && waitUntil - startedNanos() > RETRY_TIMEOUT_NANOS)

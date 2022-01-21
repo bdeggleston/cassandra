@@ -53,9 +53,6 @@ import static org.apache.cassandra.utils.FBUtilities.getBroadcastAddressAndPort;
 
 public class PaxosCleanup extends AsyncFuture<Void> implements Runnable
 {
-    private static final Logger logger = LoggerFactory.getLogger(PaxosCleanup.class);
-    private static final int COORDINATION_PARALELLISM = Integer.getInteger("cassandra.paxos_repair_coordination_paralellism", 10);
-
     private final Collection<InetAddressAndPort> endpoints;
     private final TableMetadata table;
     private final Collection<Range<Token>> ranges;
