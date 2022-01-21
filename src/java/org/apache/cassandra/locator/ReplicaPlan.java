@@ -49,21 +49,6 @@ public interface ReplicaPlan<E extends Endpoints<E>, P extends ReplicaPlan<E, P>
         }
     }
 
-//    interface ForWrite extends ReplicaPlan<EndpointsForToken, ForWrite>
-//    {
-//        int writeQuorum();
-//
-//        /** Replicas that a region of the ring is moving to; not yet ready to serve reads, but should receive writes */
-//        EndpointsForToken pending();
-//        /** Replicas that can participate in the write - this always includes all nodes (pending and natural) in all DCs, except for paxos LOCAL_QUORUM (which is local DC only) */
-//        EndpointsForToken liveAndDown();
-//        /** The live replicas present in liveAndDown, usually derived from FailureDetector.isReplicaAlive */
-//        EndpointsForToken live();
-//
-//        /** Calculate which live endpoints we could have contacted, but chose not to */
-//        default EndpointsForToken liveUncontacted() { return live().filter(r -> !contacts().contains(r)); }
-//    }
-
     abstract class AbstractReplicaPlan<E extends Endpoints<E>, P extends ReplicaPlan<E, P>> implements ReplicaPlan<E, P>
     {
         protected final Keyspace keyspace;
