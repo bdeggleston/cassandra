@@ -298,11 +298,11 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
     PaxosPrepare(Participants participants, AbstractRequest<?> request, boolean acceptEarlyReadPermission, Consumer<Status> onDone)
     {
         this.acceptEarlyReadPermission = acceptEarlyReadPermission;
-        assert participants.sizeOfConsensusQuorum > 0;
+        assert participants.consensusQuorumSize > 0;
         this.participants = participants;
         this.request = request;
-        this.readResponses = new ArrayList<>(participants.sizeOfConsensusQuorum);
-        this.withLatest = new ArrayList<>(participants.sizeOfConsensusQuorum);
+        this.readResponses = new ArrayList<>(participants.consensusQuorumSize);
+        this.withLatest = new ArrayList<>(participants.consensusQuorumSize);
         this.latestAccepted = this.latestCommitted = Committed.none(request.partitionKey, request.table);
         this.onDone = onDone;
     }
@@ -399,7 +399,7 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
         {
             // can only normally be interrupted if the system is shutting down; should rethrow as a write failure but propagate the interrupt
             Thread.currentThread().interrupt();
-            return new MaybeFailure(new Paxos.MaybeFailure(true, participants.sizeOfPoll(), participants.sizeOfConsensusQuorum, 0, emptyMap()), participants);
+            return new MaybeFailure(new Paxos.MaybeFailure(true, participants.sizeOfPoll(), participants.consensusQuorumSize, 0, emptyMap()), participants);
         }
     }
 
@@ -525,7 +525,7 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
                         if (needLatest == null)
                         {
                             needLatest = withLatest;
-                            withLatest = new ArrayList<>(Math.min(participants.sizeOfPoll() - needLatest.size(), participants.sizeOfConsensusQuorum));
+                            withLatest = new ArrayList<>(Math.min(participants.sizeOfPoll() - needLatest.size(), participants.consensusQuorumSize));
                         }
                         else
                         {
@@ -568,11 +568,11 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
             }
         }
 
-        haveQuorumOfPermissions |= withLatest() + needLatest() >= participants.sizeOfConsensusQuorum;
+        haveQuorumOfPermissions |= withLatest() + needLatest() >= participants.consensusQuorumSize;
         if (haveQuorumOfPermissions)
         {
-            if (request.read != null && readResponses.size() < participants.readQuorum)
-                throw new IllegalStateException("Insufficient read responses: " + readResponses + "; need " + participants.readQuorum);
+            if (request.read != null && readResponses.size() < participants.readQuorumSize)
+                throw new IllegalStateException("Insufficient read responses: " + readResponses + "; need " + participants.readQuorumSize);
 
             // We must be certain to have witnessed a quorum of responses before completing any in-progress proposal
             // else we may complete a stale proposal that did not reach a quorum (and may do so in preference
@@ -587,7 +587,7 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
 
             // If we've reached a quorum of responses that witnessed the latest commmit,
             // our read response should be correct, as will future readers
-            else if (withLatest() >= participants.sizeOfConsensusQuorum)
+            else if (withLatest() >= participants.consensusQuorumSize)
                 signalDone(hasOnlyPromises ? Outcome.PROMISED : Outcome.READ_PERMITTED);
 
             // otherwise if we have any read response with the latest commit,
@@ -747,7 +747,7 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
         super.onFailureWithMutex(from, reason);
         ++failures;
 
-        if (failures + participants.sizeOfConsensusQuorum == 1 + participants.sizeOfPoll())
+        if (failures + participants.consensusQuorumSize == 1 + participants.sizeOfPoll())
             signalDone(MAYBE_FAILURE);
     }
 
@@ -825,7 +825,7 @@ public class PaxosPrepare extends PaxosRequestCallback<PaxosPrepare.Response> im
         else
         {
             withLatest.add(from);
-            if (withLatest.size() >= participants.sizeOfConsensusQuorum)
+            if (withLatest.size() >= participants.consensusQuorumSize)
                 signalDone(hasOnlyPromises ? Outcome.PROMISED : Outcome.READ_PERMITTED);
         }
     }

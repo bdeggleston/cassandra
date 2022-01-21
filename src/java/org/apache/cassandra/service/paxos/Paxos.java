@@ -251,14 +251,14 @@ public class Paxos
         /**
          * The number of responses we require to reach desired consistency from members of {@code contact}
          */
-        final int sizeOfConsensusQuorum;
+        final int consensusQuorumSize;
 
         /**
          * The number of read responses we require to reach desired consistency from members of {@code contact}
-         * Note that this should always be met if {@link #sizeOfConsensusQuorum} is met, but we supply it separately
+         * Note that this should always be met if {@link #consensusQuorumSize} is met, but we supply it separately
          * for corroboration.
          */
-        final int readQuorum;
+        final int readQuorumSize;
 
         Participants(Keyspace keyspace, ConsistencyLevel consistencyForConsensus, ReplicaLayout.ForTokenWrite all, ReplicaLayout.ForTokenWrite electorate, EndpointsForToken live)
         {
@@ -272,14 +272,14 @@ public class Paxos
             this.electorateNatural = electorate.natural();
             this.electorateLive = electorate.all() == live ? live : electorate.all().keep(live.endpoints());
             this.allLive = live;
-            this.readQuorum = electorate.natural().size()/2 + 1;
-            this.sizeOfConsensusQuorum = readQuorum + electorate.pending().size();
+            this.readQuorumSize = electorate.natural().size() / 2 + 1;
+            this.consensusQuorumSize = readQuorumSize + electorate.pending().size();
         }
 
         @Override
         public int readQuorum()
         {
-            return readQuorum;
+            return readQuorumSize;
         }
 
         @Override
@@ -318,25 +318,25 @@ public class Paxos
 
         void assureSufficientLiveNodes(boolean isWrite) throws UnavailableException
         {
-            if (sizeOfConsensusQuorum > sizeOfPoll())
+            if (consensusQuorumSize > sizeOfPoll())
             {
                 mark(isWrite, m -> m.unavailables, consistencyForConsensus);
-                throw new UnavailableException("Cannot achieve consistency level " + consistencyForConsensus, consistencyForConsensus, sizeOfConsensusQuorum, sizeOfPoll());
+                throw new UnavailableException("Cannot achieve consistency level " + consistencyForConsensus, consistencyForConsensus, consensusQuorumSize, sizeOfPoll());
             }
         }
 
         void assureSufficientLiveNodesForRepair() throws UnavailableException
         {
-            if (sizeOfConsensusQuorum > sizeOfPoll())
+            if (consensusQuorumSize > sizeOfPoll())
             {
-                throw UnavailableException.create(consistencyForConsensus, sizeOfConsensusQuorum, sizeOfPoll());
+                throw UnavailableException.create(consistencyForConsensus, consensusQuorumSize, sizeOfPoll());
             }
         }
 
         int requiredFor(ConsistencyLevel consistency)
         {
             if (consistency == Paxos.nonSerial(consistencyForConsensus))
-                return sizeOfConsensusQuorum;
+                return consensusQuorumSize;
 
             return consistency.blockForWrite(replicationStrategy(), pending);
         }
@@ -403,8 +403,8 @@ public class Paxos
 
         MaybeFailure(Participants contacted, int successes, Map<InetAddressAndPort, RequestFailureReason> failures)
         {
-            this(contacted.sizeOfPoll() - failures.size() < contacted.sizeOfConsensusQuorum,
-                 contacted.sizeOfPoll(), contacted.sizeOfConsensusQuorum, successes, failures);
+            this(contacted.sizeOfPoll() - failures.size() < contacted.consensusQuorumSize,
+                 contacted.sizeOfPoll(), contacted.consensusQuorumSize, successes, failures);
         }
 
         MaybeFailure(int contacted, int required, int successes, Map<InetAddressAndPort, RequestFailureReason> failures)
@@ -645,7 +645,7 @@ public class Paxos
                                 // We don't know if our update has been applied, as the competing ballot may have completed
                                 // our proposal.  We yield our uncertainty to the caller via timeout exception.
                                 // TODO: should return more useful result to client, and should also avoid this situation where possible
-                                throw new MaybeFailure(false, participants.sizeOfPoll(), participants.sizeOfConsensusQuorum, 0, emptyMap())
+                                throw new MaybeFailure(false, participants.sizeOfPoll(), participants.consensusQuorumSize, 0, emptyMap())
                                         .markAndThrowAsTimeoutOrFailure(true, consistencyForConsensus, failedAttemptsDueToContention);
 
                             case NO:
@@ -759,7 +759,7 @@ public class Paxos
                                 // We don't know if our update has been applied, as the competing ballot may have completed
                                 // our proposal.  We yield our uncertainty to the caller via timeout exception.
                                 // TODO: should return more useful result to client, and should also avoid this situation where possible
-                                throw new MaybeFailure(false, begin.participants.sizeOfPoll(), begin.participants.sizeOfConsensusQuorum, 0, emptyMap())
+                                throw new MaybeFailure(false, begin.participants.sizeOfPoll(), begin.participants.consensusQuorumSize, 0, emptyMap())
                                       .markAndThrowAsTimeoutOrFailure(true, consistencyForConsensus, failedAttemptsDueToContention);
 
                             case NO:

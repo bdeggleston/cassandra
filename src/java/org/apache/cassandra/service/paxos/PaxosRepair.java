@@ -187,7 +187,7 @@ public class PaxosRepair extends AbstractPaxosRepair
 
         private State onFailure()
         {
-            if (++failures + participants.sizeOfConsensusQuorum > participants.sizeOfPoll())
+            if (++failures + participants.consensusQuorumSize > participants.sizeOfPoll())
                 return retry(this);
             return this;
         }
@@ -208,7 +208,7 @@ public class PaxosRepair extends AbstractPaxosRepair
                 clashingPromise = latestWitnessed;
 
             // once we receive the requisite number, we can simply proceed, and ignore future responses
-            if (++successes == participants.sizeOfConsensusQuorum)
+            if (++successes == participants.consensusQuorumSize)
                 return execute();
 
             return this;

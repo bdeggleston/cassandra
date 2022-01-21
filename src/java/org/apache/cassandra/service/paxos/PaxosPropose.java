@@ -190,7 +190,7 @@ public class PaxosPropose<OnDone extends Consumer<? super PaxosPropose.Status>> 
             }
         }
 
-        Async propose = new Async(proposal, participants.sizeOfPoll(), participants.sizeOfConsensusQuorum, waitForNoSideEffect);
+        Async propose = new Async(proposal, participants.sizeOfPoll(), participants.consensusQuorumSize, waitForNoSideEffect);
         propose.start(participants);
         return propose;
     }
@@ -200,7 +200,7 @@ public class PaxosPropose<OnDone extends Consumer<? super PaxosPropose.Status>> 
         if (waitForNoSideEffect && proposal.update.isEmpty())
             waitForNoSideEffect = false; // by definition this has no "side effects" (besides linearizing the operation)
 
-        PaxosPropose<?> propose = new PaxosPropose<>(proposal, participants.sizeOfPoll(), participants.sizeOfConsensusQuorum, waitForNoSideEffect, onDone);
+        PaxosPropose<?> propose = new PaxosPropose<>(proposal, participants.sizeOfPoll(), participants.consensusQuorumSize, waitForNoSideEffect, onDone);
         propose.start(participants);
         return onDone;
     }
