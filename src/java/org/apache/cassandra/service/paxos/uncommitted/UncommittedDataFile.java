@@ -337,7 +337,7 @@ public class UncommittedDataFile
             reader.readBoolean();
         }
 
-        protected PaxosKeyState computeNext()
+        protected synchronized PaxosKeyState computeNext()
         {
             try
             {
@@ -374,8 +374,11 @@ public class UncommittedDataFile
 
         public void close()
         {
+            synchronized (this)
+            {
+                reader.close();
+            }
             onIteratorClose();
-            reader.close();
         }
     }
 }
