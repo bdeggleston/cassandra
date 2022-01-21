@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.service.paxos;
 
-// To be synchronized upon
 public interface PaxosOperationLock extends AutoCloseable
 {
     @Override

@@ -368,7 +368,6 @@ public class CassandraDaemon
         // Re-populate token metadata after commit log recover (new peers might be loaded onto system keyspace #10293)
         StorageService.instance.populateTokenMetadata();
 
-        // TODO (merge): should ActiveRepairService startup go here?
         try
         {
             PaxosState.maybeRebuildUncommittedState();

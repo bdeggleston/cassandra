@@ -424,7 +424,6 @@ public class PaxosState implements PaxosOperationLock
 
     private PaxosState maybeLoad()
     {
-        long start = nanoTime();
         try
         {
             Snapshot current = this.current;

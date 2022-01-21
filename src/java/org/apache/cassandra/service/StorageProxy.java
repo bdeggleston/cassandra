@@ -242,9 +242,9 @@ public class StorageProxy implements StorageProxyMBean
         if (!Paxos.isLinearizable())
         {
             logger.warn("This node was started with paxos variant {}. SERIAL (and LOCAL_SERIAL) reads coordinated by this node " +
-                        "will not offer linearizability (see CASSANDRA-12126 for details on what this mean) with " +
+                        "will not offer linearizability (see CASSANDRA-12126 for details on what this means) with " +
                         "respect to other SERIAL operations. Please note that with this variant, SERIAL reads will be " +
-                        "slower than QUORUM reads, yet offer no more guarantee. This flag should only be used in " +
+                        "slower than QUORUM reads, yet offer no additional guarantees. This flag should only be used in " +
                         "the restricted case of upgrading from a pre-CASSANDRA-12126 version, and only if you " +
                         "understand the tradeoff.", Paxos.getPaxosVariant());
         }
@@ -1997,8 +1997,6 @@ public class StorageProxy implements StorageProxyMBean
      * 3. Wait for a response from R replicas
      * 4. If the digests (if any) match the data return the data
      * 5. else carry out read repair by getting data from all the nodes.
-     *
-     * TODO: temporarily public
      */
     private static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, ReadFailureException, ReadTimeoutException
