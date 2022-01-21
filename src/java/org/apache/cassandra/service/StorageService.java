@@ -6548,17 +6548,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info("paxos reject linearizability violations {} via jmx", enabled ? "enabled" : "disabled");
     }
 
-    public boolean getPaxosStatePurgingEnabled()
-    {
-        return DatabaseDescriptor.paxosStatePurging() == repaired;
-    }
-
-    public void setPaxosStatePurgingEnabled(boolean enabled)
-    {
-        setPaxosStatePurging(PaxosStatePurging.fromBoolean(enabled).toString());
-        logger.info("paxos state purging {} via jmx. This jmx endpoint is deprecated, use PaxosStatePurging instead", enabled ? "enabled" : "disabled");
-    }
-
     public String getPaxosStatePurging()
     {
         return DatabaseDescriptor.paxosStatePurging().name();

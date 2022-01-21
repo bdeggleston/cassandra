@@ -944,11 +944,6 @@ public interface StorageServiceMBean extends NotificationEmitter
     boolean getRejectPaxosLinearizabilityViolations();
     void setRejectPaxosLinearizabilityViolations(boolean v);
 
-    @Deprecated
-    boolean getPaxosStatePurgingEnabled();
-    @Deprecated
-    void setPaxosStatePurgingEnabled(boolean v);
-
     String getPaxosStatePurging();
     void setPaxosStatePurging(String v);
 
