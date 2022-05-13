@@ -27,6 +27,14 @@ options {
     private final List<ErrorListener> listeners = new ArrayList<ErrorListener>();
     protected final List<ColumnIdentifier> bindVariables = new ArrayList<ColumnIdentifier>();
 
+    // enables parsing txn specific syntax when true
+    protected boolean isParsingTxn = false;
+
+    // disables txn terms in the where clause for select statements
+    protected boolean isParsingSelect = false;
+
+    protected List<ColumnReference.Raw> columnReferences;
+
     public static final Set<String> reservedTypeNames = new HashSet<String>()
     {{
         add("byte");
@@ -71,6 +79,19 @@ options {
         Json.Marker marker = new Json.Marker(bindVariables.size());
         bindVariables.add(name);
         return marker;
+    }
+
+    public ColumnReference.Raw newColumnReference(List<Term.Raw> terms)
+    {
+        if (!isParsingTxn || isParsingSelect)
+            throw new IllegalStateException();
+
+        if (columnReferences == null)
+            columnReferences = new ArrayList<>();
+
+        ColumnReference.Raw reference = new ColumnReference.Raw(terms);
+        columnReferences.add(reference);
+        return reference;
     }
 
     public void addErrorListener(ErrorListener listener)
@@ -247,6 +268,7 @@ cqlStatement returns [CQLStatement.Raw stmt]
     | st39=dropMaterializedViewStatement   { $stmt = st39; }
     | st40=alterMaterializedViewStatement  { $stmt = st40; }
     | st41=describeStatement               { $stmt = st41; }
+    | st42=batchTxnStatement               { $stmt = st42; }
     ;
 
 /*
@@ -264,12 +286,14 @@ useStatement returns [UseStatement stmt]
  */
 selectStatement returns [SelectStatement.RawStatement expr]
     @init {
+        isParsingSelect = true;
         Term.Raw limit = null;
         Term.Raw perPartitionLimit = null;
         Map<ColumnIdentifier, Boolean> orderings = new LinkedHashMap<>();
         List<ColumnIdentifier> groups = new ArrayList<>();
         boolean allowFiltering = false;
         boolean isJson = false;
+        String txnVarName = null;
     }
     : K_SELECT
         // json is a valid column name. By consequence, we need to resolve the ambiguity for "json - json"
@@ -281,16 +305,19 @@ selectStatement returns [SelectStatement.RawStatement expr]
       ( K_PER K_PARTITION K_LIMIT rows=intValue { perPartitionLimit = rows; } )?
       ( K_LIMIT rows=intValue { limit = rows; } )?
       ( K_ALLOW K_FILTERING  { allowFiltering = true; } )?
+      ({isParsingTxn}? ( K_AS txnVar=IDENT { txnVarName=$txnVar.text; } )?)?
       {
           SelectStatement.Parameters params = new SelectStatement.Parameters(orderings,
                                                                              groups,
                                                                              $sclause.isDistinct,
                                                                              allowFiltering,
-                                                                             isJson);
+                                                                             isJson,
+                                                                             txnVarName);
           WhereClause where = wclause == null ? WhereClause.empty() : wclause.build();
           $expr = new SelectStatement.RawStatement(cf, params, $sclause.selectors, where, limit, perPartitionLimit);
       }
     ;
+    finally { isParsingSelect = false; }
 
 selectClause returns [boolean isDistinct, List<RawSelector> selectors]
     @init{ $isDistinct = false; }
@@ -649,6 +676,31 @@ batchStatementObjective returns [ModificationStatement.Parsed statement]
     | u=updateStatement  { $statement = u; }
     | d=deleteStatement  { $statement = d; }
     ;
+
+/**
+ * BEGIN TRANSACTION;
+ * SELECT * FROM ks.tbl WHERE k=1 AND c=2 AS row1;
+ * SELECT * FROM ks.tbl WHERE k=2 AND c=2 AS row2;
+ * UPDATE ks.tbl SET v=row1.v + 1 WHERE k=row1.k AND c=row1.c;
+ * COMMIT TRANSACTION IF
+ *   row1.v = 3
+ *   AND row2.v=4;
+ */
+ batchTxnStatement returns [TransactionStatement.Parsed expr]
+    @init {
+        isParsingTxn = true;
+        List<SelectStatement.RawStatement> selects = new ArrayList<>();
+        List<ModificationStatement.Parsed> updates = new ArrayList<>();
+    }
+    : K_BEGIN K_TRANSACTION ';'
+        (sel=selectStatement ';' { selects.add(sel); })*
+        (upd=batchStatementObjective ';' { updates.add(upd); })*
+    K_COMMIT K_TRANSACTION ( K_IF conditions=updateConditions )? ';'
+    {
+        $expr = new TransactionStatement.Parsed(selects, updates, conditions, columnReferences);
+    }
+    ;
+    finally { isParsingTxn = false; }
 
 createAggregateStatement returns [CreateAggregateStatement.Raw stmt]
     @init {
@@ -1483,6 +1535,14 @@ usertypeLiteral returns [UserTypes.Literal ut]
     : '{' k1=fident ':' v1=term { m.put(k1, v1); } ( ',' kn=fident ':' vn=term { m.put(kn, vn); } )* '}'
     ;
 
+txnVarLiteral returns [ColumnReference.Raw vterm]
+    @init { List<Term.Raw> terms = new ArrayList<>(2); }
+    @after { $vterm = newColumnReference(terms); }
+    : {isParsingTxn && !isParsingSelect}?
+      (v1=IDENT { terms.add(Constants.Literal.string($v1.text)); }
+      ('.' v2=IDENT { terms.add(Constants.Literal.string($v2.text)); } )+)
+    ;
+
 tupleLiteral returns [Tuples.Literal tt]
     @init{ List<Term.Raw> l = new ArrayList<Term.Raw>(); }
     @after{ $tt = new Tuples.Literal(l); }
@@ -1555,6 +1615,7 @@ termGroup returns [Term.Raw term]
 
 simpleTerm returns [Term.Raw term]
     : v=value                                        { $term = v; }
+    | vt=txnVarLiteral                               { $term = vt; }
     | f=function                                     { $term = f; }
     | '(' c=comparatorType ')' t=simpleTerm          { $term = new TypeCast(c, t); }
     | K_CAST '(' t=simpleTerm K_AS n=native_type ')' { $term = FunctionCall.Raw.newCast(t, n); }

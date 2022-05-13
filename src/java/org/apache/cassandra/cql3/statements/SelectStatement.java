@@ -123,7 +123,8 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
                                                                        Collections.emptyList(),
                                                                        false,
                                                                        false,
-                                                                       false);
+                                                                       false,
+                                                                       null);
 
     public SelectStatement(TableMetadata table,
                            VariableSpecifications bindVariables,
@@ -991,17 +992,27 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
 
         public SelectStatement prepare(ClientState state)
         {
-            return prepare(false);
+            return prepare(false, bindVariables);
+        }
+
+        public SelectStatement prepare(VariableSpecifications variableSpecifications) throws InvalidRequestException
+        {
+            return prepare(false, variableSpecifications);
         }
 
         public SelectStatement prepare(boolean forView) throws InvalidRequestException
+        {
+            return prepare(forView, bindVariables);
+        }
+
+        public SelectStatement prepare(boolean forView, VariableSpecifications variableSpecifications) throws InvalidRequestException
         {
             TableMetadata table = Schema.instance.validateTable(keyspace(), name());
 
             List<Selectable> selectables = RawSelector.toSelectables(selectClause, table);
             boolean containsOnlyStaticColumns = selectOnlyStaticColumns(table, selectables);
 
-            StatementRestrictions restrictions = prepareRestrictions(table, bindVariables, containsOnlyStaticColumns, forView);
+            StatementRestrictions restrictions = prepareRestrictions(table, variableSpecifications, containsOnlyStaticColumns, forView);
 
             // If we order post-query, the sorted column needs to be in the ResultSet for sorting,
             // even if we don't ultimately ship them to the client (CASSANDRA-4911).
@@ -1011,7 +1022,7 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
 
             Selection selection = prepareSelection(table,
                                                    selectables,
-                                                   bindVariables,
+                                                   variableSpecifications,
                                                    resultSetOrderingColumns,
                                                    restrictions);
 
@@ -1045,15 +1056,15 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
             checkNeedsFiltering(restrictions);
 
             return new SelectStatement(table,
-                                       bindVariables,
+                                       variableSpecifications,
                                        parameters,
                                        selection,
                                        restrictions,
                                        isReversed,
                                        aggregationSpec,
                                        orderingComparator,
-                                       prepareLimit(bindVariables, limit, keyspace(), limitReceiver()),
-                                       prepareLimit(bindVariables, perPartitionLimit, keyspace(), perPartitionLimitReceiver()));
+                                       prepareLimit(variableSpecifications, limit, keyspace(), limitReceiver()),
+                                       prepareLimit(variableSpecifications, perPartitionLimit, keyspace(), perPartitionLimitReceiver()));
         }
 
         private Selection prepareSelection(TableMetadata table,
@@ -1343,18 +1354,21 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
         public final boolean isDistinct;
         public final boolean allowFiltering;
         public final boolean isJson;
+        public final String refName;
 
         public Parameters(Map<ColumnIdentifier, Boolean> orderings,
                           List<ColumnIdentifier> groups,
                           boolean isDistinct,
                           boolean allowFiltering,
-                          boolean isJson)
+                          boolean isJson,
+                          String refName)
         {
             this.orderings = orderings;
             this.groups = groups;
             this.isDistinct = isDistinct;
             this.allowFiltering = allowFiltering;
             this.isJson = isJson;
+            this.refName = refName;
         }
     }
 

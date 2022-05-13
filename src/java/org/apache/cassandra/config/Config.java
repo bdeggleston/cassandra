@@ -738,8 +738,9 @@ public class Config
             String value;
             try
             {
-                // Field.get() can throw NPE if the value of the field is null
-                value = field.get(config).toString();
+                // don't use exceptions for normal control flow!
+                Object obj = field.get(config);
+                value = obj != null ? obj.toString() : "null";
             }
             catch (NullPointerException | IllegalAccessException npe)
             {
