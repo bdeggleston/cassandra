@@ -37,10 +37,11 @@ import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordQuery;
-import org.apache.cassandra.service.accord.db.AccordRead;
-import org.apache.cassandra.service.accord.db.AccordUpdate;
-import org.apache.cassandra.service.accord.db.AccordWrite;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
+import org.apache.cassandra.service.accord.txn.TxnQuery;
+import org.apache.cassandra.service.accord.txn.TxnRead;
+import org.apache.cassandra.service.accord.txn.TxnUpdate;
+import org.apache.cassandra.service.accord.txn.TxnWrite;
 
 public class CommandSerializers
 {
@@ -121,17 +122,17 @@ public class CommandSerializers
         }
     }
 
-    public static final IVersionedSerializer<Txn> txn = new IVersionedSerializer<>()
+    public static final IVersionedSerializer<Txn> testTxn = new IVersionedSerializer<>()
     {
         @Override
         public void serialize(Txn txn, DataOutputPlus out, int version) throws IOException
         {
             KeySerializers.keys.serialize(txn.keys(), out, version);
-            AccordRead.serializer.serialize((AccordRead) txn.read(), out, version);
-            AccordQuery.serializer.serialize((AccordQuery) txn.query(), out, version);
+            TxnRead.serializer.serialize((TxnRead) txn.read(), out, version);
+            TxnAppliedQuery.serializer.serialize((TxnAppliedQuery) txn.query(), out, version);
             out.writeBoolean(txn.update() != null);
             if (txn.update() != null)
-                AccordUpdate.serializer.serialize((AccordUpdate) txn.update(), out, version);
+                TxnUpdate.serializer.serialize((TxnUpdate) txn.update(), out, version);
 
         }
 
@@ -139,10 +140,10 @@ public class CommandSerializers
         public Txn deserialize(DataInputPlus in, int version) throws IOException
         {
             Keys keys = KeySerializers.keys.deserialize(in, version);
-            AccordRead read = AccordRead.serializer.deserialize(in, version);
-            AccordQuery query = AccordQuery.serializer.deserialize(in, version);
+            TxnRead read = TxnRead.serializer.deserialize(in, version);
+            TxnAppliedQuery query = TxnAppliedQuery.serializer.deserialize(in, version);
             if (in.readBoolean())
-                return new Txn.InMemory(keys, read, query, AccordUpdate.serializer.deserialize(in, version));
+                return new Txn.InMemory(keys, read, query, TxnUpdate.serializer.deserialize(in, version));
             else
                 return new Txn.InMemory(keys, read, query);
         }
@@ -151,14 +152,55 @@ public class CommandSerializers
         public long serializedSize(Txn txn, int version)
         {
             long size = KeySerializers.keys.serializedSize(txn.keys(), version);
-            size += AccordRead.serializer.serializedSize((AccordRead) txn.read(), version);
-            size += AccordQuery.serializer.serializedSize((AccordQuery) txn.query(), version);
+            size += TxnRead.serializer.serializedSize((TxnRead) txn.read(), version);
+            size += TxnAppliedQuery.serializer.serializedSize((TxnAppliedQuery) txn.query(), version);
             size += TypeSizes.sizeof(txn.update() != null);
             if (txn.update() != null)
-                size += AccordUpdate.serializer.serializedSize((AccordUpdate) txn.update(), version);
+                size += TxnUpdate.serializer.serializedSize((TxnUpdate) txn.update(), version);
             return size;
         }
     };
+
+    public static final IVersionedSerializer<Txn> cqlTxn = new IVersionedSerializer<>()
+    {
+        @Override
+        public void serialize(Txn txn, DataOutputPlus out, int version) throws IOException
+        {
+            KeySerializers.keys.serialize(txn.keys(), out, version);
+            TxnRead.serializer.serialize((TxnRead) txn.read(), out, version);
+            TxnQuery.serializer.serialize((TxnQuery) txn.query(), out, version);
+            out.writeBoolean(txn.update() != null);
+            if (txn.update() != null)
+                TxnUpdate.serializer.serialize((TxnUpdate) txn.update(), out, version);
+
+        }
+
+        @Override
+        public Txn deserialize(DataInputPlus in, int version) throws IOException
+        {
+            Keys keys = KeySerializers.keys.deserialize(in, version);
+            TxnRead read = TxnRead.serializer.deserialize(in, version);
+            TxnQuery query = TxnQuery.serializer.deserialize(in, version);
+            if (in.readBoolean())
+                return new Txn.InMemory(keys, read, query, TxnUpdate.serializer.deserialize(in, version));
+            else
+                return new Txn.InMemory(keys, read, query);
+        }
+
+        @Override
+        public long serializedSize(Txn txn, int version)
+        {
+            long size = KeySerializers.keys.serializedSize(txn.keys(), version);
+            size += TxnRead.serializer.serializedSize((TxnRead) txn.read(), version);
+            size += TxnQuery.serializer.serializedSize((TxnQuery) txn.query(), version);
+            size += TypeSizes.sizeof(txn.update() != null);
+            if (txn.update() != null)
+                size += TxnUpdate.serializer.serializedSize((TxnUpdate) txn.update(), version);
+            return size;
+        }
+    };
+
+    public static final IVersionedSerializer<Txn> txn = cqlTxn;
 
     public static final IVersionedSerializer<Status> status = new IVersionedSerializer<>()
     {
@@ -244,7 +286,7 @@ public class CommandSerializers
             boolean hasWrites = writes.write != null;
             out.writeBoolean(hasWrites);
             if (hasWrites)
-                AccordWrite.serializer.serialize((AccordWrite) writes.write, out, version);
+                TxnWrite.serializer.serialize((TxnWrite) writes.write, out, version);
         }
 
         @Override
@@ -252,7 +294,7 @@ public class CommandSerializers
         {
             return new Writes(timestamp.deserialize(in, version),
                               KeySerializers.keys.deserialize(in, version),
-                              in.readBoolean() ? AccordWrite.serializer.deserialize(in, version) : null);
+                              in.readBoolean() ? TxnWrite.serializer.deserialize(in, version) : null);
         }
 
         @Override
@@ -263,7 +305,7 @@ public class CommandSerializers
             boolean hasWrites = writes.write != null;
             size += TypeSizes.sizeof(hasWrites);
             if (hasWrites)
-                size += AccordWrite.serializer.serializedSize((AccordWrite) writes.write, version);
+                size += TxnWrite.serializer.serializedSize((TxnWrite) writes.write, version);
             return size;
         }
     };

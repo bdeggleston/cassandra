@@ -226,7 +226,7 @@ public class PartitionUpdate extends AbstractBTreePartition
     }
 
 
-    protected boolean canHaveShadowedData()
+    public boolean canHaveShadowedData()
     {
         return canHaveShadowedData;
     }

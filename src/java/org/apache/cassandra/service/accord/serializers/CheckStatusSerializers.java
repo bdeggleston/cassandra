@@ -29,7 +29,7 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordData;
+import org.apache.cassandra.service.accord.txn.TxnData;
 
 import static org.apache.cassandra.service.accord.serializers.NullableSerializer.deserializeNullable;
 import static org.apache.cassandra.service.accord.serializers.NullableSerializer.serializeNullable;
@@ -99,7 +99,7 @@ public class CheckStatusSerializers
             serializeNullable(okFull.executeAt, out, version, CommandSerializers.timestamp);
             CommandSerializers.deps.serialize(okFull.deps, out, version);
             serializeNullable(okFull.writes, out, version, CommandSerializers.writes);
-            serializeNullable((AccordData) okFull.result, out, version, AccordData.serializer);
+            serializeNullable((TxnData) okFull.result, out, version, TxnData.serializer);
         }
 
         @Override
@@ -128,7 +128,7 @@ public class CheckStatusSerializers
                                                  deserializeNullable(in, version, CommandSerializers.timestamp),
                                                  CommandSerializers.deps.deserialize(in, version),
                                                  deserializeNullable(in, version, CommandSerializers.writes),
-                                                 deserializeNullable(in, version, AccordData.serializer));
+                                                 deserializeNullable(in, version, TxnData.serializer));
             }
         }
 
@@ -155,7 +155,7 @@ public class CheckStatusSerializers
             size += serializedSizeNullable(okFull.executeAt, version, CommandSerializers.timestamp);
             size += CommandSerializers.deps.serializedSize(okFull.deps, version);
             size += serializedSizeNullable(okFull.writes, version, CommandSerializers.writes);
-            size += serializedSizeNullable((AccordData) okFull.result, version, AccordData.serializer);
+            size += serializedSizeNullable((TxnData) okFull.result, version, TxnData.serializer);
 
             return size;
         }

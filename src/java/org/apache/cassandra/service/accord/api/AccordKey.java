@@ -259,11 +259,21 @@ public interface AccordKey extends Key
 
     class PartitionKey extends AbstractKey<DecoratedKey>
     {
-        private static final long EMPTY_SIZE;
-        static
+
+        // avoid needing static init for tests
+        private static class EmptySize
         {
-            DecoratedKey key = DatabaseDescriptor.getPartitioner().decorateKey(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-            EMPTY_SIZE = ObjectSizes.measureDeep(new PartitionKey(null, key));
+            private static final long EMPTY_SIZE;
+            static
+            {
+                DecoratedKey key = DatabaseDescriptor.getPartitioner().decorateKey(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+                EMPTY_SIZE = ObjectSizes.measureDeep(new PartitionKey(null, key));
+            }
+
+            static long get()
+            {
+                return EMPTY_SIZE;
+            }
         }
 
         public PartitionKey(TableId tableId, DecoratedKey key)
@@ -288,7 +298,7 @@ public interface AccordKey extends Key
 
         public long estimatedSizeOnHeap()
         {
-            return EMPTY_SIZE + ByteBufferAccessor.instance.size(partitionKey().getKey());
+            return EmptySize.get() + ByteBufferAccessor.instance.size(partitionKey().getKey());
         }
 
         public static final Serializer serializer = new Serializer();

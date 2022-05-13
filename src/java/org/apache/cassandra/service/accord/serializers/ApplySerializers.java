@@ -25,11 +25,11 @@ import accord.primitives.Keys;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordData;
+import org.apache.cassandra.service.accord.txn.TxnData;
 
 public class ApplySerializers
 {
-    public static final IVersionedSerializer<Apply> request = new TxnRequestSerializer<Apply>()
+    public static final IVersionedSerializer<Apply> request = new TxnRequestSerializer<>()
     {
         @Override
         public void serializeBody(Apply apply, DataOutputPlus out, int version) throws IOException
@@ -40,7 +40,7 @@ public class ApplySerializers
             CommandSerializers.timestamp.serialize(apply.executeAt, out, version);
             CommandSerializers.deps.serialize(apply.deps, out, version);
             CommandSerializers.writes.serialize(apply.writes, out, version);
-            AccordData.serializer.serialize((AccordData) apply.result, out, version);
+            TxnData.serializer.serialize((TxnData) apply.result, out, version);
         }
 
         @Override
@@ -53,7 +53,7 @@ public class ApplySerializers
                              CommandSerializers.timestamp.deserialize(in, version),
                              CommandSerializers.deps.deserialize(in, version),
                              CommandSerializers.writes.deserialize(in, version),
-                             AccordData.serializer.deserialize(in, version));
+                             TxnData.serializer.deserialize(in, version));
         }
 
         @Override
@@ -65,11 +65,11 @@ public class ApplySerializers
                    + CommandSerializers.timestamp.serializedSize(apply.executeAt, version)
                    + CommandSerializers.deps.serializedSize(apply.deps, version)
                    + CommandSerializers.writes.serializedSize(apply.writes, version)
-                   + AccordData.serializer.serializedSize((AccordData) apply.result, version);
+                   + TxnData.serializer.serializedSize((TxnData) apply.result, version);
         }
     };
 
-    public static final IVersionedSerializer<Apply.ApplyOk> reply = new IVersionedSerializer<Apply.ApplyOk>()
+    public static final IVersionedSerializer<Apply.ApplyOk> reply = new IVersionedSerializer<>()
     {
         @Override
         public void serialize(Apply.ApplyOk t, DataOutputPlus out, int version) throws IOException

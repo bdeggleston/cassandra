@@ -27,6 +27,15 @@ options {
     private final List<ErrorListener> listeners = new ArrayList<ErrorListener>();
     protected final List<ColumnIdentifier> bindVariables = new ArrayList<ColumnIdentifier>();
 
+    // enables parsing txn specific syntax when true
+    protected boolean isParsingTxn = false;
+    // tracks whether a txn is using a full SELECT or referencing LET variables
+    protected boolean hasFullSelect = false;
+    // tracks whether a txn has conditional updates
+    protected boolean isTxnConditional = false;
+
+    protected List<ColumnReference.Raw> columnReferences;
+
     public static final Set<String> reservedTypeNames = new HashSet<String>()
     {{
         add("byte");
@@ -71,6 +80,19 @@ options {
         Json.Marker marker = new Json.Marker(bindVariables.size());
         bindVariables.add(name);
         return marker;
+    }
+
+    public ColumnReference.Raw newColumnReference(List<Term.Raw> terms)
+    {
+        if (!isParsingTxn)
+            throw new IllegalStateException();
+
+        if (columnReferences == null)
+            columnReferences = new ArrayList<>();
+
+        ColumnReference.Raw reference = new ColumnReference.Raw(terms);
+        columnReferences.add(reference);
+        return reference;
     }
 
     public void addErrorListener(ErrorListener listener)
@@ -136,14 +158,24 @@ options {
         return res;
     }
 
-    public void addRawUpdate(List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, Operation.RawUpdate update)
+    public void addRawUpdate(UpdateStatement.OperationCollector collector, ColumnIdentifier key, Operation.RawUpdate update)
     {
-        for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
-        {
-            if (p.left.equals(key) && !p.right.isCompatibleWith(update))
-                addRecognitionError("Multiple incompatible setting of column " + key);
-        }
-        operations.add(Pair.create(key, update));
+        if (collector.conflictsWithExistingUpdate(key, update))
+            addRecognitionError("Multiple incompatible setting of column " + key);
+        if (collector.conflictsWithExistingSubstitution(key, update))
+            addRecognitionError("Normal and reference operations for " + key);
+
+        collector.addRawUpdate(key, update);
+    }
+
+    public void addRawReferenceOperation(UpdateStatement.OperationCollector collector, ColumnIdentifier key, ReferenceOperation.Raw update)
+    {
+        if (collector.conflictsWithExistingUpdate(key, update))
+            addRecognitionError("Multiple incompatible setting of column " + key);
+        if (collector.conflictsWithExistingSubstitution(key, update))
+            addRecognitionError("Normal and reference operations for " + key);
+
+        collector.addRawReferenceOperation(key, update);
     }
 
     public Set<Permission> filterPermissions(Set<Permission> permissions, IResource resource)
@@ -247,6 +279,8 @@ cqlStatement returns [CQLStatement.Raw stmt]
     | st39=dropMaterializedViewStatement   { $stmt = st39; }
     | st40=alterMaterializedViewStatement  { $stmt = st40; }
     | st41=describeStatement               { $stmt = st41; }
+    | st42=batchTxnStatement               { $stmt = st42; }
+    | st43=letStatement                    { $stmt = st43; }
     ;
 
 /*
@@ -286,10 +320,38 @@ selectStatement returns [SelectStatement.RawStatement expr]
                                                                              groups,
                                                                              $sclause.isDistinct,
                                                                              allowFiltering,
-                                                                             isJson);
+                                                                             isJson,
+                                                                             null);
           WhereClause where = wclause == null ? WhereClause.empty() : wclause.build();
           $expr = new SelectStatement.RawStatement(cf, params, $sclause.selectors, where, limit, perPartitionLimit);
       }
+    ;
+    
+/**
+ * ex. LET x = (SELECT * FROM <table> WHERE k=1 AND c=2)
+ * ex. LET y = (SELECT * FROM <table> WHERE k=1 LIMIT 1)
+ */
+letStatement returns [SelectStatement.RawStatement expr]
+    @init {
+        Term.Raw limit = null;
+    }
+    : K_LET txnVar=IDENT '='
+      '(' K_SELECT assignments=letSelectors K_FROM cf=columnFamilyName K_WHERE wclause=whereClause ( K_LIMIT rows=intValue { limit = rows; } )? ')'
+      {
+          SelectStatement.Parameters params = new SelectStatement.Parameters(Collections.emptyMap(), Collections.emptyList(), false, false, false, $txnVar.text);
+          WhereClause where = wclause == null ? WhereClause.empty() : wclause.build();
+          $expr = new SelectStatement.RawStatement(cf, params, assignments, where, limit, null);
+      }
+    ;
+    
+letSelectors returns [List<RawSelector> expr]
+    : t1=letSelector { $expr = new ArrayList<RawSelector>(); $expr.add(t1); } (',' tN=letSelector { $expr.add(tN); })*
+    | '\*' { $expr = Collections.<RawSelector>emptyList();}
+    ;
+    
+letSelector returns [RawSelector s]
+    @init{ ColumnIdentifier alias = null; }
+    : us=unaliasedSelector { $s = new RawSelector(us, alias); }
     ;
 
 selectClause returns [boolean isDistinct, List<RawSelector> selectors]
@@ -484,17 +546,22 @@ normalInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsert e
     @init {
         Attributes.Raw attrs = new Attributes.Raw();
         List<ColumnIdentifier> columnNames  = new ArrayList<>();
-        List<Term.Raw> values = new ArrayList<>();
+        List<Object> values = new ArrayList<>();
         boolean ifNotExists = false;
     }
     : '(' c1=cident { columnNames.add(c1); }  ( ',' cn=cident { columnNames.add(cn); } )* ')'
       K_VALUES
-      '(' v1=term { values.add(v1); } ( ',' vn=term { values.add(vn); } )* ')'
+      '(' insertValue[values] ( ',' insertValue[values] )* ')'
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists);
+          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists, isParsingTxn, null);
       }
+    ;
+
+insertValue[List<Object> values]
+    : t=term { values.add(t); }
+    | r=columnReference { values.add(new ReferenceValue.Substitution.Raw(r)); }
     ;
 
 jsonInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsertJson expr]
@@ -508,7 +575,7 @@ jsonInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsertJson
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists);
+          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists, isParsingTxn, "");
       }
     ;
 
@@ -537,7 +604,7 @@ usingClauseObjective[Attributes.Raw attrs]
 updateStatement returns [UpdateStatement.ParsedUpdate expr]
     @init {
         Attributes.Raw attrs = new Attributes.Raw();
-        List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations = new ArrayList<>();
+        UpdateStatement.OperationCollector operations = new UpdateStatement.OperationCollector();
         boolean ifExists = false;
     }
     : K_UPDATE cf=columnFamilyName
@@ -551,7 +618,8 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                    operations,
                                                    wclause.build(),
                                                    conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                                   ifExists);
+                                                   ifExists,
+                                                   isParsingTxn);
      }
     ;
 
@@ -585,7 +653,8 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                              columnDeletions,
                                              wclause.build(),
                                              conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                             ifExists);
+                                             ifExists,
+                                             isParsingTxn);
       }
     ;
 
@@ -649,6 +718,78 @@ batchStatementObjective returns [ModificationStatement.Parsed statement]
     : i=insertStatement  { $statement = i; }
     | u=updateStatement  { $statement = u; }
     | d=deleteStatement  { $statement = d; }
+    ;
+
+/**
+ * ex. conditional update returning pre-update values
+ *
+ * BEGIN TRANSACTION
+ *   LET row1 = (SELECT * FROM <table> WHERE k=1 AND c=2);
+ *   LET row2 = (SELECT * FROM <table> WHERE k=2 AND c=2);
+ *   SELECT row1.v, row2.v;
+ *   IF row1.v = 3 AND row2.v=4 THEN
+ *     UPDATE <table> SET v=row1.v + 1 WHERE k=row1.k AND c=row1.c;
+ *   END IF
+ * COMMIT TRANSACTION
+ *
+ * ex. read-only transaction
+ * 
+ * BEGIN TRANSACTION
+ *   SELECT * FROM <table> WHERE k=1 AND c=2;
+ * COMMIT TRANSACTION
+ *
+ * ex. write-only transaction
+ * 
+ * BEGIN TRANSACTION
+ *   INSERT INTO <table> (k, c, v) VALUES (0, 0, 1);
+ * COMMIT TRANSACTION
+ */
+ batchTxnStatement returns [TransactionStatement.Parsed expr]
+    @init {
+        isParsingTxn = true;
+        List<SelectStatement.RawStatement> assignments = new ArrayList<>();
+        SelectStatement.RawStatement select = null;
+        List<ColumnReference.Raw> returning = null;
+        List<ModificationStatement.Parsed> updates = new ArrayList<>();
+    }
+    : K_BEGIN K_TRANSACTION
+      ( let=letStatement ';' { assignments.add(let); })*
+      ( ( s=selectStatement ';' { select = s; hasFullSelect = true; }) | ( {!hasFullSelect}? ( K_SELECT r=references ';' { returning = r; })) )?
+      ( K_IF conditions=txnConditions K_THEN { isTxnConditional = true; } )?
+      ( upd=batchStatementObjective ';' { updates.add(upd); } )*
+      ( {!isTxnConditional}? (K_COMMIT K_TRANSACTION) | {isTxnConditional}? (K_END K_IF K_COMMIT K_TRANSACTION))
+    {
+        $expr = new TransactionStatement.Parsed(assignments, select, returning, updates, conditions, columnReferences);
+    }
+    ;
+    finally { isParsingTxn = false; }
+
+references returns [List<ColumnReference.Raw> returning]
+    : r1=columnReference { returning = new ArrayList<ColumnReference.Raw>(); returning.add(r1); }
+      (',' rN=columnReference { returning.add(rN); })*
+    ;
+
+txnConditions returns [List<ConditionStatement.Raw> conditions]
+    @init { conditions = new ArrayList<ConditionStatement.Raw>(); }
+    : txnColumnCondition[conditions] ( K_AND txnColumnCondition[conditions] )*
+    ;
+
+txnConditionKind returns [ConditionStatement.Kind op]
+    : '='  { $op = ConditionStatement.Kind.EQ; }
+    | '<'  { $op = ConditionStatement.Kind.LT; }
+    | '<=' { $op = ConditionStatement.Kind.LTE; }
+    | '>'  { $op = ConditionStatement.Kind.GT; }
+    | '>=' { $op = ConditionStatement.Kind.GTE; }
+    | '!=' { $op = ConditionStatement.Kind.NEQ; }
+    ;
+
+txnColumnCondition[List<ConditionStatement.Raw> conditions]
+    : reference=columnReference
+        ( op=txnConditionKind t=term { conditions.add(new ConditionStatement.Raw(reference, op, t)); }
+        | op=txnConditionKind cr=columnReference { conditions.add(new ConditionStatement.Raw(reference, op, cr)); }
+        | K_IS K_NOT K_NULL { conditions.add(new ConditionStatement.Raw(reference, ConditionStatement.Kind.IS_NOT_NULL, null)); }
+        | K_IS K_NULL { conditions.add(new ConditionStatement.Raw(reference, ConditionStatement.Kind.IS_NULL, null)); }
+        )
     ;
 
 createAggregateStatement returns [CreateAggregateStatement.Raw stmt]
@@ -1597,18 +1738,36 @@ simpleTerm returns [Term.Raw term]
     | K_CAST '(' t=simpleTerm K_AS n=native_type ')' { $term = FunctionCall.Raw.newCast(t, n); }
     ;
 
-columnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations]
+columnReference returns [ColumnReference.Raw vterm]
+    @init { List<Term.Raw> terms = new ArrayList<>(2); }
+    @after { $vterm = newColumnReference(terms); }
+    : {isParsingTxn}?
+      (v1=IDENT { terms.add(Constants.Literal.string($v1.text)); }
+      ('.' v2=IDENT { terms.add(Constants.Literal.string($v2.text)); } )*)
+    ;
+
+termOrColumnRef returns [Term.Raw term]
+    : t=term            { $term = t; }
+    | c=columnReference { $term = c; }
+    ;
+
+columnOperation[UpdateStatement.OperationCollector operations]
     : key=cident columnOperationDifferentiator[operations, key]
     ;
 
-columnOperationDifferentiator[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+columnOperationDifferentiator[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : '=' normalColumnOperation[operations, key]
+    | '=' columnReferenceOperation[operations, key]
     | shorthandColumnOperation[operations, key]
     | '[' k=term ']' collectionColumnOperation[operations, key, k]
     | '.' field=fident udtColumnOperation[operations, key, field]
     ;
 
-normalColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+columnReferenceOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
+    : c=columnReference { addRawReferenceOperation(operations, key, new ReferenceOperation.Assignment.Raw(key, new ReferenceValue.Substitution.Raw(c))); }
+    ;
+
+normalColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : t=term ('+' c=cident )?
       {
           if (c == null)
@@ -1636,23 +1795,34 @@ normalColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operatio
               addRecognitionError("Only expressions of the form X = X " + ($i.text.charAt(0) == '-' ? '-' : '+') + " <value> are supported.");
           addRawUpdate(operations, key, new Operation.Addition(Constants.Literal.integer($i.text)));
       }
+      // TODO (accord): add column reference
     ;
 
-shorthandColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+shorthandColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : sig=('+=' | '-=') t=term
       {
-          addRawUpdate(operations, key, $sig.text.equals("+=") ? new Operation.Addition(t) : new Operation.Substraction(t));
+            if (isParsingTxn)
+            {
+                ReferenceValue.Raw left = new ReferenceValue.SelfReference(key);
+                ReferenceValue.Raw right = new ReferenceValue.Constant.Raw(t);
+                ReferenceValue.Raw operation = $sig.text.equals("+=") ? new ReferenceValue.Addition.Raw(left, right) : new ReferenceValue.Subtraction.Raw(left, right);
+                addRawReferenceOperation(operations, key, new ReferenceOperation.Assignment.Raw(key, operation));
+            }
+            else
+            {
+                addRawUpdate(operations, key, $sig.text.equals("+=") ? new Operation.Addition(t) : new Operation.Substraction(t));
+            }
       }
     ;
 
-collectionColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, Term.Raw k]
+collectionColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key, Term.Raw k]
     : '=' t=term
       {
           addRawUpdate(operations, key, new Operation.SetElement(k, t));
       }
     ;
 
-udtColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, FieldIdentifier field]
+udtColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key, FieldIdentifier field]
     : '=' t=term
       {
           addRawUpdate(operations, key, new Operation.SetField(field, t));

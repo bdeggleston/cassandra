@@ -36,12 +36,11 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordData;
-import org.apache.cassandra.utils.CounterId;
+import org.apache.cassandra.service.accord.txn.TxnData;
 
 public class RecoverySerializers
 {
-    public static final IVersionedSerializer<BeginRecovery> request = new TxnRequestSerializer<BeginRecovery>()
+    public static final IVersionedSerializer<BeginRecovery> request = new TxnRequestSerializer<>()
     {
         @Override
         public void serializeBody(BeginRecovery recover, DataOutputPlus out, int version) throws IOException
@@ -96,7 +95,7 @@ public class RecoverySerializers
                 CommandSerializers.writes.serialize(recoverOk.writes, out, version);
             out.writeBoolean(recoverOk.result != null);
             if (recoverOk.result != null)
-                AccordData.serializer.serialize((AccordData) recoverOk.result, out, version);
+                TxnData.serializer.serialize((TxnData) recoverOk.result, out, version);
         }
 
         @Override
@@ -142,7 +141,7 @@ public class RecoverySerializers
                                  CommandSerializers.deps.deserialize(in, version),
                                  in.readBoolean(),
                                  in.readBoolean() ? CommandSerializers.writes.deserialize(in, version) : null,
-                                 in.readBoolean() ? AccordData.serializer.deserialize(in, version) : null,
+                                 in.readBoolean() ? TxnData.serializer.deserialize(in, version) : null,
                                  in,
                                  version);
         }
@@ -167,7 +166,7 @@ public class RecoverySerializers
                 size += CommandSerializers.writes.serializedSize(recoverOk.writes, version);
             size += TypeSizes.sizeof(recoverOk.result != null);
             if (recoverOk.result != null)
-                size += AccordData.serializer.serializedSize((AccordData) recoverOk.result, version);
+                size += TxnData.serializer.serializedSize((TxnData) recoverOk.result, version);
             return size;
         }
 

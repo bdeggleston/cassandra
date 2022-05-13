@@ -23,7 +23,10 @@ import java.util.List;
 
 import org.apache.cassandra.cql3.functions.Function;
 import org.apache.cassandra.cql3.statements.StatementType;
+import org.apache.cassandra.cql3.transactions.ReferenceOperation;
+import org.apache.cassandra.schema.ColumnMetadata;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
 
 /**
@@ -46,6 +49,9 @@ public final class Operations implements Iterable<Operation>
      * The operations on static columns.
      */
     private final List<Operation> staticOperations = new ArrayList<>();
+
+    private final List<ReferenceOperation> regularSubstitutions = new ArrayList<>();
+    private final List<ReferenceOperation> staticSubstitutions = new ArrayList<>();
 
     public Operations(StatementType type)
     {
@@ -105,6 +111,14 @@ public final class Operations implements Iterable<Operation>
             regularOperations.add(operation);
     }
 
+    public void add(ColumnMetadata column, ReferenceOperation operation)
+    {
+        if (column.isStatic())
+            staticSubstitutions.add(operation);
+        else
+            regularSubstitutions.add(operation);
+    }
+
     /**
      * Checks if one of the operations requires a read.
      *
@@ -142,5 +156,15 @@ public final class Operations implements Iterable<Operation>
     {
         regularOperations.forEach(p -> p.addFunctionsTo(functions));
         staticOperations.forEach(p -> p.addFunctionsTo(functions));
+    }
+
+    public List<ReferenceOperation> regularSubstitutions()
+    {
+        return regularSubstitutions;
+    }
+
+    public List<ReferenceOperation> staticSubstitutions()
+    {
+        return staticSubstitutions;
     }
 }

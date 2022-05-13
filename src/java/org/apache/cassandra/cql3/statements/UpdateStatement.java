@@ -17,9 +17,13 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.audit.AuditLogEntryType;
@@ -27,6 +31,9 @@ import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.conditions.ColumnCondition;
 import org.apache.cassandra.cql3.conditions.Conditions;
 import org.apache.cassandra.cql3.restrictions.StatementRestrictions;
+import org.apache.cassandra.cql3.selection.Selection;
+import org.apache.cassandra.cql3.transactions.ReferenceOperation;
+import org.apache.cassandra.cql3.transactions.ReferenceValue;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.Slice;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -39,6 +46,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkContainsNoDuplicates;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
+import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
 
 /**
  * An <code>UPDATE</code> statement parsed from a CQL query statement.
@@ -46,6 +54,8 @@ import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse
  */
 public class UpdateStatement extends ModificationStatement
 {
+    public static final String UPDATING_PRIMARY_KEY_MESSAGE = "PRIMARY KEY part %s found in SET part";
+
     private static final Constants.Value EMPTY = new Constants.Value(ByteBufferUtil.EMPTY_BYTE_BUFFER);
 
     private UpdateStatement(StatementType type,
@@ -112,7 +122,7 @@ public class UpdateStatement extends ModificationStatement
     public static class ParsedInsert extends ModificationStatement.Parsed
     {
         private final List<ColumnIdentifier> columnNames;
-        private final List<Term.Raw> columnValues;
+        private final List<Object> columnValues;
 
         /**
          * A parsed <code>INSERT</code> statement.
@@ -126,10 +136,12 @@ public class UpdateStatement extends ModificationStatement
         public ParsedInsert(QualifiedName name,
                             Attributes.Raw attrs,
                             List<ColumnIdentifier> columnNames,
-                            List<Term.Raw> columnValues,
-                            boolean ifNotExists)
+                            List<Object> columnValues,
+                            boolean ifNotExists,
+                            boolean isForTxn,
+                            String txnReadName)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn, txnReadName);
             this.columnNames = columnNames;
             this.columnValues = columnValues;
         }
@@ -160,17 +172,29 @@ public class UpdateStatement extends ModificationStatement
                 if (def.isClusteringColumn())
                     hasClusteringColumnsSet = true;
 
-                Term.Raw value = columnValues.get(i);
+                Object value = columnValues.get(i);
 
                 if (def.isPrimaryKeyColumn())
                 {
-                    whereClause.add(new SingleColumnRelation(columnNames.get(i), Operator.EQ, value));
+                    checkTrue(value instanceof Term.Raw, "value references can't be used with primary key columns");
+                    whereClause.add(new SingleColumnRelation(columnNames.get(i), Operator.EQ, (Term.Raw) value));
+                }
+                else if (value instanceof Term.Raw)
+                {
+                    Operation operation = new Operation.SetValue((Term.Raw) value).prepare(metadata, def, !conditions.isEmpty());
+                    operation.collectMarkerSpecification(bindVariables);
+                    operations.add(operation);
+                }
+                else if (value instanceof ReferenceValue.Raw)
+                {
+                    ReferenceValue.Raw raw = (ReferenceValue.Raw) value;
+                    ReferenceValue referenceValue = raw.prepare(def, bindVariables);
+                    ReferenceOperation operation = new ReferenceOperation.Assignment(def, referenceValue);
+                    operations.add(def, operation);
                 }
                 else
                 {
-                    Operation operation = new Operation.SetValue(value).prepare(metadata, def, !conditions.isEmpty());
-                    operation.collectMarkerSpecification(bindVariables);
-                    operations.add(operation);
+                    throw new IllegalStateException();
                 }
             }
 
@@ -202,9 +226,9 @@ public class UpdateStatement extends ModificationStatement
         private final Json.Raw jsonValue;
         private final boolean defaultUnset;
 
-        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists)
+        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists, boolean isForTxn, String txnReadName)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn, txnReadName);
             this.jsonValue = jsonValue;
             this.defaultUnset = defaultUnset;
         }
@@ -262,10 +286,66 @@ public class UpdateStatement extends ModificationStatement
         }
     }
 
+    public static class OperationCollector
+    {
+        public final List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations = new ArrayList<>();
+        public final List<Pair<ColumnIdentifier, ReferenceOperation.Raw>> referenceOps = new ArrayList<>();
+
+        public boolean conflictsWithExistingUpdate(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
+            {
+                if (p.left.equals(column) && !p.right.isCompatibleWith(update))
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : referenceOps)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public void addRawUpdate(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            operations.add(Pair.create(column, update));
+        }
+
+        public boolean conflictsWithExistingUpdate(ColumnIdentifier column, ReferenceOperation.Raw update)
+        {
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, ReferenceOperation.Raw update)
+        {
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : referenceOps)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public void addRawReferenceOperation(ColumnIdentifier column, ReferenceOperation.Raw substitution)
+        {
+            referenceOps.add(Pair.create(column, substitution));
+        }
+    }
+
     public static class ParsedUpdate extends ModificationStatement.Parsed
     {
         // Provided for an UPDATE
-        private final List<Pair<ColumnIdentifier, Operation.RawUpdate>> updates;
+        private final OperationCollector updates;
         private final WhereClause whereClause;
 
         /**
@@ -280,12 +360,13 @@ public class UpdateStatement extends ModificationStatement
          * */
         public ParsedUpdate(QualifiedName name,
                             Attributes.Raw attrs,
-                            List<Pair<ColumnIdentifier, Operation.RawUpdate>> updates,
+                            OperationCollector updates,
                             WhereClause whereClause,
                             List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
-                            boolean ifExists)
+                            boolean ifExists,
+                            boolean isForTxn)
         {
-            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists);
+            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists, isForTxn, null);
             this.updates = updates;
             this.whereClause = whereClause;
         }
@@ -298,15 +379,24 @@ public class UpdateStatement extends ModificationStatement
         {
             Operations operations = new Operations(type);
 
-            for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates)
+            // TODO (accord) for txn, separate column references
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates.operations)
             {
                 ColumnMetadata def = metadata.getExistingColumn(entry.left);
-
-                checkFalse(def.isPrimaryKeyColumn(), "PRIMARY KEY part %s found in SET part", def.name);
-
+                checkFalse(def.isPrimaryKeyColumn(), UPDATING_PRIMARY_KEY_MESSAGE, def.name);
                 Operation operation = entry.right.prepare(metadata, def, !conditions.isEmpty());
                 operation.collectMarkerSpecification(bindVariables);
                 operations.add(operation);
+            }
+
+            Preconditions.checkState(updates.referenceOps.isEmpty() || isForTxn);
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> entry : updates.referenceOps)
+            {
+                ColumnMetadata def = metadata.getExistingColumn(entry.left);
+                checkFalse(def.isPrimaryKeyColumn(), UPDATING_PRIMARY_KEY_MESSAGE, def.name);
+                entry.right.setTableMetadata(metadata);
+                ReferenceOperation operation = entry.right.prepare(metadata, bindVariables);
+                operations.add(def, operation);
             }
 
             StatementRestrictions restrictions = newRestrictions(metadata,
@@ -323,6 +413,20 @@ public class UpdateStatement extends ModificationStatement
                                        conditions,
                                        attrs);
         }
+
+        @Override
+        public boolean hasSelfReference()
+        {
+            return super.hasSelfReference() || Iterables.any(updates.referenceOps, p -> p.right.hasSelfReference());
+        }
+
+        @Override
+        public void setSelfSourceName(String name)
+        {
+            super.setSelfSourceName(name);
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> pair : updates.referenceOps)
+                pair.right.setSelfSourceName(name);
+        }
     }
     
     @Override
@@ -335,5 +439,24 @@ public class UpdateStatement extends ModificationStatement
     public AuditLogContext getAuditLogContext()
     {
         return new AuditLogContext(AuditLogEntryType.UPDATE, keyspace(), table());
+    }
+
+    private static final Constants.Value ONE = new Constants.Value(ByteBufferUtil.bytes(1));
+
+    public SelectStatement createSelectForTxn()
+    {
+        // FIXME: get working with static-only updates that don't specify any/all primary key columns
+        Preconditions.checkState(getRestrictions().hasAllPKColumnsRestrictedByEqualities());
+        Selection selection = Selection.wildcard(metadata, false, true);
+        return new SelectStatement(metadata,
+                                   bindVariables,
+                                   SelectStatement.defaultParameters,
+                                   selection,
+                                   getRestrictions(),
+                                   false,
+                                   null,
+                                   null,
+                                   ONE,
+                                   null);
     }
 }
