@@ -135,6 +135,7 @@ public class TransactionStatement implements CQLStatement
             // TODO: confirm no custom timestamps
             for (int i=0, mi= selects.size(); i<mi; i++)
             {
+                // TODO: no multi partition reads
                 SelectStatement.RawStatement select = selects.get(i);
                 String name = select.parameters.refName;
                 if (name == null)
