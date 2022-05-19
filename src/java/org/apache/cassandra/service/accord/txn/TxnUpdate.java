@@ -103,7 +103,7 @@ public class TxnUpdate implements Update
             return TxnWrite.EMPTY;
 
         List<TxnWrite.Fragment> fragments = deserialize(serializedUpdates, TxnWrite.Fragment.serializer);
-        List<TxnWrite.Complete> updates = new ArrayList<>(fragments.size());
+        List<TxnWrite.Update> updates = new ArrayList<>(fragments.size());
         for (TxnWrite.Fragment fragment : fragments)
             updates.add(fragment.complete((TxnData) data));
 

@@ -49,23 +49,23 @@ import static org.apache.cassandra.service.accord.SerializationUtils.deserialize
 import static org.apache.cassandra.service.accord.SerializationUtils.partitionUpdateSerializer;
 import static org.apache.cassandra.service.accord.SerializationUtils.serializeArray;
 
-public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Write
+public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Write
 {
     public static final TxnWrite EMPTY = new TxnWrite(Collections.emptyList());
 
-    public static class Complete extends AbstractSerialized<PartitionUpdate>
+    public static class Update extends AbstractSerialized<PartitionUpdate>
     {
         public final PartitionKey key;
         public final int index;
 
-        public Complete(PartitionKey key, int index, PartitionUpdate update)
+        public Update(PartitionKey key, int index, PartitionUpdate update)
         {
             super(update);
             this.key = key;
             this.index = index;
         }
 
-        private Complete(PartitionKey key, int index, ByteBuffer bytes)
+        private Update(PartitionKey key, int index, ByteBuffer bytes)
         {
             super(bytes);
             this.key = key;
@@ -78,8 +78,8 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             if (!super.equals(o)) return false;
-            Complete complete = (Complete) o;
-            return index == complete.index && key.equals(complete.key);
+            Update update = (Update) o;
+            return index == update.index && key.equals(update.key);
         }
 
         @Override
@@ -111,10 +111,10 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
             return partitionUpdateSerializer;
         }
 
-        public static final IVersionedSerializer<Complete> serializer = new IVersionedSerializer<>()
+        public static final IVersionedSerializer<Update> serializer = new IVersionedSerializer<>()
         {
             @Override
-            public void serialize(Complete write, DataOutputPlus out, int version) throws IOException
+            public void serialize(Update write, DataOutputPlus out, int version) throws IOException
             {
                 PartitionKey.serializer.serialize(write.key, out, version);
                 out.writeInt(write.index);
@@ -123,16 +123,16 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
             }
 
             @Override
-            public Complete deserialize(DataInputPlus in, int version) throws IOException
+            public Update deserialize(DataInputPlus in, int version) throws IOException
             {
                 PartitionKey key = PartitionKey.serializer.deserialize(in, version);
                 int index = in.readInt();
                 ByteBuffer bytes = ByteBufferUtil.readWithVIntLength(in);
-                return new Complete(key, index, bytes);
+                return new Update(key, index, bytes);
             }
 
             @Override
-            public long serializedSize(Complete write, int version)
+            public long serializedSize(Update write, int version)
             {
                 long size = 0;
                 size += PartitionKey.serializer.serializedSize(write.key, version);
@@ -185,10 +185,10 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
                    '}';
         }
 
-        public Complete complete(TxnData data)
+        public Update complete(TxnData data)
         {
             // TODO: perform column reference substitution
-            return new Complete(key, index, baseUpdate);
+            return new Update(key, index, baseUpdate);
         }
 
         public static final IVersionedSerializer<Fragment> serializer = new IVersionedSerializer<>()
@@ -222,32 +222,32 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
         };
     }
 
-    private TxnWrite(Complete[] items)
+    private TxnWrite(Update[] items)
     {
         super(items);
     }
 
-    public TxnWrite(List<Complete> items)
+    public TxnWrite(List<Update> items)
     {
         super(items);
     }
 
     @Override
-    int compareNonKeyFields(Complete left, Complete right)
+    int compareNonKeyFields(Update left, Update right)
     {
         return Integer.compare(left.index, right.index);
     }
 
     @Override
-    PartitionKey getKey(Complete item)
+    PartitionKey getKey(Update item)
     {
         return item.key;
     }
 
     @Override
-    Complete[] newArray(int size)
+    Update[] newArray(int size)
     {
-        return new Complete[size];
+        return new Update[size];
     }
 
     @Override
@@ -274,19 +274,19 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Complete> implements Wr
         @Override
         public void serialize(TxnWrite write, DataOutputPlus out, int version) throws IOException
         {
-            serializeArray(write.items, out, version, Complete.serializer);
+            serializeArray(write.items, out, version, Update.serializer);
         }
 
         @Override
         public TxnWrite deserialize(DataInputPlus in, int version) throws IOException
         {
-            return new TxnWrite(deserializeArray(in, version, Complete.serializer, Complete[]::new));
+            return new TxnWrite(deserializeArray(in, version, Update.serializer, Update[]::new));
         }
 
         @Override
         public long serializedSize(TxnWrite write, int version)
         {
-            return SerializationUtils.serializedArraySize(write.items, version, Complete.serializer);
+            return SerializationUtils.serializedArraySize(write.items, version, Update.serializer);
         }
     };
 }
