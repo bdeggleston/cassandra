@@ -19,62 +19,71 @@
 package org.apache.cassandra.cql3;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.cql3.functions.Function;
+import org.apache.cassandra.cql3.selection.Selection;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.accord.txn.ValueReference;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkNotNull;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
 
 public class ColumnReference implements Term
 {
-    private final List<Term> terms;
-    private final SelectStatement select;
-    private final ColumnMetadata column;
+    private final String selectName;
+    private final Term rowIndex;
+    public final ColumnMetadata column;
 
-    public ColumnReference(List<Term> terms, SelectStatement select, ColumnMetadata column)
+    private final Term cellPath;
+    public ColumnReference(String selectName, Term rowIndex, ColumnMetadata column, Term cellPath)
     {
-        this.terms = terms;
-        this.select = select;
+        this.selectName = selectName;
+        this.rowIndex = rowIndex;
         this.column = column;
+        this.cellPath = cellPath;
     }
 
     @Override
     public void collectMarkerSpecification(VariableSpecifications boundNames)
     {
-        // TODO: this
+        if (rowIndex != null)
+            rowIndex.collectMarkerSpecification(boundNames);
+        if (cellPath != null)
+            cellPath.collectMarkerSpecification(boundNames);
     }
 
     @Override
     public Terminal bind(QueryOptions options) throws InvalidRequestException
     {
-        // TODO: this
-        return null;
+        throw new UnsupportedOperationException("TODO");
     }
 
     @Override
     public ByteBuffer bindAndGet(QueryOptions options) throws InvalidRequestException
     {
-        // TODO: this
-        return null;
+        throw new UnsupportedOperationException("TODO");
     }
 
     @Override
     public boolean containsBindMarker()
     {
-        // TODO: this
-        return false;
+        return rowIndex.containsBindMarker() || (cellPath != null && cellPath.containsBindMarker());
     }
 
     @Override
@@ -83,58 +92,111 @@ public class ColumnReference implements Term
         // TODO: this
     }
 
+    private int bindRowIndex(QueryOptions options)
+    {
+        return ByteBufferUtil.toInt(rowIndex.bindAndGet(options));
+    }
+
+    private CellPath bindCellPath(QueryOptions options)
+    {
+        return cellPath != null ? CellPath.create(cellPath.bindAndGet(options)) : null;
+    }
+
+    public ValueReference toValueReference(QueryOptions options)
+    {
+        Preconditions.checkArgument(cellPath == null);
+        return new ValueReference(selectName, bindRowIndex(options), column, bindCellPath(options));
+    }
+
     public static class Raw extends Term.Raw
     {
         private static final ColumnSpecification TEXT_TERM = new ColumnSpecification(null, null, null, UTF8Type.instance);
         private static final ColumnSpecification INT_TERM = new ColumnSpecification(null, null, null, Int32Type.instance);
+        private static final Constants.Value ROW_IDX_ZERO = new Constants.Value(ByteBufferUtil.bytes(0));
 
         private final List<Term.Raw> terms;
-        private List<Term> preparedTerms;
-
         private boolean isResolved = false;
+
+        private String selectName;
         private SelectStatement select;
         private ColumnMetadata column;
+        private Term rowIndex = null;
+        private Term cellPath = null;
 
         private ColumnReference prepared;
 
 
         public Raw(List<Term.Raw> terms)
         {
+            Preconditions.checkArgument(terms != null && !terms.isEmpty());
             this.terms = terms;
+        }
+
+        private void resolveFinished()
+        {
+            isResolved = true;
+            if (rowIndex == null)
+                rowIndex = ROW_IDX_ZERO;
         }
 
         public void resolveReference(Map<String, SelectStatement> selects)
         {
             if (isResolved)
                 return;
-            checkTrue(terms.size() > 1, "Incomplete column reference: %s", this);
+
 
             Constants.Literal literal;
-            preparedTerms = new ArrayList<>(terms.size());
+            Iterator<Term.Raw> termIterator = terms.iterator();
 
             // root level name
-            literal = (Constants.Literal) terms.get(0);
-            select = selects.get(literal.getRawText());
+            literal = (Constants.Literal) termIterator.next();
+            selectName = literal.getRawText();
+            select = selects.get(selectName);
             checkNotNull(select, "%s doesn't reference a select", this);
-            preparedTerms.add(literal.prepare(null, TEXT_TERM));
 
-            // TODO: also support multi-row result indexing here
-            // TODO: check if selection selects all primary key columns (and therefore returns a single row)... or always require use array indexing to keep it real
-            literal = (Constants.Literal) terms.get(1);
+            if (!termIterator.hasNext())
+            {
+                resolveFinished();
+                return;
+            }
+
+            TableMetadata metadata = select.table;
+            Selection selection = select.getSelection();
+
+            // check for single row select
+            Set<ColumnMetadata> selectedColumns = new HashSet<>(selection.getColumns());
+
+            if (!Iterables.all(metadata.primaryKeyColumns(), selectedColumns::contains))
+            {
+                if (true)
+                    throw new UnsupportedOperationException("TODO: support multi row selects");
+                if (!termIterator.hasNext())
+                {
+                    resolveFinished();
+                    return;
+                }
+            }
+            else
+            {
+                rowIndex = new Constants.Value(ByteBufferUtil.bytes(0));
+            }
+
+            literal = (Constants.Literal) termIterator.next();
             column = select.table.getColumn(new ColumnIdentifier(literal.getRawText(), true));
             checkNotNull(column, "%s doesn't reference a valid column", this);
-            preparedTerms.add(literal.prepare(null, TEXT_TERM));
 
-            checkTrue(select.getSelection().getColumns().contains(column), "%s refererences a column not included in the select", this);
+            checkTrue(selectedColumns.contains(column), "%s refererences a column not included in the select", this);
 
             // TODO: confirm update partition key terms don't contain column references. This can't be done in prepare
-            //   because there can be intermediate functions (ie: pk=row.v+1). Need a recursive Term visitor
+            //   because there can be intermediate functions (ie: pk=row.v+1 or pk=_add(row.v, 5)). Need a recursive Term visitor
 
-            if (terms.size() > 2)
+            if (!termIterator.hasNext())
             {
-                checkTrue(false, "TODO: support multiple rows, udts, etc");
+                resolveFinished();
+                return;
             }
-            isResolved = true;
+
+            throw new UnsupportedOperationException("TODO: support collections, udts, etc");
         }
 
         private void checkResolved()
@@ -157,7 +219,14 @@ public class ColumnReference implements Term
 
             if (!column.testAssignment(keyspace, receiver).isAssignable())
                 throw new InvalidRequestException(String.format("Invalid reference type %s (%s) for \"%s\" of type %s", column.type, column.name, receiver.name, receiver.type.asCQL3Type()));
-            prepared = new ColumnReference(preparedTerms, select, column);
+            prepared = new ColumnReference(selectName, rowIndex, column, cellPath);
+            return prepared;
+        }
+
+        public ColumnReference prepareAsReceiver()
+        {
+            checkResolved();
+            prepared = new ColumnReference(selectName, rowIndex, column, cellPath);
             return prepared;
         }
 
@@ -170,7 +239,7 @@ public class ColumnReference implements Term
         @Override
         public String getText()
         {
-            checkResolved();
+//            checkResolved();
             return terms.stream().map(Term.Raw::getText).reduce("", (l, r) -> l + '.' + r);
         }
 

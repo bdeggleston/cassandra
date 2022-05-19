@@ -19,6 +19,7 @@
 package org.apache.cassandra.service.accord.txn;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.service.accord.SerializationUtils;
@@ -42,6 +43,27 @@ public abstract class AbstractSerialized<T>
         this.memoized = value;
     }
 
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AbstractSerialized<?> that = (AbstractSerialized<?>) o;
+        return bytes.equals(that.bytes);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(bytes);
+    }
+
+    @Override
+    public String toString()
+    {
+        return get().toString();
+    }
+
     protected abstract IVersionedSerializer<T> serializer();
 
     protected T get()
@@ -49,5 +71,10 @@ public abstract class AbstractSerialized<T>
         if (memoized == null)
             memoized = SerializationUtils.deserialize(bytes, serializer());
         return memoized;
+    }
+
+    protected ByteBuffer bytes()
+    {
+        return bytes;
     }
 }

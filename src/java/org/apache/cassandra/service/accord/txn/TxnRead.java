@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.service.accord.txn;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +32,30 @@ import accord.api.Read;
 import accord.api.Store;
 import accord.local.CommandStore;
 import accord.txn.Timestamp;
+import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataInputPlus;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 
+import static org.apache.cassandra.service.accord.SerializationUtils.deserializeArray;
+import static org.apache.cassandra.service.accord.SerializationUtils.serializeArray;
+import static org.apache.cassandra.service.accord.SerializationUtils.serializedArraySize;
+
 public class TxnRead extends AbstractKeySorted<TxnNamedRead> implements Read
 {
     private final Map<String, TxnNamedRead> readsByName;
+
+    private static Map<String, TxnNamedRead> indexReads(TxnNamedRead[] reads)
+    {
+        Map<String, TxnNamedRead> index = Maps.newHashMapWithExpectedSize(reads.length);
+        for (TxnNamedRead read : reads)
+            if (index.put(read.name(), read) != null)
+                throw new IllegalArgumentException("More than one read is named " + read.name());
+        return index;
+    }
 
     public TxnRead(TxnNamedRead[] items)
     {
@@ -50,15 +67,6 @@ public class TxnRead extends AbstractKeySorted<TxnNamedRead> implements Read
     {
         super(items);
         this.readsByName = indexReads(this.items);
-    }
-
-    private static Map<String, TxnNamedRead> indexReads(TxnNamedRead[] reads)
-    {
-        Map<String, TxnNamedRead> index = Maps.newHashMapWithExpectedSize(reads.length);
-        for (TxnNamedRead read : reads)
-            if (index.put(read.name(), read) != null)
-                throw new IllegalArgumentException("More than one read is named " + read.name());
-        return index;
     }
 
     @Override
@@ -125,4 +133,25 @@ public class TxnRead extends AbstractKeySorted<TxnNamedRead> implements Read
                 trySuccess(result);
         }
     }
+
+    public static final IVersionedSerializer<TxnRead> serializer = new IVersionedSerializer<>()
+    {
+        @Override
+        public void serialize(TxnRead read, DataOutputPlus out, int version) throws IOException
+        {
+            serializeArray(read.items, out, version, TxnNamedRead.serializer);
+        }
+
+        @Override
+        public TxnRead deserialize(DataInputPlus in, int version) throws IOException
+        {
+            return new TxnRead(deserializeArray(in, version, TxnNamedRead.serializer, TxnNamedRead[]::new));
+        }
+
+        @Override
+        public long serializedSize(TxnRead read, int version)
+        {
+            return serializedArraySize(read.items, version, TxnNamedRead.serializer);
+        }
+    };
 }

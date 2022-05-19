@@ -22,13 +22,16 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import accord.txn.Txn;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.cql3.statements.TransactionStatement;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.accord.txn.TxnBuilder;
 
 import static org.apache.cassandra.cql3.statements.schema.CreateTableStatement.parse;
+import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
 
 public class TransactionStatementTest
 {
@@ -64,13 +67,25 @@ public class TransactionStatementTest
                        "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
                        "UPDATE ks.tbl1 SET v=1 WHERE k=1 AND c=2;\n" +
                        "COMMIT TRANSACTION IF\n" +
-                       "  row1.v = 3\n" +
+                       "  row1 EXISTS\n" +
+                       "  AND row1.v = 3\n" +
                        "  AND row2.v=4;";
+
+        Txn expected = TxnBuilder.builder()
+                                 .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
+                                 .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2")
+                                 .withWrite("UPDATE ks.tbl1 SET v=1 WHERE k=1 AND c=2")
+                                 .withExistsCondition("row1", 0, null)
+                                 .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
+                                 .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
+                                 .build();
 
         TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
         Assert.assertNotNull(parsed);
         TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
-        // TODO: test stuff
+        Txn actual = statement.createTxn(QueryOptions.DEFAULT);
+
+        Assert.assertEquals(expected, actual);
     }
 
     @Test

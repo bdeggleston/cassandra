@@ -22,8 +22,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntFunction;
 
+import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.db.rows.DeserializationHelper;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -78,6 +82,54 @@ public class SerializationUtils
         return result;
     }
 
+    public static <T> void serializeArray(T[] items, DataOutputPlus out, int version, IVersionedSerializer<T> serializer) throws IOException
+    {
+        out.writeInt(items.length);
+        for (T item : items)
+            serializer.serialize(item, out, version);
+    }
+
+    public static <T> T[] deserializeArray(DataInputPlus in, int version, IVersionedSerializer<T> serializer, IntFunction<T[]> arrayFactory) throws IOException
+    {
+        int size = in.readInt();
+        T[] items = arrayFactory.apply(size);
+        for (int i=0; i<size; i++)
+            items[i] = serializer.deserialize(in, version);
+        return items;
+    }
+
+    public static <T> long serializedArraySize(T[] array, int version, IVersionedSerializer<T> serializer)
+    {
+        long size = TypeSizes.INT_SIZE;
+        for (T item : array)
+            size += serializer.serializedSize(item, version);
+        return size;
+    }
+
+    public static <T> void serializeList(List<T> items, DataOutputPlus out, int version, IVersionedSerializer<T> serializer) throws IOException
+    {
+        out.writeInt(items.size());
+        for (int i=0, mi=items.size(); i<mi; i++)
+            serializer.serialize(items.get(i), out, version);
+    }
+
+    public static <T> List<T> deserializeList(DataInputPlus in, int version, IVersionedSerializer<T> serializer) throws IOException
+    {
+        int size = in.readInt();
+        List<T> items = new ArrayList<>(size);
+        for (int i=0; i<size; i++)
+            items.add(serializer.deserialize(in, version));
+        return items;
+    }
+
+    public static <T> long serializedListSize(List<T> items, int version, IVersionedSerializer<T> serializer)
+    {
+        long size = TypeSizes.INT_SIZE;
+        for (int i=0, mi=items.size(); i<mi; i++)
+            size += serializer.serializedSize(items.get(i), version);
+        return size;
+    }
+
     public static <T> IVersionedSerializer<T> todoSerializer()
     {
         return new IVersionedSerializer<T>()
@@ -101,4 +153,46 @@ public class SerializationUtils
             }
         };
     }
+
+    public static final IVersionedSerializer<PartitionUpdate> partitionUpdateSerializer = new IVersionedSerializer<PartitionUpdate>()
+    {
+        @Override
+        public void serialize(PartitionUpdate upd, DataOutputPlus out, int version) throws IOException
+        {
+            PartitionUpdate.serializer.serialize(upd, out, version);
+        }
+
+        @Override
+        public PartitionUpdate deserialize(DataInputPlus in, int version) throws IOException
+        {
+            return PartitionUpdate.serializer.deserialize(in, version, DeserializationHelper.Flag.FROM_REMOTE);
+        }
+
+        @Override
+        public long serializedSize(PartitionUpdate upd, int version)
+        {
+            return PartitionUpdate.serializer.serializedSize(upd, version);
+        }
+    };
+
+    public static final IVersionedSerializer<SinglePartitionReadCommand> singlePartitionReadCommandSerializer = new IVersionedSerializer<>()
+    {
+        @Override
+        public void serialize(SinglePartitionReadCommand command, DataOutputPlus out, int version) throws IOException
+        {
+            SinglePartitionReadCommand.serializer.serialize(command, out, version);
+        }
+
+        @Override
+        public SinglePartitionReadCommand deserialize(DataInputPlus in, int version) throws IOException
+        {
+            return (SinglePartitionReadCommand) SinglePartitionReadCommand.serializer.deserialize(in, version);
+        }
+
+        @Override
+        public long serializedSize(SinglePartitionReadCommand command, int version)
+        {
+            return SinglePartitionReadCommand.serializer.serializedSize(command, version);
+        }
+    };
 }

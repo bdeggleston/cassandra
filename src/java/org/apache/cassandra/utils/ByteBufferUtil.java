@@ -34,6 +34,7 @@ import java.util.UUID;
 
 import net.nicoulaj.compilecommand.annotations.Inline;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.compress.BufferType;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -867,4 +868,25 @@ public class ByteBufferUtil
 
         return true;
     }
+
+    public static final IVersionedSerializer<ByteBuffer> vintSerializer = new IVersionedSerializer<ByteBuffer>()
+    {
+        @Override
+        public void serialize(ByteBuffer bytes, DataOutputPlus out, int version) throws IOException
+        {
+            writeWithVIntLength(bytes, out);
+        }
+
+        @Override
+        public ByteBuffer deserialize(DataInputPlus in, int version) throws IOException
+        {
+            return readWithVIntLength(in);
+        }
+
+        @Override
+        public long serializedSize(ByteBuffer bytes, int version)
+        {
+            return serializedSizeWithVIntLength(bytes);
+        }
+    };
 }

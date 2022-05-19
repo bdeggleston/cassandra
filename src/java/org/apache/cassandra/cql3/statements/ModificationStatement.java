@@ -695,6 +695,13 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         return collector.toMutations();
     }
 
+    public PartitionUpdate getTxnUpdate(QueryOptions options)
+    {
+        // TODO: restrict to a single key and extract column references
+        IMutation mutation = Iterables.getOnlyElement(getMutations(options, false, 0, 0, 0));
+        return Iterables.getOnlyElement(mutation.getPartitionUpdates());
+    }
+
     final void addUpdates(UpdatesCollector collector,
                           List<ByteBuffer> keys,
                           QueryOptions options,

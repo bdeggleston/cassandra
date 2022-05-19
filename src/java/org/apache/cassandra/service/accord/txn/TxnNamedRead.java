@@ -20,6 +20,7 @@ package org.apache.cassandra.service.accord.txn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import accord.api.Data;
 import accord.local.CommandStore;
@@ -27,6 +28,7 @@ import accord.txn.Timestamp;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.partitions.FilteredPartition;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.partitions.PartitionIterators;
@@ -40,12 +42,17 @@ import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 import org.apache.cassandra.utils.concurrent.Future;
 
+import static org.apache.cassandra.service.accord.SerializationUtils.singlePartitionReadCommandSerializer;
+import static org.apache.cassandra.utils.ByteBufferUtil.readWithVIntLength;
+import static org.apache.cassandra.utils.ByteBufferUtil.serializedSizeWithVIntLength;
+import static org.apache.cassandra.utils.ByteBufferUtil.writeWithVIntLength;
+
 public class TxnNamedRead extends AbstractSerialized<SinglePartitionReadCommand>
 {
     private final String name;
     private final PartitionKey key;
 
-    public TxnNamedRead(String name, PartitionKey key, ByteBuffer bytes)
+    private TxnNamedRead(String name, PartitionKey key, ByteBuffer bytes)
     {
         super(bytes);
         this.name = name;
@@ -62,7 +69,33 @@ public class TxnNamedRead extends AbstractSerialized<SinglePartitionReadCommand>
     @Override
     protected IVersionedSerializer<SinglePartitionReadCommand> serializer()
     {
-        return serializer;
+        return singlePartitionReadCommandSerializer;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        TxnNamedRead namedRead = (TxnNamedRead) o;
+        return name.equals(namedRead.name) && key.equals(namedRead.key);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(super.hashCode(), name, key);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "TxnNamedRead{" +
+               "name='" + name + '\'' +
+               ", key=" + key +
+               ", update=" + get() +
+               '}';
     }
 
     public String name()
@@ -97,24 +130,33 @@ public class TxnNamedRead extends AbstractSerialized<SinglePartitionReadCommand>
         return future;
     }
 
-    private static final IVersionedSerializer<SinglePartitionReadCommand> serializer = new IVersionedSerializer<SinglePartitionReadCommand>()
+    public static final IVersionedSerializer<TxnNamedRead> serializer = new IVersionedSerializer<>()
     {
         @Override
-        public void serialize(SinglePartitionReadCommand command, DataOutputPlus out, int version) throws IOException
+        public void serialize(TxnNamedRead read, DataOutputPlus out, int version) throws IOException
         {
-            SinglePartitionReadCommand.serializer.serialize(command, out, version);
+            out.writeUTF(read.name);
+            PartitionKey.serializer.serialize(read.key, out, version);
+            writeWithVIntLength(read.bytes(), out);
         }
 
         @Override
-        public SinglePartitionReadCommand deserialize(DataInputPlus in, int version) throws IOException
+        public TxnNamedRead deserialize(DataInputPlus in, int version) throws IOException
         {
-            return (SinglePartitionReadCommand) SinglePartitionReadCommand.serializer.deserialize(in, version);
+            String name = in.readUTF();
+            PartitionKey key = PartitionKey.serializer.deserialize(in, version);
+            ByteBuffer bytes = readWithVIntLength(in);
+            return new TxnNamedRead(name, key, bytes);
         }
 
         @Override
-        public long serializedSize(SinglePartitionReadCommand command, int version)
+        public long serializedSize(TxnNamedRead read, int version)
         {
-            return SinglePartitionReadCommand.serializer.serializedSize(command, version);
+            long size = 0;
+            size += TypeSizes.sizeof(read.name);
+            size += PartitionKey.serializer.serializedSize(read.key, version);
+            size += serializedSizeWithVIntLength(read.bytes());
+            return size;
         }
     };
 }

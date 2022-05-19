@@ -18,11 +18,23 @@
 
 package org.apache.cassandra.service.accord.txn;
 
+import java.io.IOException;
+import java.util.Objects;
+
+import com.google.common.base.Preconditions;
+
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.partitions.FilteredPartition;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.db.rows.Row;
+import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataInputPlus;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ValueReference
 {
@@ -42,6 +54,36 @@ public class ValueReference
     public ValueReference(String name, int rowIdx, ColumnMetadata column)
     {
         this(name, rowIdx, column, null);
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ValueReference reference = (ValueReference) o;
+        return rowIdx == reference.rowIdx && name.equals(reference.name) && Objects.equals(column, reference.column) && Objects.equals(path, reference.path);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(name, rowIdx, column, path);
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder("REF:").append(name);
+        if (column != null)
+            sb.append(':').append(column.ksName).append('.').append(column.cfName).append('.').append(column.name.toString());
+
+        sb.append('[').append(Integer.toString(rowIdx)).append(']');
+
+        if (path != null)
+            sb.append(path);
+
+        return sb.toString();
     }
 
     public ColumnMetadata column()
@@ -99,4 +141,57 @@ public class ValueReference
         Row row = getRow(data);
         return row != null ? getCell(row) : null;
     }
+
+    public static final IVersionedSerializer<ValueReference> serializer = new IVersionedSerializer<>()
+    {
+        @Override
+        public void serialize(ValueReference reference, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeUTF(reference.name);
+            out.writeInt(reference.rowIdx);
+            out.writeBoolean(reference.column != null);
+            if (reference.column != null)
+            {
+                out.writeUTF(reference.column.ksName);
+                out.writeUTF(reference.column.cfName);
+                ByteBufferUtil.writeWithShortLength(reference.column.name.bytes, out);
+            }
+            // TODO: serialize path
+            Preconditions.checkArgument(reference.path == null);
+        }
+
+        @Override
+        public ValueReference deserialize(DataInputPlus in, int version) throws IOException
+        {
+            String name = in.readUTF();
+            int rowIdx = in.readInt();
+            ColumnMetadata column = null;
+            if (in.readBoolean())
+            {
+                String ksName = in.readUTF();
+                String cfName = in.readUTF();
+                TableMetadata metadata = Schema.instance.getTableMetadata(ksName, cfName);
+                column = metadata.getColumn(ByteBufferUtil.readWithShortLength(in));
+            }
+            // TODO: serialize path
+            return new ValueReference(name, rowIdx, column, null);
+        }
+
+        @Override
+        public long serializedSize(ValueReference reference, int version)
+        {
+            long size = 0;
+            size += TypeSizes.sizeof(reference.name);
+            size += TypeSizes.INT_SIZE;
+            size += TypeSizes.BOOL_SIZE;
+            if (reference.column != null)
+            {
+                size += TypeSizes.sizeof(reference.column.ksName);
+                size += TypeSizes.sizeof(reference.column.cfName);
+                size += ByteBufferUtil.serializedSizeWithShortLength(reference.column.name.bytes);
+            }
+            // TODO: serialize path
+            return size;
+        }
+    };
 }

@@ -30,9 +30,6 @@ options {
     // enables parsing txn specific syntax when true
     protected boolean isParsingTxn = false;
 
-    // disables txn terms in the where clause for select statements
-    protected boolean isParsingSelect = false;
-
     protected List<ColumnReference.Raw> columnReferences;
 
     public static final Set<String> reservedTypeNames = new HashSet<String>()
@@ -83,7 +80,7 @@ options {
 
     public ColumnReference.Raw newColumnReference(List<Term.Raw> terms)
     {
-        if (!isParsingTxn || isParsingSelect)
+        if (!isParsingTxn)
             throw new IllegalStateException();
 
         if (columnReferences == null)
@@ -286,7 +283,6 @@ useStatement returns [UseStatement stmt]
  */
 selectStatement returns [SelectStatement.RawStatement expr]
     @init {
-        isParsingSelect = true;
         Term.Raw limit = null;
         Term.Raw perPartitionLimit = null;
         Map<ColumnIdentifier, Boolean> orderings = new LinkedHashMap<>();
@@ -317,7 +313,6 @@ selectStatement returns [SelectStatement.RawStatement expr]
           $expr = new SelectStatement.RawStatement(cf, params, $sclause.selectors, where, limit, perPartitionLimit);
       }
     ;
-    finally { isParsingSelect = false; }
 
 selectClause returns [boolean isDistinct, List<RawSelector> selectors]
     @init{ $isDistinct = false; }
@@ -516,6 +511,7 @@ normalInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsert e
     : '(' c1=cident { columnNames.add(c1); }  ( ',' cn=cident { columnNames.add(cn); } )* ')'
       K_VALUES
       '(' v1=term { values.add(v1); } ( ',' vn=term { values.add(vn); } )* ')'
+      // TODO (accord): add column reference
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
@@ -695,12 +691,36 @@ batchStatementObjective returns [ModificationStatement.Parsed statement]
     : K_BEGIN K_TRANSACTION ';'
         (sel=selectStatement ';' { selects.add(sel); })*
         (upd=batchStatementObjective ';' { updates.add(upd); })*
-    K_COMMIT K_TRANSACTION ( K_IF conditions=updateConditions )? ';'
+    K_COMMIT K_TRANSACTION ( K_IF conditions=txnConditions )? ';'
     {
         $expr = new TransactionStatement.Parsed(selects, updates, conditions, columnReferences);
     }
     ;
     finally { isParsingTxn = false; }
+
+txnConditions returns [List<UpdateCondition.Raw> conditions]
+    @init { conditions = new ArrayList<UpdateCondition.Raw>(); }
+    : txnColumnCondition[conditions] ( K_AND txnColumnCondition[conditions] )*
+    ;
+
+txnConditionKind returns [UpdateCondition.Kind op]
+    : '='  { $op = UpdateCondition.Kind.EQ; }
+    | '<'  { $op = UpdateCondition.Kind.LT; }
+    | '<=' { $op = UpdateCondition.Kind.LTE; }
+    | '>'  { $op = UpdateCondition.Kind.GT; }
+    | '>=' { $op = UpdateCondition.Kind.GTE; }
+    | '!=' { $op = UpdateCondition.Kind.NEQ; }
+    ;
+
+txnColumnCondition[List<UpdateCondition.Raw> conditions]
+    : reference=columnReference
+        ( op=txnConditionKind t=term { conditions.add(new UpdateCondition.Raw(reference, op, t)); }
+        | op=txnConditionKind cr=columnReference { conditions.add(new UpdateCondition.Raw(reference, op, cr)); }
+        | K_EXISTS { conditions.add(new UpdateCondition.Raw(reference, UpdateCondition.Kind.EXISTS, null)); }
+        | K_NOT K_EXISTS { conditions.add(new UpdateCondition.Raw(reference, UpdateCondition.Kind.NOT_EXISTS, null)); }
+        )
+    ;
+
 
 createAggregateStatement returns [CreateAggregateStatement.Raw stmt]
     @init {
@@ -1535,14 +1555,6 @@ usertypeLiteral returns [UserTypes.Literal ut]
     : '{' k1=fident ':' v1=term { m.put(k1, v1); } ( ',' kn=fident ':' vn=term { m.put(kn, vn); } )* '}'
     ;
 
-txnVarLiteral returns [ColumnReference.Raw vterm]
-    @init { List<Term.Raw> terms = new ArrayList<>(2); }
-    @after { $vterm = newColumnReference(terms); }
-    : {isParsingTxn && !isParsingSelect}?
-      (v1=IDENT { terms.add(Constants.Literal.string($v1.text)); }
-      ('.' v2=IDENT { terms.add(Constants.Literal.string($v2.text)); } )+)
-    ;
-
 tupleLiteral returns [Tuples.Literal tt]
     @init{ List<Term.Raw> l = new ArrayList<Term.Raw>(); }
     @after{ $tt = new Tuples.Literal(l); }
@@ -1615,10 +1627,17 @@ termGroup returns [Term.Raw term]
 
 simpleTerm returns [Term.Raw term]
     : v=value                                        { $term = v; }
-    | vt=txnVarLiteral                               { $term = vt; }
     | f=function                                     { $term = f; }
     | '(' c=comparatorType ')' t=simpleTerm          { $term = new TypeCast(c, t); }
     | K_CAST '(' t=simpleTerm K_AS n=native_type ')' { $term = FunctionCall.Raw.newCast(t, n); }
+    ;
+
+columnReference returns [ColumnReference.Raw vterm]
+    @init { List<Term.Raw> terms = new ArrayList<>(2); }
+    @after { $vterm = newColumnReference(terms); }
+    : {isParsingTxn}?
+      (v1=IDENT { terms.add(Constants.Literal.string($v1.text)); }
+      ('.' v2=IDENT { terms.add(Constants.Literal.string($v2.text)); } )*)
     ;
 
 columnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations]
@@ -1660,6 +1679,7 @@ normalColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operatio
               addRecognitionError("Only expressions of the form X = X " + ($i.text.charAt(0) == '-' ? '-' : '+') + " <value> are supported.");
           addRawUpdate(operations, key, new Operation.Addition(Constants.Literal.integer($i.text)));
       }
+      // TODO (accord): add column reference
     ;
 
 shorthandColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]

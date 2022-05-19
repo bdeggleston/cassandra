@@ -19,23 +19,41 @@
 package org.apache.cassandra.cql3.statements;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
+
+import accord.api.Key;
+import accord.txn.Keys;
+import accord.txn.Txn;
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.cql3.CQLStatement;
-import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.ColumnReference;
 import org.apache.cassandra.cql3.QueryOptions;
-import org.apache.cassandra.cql3.conditions.ColumnCondition;
+import org.apache.cassandra.cql3.transactions.UpdateCondition;
+import org.apache.cassandra.db.ReadQuery;
+import org.apache.cassandra.db.SinglePartitionReadCommand;
+import org.apache.cassandra.db.SinglePartitionReadQuery;
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.service.accord.api.AccordKey;
+import org.apache.cassandra.service.accord.txn.TxnCondition;
+import org.apache.cassandra.service.accord.txn.TxnNamedRead;
+import org.apache.cassandra.service.accord.txn.TxnQuery;
+import org.apache.cassandra.service.accord.txn.TxnRead;
+import org.apache.cassandra.service.accord.txn.TxnUpdate;
+import org.apache.cassandra.service.accord.txn.TxnWrite;
 import org.apache.cassandra.transport.messages.ResultMessage;
-import org.apache.cassandra.utils.Pair;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
@@ -57,14 +75,15 @@ public class TransactionStatement implements CQLStatement
     private final List<NamedSelect> selects;
     private final List<ModificationStatement> updates;
     private final List<ColumnReference> columnReferences;
+    private final List<UpdateCondition> conditions;
 
-    public TransactionStatement(List<NamedSelect> selects, List<ModificationStatement> updates, List<ColumnReference> columnReferences)
+    public TransactionStatement(List<NamedSelect> selects, List<ModificationStatement> updates, List<ColumnReference> columnReferences, List<UpdateCondition> conditions)
     {
         this.selects = selects;
         this.updates = updates;
         this.columnReferences = columnReferences;
+        this.conditions = conditions;
     }
-
 
     @Override
     public void authorize(ClientState state)
@@ -76,6 +95,89 @@ public class TransactionStatement implements CQLStatement
     public void validate(ClientState state)
     {
         // TODO: this
+    }
+
+    TxnNamedRead createNamedRead(NamedSelect namedSelect, QueryOptions options)
+    {
+        SelectStatement select = namedSelect.select;
+        ReadQuery readQuery = select.getQuery(options, 0);
+        SinglePartitionReadQuery.Group<SinglePartitionReadCommand> selectQuery = (SinglePartitionReadQuery.Group<SinglePartitionReadCommand>) readQuery;
+        return new TxnNamedRead(namedSelect.name, Iterables.getOnlyElement(selectQuery.queries));
+    }
+
+    TxnRead createRead(QueryOptions options, Consumer<Key> keyConsumer)
+    {
+        List<TxnNamedRead> reads = new ArrayList<>(selects.size());
+        for (NamedSelect select : selects)
+        {
+            TxnNamedRead read = createNamedRead(select, options);
+            keyConsumer.accept(read.key());
+            reads.add(read);
+        }
+        return new TxnRead(reads);
+    }
+
+    TxnCondition createCondition(QueryOptions options)
+    {
+        if (conditions.isEmpty())
+            return TxnCondition.NONE;
+        if (conditions.size() == 1)
+            return conditions.get(0).createCondition(options);
+
+        List<TxnCondition> result = new ArrayList<>(conditions.size());
+        for (UpdateCondition condition : conditions)
+            result.add(condition.createCondition(options));
+
+        return new TxnCondition.BooleanGroup(TxnCondition.Kind.AND, result);
+    }
+
+    TxnWrite.Fragment createWriteFragment(int index, ModificationStatement modification, QueryOptions options)
+    {
+        PartitionUpdate update = modification.getTxnUpdate(options);
+        return new TxnWrite.Fragment(AccordKey.of(update), index, update);
+    }
+
+    List<TxnWrite.Fragment> createWriteFragments(QueryOptions options, Consumer<Key> keyConsumer)
+    {
+        List<TxnWrite.Fragment> fragments = new ArrayList<>(updates.size());
+        int idx = 0;
+        for (ModificationStatement modification : updates)
+        {
+            TxnWrite.Fragment fragment = createWriteFragment(idx++, modification, options);
+            keyConsumer.accept(fragment.key);
+            fragments.add(fragment);
+        }
+        return fragments;
+    }
+
+    TxnUpdate createUpdate(QueryOptions options, Consumer<Key> keyConsumer)
+    {
+        return new TxnUpdate(createWriteFragments(options, keyConsumer), createCondition(options));
+    }
+
+    Keys toKeys(Set<Key> keySet)
+    {
+        Key[] keyArray = new Key[keySet.size()];
+        keySet.toArray(keyArray);
+        Arrays.sort(keyArray);
+        return new Keys(keyArray);
+    }
+
+    @VisibleForTesting
+    public Txn createTxn(QueryOptions options)
+    {
+        Set<Key> keySet = new HashSet<>();
+        TxnRead read = createRead(options, keySet::add);
+        if (updates.isEmpty())
+        {
+            Preconditions.checkState(conditions.isEmpty());
+            return new Txn.InMemory(toKeys(keySet), read, TxnQuery.ALL);
+        }
+        else
+        {
+            TxnUpdate update = createUpdate(options, keySet::add);
+            return new Txn.InMemory(toKeys(keySet), read, TxnQuery.ALL, update);
+        }
     }
 
     @Override
@@ -103,10 +205,10 @@ public class TransactionStatement implements CQLStatement
     {
         private final List<SelectStatement.RawStatement> selects;
         private final List<ModificationStatement.Parsed> updates;
-        private final List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions;
+        private final List<UpdateCondition.Raw> conditions;
         private final List<ColumnReference.Raw> columnReferences;
 
-        public Parsed(List<SelectStatement.RawStatement> selects, List<ModificationStatement.Parsed> updates, List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions, List<ColumnReference.Raw> columnReferences)
+        public Parsed(List<SelectStatement.RawStatement> selects, List<ModificationStatement.Parsed> updates, List<UpdateCondition.Raw> conditions, List<ColumnReference.Raw> columnReferences)
         {
             super(null);
             this.selects = selects;
@@ -159,6 +261,11 @@ public class TransactionStatement implements CQLStatement
                 // TODO: visit where clause terms and confirm they're not column references
                 preparedUpdates.add(prepared);
             }
+
+            List<UpdateCondition> preparedConditions = new ArrayList<>(conditions.size());
+            for (UpdateCondition.Raw condition : conditions)
+                preparedConditions.add(condition.prepare("[txn]", bindVariables));
+
             // TODO: instead of materializing partition updates after select statement execution, maybe we could materialize
             //   them without column references, and have the select statements materialize those parts. Tricky part would
             //   be preserving functions... but maybe those could be serialized without literally everything else??
@@ -168,7 +275,7 @@ public class TransactionStatement implements CQLStatement
                 preparedReferences.add(reference.prepared());
 
 
-            return new TransactionStatement(preparedSelects, preparedUpdates, preparedReferences);
+            return new TransactionStatement(preparedSelects, preparedUpdates, preparedReferences, preparedConditions);
         }
     }
 }
