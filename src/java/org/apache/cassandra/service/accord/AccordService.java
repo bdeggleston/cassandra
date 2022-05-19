@@ -18,17 +18,26 @@
 
 package org.apache.cassandra.service.accord;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import accord.api.Result;
 import accord.local.Node;
 import accord.messages.Reply;
 import accord.messages.Request;
+import accord.txn.Txn;
+import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.service.accord.api.AccordAgent;
 import org.apache.cassandra.service.accord.api.AccordScheduler;
+import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.concurrent.Future;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 public class AccordService
 {
@@ -82,6 +91,28 @@ public class AccordService
     {
         return TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
     }
+
+    public TxnData coordinate(Txn txn)
+    {
+        try
+        {
+            Future<Result> future = node.coordinate(txn);
+            Result result = future.get(2, TimeUnit.SECONDS);
+            return (TxnData) result;
+        }
+        catch (ExecutionException e)
+        {
+            throw new RuntimeException(e);
+        }
+        catch (InterruptedException e)
+        {
+            throw new UncheckedInterruptedException(e);
+        }
+        catch (TimeoutException e)
+        {
+            throw new ReadTimeoutException(ConsistencyLevel.ANY, 0, 0, false);
+        }
+    };
 
     @VisibleForTesting
     AccordMessageSink messageSink()

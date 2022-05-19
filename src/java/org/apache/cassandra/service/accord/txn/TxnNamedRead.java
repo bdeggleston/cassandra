@@ -39,6 +39,8 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.accord.AccordCommandsForKey;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
+import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 import org.apache.cassandra.utils.concurrent.Future;
 
@@ -49,6 +51,7 @@ import static org.apache.cassandra.utils.ByteBufferUtil.writeWithVIntLength;
 
 public class TxnNamedRead extends AbstractSerialized<SinglePartitionReadCommand>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new TxnNamedRead("", null, null));
     private final String name;
     private final PartitionKey key;
 
@@ -64,6 +67,11 @@ public class TxnNamedRead extends AbstractSerialized<SinglePartitionReadCommand>
         super(value);
         this.name = name;
         this.key = new PartitionKey(value.metadata().id, value.partitionKey());
+    }
+
+    public long estimatedSizeOnHeap()
+    {
+        return EMPTY_SIZE + name.length() + key.estimatedSizeOnHeap() + ByteBufferUtil.estimatedSizeOnHeap(bytes());
     }
 
     @Override

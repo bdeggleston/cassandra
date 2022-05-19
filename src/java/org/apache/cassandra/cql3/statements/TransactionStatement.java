@@ -46,6 +46,7 @@ import org.apache.cassandra.db.SinglePartitionReadQuery;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.txn.TxnCondition;
 import org.apache.cassandra.service.accord.txn.TxnNamedRead;
@@ -183,8 +184,7 @@ public class TransactionStatement implements CQLStatement
     @Override
     public ResultMessage execute(QueryState state, QueryOptions options, long queryStartNanoTime)
     {
-        // TODO: this
-        return null;
+        return StorageProxy.instance.txn(createTxn(options));
     }
 
     @Override

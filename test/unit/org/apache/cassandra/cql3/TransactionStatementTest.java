@@ -94,7 +94,7 @@ public class TransactionStatementTest
         String query = "BEGIN TRANSACTION;\n" +
                        "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
                        "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
-                       "UPDATE ks.tbl1 SET v=row1.v + 1 WHERE k=row1.k AND c=row1.c;\n" +
+                       "UPDATE ks.tbl1 SET v=row1.v + 1 WHERE k=1 AND c=2;\n" +
                        "COMMIT TRANSACTION IF\n" +
                        "  row1.v = 3\n" +
                        "  AND row2.v=4;";

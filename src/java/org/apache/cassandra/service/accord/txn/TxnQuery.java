@@ -29,7 +29,6 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordData;
 import org.apache.cassandra.utils.ObjectSizes;
 
 public abstract class TxnQuery implements Query
@@ -39,7 +38,7 @@ public abstract class TxnQuery implements Query
         @Override
         public Result compute(Data data)
         {
-            return (AccordData) data;
+            return (TxnData) data;
         }
     };
 
@@ -48,7 +47,7 @@ public abstract class TxnQuery implements Query
         @Override
         public Result compute(Data data)
         {
-            return new AccordData();
+            return new TxnData();
         }
     };
 

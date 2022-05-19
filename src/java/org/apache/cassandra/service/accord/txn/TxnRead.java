@@ -36,6 +36,7 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
@@ -46,6 +47,7 @@ import static org.apache.cassandra.service.accord.SerializationUtils.serializedA
 
 public class TxnRead extends AbstractKeySorted<TxnNamedRead> implements Read
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new TxnRead(new TxnNamedRead[0]));
     private final Map<String, TxnNamedRead> readsByName;
 
     private static Map<String, TxnNamedRead> indexReads(TxnNamedRead[] reads)
@@ -67,6 +69,14 @@ public class TxnRead extends AbstractKeySorted<TxnNamedRead> implements Read
     {
         super(items);
         this.readsByName = indexReads(this.items);
+    }
+
+    public long estimatedSizeOnHeap()
+    {
+        long size = EMPTY_SIZE;
+        for (TxnNamedRead read : items)
+            size += read.estimatedSizeOnHeap();
+        return size;
     }
 
     @Override

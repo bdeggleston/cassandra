@@ -24,16 +24,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.partitions.FilteredPartition;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.DeserializationHelper;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
+import org.apache.cassandra.db.rows.UnfilteredRowIteratorSerializer;
+import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.schema.TableMetadata;
 
 public class SerializationUtils
 {
@@ -195,4 +205,42 @@ public class SerializationUtils
             return SinglePartitionReadCommand.serializer.serializedSize(command, version);
         }
     };
+
+    public static final IVersionedSerializer<FilteredPartition> filteredPartitionSerializer = new IVersionedSerializer<>()
+    {
+        @Override
+        public void serialize(FilteredPartition partition, DataOutputPlus out, int version) throws IOException
+        {
+            partition.metadata().id.serialize(out);
+            TableMetadata metadata = Schema.instance.getTableMetadata(partition.metadata().id);
+            try (UnfilteredRowIterator iterator = partition.unfilteredIterator())
+            {
+                UnfilteredRowIteratorSerializer.serializer.serialize(iterator, ColumnFilter.all(metadata), out, version, partition.rowCount());
+            }
+        }
+
+        @Override
+        public FilteredPartition deserialize(DataInputPlus in, int version) throws IOException
+        {
+            TableMetadata metadata = Schema.instance.getTableMetadata(TableId.deserialize(in));
+            Preconditions.checkState(metadata != null);
+            try (UnfilteredRowIterator partition = UnfilteredRowIteratorSerializer.serializer.deserialize(in, version, metadata, ColumnFilter.all(metadata), DeserializationHelper.Flag.FROM_REMOTE))
+            {
+                return new FilteredPartition(UnfilteredRowIterators.filter(partition, 0));
+            }
+        }
+
+        @Override
+        public long serializedSize(FilteredPartition partition, int version)
+        {
+            long size = TableId.serializedSize();
+            TableMetadata metadata = Schema.instance.getTableMetadata(partition.metadata().id);
+            Preconditions.checkState(metadata != null);
+            try (UnfilteredRowIterator iterator = partition.unfilteredIterator())
+            {
+                return size + UnfilteredRowIteratorSerializer.serializer.serializedSize(iterator, ColumnFilter.all(metadata), version, partition.rowCount());
+            }
+        }
+    };
+
 }

@@ -33,6 +33,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.service.accord.SerializationUtils;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 
 import static org.apache.cassandra.service.accord.SerializationUtils.deserialize;
 import static org.apache.cassandra.service.accord.SerializationUtils.serialize;
@@ -43,6 +44,7 @@ import static org.apache.cassandra.utils.ByteBufferUtil.writeWithVIntLength;
 
 public class TxnUpdate implements Update
 {
+    private static long EMPTY_SIZE = ObjectSizes.measure(new TxnUpdate(new ByteBuffer[0], null));
     private final ByteBuffer[] serializedUpdates;
     private final ByteBuffer serializedCondition;
 
@@ -56,6 +58,14 @@ public class TxnUpdate implements Update
     {
         this.serializedUpdates = serializedUpdates;
         this.serializedCondition = serializedCondition;
+    }
+
+    public long estimatedSizeOnHeap()
+    {
+        long size = EMPTY_SIZE + ByteBufferUtil.estimatedSizeOnHeap(serializedCondition);
+        for (ByteBuffer update : serializedUpdates)
+            size += ByteBufferUtil.estimatedSizeOnHeap(update);
+        return size;
     }
 
     @Override
