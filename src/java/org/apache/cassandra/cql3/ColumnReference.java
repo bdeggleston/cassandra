@@ -199,7 +199,7 @@ public class ColumnReference implements Term
             throw new UnsupportedOperationException("TODO: support collections, udts, etc");
         }
 
-        private void checkResolved()
+        public void checkResolved()
         {
             if (!isResolved)
                 throw new IllegalStateException();
@@ -248,6 +248,11 @@ public class ColumnReference implements Term
         {
             checkResolved();
             return column.type;
+        }
+
+        public ColumnMetadata column()
+        {
+            return column;
         }
     }
 }

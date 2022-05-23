@@ -132,19 +132,13 @@ public class TransactionStatement implements CQLStatement
         return new TxnCondition.BooleanGroup(TxnCondition.Kind.AND, result);
     }
 
-    TxnWrite.Fragment createWriteFragment(int index, ModificationStatement modification, QueryOptions options)
-    {
-        PartitionUpdate update = modification.getTxnUpdate(options);
-        return new TxnWrite.Fragment(AccordKey.of(update), index, update);
-    }
-
     List<TxnWrite.Fragment> createWriteFragments(QueryOptions options, Consumer<Key> keyConsumer)
     {
         List<TxnWrite.Fragment> fragments = new ArrayList<>(updates.size());
         int idx = 0;
         for (ModificationStatement modification : updates)
         {
-            TxnWrite.Fragment fragment = createWriteFragment(idx++, modification, options);
+            TxnWrite.Fragment fragment = modification.getTxnWriteFragment(idx++, options);
             keyConsumer.accept(fragment.key);
             fragments.add(fragment);
         }

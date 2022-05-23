@@ -41,9 +41,11 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SerializationUtils
 {
@@ -140,30 +142,6 @@ public class SerializationUtils
         return size;
     }
 
-    public static <T> IVersionedSerializer<T> todoSerializer()
-    {
-        return new IVersionedSerializer<T>()
-        {
-            @Override
-            public void serialize(T t, DataOutputPlus out, int version) throws IOException
-            {
-                throw new UnsupportedOperationException("TODO");
-            }
-
-            @Override
-            public T deserialize(DataInputPlus in, int version) throws IOException
-            {
-                throw new UnsupportedOperationException("TODO");
-            }
-
-            @Override
-            public long serializedSize(T t, int version)
-            {
-                throw new UnsupportedOperationException("TODO");
-            }
-        };
-    }
-
     public static final IVersionedSerializer<PartitionUpdate> partitionUpdateSerializer = new IVersionedSerializer<PartitionUpdate>()
     {
         @Override
@@ -243,4 +221,55 @@ public class SerializationUtils
         }
     };
 
+    public static final IVersionedSerializer<ColumnMetadata> columnMetadataSerializer = new IVersionedSerializer<ColumnMetadata>()
+    {
+        @Override
+        public void serialize(ColumnMetadata column, DataOutputPlus out, int version) throws IOException
+        {
+            out.writeUTF(column.ksName);
+            out.writeUTF(column.cfName);
+            ByteBufferUtil.writeWithShortLength(column.name.bytes, out);
+        }
+
+        @Override
+        public ColumnMetadata deserialize(DataInputPlus in, int version) throws IOException
+        {
+            String keyspace = in.readUTF();
+            String table = in.readUTF();
+            ByteBuffer name = ByteBufferUtil.readWithShortLength(in);
+            TableMetadata metadata = Schema.instance.getTableMetadata(keyspace, table);
+            return metadata.getColumn(name);
+        }
+
+        @Override
+        public long serializedSize(ColumnMetadata column, int version)
+        {
+            long size = 0;
+            size += TypeSizes.sizeof(column.ksName);
+            size += TypeSizes.sizeof(column.cfName);
+            size += ByteBufferUtil.serializedSizeWithShortLength(column.name.bytes);
+            return size;
+        }
+    };
+
+    public static final IVersionedSerializer<TableMetadata> tableMetadataSerializer = new IVersionedSerializer<TableMetadata>()
+    {
+        @Override
+        public void serialize(TableMetadata metadata, DataOutputPlus out, int version) throws IOException
+        {
+            metadata.id.serialize(out);
+        }
+
+        @Override
+        public TableMetadata deserialize(DataInputPlus in, int version) throws IOException
+        {
+            return Schema.instance.getTableMetadata(TableId.deserialize(in));
+        }
+
+        @Override
+        public long serializedSize(TableMetadata metadata, int version)
+        {
+            return TableId.serializedSize();
+        }
+    };
 }

@@ -32,9 +32,8 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.schema.Schema;
-import org.apache.cassandra.schema.TableMetadata;
-import org.apache.cassandra.utils.ByteBufferUtil;
+
+import static org.apache.cassandra.service.accord.SerializationUtils.columnMetadataSerializer;
 
 public class ValueReference
 {
@@ -151,11 +150,7 @@ public class ValueReference
             out.writeInt(reference.rowIdx);
             out.writeBoolean(reference.column != null);
             if (reference.column != null)
-            {
-                out.writeUTF(reference.column.ksName);
-                out.writeUTF(reference.column.cfName);
-                ByteBufferUtil.writeWithShortLength(reference.column.name.bytes, out);
-            }
+                columnMetadataSerializer.serialize(reference.column, out, version);
             // TODO: serialize path
             Preconditions.checkArgument(reference.path == null);
         }
@@ -165,14 +160,7 @@ public class ValueReference
         {
             String name = in.readUTF();
             int rowIdx = in.readInt();
-            ColumnMetadata column = null;
-            if (in.readBoolean())
-            {
-                String ksName = in.readUTF();
-                String cfName = in.readUTF();
-                TableMetadata metadata = Schema.instance.getTableMetadata(ksName, cfName);
-                column = metadata.getColumn(ByteBufferUtil.readWithShortLength(in));
-            }
+            ColumnMetadata column = in.readBoolean() ? columnMetadataSerializer.deserialize(in, version) : null;
             // TODO: serialize path
             return new ValueReference(name, rowIdx, column, null);
         }
@@ -185,11 +173,7 @@ public class ValueReference
             size += TypeSizes.INT_SIZE;
             size += TypeSizes.BOOL_SIZE;
             if (reference.column != null)
-            {
-                size += TypeSizes.sizeof(reference.column.ksName);
-                size += TypeSizes.sizeof(reference.column.cfName);
-                size += ByteBufferUtil.serializedSizeWithShortLength(reference.column.name.bytes);
-            }
+                size += columnMetadataSerializer.serializedSize(reference.column, version);
             // TODO: serialize path
             return size;
         }

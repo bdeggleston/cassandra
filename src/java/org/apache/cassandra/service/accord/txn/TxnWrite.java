@@ -22,8 +22,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 import accord.api.Key;
 import accord.api.Store;
@@ -31,14 +36,21 @@ import accord.api.Write;
 import accord.local.CommandStore;
 import accord.txn.Timestamp;
 import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.db.Clustering;
+import org.apache.cassandra.db.Columns;
 import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.db.rows.BTreeRow;
+import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.service.accord.AccordCommandsForKey;
 import org.apache.cassandra.service.accord.SerializationUtils;
+import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.concurrent.Future;
@@ -152,12 +164,19 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
         public final PartitionKey key;
         public final int index;
         public final PartitionUpdate baseUpdate;
+        public final TxnReferenceOperations referenceOps;
 
-        public Fragment(PartitionKey key, int index, PartitionUpdate baseUpdate)
+        public Fragment(PartitionKey key, int index, PartitionUpdate baseUpdate, TxnReferenceOperations referenceOps)
         {
             this.key = key;
             this.index = index;
             this.baseUpdate = baseUpdate;
+            this.referenceOps = referenceOps;
+        }
+
+        public Fragment(int index, PartitionUpdate baseUpdate, TxnReferenceOperations referenceOps)
+        {
+            this(AccordKey.of(baseUpdate), index, baseUpdate, referenceOps);
         }
 
         @Override
@@ -166,13 +185,13 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Fragment fragment = (Fragment) o;
-            return index == fragment.index && key.equals(fragment.key) && baseUpdate.equals(fragment.baseUpdate);
+            return index == fragment.index && key.equals(fragment.key) && baseUpdate.equals(fragment.baseUpdate) && referenceOps.equals(fragment.referenceOps);
         }
 
         @Override
         public int hashCode()
         {
-            return Objects.hash(key, index, baseUpdate);
+            return Objects.hash(key, index, baseUpdate, referenceOps);
         }
 
         @Override
@@ -182,13 +201,77 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
                    "key=" + key +
                    ", index=" + index +
                    ", baseUpdate=" + baseUpdate +
+                   ", referenceOps=" + referenceOps +
                    '}';
+        }
+
+        private static Columns columns(Columns current, List<TxnReferenceOperation> referenceOps)
+        {
+            if (referenceOps.isEmpty())
+                return current;
+
+            Set<ColumnMetadata> combined = new HashSet<>(current);
+            referenceOps.forEach(op -> combined.add(op.receiver()));
+            return Columns.from(combined);
+        }
+
+        private static RegularAndStaticColumns columns(PartitionUpdate update, TxnReferenceOperations referenceOps)
+        {
+            Preconditions.checkState(!referenceOps.isEmpty());
+            RegularAndStaticColumns current = update.columns();
+            return new RegularAndStaticColumns(columns(current.statics, referenceOps.statics),
+                                               columns(current.regulars, referenceOps.regulars));
+        }
+
+        private static Row applyUpdates(Row existing, List<TxnReferenceOperation> operations, Clustering<?> clustering, Row.Builder builder, TxnData data)
+        {
+            if (operations.isEmpty())
+                return existing;
+
+            if (existing != null && !existing.isEmpty())
+            {
+                Preconditions.checkState(existing.clustering().equals(clustering));
+                builder.newRow(existing.clustering());
+                builder.addRowDeletion(existing.deletion());
+                builder.addPrimaryKeyLivenessInfo(existing.primaryKeyLivenessInfo());
+                existing.cells().forEach(builder::addCell);
+            }
+            else
+            {
+                builder.newRow(clustering);
+            }
+
+            operations.forEach(op -> {
+                op.apply(data, builder, 0, 0);
+            });
+
+            return builder.build();
         }
 
         public Update complete(TxnData data)
         {
-            // TODO: perform column reference substitution
-            return new Update(key, index, baseUpdate);
+            if (referenceOps.isEmpty())
+                return new Update(key, index, baseUpdate);
+
+            PartitionUpdate.Builder updateBuilder = new PartitionUpdate.Builder(baseUpdate.metadata(),
+                                                                                   baseUpdate.partitionKey(),
+                                                                                   columns(baseUpdate, referenceOps),
+                                                                                   baseUpdate.rowCount(),
+                                                                                   baseUpdate.canHaveShadowedData());
+
+            Row.Builder rowBuilder = BTreeRow.unsortedBuilder();
+
+            Row staticRow = applyUpdates(baseUpdate.staticRow(), referenceOps.statics, Clustering.STATIC_CLUSTERING, rowBuilder, data);
+
+            if (!staticRow.isEmpty())
+                updateBuilder.add(staticRow);
+
+            Row existing = !baseUpdate.isEmpty() ? Iterables.getOnlyElement(baseUpdate) : null;
+            Row row = applyUpdates(existing, referenceOps.regulars, referenceOps.clustering, rowBuilder, data);
+            if (row != null)
+                updateBuilder.add(row);
+
+            return new Update(key, index, updateBuilder.build());
         }
 
         public static final IVersionedSerializer<Fragment> serializer = new IVersionedSerializer<>()
@@ -199,6 +282,7 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
                 PartitionKey.serializer.serialize(fragment.key, out, version);
                 out.writeInt(fragment.index);
                 partitionUpdateSerializer.serialize(fragment.baseUpdate, out, version);
+                TxnReferenceOperations.serializer.serialize(fragment.referenceOps, out, version);
             }
 
             @Override
@@ -207,7 +291,8 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
                 PartitionKey key = PartitionKey.serializer.deserialize(in, version);
                 int idx = in.readInt();
                 PartitionUpdate baseUpdate = partitionUpdateSerializer.deserialize(in, version);
-                return new Fragment(key, idx, baseUpdate);
+                TxnReferenceOperations referenceOps = TxnReferenceOperations.serializer.deserialize(in, version);
+                return new Fragment(key, idx, baseUpdate, referenceOps);
             }
 
             @Override
@@ -217,6 +302,7 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
                 size += PartitionKey.serializer.serializedSize(fragment.key, version);
                 size += TypeSizes.INT_SIZE;
                 size += partitionUpdateSerializer.serializedSize(fragment.baseUpdate, version);
+                size += TxnReferenceOperations.serializer.serializedSize(fragment.referenceOps, version);
                 return size;
             }
         };

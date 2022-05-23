@@ -50,7 +50,7 @@ public class AccordIntegrationTest extends TestBaseImpl
             cluster.schemaChange("CREATE TABLE " + keyspace + ".tbl (k int, c int, v int, primary key (k, c))");
             cluster.forEach(node -> node.runOnInstance(() -> AccordService.instance.createEpochFromConfigUnsafe()));
             cluster.forEach(node -> node.runOnInstance(() -> AccordService.instance.setCacheSize(0)));
-            cluster.coordinator(1).execute("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 4);", ConsistencyLevel.ALL);
+            cluster.coordinator(1).execute("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 3);", ConsistencyLevel.ALL);
 
             String query = "BEGIN TRANSACTION;\n" +
                            "SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0 AS row1;\n" +
@@ -61,6 +61,34 @@ public class AccordIntegrationTest extends TestBaseImpl
             Assert.assertNull(result);
 
             assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0", 0, 0, 1);
+        }
+    }
+
+    @Test
+    public void variableSubstitution() throws Throwable
+    {
+        String keyspace = "ks" + System.currentTimeMillis();
+        try (Cluster cluster = init(Cluster.build(2).start()))
+        {
+            cluster.schemaChange("CREATE KEYSPACE " + keyspace + " WITH REPLICATION={'class':'SimpleStrategy', 'replication_factor': 2}");
+            cluster.schemaChange("CREATE TABLE " + keyspace + ".tbl1 (k int, c int, v int, primary key (k, c))");
+            cluster.schemaChange("CREATE TABLE " + keyspace + ".tbl2 (k int, c int, v int, primary key (k, c))");
+            cluster.forEach(node -> node.runOnInstance(() -> AccordService.instance.createEpochFromConfigUnsafe()));
+            cluster.forEach(node -> node.runOnInstance(() -> AccordService.instance.setCacheSize(0)));
+            cluster.coordinator(1).execute("INSERT INTO " + keyspace + ".tbl1 (k, c, v) VALUES (1, 2, 3);", ConsistencyLevel.ALL);
+            cluster.coordinator(1).execute("INSERT INTO " + keyspace + ".tbl2 (k, c, v) VALUES (2, 2, 4);", ConsistencyLevel.ALL);
+
+            String query = "BEGIN TRANSACTION;\n" +
+                           "SELECT * FROM " + keyspace + ".tbl1 WHERE k=1 AND c=2 AS row1;\n" +
+                           "SELECT * FROM " + keyspace + ".tbl2 WHERE k=2 AND c=2 AS row2;\n" +
+                           "UPDATE " + keyspace + ".tbl1 SET v=row2.v WHERE k=1 AND c=2;\n" +
+                           "COMMIT TRANSACTION IF\n" +
+                           "  row1.v = 3\n" +
+                           "  AND row2.v=4;";
+            Object[][] result = cluster.coordinator(1).execute(query, ConsistencyLevel.ANY);
+            Assert.assertNull(result);
+
+            assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl1 WHERE k=1 AND c=2", 1, 2, 4);
         }
     }
 

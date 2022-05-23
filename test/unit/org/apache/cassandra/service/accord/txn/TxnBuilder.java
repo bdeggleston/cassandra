@@ -74,16 +74,25 @@ public class TxnBuilder
         return this;
     }
 
-    public TxnBuilder withWrite(String query)
+    public TxnBuilder withWrite(PartitionUpdate update, TxnReferenceOperations referenceOps)
+    {
+        int index = writes.size();
+        writes.add(new TxnWrite.Fragment(AccordKey.of(update), index, update, referenceOps));
+        return this;
+    }
+
+    public TxnBuilder withWrite(String query, TxnReferenceOperations referenceOps)
     {
         ModificationStatement.Parsed parsed = (ModificationStatement.Parsed) QueryProcessor.parseStatement(query);
         VariableSpecifications bindVariables = VariableSpecifications.empty();
         ModificationStatement prepared = parsed.prepare(bindVariables);
 
-        PartitionUpdate update = prepared.getTxnUpdate(QueryOptions.DEFAULT);
-        int index = writes.size();
-        writes.add(new TxnWrite.Fragment(AccordKey.of(update), index, update));
-        return this;
+        return withWrite(prepared.getTxnUpdate(QueryOptions.DEFAULT), referenceOps);
+    }
+
+    public TxnBuilder withWrite(String query)
+    {
+        return withWrite(query, TxnReferenceOperations.empty());
     }
 
     static ValueReference reference(String name, int index, String column)

@@ -154,14 +154,24 @@ options {
         return res;
     }
 
-    public void addRawUpdate(List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, Operation.RawUpdate update)
+    public void addRawUpdate(UpdateStatement.OperationCollector collector, ColumnIdentifier key, Operation.RawUpdate update)
     {
-        for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
-        {
-            if (p.left.equals(key) && !p.right.isCompatibleWith(update))
-                addRecognitionError("Multiple incompatible setting of column " + key);
-        }
-        operations.add(Pair.create(key, update));
+        if (collector.conflictsWithExistingUpdate(key, update))
+            addRecognitionError("Multiple incompatible setting of column " + key);
+        if (collector.conflictsWithExistingSubstitution(key, update))
+            addRecognitionError("Normal and reference operations for " + key);
+
+        collector.addRawUpdate(key, update);
+    }
+
+    public void addRawSubstitution(UpdateStatement.OperationCollector collector, ColumnIdentifier key, ReferenceOperation.Raw update)
+    {
+        if (collector.conflictsWithExistingUpdate(key, update))
+            addRecognitionError("Multiple incompatible setting of column " + key);
+        if (collector.conflictsWithExistingSubstitution(key, update))
+            addRecognitionError("Normal and reference operations for " + key);
+
+        collector.addRawSubstitution(key, update);
     }
 
     public Set<Permission> filterPermissions(Set<Permission> permissions, IResource resource)
@@ -515,7 +525,7 @@ normalInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsert e
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists);
+          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists, isParsingTxn);
       }
     ;
 
@@ -530,7 +540,7 @@ jsonInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsertJson
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists);
+          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists, isParsingTxn);
       }
     ;
 
@@ -559,7 +569,7 @@ usingClauseObjective[Attributes.Raw attrs]
 updateStatement returns [UpdateStatement.ParsedUpdate expr]
     @init {
         Attributes.Raw attrs = new Attributes.Raw();
-        List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations = new ArrayList<>();
+        UpdateStatement.OperationCollector operations = new UpdateStatement.OperationCollector();
         boolean ifExists = false;
     }
     : K_UPDATE cf=columnFamilyName
@@ -573,7 +583,8 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                    operations,
                                                    wclause.build(),
                                                    conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                                   ifExists);
+                                                   ifExists,
+                                                   isParsingTxn);
      }
     ;
 
@@ -607,7 +618,8 @@ deleteStatement returns [DeleteStatement.Parsed expr]
                                              columnDeletions,
                                              wclause.build(),
                                              conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
-                                             ifExists);
+                                             ifExists,
+                                             isParsingTxn);
       }
     ;
 
@@ -1640,18 +1652,28 @@ columnReference returns [ColumnReference.Raw vterm]
       ('.' v2=IDENT { terms.add(Constants.Literal.string($v2.text)); } )*)
     ;
 
-columnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations]
+termOrColumnRef returns [Term.Raw term]
+    : t=term            { $term = t; }
+    | c=columnReference { $term = c; }
+    ;
+
+columnOperation[UpdateStatement.OperationCollector operations]
     : key=cident columnOperationDifferentiator[operations, key]
     ;
 
-columnOperationDifferentiator[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+columnOperationDifferentiator[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : '=' normalColumnOperation[operations, key]
+    | '=' columnReferenceOperation[operations, key]
     | shorthandColumnOperation[operations, key]
     | '[' k=term ']' collectionColumnOperation[operations, key, k]
     | '.' field=fident udtColumnOperation[operations, key, field]
     ;
 
-normalColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+columnReferenceOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
+    : c=columnReference { addRawSubstitution(operations, key, new ReferenceOperation.Substitution.Raw(key, c)); }
+    ;
+
+normalColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : t=term ('+' c=cident )?
       {
           if (c == null)
@@ -1682,21 +1704,21 @@ normalColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operatio
       // TODO (accord): add column reference
     ;
 
-shorthandColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key]
+shorthandColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : sig=('+=' | '-=') t=term
       {
           addRawUpdate(operations, key, $sig.text.equals("+=") ? new Operation.Addition(t) : new Operation.Substraction(t));
       }
     ;
 
-collectionColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, Term.Raw k]
+collectionColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key, Term.Raw k]
     : '=' t=term
       {
           addRawUpdate(operations, key, new Operation.SetElement(k, t));
       }
     ;
 
-udtColumnOperation[List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations, ColumnIdentifier key, FieldIdentifier field]
+udtColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key, FieldIdentifier field]
     : '=' t=term
       {
           addRawUpdate(operations, key, new Operation.SetField(field, t));

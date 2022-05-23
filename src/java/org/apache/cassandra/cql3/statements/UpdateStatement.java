@@ -17,9 +17,12 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import com.google.common.base.Preconditions;
 
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.audit.AuditLogEntryType;
@@ -27,6 +30,7 @@ import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.conditions.ColumnCondition;
 import org.apache.cassandra.cql3.conditions.Conditions;
 import org.apache.cassandra.cql3.restrictions.StatementRestrictions;
+import org.apache.cassandra.cql3.transactions.ReferenceOperation;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.Slice;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -127,9 +131,10 @@ public class UpdateStatement extends ModificationStatement
                             Attributes.Raw attrs,
                             List<ColumnIdentifier> columnNames,
                             List<Term.Raw> columnValues,
-                            boolean ifNotExists)
+                            boolean ifNotExists,
+                            boolean isForTxn)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn);
             this.columnNames = columnNames;
             this.columnValues = columnValues;
         }
@@ -202,9 +207,9 @@ public class UpdateStatement extends ModificationStatement
         private final Json.Raw jsonValue;
         private final boolean defaultUnset;
 
-        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists)
+        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists, boolean isForTxn)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn);
             this.jsonValue = jsonValue;
             this.defaultUnset = defaultUnset;
         }
@@ -262,10 +267,66 @@ public class UpdateStatement extends ModificationStatement
         }
     }
 
+    public static class OperationCollector
+    {
+        public List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations = new ArrayList<>();
+        public List<Pair<ColumnIdentifier, ReferenceOperation.Raw>> substitutions = new ArrayList<>();
+
+        public boolean conflictsWithExistingUpdate(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
+            {
+                if (p.left.equals(column) && !p.right.isCompatibleWith(update))
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : substitutions)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public void addRawUpdate(ColumnIdentifier column, Operation.RawUpdate update)
+        {
+            operations.add(Pair.create(column, update));
+        }
+
+        public boolean conflictsWithExistingUpdate(ColumnIdentifier column, ReferenceOperation.Raw update)
+        {
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> p : operations)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, ReferenceOperation.Raw update)
+        {
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : substitutions)
+            {
+                if (p.left.equals(column))
+                    return true;
+            }
+            return false;
+        }
+
+        public void addRawSubstitution(ColumnIdentifier column, ReferenceOperation.Raw substitution)
+        {
+            substitutions.add(Pair.create(column, substitution));
+        }
+    }
+
     public static class ParsedUpdate extends ModificationStatement.Parsed
     {
         // Provided for an UPDATE
-        private final List<Pair<ColumnIdentifier, Operation.RawUpdate>> updates;
+        private final OperationCollector updates;
         private final WhereClause whereClause;
 
         /**
@@ -280,12 +341,13 @@ public class UpdateStatement extends ModificationStatement
          * */
         public ParsedUpdate(QualifiedName name,
                             Attributes.Raw attrs,
-                            List<Pair<ColumnIdentifier, Operation.RawUpdate>> updates,
+                            OperationCollector updates,
                             WhereClause whereClause,
                             List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
-                            boolean ifExists)
+                            boolean ifExists,
+                            boolean isForTxn)
         {
-            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists);
+            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists, isForTxn);
             this.updates = updates;
             this.whereClause = whereClause;
         }
@@ -298,7 +360,8 @@ public class UpdateStatement extends ModificationStatement
         {
             Operations operations = new Operations(type);
 
-            for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates)
+            // TODO (accord) for txn, separate column references, assert no conditions:
+            for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates.operations)
             {
                 ColumnMetadata def = metadata.getExistingColumn(entry.left);
 
@@ -307,6 +370,19 @@ public class UpdateStatement extends ModificationStatement
                 Operation operation = entry.right.prepare(metadata, def, !conditions.isEmpty());
                 operation.collectMarkerSpecification(bindVariables);
                 operations.add(operation);
+            }
+
+            if (isForTxn)
+            {
+                // TODO: confirm update only affects one logical row (+ static)
+            }
+            Preconditions.checkState(updates.substitutions.isEmpty() || isForTxn);
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> entry : updates.substitutions)
+            {
+                ColumnMetadata def = metadata.getExistingColumn(entry.left);
+                checkFalse(def.isPrimaryKeyColumn(), "PRIMARY KEY part %s found in SET part", def.name);
+                ReferenceOperation operation = entry.right.prepare(metadata, bindVariables);
+                operations.add(def, operation);
             }
 
             StatementRestrictions restrictions = newRestrictions(metadata,

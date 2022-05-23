@@ -204,7 +204,7 @@ public class PartitionUpdate extends AbstractBTreePartition
         return new PartitionUpdate(iterator.metadata(), iterator.partitionKey(), holder, deletionInfo, false);
     }
 
-    protected boolean canHaveShadowedData()
+    public boolean canHaveShadowedData()
     {
         return canHaveShadowedData;
     }
