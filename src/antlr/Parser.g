@@ -164,14 +164,14 @@ options {
         collector.addRawUpdate(key, update);
     }
 
-    public void addRawSubstitution(UpdateStatement.OperationCollector collector, ColumnIdentifier key, ReferenceOperation.Raw update)
+    public void addRawReferenceOperation(UpdateStatement.OperationCollector collector, ColumnIdentifier key, ReferenceOperation.Raw update)
     {
         if (collector.conflictsWithExistingUpdate(key, update))
             addRecognitionError("Multiple incompatible setting of column " + key);
         if (collector.conflictsWithExistingSubstitution(key, update))
             addRecognitionError("Normal and reference operations for " + key);
 
-        collector.addRawSubstitution(key, update);
+        collector.addRawReferenceOperation(key, update);
     }
 
     public Set<Permission> filterPermissions(Set<Permission> permissions, IResource resource)
@@ -515,18 +515,25 @@ normalInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsert e
     @init {
         Attributes.Raw attrs = new Attributes.Raw();
         List<ColumnIdentifier> columnNames  = new ArrayList<>();
-        List<Term.Raw> values = new ArrayList<>();
+        List<Object> values = new ArrayList<>();
         boolean ifNotExists = false;
+        String txnVarName = null;
     }
     : '(' c1=cident { columnNames.add(c1); }  ( ',' cn=cident { columnNames.add(cn); } )* ')'
       K_VALUES
-      '(' v1=term { values.add(v1); } ( ',' vn=term { values.add(vn); } )* ')'
+      '(' insertValue[values] ( ',' insertValue[values] )* ')'
       // TODO (accord): add column reference
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
+      ({isParsingTxn}? ( K_AS txnVar=IDENT { txnVarName=$txnVar.text; } )?)?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists, isParsingTxn);
+          $expr = new UpdateStatement.ParsedInsert(qn, attrs, columnNames, values, ifNotExists, isParsingTxn, txnVarName);
       }
+    ;
+
+insertValue[List<Object> values]
+    : t=term { values.add(t); }
+    | r=columnReference { values.add(new ReferenceValue.Substitution.Raw(r)); }
     ;
 
 jsonInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsertJson expr]
@@ -1673,7 +1680,7 @@ columnOperationDifferentiator[UpdateStatement.OperationCollector operations, Col
     ;
 
 columnReferenceOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
-    : c=columnReference { addRawSubstitution(operations, key, new ReferenceOperation.Substitution.Raw(key, c)); }
+    : c=columnReference { addRawReferenceOperation(operations, key, new ReferenceOperation.Assignment.Raw(key, new ReferenceValue.Substitution.Raw(c))); }
     ;
 
 normalColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]

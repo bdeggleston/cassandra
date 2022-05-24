@@ -33,6 +33,7 @@ import org.apache.cassandra.db.BufferClustering;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.Columns;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.BTreeRow;
@@ -72,7 +73,7 @@ public class TransactionStatementTest
         TABLE2 = Schema.instance.getTableMetadata("ks", "tbl2");
     }
 
-    private static PartitionUpdate emptyUpdate(TableMetadata metadata, int k, int c)
+    private static PartitionUpdate emptyUpdate(TableMetadata metadata, int k, int c, boolean forInsert)
     {
         DecoratedKey dk = metadata.partitioner.decorateKey(bytes(k));
         RegularAndStaticColumns columns = new RegularAndStaticColumns(Columns.from(metadata.regularColumns()), Columns.NONE);
@@ -80,6 +81,8 @@ public class TransactionStatementTest
 
         Row.Builder row = BTreeRow.unsortedBuilder();
         row.newRow(new BufferClustering(bytes(c)));
+        if (forInsert)
+            row.addPrimaryKeyLivenessInfo(LivenessInfo.create(0, 0));
         builder.add(row.build());
 
         return builder.build();
@@ -163,7 +166,7 @@ public class TransactionStatementTest
         Txn expected = TxnBuilder.builder()
                                  .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
                                  .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2")
-                                 .withWrite(emptyUpdate(TABLE1, 1, 2), referenceOps)
+                                 .withWrite(emptyUpdate(TABLE1, 1, 2, false), referenceOps)
                                  .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
                                  .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
                                  .build();
@@ -193,7 +196,7 @@ public class TransactionStatementTest
         Txn expected = TxnBuilder.builder()
                                  .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
                                  .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2")
-                                 .withWrite(emptyUpdate(TABLE1, 1, 2), referenceOps)
+                                 .withWrite(emptyUpdate(TABLE1, 1, 2, true), referenceOps)
                                  .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
                                  .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
                                  .build();
@@ -220,6 +223,31 @@ public class TransactionStatementTest
                                  .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 LIMIT 1")
                                  .withWrite("UPDATE ks.tbl1 SET v=3 WHERE k=1 AND c=2")
                                  .withWrite("UPDATE ks.tbl2 SET v=4 WHERE k=2 AND c=2")
+                                 .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
+                                 .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
+                                 .build();
+        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
+        Assert.assertNotNull(parsed);
+        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
+        Txn actual = statement.createTxn(QueryOptions.DEFAULT);
+        Assert.assertEquals(expected, actual);
+    }
+
+    @Test
+    public void readForInsertTest()
+    {
+        String query = "BEGIN TRANSACTION;\n" +
+                       "INSERT INTO ks.tbl1 (k, c, v) VALUES (1, 2, 3) AS row1;\n" +
+                       "INSERT INTO ks.tbl2 (k, c, v) VALUES (2, 2, 4) AS row2;\n" +
+                       "COMMIT TRANSACTION IF\n" +
+                       "  row1.v = 3\n" +
+                       "  AND row2.v=4;";
+
+        Txn expected = TxnBuilder.builder()
+                                 .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 LIMIT 1")
+                                 .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 LIMIT 1")
+                                 .withWrite("INSERT INTO ks.tbl1 (k, c, v) VALUES (1, 2, 3)")
+                                 .withWrite("INSERT INTO ks.tbl2 (k, c, v) VALUES (2, 2, 4)")
                                  .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
                                  .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
                                  .build();

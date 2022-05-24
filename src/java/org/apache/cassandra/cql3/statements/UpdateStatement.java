@@ -32,6 +32,7 @@ import org.apache.cassandra.cql3.conditions.Conditions;
 import org.apache.cassandra.cql3.restrictions.StatementRestrictions;
 import org.apache.cassandra.cql3.selection.Selection;
 import org.apache.cassandra.cql3.transactions.ReferenceOperation;
+import org.apache.cassandra.cql3.transactions.ReferenceValue;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.Slice;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
@@ -44,6 +45,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkContainsNoDuplicates;
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
+import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
 
 /**
  * An <code>UPDATE</code> statement parsed from a CQL query statement.
@@ -117,7 +119,7 @@ public class UpdateStatement extends ModificationStatement
     public static class ParsedInsert extends ModificationStatement.Parsed
     {
         private final List<ColumnIdentifier> columnNames;
-        private final List<Term.Raw> columnValues;
+        private final List<Object> columnValues;
 
         /**
          * A parsed <code>INSERT</code> statement.
@@ -131,7 +133,7 @@ public class UpdateStatement extends ModificationStatement
         public ParsedInsert(QualifiedName name,
                             Attributes.Raw attrs,
                             List<ColumnIdentifier> columnNames,
-                            List<Term.Raw> columnValues,
+                            List<Object> columnValues,
                             boolean ifNotExists,
                             boolean isForTxn,
                             String txnReadName)
@@ -167,17 +169,28 @@ public class UpdateStatement extends ModificationStatement
                 if (def.isClusteringColumn())
                     hasClusteringColumnsSet = true;
 
-                Term.Raw value = columnValues.get(i);
+                Object value = columnValues.get(i);
 
                 if (def.isPrimaryKeyColumn())
                 {
-                    whereClause.add(new SingleColumnRelation(columnNames.get(i), Operator.EQ, value));
+                    checkTrue(value instanceof Term.Raw, "value references can't be used with primary key columns");
+                    whereClause.add(new SingleColumnRelation(columnNames.get(i), Operator.EQ, (Term.Raw) value));
+                }
+                else if (value instanceof Term.Raw)
+                {
+                    Operation operation = new Operation.SetValue((Term.Raw) value).prepare(metadata, def, !conditions.isEmpty());
+                    operation.collectMarkerSpecification(bindVariables);
+                    operations.add(operation);
+                }
+                else if (value instanceof ReferenceValue.Raw)
+                {
+                    ReferenceValue referenceValue = ((ReferenceValue.Raw) value).prepare(def, bindVariables);
+                    ReferenceOperation operation = new ReferenceOperation.Assignment(def, referenceValue);
+                    operations.add(def, operation);
                 }
                 else
                 {
-                    Operation operation = new Operation.SetValue(value).prepare(metadata, def, !conditions.isEmpty());
-                    operation.collectMarkerSpecification(bindVariables);
-                    operations.add(operation);
+                    throw new IllegalStateException();
                 }
             }
 
@@ -272,7 +285,7 @@ public class UpdateStatement extends ModificationStatement
     public static class OperationCollector
     {
         public List<Pair<ColumnIdentifier, Operation.RawUpdate>> operations = new ArrayList<>();
-        public List<Pair<ColumnIdentifier, ReferenceOperation.Raw>> substitutions = new ArrayList<>();
+        public List<Pair<ColumnIdentifier, ReferenceOperation.Raw>> referenceOps = new ArrayList<>();
 
         public boolean conflictsWithExistingUpdate(ColumnIdentifier column, Operation.RawUpdate update)
         {
@@ -286,7 +299,7 @@ public class UpdateStatement extends ModificationStatement
 
         public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, Operation.RawUpdate update)
         {
-            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : substitutions)
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : referenceOps)
             {
                 if (p.left.equals(column))
                     return true;
@@ -311,7 +324,7 @@ public class UpdateStatement extends ModificationStatement
 
         public boolean conflictsWithExistingSubstitution(ColumnIdentifier column, ReferenceOperation.Raw update)
         {
-            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : substitutions)
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> p : referenceOps)
             {
                 if (p.left.equals(column))
                     return true;
@@ -319,9 +332,9 @@ public class UpdateStatement extends ModificationStatement
             return false;
         }
 
-        public void addRawSubstitution(ColumnIdentifier column, ReferenceOperation.Raw substitution)
+        public void addRawReferenceOperation(ColumnIdentifier column, ReferenceOperation.Raw substitution)
         {
-            substitutions.add(Pair.create(column, substitution));
+            referenceOps.add(Pair.create(column, substitution));
         }
     }
 
@@ -379,8 +392,8 @@ public class UpdateStatement extends ModificationStatement
             {
                 // TODO: confirm update only affects one logical row (+ static)
             }
-            Preconditions.checkState(updates.substitutions.isEmpty() || isForTxn);
-            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> entry : updates.substitutions)
+            Preconditions.checkState(updates.referenceOps.isEmpty() || isForTxn);
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> entry : updates.referenceOps)
             {
                 ColumnMetadata def = metadata.getExistingColumn(entry.left);
                 checkFalse(def.isPrimaryKeyColumn(), "PRIMARY KEY part %s found in SET part", def.name);

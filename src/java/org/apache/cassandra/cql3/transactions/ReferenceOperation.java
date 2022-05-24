@@ -19,20 +19,16 @@
 package org.apache.cassandra.cql3.transactions;
 
 import org.apache.cassandra.cql3.ColumnIdentifier;
-import org.apache.cassandra.cql3.ColumnReference;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.VariableSpecifications;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.accord.txn.TxnReferenceOperation;
-import org.apache.cassandra.service.accord.txn.TxnReferenceValue;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
 
 public abstract class ReferenceOperation
 {
-    public enum Kind { SET, ADD, SUB, MULT, DIV }
-
     private final ColumnMetadata receiver;
 
     public ReferenceOperation(ColumnMetadata receiver)
@@ -59,42 +55,39 @@ public abstract class ReferenceOperation
         public abstract ReferenceOperation prepare(TableMetadata metadata, VariableSpecifications bindVariables);
     }
 
-    public static class Substitution extends ReferenceOperation
+    public static class Assignment extends ReferenceOperation
     {
-        private final ColumnReference reference;
+        private final ReferenceValue value;
 
-        public Substitution(ColumnMetadata receiver, ColumnReference reference)
+        public Assignment(ColumnMetadata receiver, ReferenceValue value)
         {
             super(receiver);
-            this.reference = reference;
+            this.value = value;
         }
 
         @Override
         public TxnReferenceOperation bindAndGet(QueryOptions options)
         {
-            TxnReferenceValue value = new TxnReferenceValue.Substitution(reference.toValueReference(options));
-            return new TxnReferenceOperation(receiver(), value);
+            return new TxnReferenceOperation(receiver(), value.bindAndGet(options));
         }
 
         public static class Raw extends ReferenceOperation.Raw
         {
-            private final ColumnReference.Raw reference;
+            private final ReferenceValue.Raw value;
 
-            public Raw(ColumnIdentifier column, ColumnReference.Raw reference)
+            public Raw(ColumnIdentifier column, ReferenceValue.Raw value)
             {
                 super(column);
-                this.reference = reference;
+                this.value = value;
             }
 
             @Override
             public ReferenceOperation prepare(TableMetadata metadata, VariableSpecifications bindVariables)
             {
-                reference.checkResolved();
                 ColumnMetadata receiver = metadata.getColumn(column);
                 checkTrue(!receiver.isPrimaryKeyColumn(), "Cannot use value references for primary key columns: %s", column);
                 checkTrue(receiver != null, "Unknown column %s for %s.%s", column, metadata.keyspace, metadata.name);
-                checkTrue(reference.column() != null, "substitution references must reference a column (%s)", reference);
-                return new Substitution(receiver, (ColumnReference) reference.prepare("", receiver));
+                return new Assignment(receiver, value.prepare(receiver, bindVariables));
             }
         }
     }
