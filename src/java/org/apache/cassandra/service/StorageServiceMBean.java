@@ -920,4 +920,5 @@ public interface StorageServiceMBean extends NotificationEmitter
     public int getDefaultKeyspaceReplicationFactor();
     public void setMinimumKeyspaceReplicationFactor(int value);
     public int getMinimumKeyspaceReplicationFactor();
+    public void createEpochUnsafe();
 }

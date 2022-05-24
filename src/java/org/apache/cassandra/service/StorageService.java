@@ -68,6 +68,7 @@ import org.apache.cassandra.fql.FullQueryLoggerOptions;
 import org.apache.cassandra.fql.FullQueryLoggerOptionsCompositeData;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.locator.ReplicaCollection.Builder.Conflict;
+import org.apache.cassandra.service.accord.AccordService;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 import org.apache.commons.lang3.StringUtils;
@@ -6321,5 +6322,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public int getMinimumKeyspaceReplicationFactor()
     {
         return DatabaseDescriptor.getMinimumKeyspaceRF();
+    }
+
+    @Override
+    public void createEpochUnsafe()
+    {
+        AccordService.instance.createEpochFromConfigUnsafe();
     }
 }
