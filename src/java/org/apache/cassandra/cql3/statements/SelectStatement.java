@@ -119,7 +119,7 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement
     private final Comparator<List<ByteBuffer>> orderingComparator;
 
     // Used by forSelection below
-    private static final Parameters defaultParameters = new Parameters(Collections.emptyMap(),
+    public static final Parameters defaultParameters = new Parameters(Collections.emptyMap(),
                                                                        Collections.emptyList(),
                                                                        false,
                                                                        false,

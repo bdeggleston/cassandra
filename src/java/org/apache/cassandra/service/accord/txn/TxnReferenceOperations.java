@@ -96,6 +96,9 @@ public class TxnReferenceOperations
         @Override
         public void serialize(TxnReferenceOperations operations, DataOutputPlus out, int version) throws IOException
         {
+            out.writeBoolean(!operations.isEmpty());
+            if (operations.isEmpty())
+                return;
             tableMetadataSerializer.serialize(operations.metadata, out, version);
             out.writeBoolean(operations.clustering != null);
             if (operations.clustering != null)
@@ -108,6 +111,8 @@ public class TxnReferenceOperations
         @Override
         public TxnReferenceOperations deserialize(DataInputPlus in, int version) throws IOException
         {
+            if (!in.readBoolean())
+                return TxnReferenceOperations.empty();
             TableMetadata metadata = tableMetadataSerializer.deserialize(in, version);
             Clustering<?> clustering = in.readBoolean() ? Clustering.serializer.deserialize(in, version, metadata.comparator.subtypes()) : null;
             return new TxnReferenceOperations(metadata, clustering, deserializeList(in, version, TxnReferenceOperation.serializer),
@@ -117,7 +122,9 @@ public class TxnReferenceOperations
         @Override
         public long serializedSize(TxnReferenceOperations operations, int version)
         {
-            long size = 0;
+            long size = TypeSizes.BOOL_SIZE;
+            if (operations.isEmpty())
+                return size;
             size += tableMetadataSerializer.serializedSize(operations.metadata, version);
             size += TypeSizes.BOOL_SIZE;
             if (operations.clustering != null)

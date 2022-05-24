@@ -19,30 +19,24 @@
 package org.apache.cassandra.cql3;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.cql3.functions.Function;
-import org.apache.cassandra.cql3.selection.Selection;
-import org.apache.cassandra.cql3.statements.SelectStatement;
+import org.apache.cassandra.cql3.statements.TransactionStatement;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.rows.CellPath;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.schema.ColumnMetadata;
-import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.accord.txn.ValueReference;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkNotNull;
-import static org.apache.cassandra.cql3.statements.RequestValidations.checkTrue;
 
 public class ColumnReference implements Term
 {
@@ -118,7 +112,6 @@ public class ColumnReference implements Term
         private boolean isResolved = false;
 
         private String selectName;
-        private SelectStatement select;
         private ColumnMetadata column;
         private Term rowIndex = null;
         private Term cellPath = null;
@@ -139,7 +132,7 @@ public class ColumnReference implements Term
                 rowIndex = ROW_IDX_ZERO;
         }
 
-        public void resolveReference(Map<String, SelectStatement> selects)
+        public void resolveReference(Map<String, TransactionStatement.ReferenceSource> refSources)
         {
             if (isResolved)
                 return;
@@ -151,8 +144,8 @@ public class ColumnReference implements Term
             // root level name
             literal = (Constants.Literal) termIterator.next();
             selectName = literal.getRawText();
-            select = selects.get(selectName);
-            checkNotNull(select, "%s doesn't reference a select", this);
+            TransactionStatement.ReferenceSource source = refSources.get(selectName);
+            checkNotNull(source, "%s doesn't reference a select", this);
 
             if (!termIterator.hasNext())
             {
@@ -160,13 +153,7 @@ public class ColumnReference implements Term
                 return;
             }
 
-            TableMetadata metadata = select.table;
-            Selection selection = select.getSelection();
-
-            // check for single row select
-            Set<ColumnMetadata> selectedColumns = new HashSet<>(selection.getColumns());
-
-            if (!Iterables.all(metadata.primaryKeyColumns(), selectedColumns::contains))
+            if (!source.isPointSelect())
             {
                 if (true)
                     throw new UnsupportedOperationException("TODO: support multi row selects");
@@ -182,10 +169,8 @@ public class ColumnReference implements Term
             }
 
             literal = (Constants.Literal) termIterator.next();
-            column = select.table.getColumn(new ColumnIdentifier(literal.getRawText(), true));
+            column = source.getColumn(literal.getRawText());
             checkNotNull(column, "%s doesn't reference a valid column", this);
-
-            checkTrue(selectedColumns.contains(column), "%s refererences a column not included in the select", this);
 
             // TODO: confirm update partition key terms don't contain column references. This can't be done in prepare
             //   because there can be intermediate functions (ie: pk=row.v+1 or pk=_add(row.v, 5)). Need a recursive Term visitor

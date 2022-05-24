@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Iterables;
 import org.slf4j.Logger;
@@ -906,21 +907,24 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         private final boolean ifNotExists;
         private final boolean ifExists;
         final boolean isForTxn;
+        final String txnReadName;
 
         protected Parsed(QualifiedName name,
                          StatementType type,
                          Attributes.Raw attrs,
                          List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
                          boolean ifNotExists,
-                         boolean ifExists, boolean isForTxn)
+                         boolean ifExists, boolean isForTxn, String txnReadName)
         {
             super(name);
+            Preconditions.checkArgument(txnReadName == null || isForTxn);
             this.type = type;
             this.attrs = attrs;
             this.conditions = conditions == null ? Collections.emptyList() : conditions;
             this.ifNotExists = ifNotExists;
             this.ifExists = ifExists;
             this.isForTxn = isForTxn;
+            this.txnReadName = txnReadName;
         }
 
         public ModificationStatement prepare(ClientState state)
@@ -937,7 +941,9 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
 
             Conditions preparedConditions = prepareConditions(metadata, bindVariables);
 
-            return prepareInternal(metadata, bindVariables, preparedConditions, preparedAttributes);
+            ModificationStatement statement = prepareInternal(metadata, bindVariables, preparedConditions, preparedAttributes);
+            // TODO: if this is a txn and has a read name, and updates non-static columns, confirm it selects an entire row
+            return statement;
         }
 
         /**

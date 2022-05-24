@@ -37,17 +37,20 @@ import accord.txn.Keys;
 import accord.txn.Txn;
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.cql3.CQLStatement;
+import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.ColumnReference;
 import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.selection.Selection;
 import org.apache.cassandra.cql3.transactions.UpdateCondition;
 import org.apache.cassandra.db.ReadQuery;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadQuery;
-import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.StorageProxy;
-import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.txn.TxnCondition;
 import org.apache.cassandra.service.accord.txn.TxnNamedRead;
 import org.apache.cassandra.service.accord.txn.TxnQuery;
@@ -195,6 +198,71 @@ public class TransactionStatement implements CQLStatement
         return null;
     }
 
+    // TODO: move to ColumnReference
+    public interface ReferenceSource
+    {
+
+        boolean isPointSelect();
+        ColumnMetadata getColumn(String name);
+
+    }
+
+    private static class SelectReferenceSource implements ReferenceSource
+    {
+        private final SelectStatement statement;
+        private final Set<ColumnMetadata> selectedColumns;
+        private final TableMetadata metadata;
+
+        public SelectReferenceSource(SelectStatement statement)
+        {
+            this.statement = statement;
+            this.metadata = statement.table;
+            Selection selection = statement.getSelection();
+            selectedColumns = new HashSet<>(selection.getColumns());
+        }
+
+        @Override
+        public boolean isPointSelect()
+        {
+            return Iterables.all(metadata.primaryKeyColumns(), selectedColumns::contains);
+        }
+
+        @Override
+        public ColumnMetadata getColumn(String name)
+        {
+            ColumnMetadata column = metadata.getColumn(new ColumnIdentifier(name, true));
+            if (column != null)
+                checkTrue(selectedColumns.contains(column), "%s refererences a column not included in the select", this);
+            return column;
+        }
+    }
+
+    private static class UpdateReferenceSource implements ReferenceSource
+    {
+        private final ModificationStatement.Parsed parsed;
+        private final TableMetadata metadata;
+
+        public UpdateReferenceSource(ModificationStatement.Parsed parsed)
+        {
+            this.parsed = parsed;
+            this.metadata = Schema.instance.validateTable(parsed.keyspace(), parsed.name());
+        }
+
+        @Override
+        public boolean isPointSelect()
+        {
+            // TODO: I believe updates/inserts must always specfiy all primary keys, except maybe for static column updates only
+            //   in which case we don't want to allow references to non-static columns
+            return true;
+        }
+
+        @Override
+        public ColumnMetadata getColumn(String name)
+        {
+            return metadata.getColumn(new ColumnIdentifier(name, true));
+        }
+    }
+
     public static class Parsed extends QualifiedStatement
     {
         private final List<SelectStatement.RawStatement> selects;
@@ -225,7 +293,7 @@ public class TransactionStatement implements CQLStatement
             checkFalse(selects.isEmpty() && updates.isEmpty(), "Transaction is empty");
 
             List<NamedSelect> preparedSelects = new ArrayList<>(selects.size());
-            Map<String, SelectStatement> selectMap = new HashMap<>();
+            Map<String, ReferenceSource> refSources = new HashMap<>();
             Set<String> selectNames = new HashSet<>();
 
             // TODO: confirm no custom timestamps
@@ -242,27 +310,37 @@ public class TransactionStatement implements CQLStatement
                 SelectStatement preparedSelect = select.prepare(bindVariables);
                 NamedSelect namedSelect = new NamedSelect(name, preparedSelect);
                 preparedSelects.add(namedSelect);
-                selectMap.put(name, preparedSelect);
+                refSources.put(name, new SelectReferenceSource(preparedSelect));
+            }
+
+            // check for any read-before-write updates
+            for (int i=0, mi=updates.size(); i<mi; i++)
+            {
+                ModificationStatement.Parsed parsed = updates.get(i);
+                String name = parsed.txnReadName;
+                if (name != null)
+                    refSources.put(name, new UpdateReferenceSource(parsed));
             }
 
             for (ColumnReference.Raw reference : columnReferences)
-                reference.resolveReference(selectMap);
+                reference.resolveReference(refSources);
 
             List<ModificationStatement> preparedUpdates = new ArrayList<>(updates.size());
             for (ModificationStatement.Parsed parsed : updates)
             {
                 ModificationStatement prepared = parsed.prepare(bindVariables);
-                // TODO: visit where clause terms and confirm they're not column references
                 preparedUpdates.add(prepared);
+
+                if (parsed.txnReadName == null)
+                    continue;
+                // TODO: create select counterparts for named updates
+                // TODO: can we borrow placeholder terms for the selection pk?? Test
+                preparedSelects.add(new NamedSelect(parsed.txnReadName, ((UpdateStatement) prepared).createSelectForTxn()));
             }
 
             List<UpdateCondition> preparedConditions = new ArrayList<>(conditions.size());
             for (UpdateCondition.Raw condition : conditions)
                 preparedConditions.add(condition.prepare("[txn]", bindVariables));
-
-            // TODO: instead of materializing partition updates after select statement execution, maybe we could materialize
-            //   them without column references, and have the select statements materialize those parts. Tricky part would
-            //   be preserving functions... but maybe those could be serialized without literally everything else??
 
             List<ColumnReference> preparedReferences = new ArrayList<>(columnReferences.size());
             for (ColumnReference.Raw reference : columnReferences)

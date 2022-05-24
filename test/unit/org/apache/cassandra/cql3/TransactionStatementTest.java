@@ -37,6 +37,7 @@ import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.BTreeRow;
 import org.apache.cassandra.db.rows.Row;
+import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Schema;
@@ -71,16 +72,48 @@ public class TransactionStatementTest
         TABLE2 = Schema.instance.getTableMetadata("ks", "tbl2");
     }
 
-    @Test
-    public void testNonTxnSelect()
+    private static PartitionUpdate emptyUpdate(TableMetadata metadata, int k, int c)
     {
-        // TODO: check txn scope throws exception in normal select
+        DecoratedKey dk = metadata.partitioner.decorateKey(bytes(k));
+        RegularAndStaticColumns columns = new RegularAndStaticColumns(Columns.from(metadata.regularColumns()), Columns.NONE);
+        PartitionUpdate.Builder builder = new PartitionUpdate.Builder(metadata, dk, columns, 1);
+
+        Row.Builder row = BTreeRow.unsortedBuilder();
+        row.newRow(new BufferClustering(bytes(c)));
+        builder.add(row.build());
+
+        return builder.build();
     }
 
-    @Test
+    private static ColumnMetadata column(TableMetadata metadata, String name)
+    {
+        return metadata.getColumn(new ColumnIdentifier(name, true));
+    }
+
+    private static ValueReference reference(String name, TableMetadata metadata, String column, int idx)
+    {
+        return new ValueReference(name, idx, column(metadata, column), null);
+    }
+
+    // txn syntax isn't valid outside of a txn
+    @Test(expected=SyntaxException.class)
+    public void testNonTxnSelect()
+    {
+        QueryProcessor.parseStatement("SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;");
+    }
+
+    // txn syntax isn't valid outside of a txn
+    @Test(expected=SyntaxException.class)
     public void testNonTxnUpdate()
     {
-        // TODO: check scope reference throws exception in normal update
+        QueryProcessor.parseStatement("UPDATE ks.tbl1 SET v=row2.v WHERE k=1 AND c=2;");
+    }
+
+    // txn syntax isn't valid outside of a txn
+    @Test(expected=SyntaxException.class)
+    public void testNonTxnNamedUpdate()
+    {
+        QueryProcessor.parseStatement("UPDATE ks.tbl1 SET v=1 WHERE k=1 AND c=2 AS row1;");
     }
 
     @Test
@@ -112,36 +145,43 @@ public class TransactionStatementTest
         Assert.assertEquals(expected, actual);
     }
 
-    private static PartitionUpdate emptyUpdate(TableMetadata metadata, int k, int c)
-    {
-        DecoratedKey dk = metadata.partitioner.decorateKey(bytes(k));
-        RegularAndStaticColumns columns = new RegularAndStaticColumns(Columns.from(metadata.regularColumns()), Columns.NONE);
-        PartitionUpdate.Builder builder = new PartitionUpdate.Builder(metadata, dk, columns, 1);
-
-        Row.Builder row = BTreeRow.unsortedBuilder();
-        row.newRow(new BufferClustering(bytes(c)));
-        builder.add(row.build());
-
-        return builder.build();
-    }
-
-    private static ColumnMetadata column(TableMetadata metadata, String name)
-    {
-        return metadata.getColumn(new ColumnIdentifier(name, true));
-    }
-
-    private static ValueReference reference(String name, TableMetadata metadata, String column, int idx)
-    {
-        return new ValueReference(name, idx, column(metadata, column), null);
-    }
-
     @Test
-    public void variableSubstitutionTest()
+    public void updateVariableSubstitutionTest()
     {
         String query = "BEGIN TRANSACTION;\n" +
                        "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
                        "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
                        "UPDATE ks.tbl1 SET v=row2.v WHERE k=1 AND c=2;\n" +
+                       "COMMIT TRANSACTION IF\n" +
+                       "  row1.v = 3\n" +
+                       "  AND row2.v=4;";
+
+        List<TxnReferenceOperation> regularOps = new ArrayList<>();
+        regularOps.add(new TxnReferenceOperation(column(TABLE1, "v"),
+                                                 new TxnReferenceValue.Substitution(reference("row2", TABLE2, "v", 0))));
+        TxnReferenceOperations referenceOps = new TxnReferenceOperations(TABLE1, Clustering.make(bytes(2)), regularOps, Collections.emptyList());
+        Txn expected = TxnBuilder.builder()
+                                 .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
+                                 .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2")
+                                 .withWrite(emptyUpdate(TABLE1, 1, 2), referenceOps)
+                                 .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
+                                 .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
+                                 .build();
+
+        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
+        Assert.assertNotNull(parsed);
+        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
+        Txn actual = statement.createTxn(QueryOptions.DEFAULT);
+        Assert.assertEquals(expected, actual);
+    }
+
+    @Test
+    public void insertVariableSubstitutionTest()
+    {
+        String query = "BEGIN TRANSACTION;\n" +
+                       "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
+                       "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
+                       "INSERT INTO ks.tbl1 (k, c, v) VALUES (1, 2, row2.v);\n" +
                        "COMMIT TRANSACTION IF\n" +
                        "  row1.v = 3\n" +
                        "  AND row2.v=4;";
@@ -166,43 +206,45 @@ public class TransactionStatementTest
     }
 
     @Test
-    public void variableSubstitionWithFunctionTest()
+    public void readForUpdateTest()
     {
         String query = "BEGIN TRANSACTION;\n" +
-                       "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
-                       "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
-                       "UPDATE ks.tbl1 SET v=row1.v + 1 WHERE k=1 AND c=2;\n" +
+                       "UPDATE ks.tbl1 SET v=3 WHERE k=1 AND c=2 AS row1;\n" +
+                       "UPDATE ks.tbl2 SET v=4 WHERE k=2 AND c=2 AS row2;\n" +
                        "COMMIT TRANSACTION IF\n" +
                        "  row1.v = 3\n" +
                        "  AND row2.v=4;";
 
+        Txn expected = TxnBuilder.builder()
+                                 .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 LIMIT 1")
+                                 .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 LIMIT 1")
+                                 .withWrite("UPDATE ks.tbl1 SET v=3 WHERE k=1 AND c=2")
+                                 .withWrite("UPDATE ks.tbl2 SET v=4 WHERE k=2 AND c=2")
+                                 .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
+                                 .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
+                                 .build();
         TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
         Assert.assertNotNull(parsed);
         TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
         Txn actual = statement.createTxn(QueryOptions.DEFAULT);
+        Assert.assertEquals(expected, actual);
     }
 
     @Test
-    public void equalConditionTest()
+    public void variableSubstitionWithFunctionTest()
     {
-    }
-
-    @Test
-    public void existsConditionTest()
-    {
-        String query = "BEGIN TRANSACTION;\n" +
-                       "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
-                       "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
-                       "UPDATE ks.tbl2 SET v=row1.v + 1 WHERE k=2 AND c=2;\n" +
-                       "COMMIT TRANSACTION IF row1 EXISTS AND row2 NOT EXISTS;";
-        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
-        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
-    }
-
-    @Test
-    public void notExistsConditionTest()
-    {
-
+//        String query = "BEGIN TRANSACTION;\n" +
+//                       "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 AS row1;\n" +
+//                       "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 AS row2;\n" +
+//                       "UPDATE ks.tbl1 SET v=row1.v + 1 WHERE k=1 AND c=2;\n" +
+//                       "COMMIT TRANSACTION IF\n" +
+//                       "  row1.v = 3\n" +
+//                       "  AND row2.v=4;";
+//
+//        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
+//        Assert.assertNotNull(parsed);
+//        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
+//        Txn actual = statement.createTxn(QueryOptions.DEFAULT);
     }
 
     @Test

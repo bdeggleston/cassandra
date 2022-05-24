@@ -134,7 +134,7 @@ public class DeleteStatement extends ModificationStatement
                       boolean ifExists,
                       boolean isForTxn)
         {
-            super(name, StatementType.DELETE, attrs, conditions, false, ifExists, isForTxn);
+            super(name, StatementType.DELETE, attrs, conditions, false, ifExists, isForTxn, null);
             this.deletions = deletions;
             this.whereClause = whereClause;
         }

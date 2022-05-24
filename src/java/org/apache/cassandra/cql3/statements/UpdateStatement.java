@@ -30,6 +30,7 @@ import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.cql3.conditions.ColumnCondition;
 import org.apache.cassandra.cql3.conditions.Conditions;
 import org.apache.cassandra.cql3.restrictions.StatementRestrictions;
+import org.apache.cassandra.cql3.selection.Selection;
 import org.apache.cassandra.cql3.transactions.ReferenceOperation;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.Slice;
@@ -132,9 +133,10 @@ public class UpdateStatement extends ModificationStatement
                             List<ColumnIdentifier> columnNames,
                             List<Term.Raw> columnValues,
                             boolean ifNotExists,
-                            boolean isForTxn)
+                            boolean isForTxn,
+                            String txnReadName)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn, txnReadName);
             this.columnNames = columnNames;
             this.columnValues = columnValues;
         }
@@ -207,9 +209,9 @@ public class UpdateStatement extends ModificationStatement
         private final Json.Raw jsonValue;
         private final boolean defaultUnset;
 
-        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists, boolean isForTxn)
+        public ParsedInsertJson(QualifiedName name, Attributes.Raw attrs, Json.Raw jsonValue, boolean defaultUnset, boolean ifNotExists, boolean isForTxn, String txnReadName)
         {
-            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn);
+            super(name, StatementType.INSERT, attrs, null, ifNotExists, false, isForTxn, txnReadName);
             this.jsonValue = jsonValue;
             this.defaultUnset = defaultUnset;
         }
@@ -345,9 +347,10 @@ public class UpdateStatement extends ModificationStatement
                             WhereClause whereClause,
                             List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions,
                             boolean ifExists,
-                            boolean isForTxn)
+                            boolean isForTxn,
+                            String txnReadName)
         {
-            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists, isForTxn);
+            super(name, StatementType.UPDATE, attrs, conditions, false, ifExists, isForTxn, txnReadName);
             this.updates = updates;
             this.whereClause = whereClause;
         }
@@ -411,5 +414,24 @@ public class UpdateStatement extends ModificationStatement
     public AuditLogContext getAuditLogContext()
     {
         return new AuditLogContext(AuditLogEntryType.UPDATE, keyspace(), columnFamily());
+    }
+
+    private static final Constants.Value ONE = new Constants.Value(ByteBufferUtil.bytes(1));
+
+    public SelectStatement createSelectForTxn()
+    {
+        // FIXME: get working with static-only updates that don't specify any/all primary key columns
+        Preconditions.checkState(getRestrictions().hasAllPKColumnsRestrictedByEqualities());
+        Selection selection = Selection.wildcard(metadata, false, true);
+        return new SelectStatement(metadata,
+                                   bindVariables,
+                                   SelectStatement.defaultParameters,
+                                   selection,
+                                   getRestrictions(),
+                                   false,
+                                   null,
+                                   null,
+                                   ONE,
+                                   null);
     }
 }

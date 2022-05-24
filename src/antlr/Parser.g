@@ -540,7 +540,7 @@ jsonInsertStatement [QualifiedName qn] returns [UpdateStatement.ParsedInsertJson
       ( K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
       ( usingClause[attrs] )?
       {
-          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists, isParsingTxn);
+          $expr = new UpdateStatement.ParsedInsertJson(qn, attrs, val, defaultUnset, ifNotExists, isParsingTxn, "");
       }
     ;
 
@@ -571,12 +571,14 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
         Attributes.Raw attrs = new Attributes.Raw();
         UpdateStatement.OperationCollector operations = new UpdateStatement.OperationCollector();
         boolean ifExists = false;
+        String txnVarName = null;
     }
     : K_UPDATE cf=columnFamilyName
       ( usingClause[attrs] )?
       K_SET columnOperation[operations] (',' columnOperation[operations])*
       K_WHERE wclause=whereClause
       ( K_IF ( K_EXISTS { ifExists = true; } | conditions=updateConditions ))?
+      ({isParsingTxn}? ( K_AS txnVar=IDENT { txnVarName=$txnVar.text; } )?)?
       {
           $expr = new UpdateStatement.ParsedUpdate(cf,
                                                    attrs,
@@ -584,7 +586,8 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
                                                    wclause.build(),
                                                    conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions,
                                                    ifExists,
-                                                   isParsingTxn);
+                                                   isParsingTxn,
+                                                   txnVarName);
      }
     ;
 
