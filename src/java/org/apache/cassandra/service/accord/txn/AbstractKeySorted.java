@@ -19,15 +19,20 @@
 package org.apache.cassandra.service.accord.txn;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
 
+import accord.api.Key;
+import accord.txn.Keys;
+import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 
 /**
@@ -79,6 +84,17 @@ public abstract class AbstractKeySorted<T> implements Iterable<T>
     public int hashCode()
     {
         return Arrays.hashCode(items);
+    }
+
+    @VisibleForTesting
+    public Keys createKeys()
+    {
+        Set<PartitionKey> keysSet = new HashSet<>();
+        this.forEach(i -> keysSet.add(getKey(i)));
+
+        Key[] keys = keysSet.toArray(Key[]::new);
+        Arrays.sort(keys, AccordKey::compareKeys);
+        return new Keys(keys);
     }
 
     /**

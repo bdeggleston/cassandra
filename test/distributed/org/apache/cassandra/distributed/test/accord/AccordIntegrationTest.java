@@ -18,8 +18,6 @@
 
 package org.apache.cassandra.distributed.test.accord;
 
-import java.util.concurrent.ExecutionException;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -27,10 +25,7 @@ import org.apache.cassandra.distributed.Cluster;
 import org.apache.cassandra.distributed.api.ConsistencyLevel;
 import org.apache.cassandra.distributed.test.TestBaseImpl;
 import org.apache.cassandra.service.accord.AccordService;
-import org.apache.cassandra.service.accord.AccordTxnBuilder;
-import org.apache.cassandra.service.accord.db.AccordData;
 
-import static org.apache.cassandra.service.accord.db.AccordUpdate.UpdatePredicate.Type.*;
 
 public class AccordIntegrationTest extends TestBaseImpl
 {
@@ -58,7 +53,7 @@ public class AccordIntegrationTest extends TestBaseImpl
                            "INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (0, 0, 1);\n" +
                            "COMMIT TRANSACTION IF row1 NOT EXISTS AND row2.v=3;";
             Object[][] result = cluster.coordinator(1).execute(query, ConsistencyLevel.ANY);
-            Assert.assertNull(result);
+            Assert.assertTrue((Boolean) result[0][0]);
 
             assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0", 0, 0, 1);
         }
@@ -105,41 +100,24 @@ public class AccordIntegrationTest extends TestBaseImpl
 
             cluster.forEach(node -> node.runOnInstance(() -> AccordService.instance.setCacheSize(0)));
 
-            cluster.get(1).runOnInstance(() -> {
-                AccordTxnBuilder txnBuilder = new AccordTxnBuilder();
-                txnBuilder.withRead("SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0");
-                txnBuilder.withRead("SELECT * FROM " + keyspace + ".tbl WHERE k=1 AND c=0");
-                txnBuilder.withWrite("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (0, 0, 0)");
-                txnBuilder.withWrite("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 0)");
-                txnBuilder.withCondition(keyspace, "tbl", 0, 0, NOT_EXISTS);
-                try
-                {
-                    AccordData result = (AccordData) AccordService.instance.node.coordinate(txnBuilder.build()).get();
-                    Assert.assertNotNull(result);
-                }
-                catch (InterruptedException | ExecutionException e)
-                {
-                    throw new AssertionError(e);
-                }
-            });
+            String query1 = "BEGIN TRANSACTION;\n" +
+                            "SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0 AS select1;\n" +
+                            "SELECT * FROM " + keyspace + ".tbl WHERE k=1 AND c=0 AS select2;\n" +
+                            "INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (0, 0, 0);\n" +
+                            "INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 0);\n" +
+                            "COMMIT TRANSACTION IF select1 NOT EXISTS;";
+            Object[][] result1 = cluster.coordinator(1).execute(query1, ConsistencyLevel.ANY);
+            Assert.assertTrue((Boolean) result1[0][0]);
 
-            cluster.get(1).runOnInstance(() -> {
-                AccordTxnBuilder txnBuilder = new AccordTxnBuilder();
-                txnBuilder.withRead("SELECT * FROM " + keyspace + ".tbl WHERE k=1 AND c=0");
-                txnBuilder.withRead("SELECT * FROM " + keyspace + ".tbl WHERE k=2 AND c=0");
-                txnBuilder.withWrite("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 1)");
-                txnBuilder.withWrite("INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (2, 0, 1)");
-                txnBuilder.withCondition(keyspace, "tbl", 1, 0, "v", EQUAL, 0);
-                try
-                {
-                    AccordData result = (AccordData) AccordService.instance.node.coordinate(txnBuilder.build()).get();
-                    Assert.assertNotNull(result);
-                }
-                catch (InterruptedException | ExecutionException e)
-                {
-                    throw new AssertionError(e);
-                }
-            });
+            String query2 = "BEGIN TRANSACTION;\n" +
+                            "SELECT * FROM " + keyspace + ".tbl WHERE k=1 AND c=0 AS select1;\n" +
+                            "SELECT * FROM " + keyspace + ".tbl WHERE k=2 AND c=0 AS select2" +
+                            "INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (1, 0, 1)" +
+                            "INSERT INTO " + keyspace + ".tbl (k, c, v) VALUES (2, 0, 1)" +
+                            "COMMIT TRANSACTION IF select1.v = 0;";
+            Object[][] result2 = cluster.coordinator(1).execute(query2, ConsistencyLevel.ANY);
+            Assert.assertTrue((Boolean) result2[0][0]);
+
             assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl WHERE k=0 AND c=0", 0, 0, 0);
             assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl WHERE k=1 AND c=0", 1, 0, 1);
             assertRow(cluster, "SELECT * FROM " + keyspace + ".tbl WHERE k=2 AND c=0", 2, 0, 1);

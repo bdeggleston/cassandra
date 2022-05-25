@@ -31,6 +31,8 @@ import java.util.function.LongSupplier;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import org.junit.Assert;
+
 import accord.api.Data;
 import accord.api.KeyRange;
 import accord.api.Write;
@@ -48,18 +50,20 @@ import accord.txn.Timestamp;
 import accord.txn.Txn;
 import accord.txn.TxnId;
 import accord.txn.Writes;
+import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.TransactionStatement;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.accord.api.AccordAgent;
 import org.apache.cassandra.service.accord.api.AccordKey;
-import org.apache.cassandra.service.accord.db.AccordData;
-import org.apache.cassandra.service.accord.db.AccordRead;
+import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static java.lang.String.format;
-import static org.apache.cassandra.service.accord.db.AccordUpdate.UpdatePredicate.Type.NOT_EXISTS;
 
 public class AccordTestUtils
 {
@@ -83,11 +87,6 @@ public class AccordTestUtils
         }
 
         return new Topology(1, shards);
-    }
-
-    public static AccordTxnBuilder txnBuilder()
-    {
-        return new AccordTxnBuilder();
     }
 
     public static TxnId txnId(long epoch, long real, int logical, long node)
@@ -126,8 +125,8 @@ public class AccordTestUtils
     {
 
         Txn txn = command.txn();
-        AccordRead read = (AccordRead) txn.read();
-        Data readData = read.keys().stream()
+        TxnRead read = (TxnRead) txn.read();
+        Data readData = read.createKeys().stream()
                             .map(key -> {
                                 try
                                 {
@@ -142,19 +141,28 @@ public class AccordTestUtils
                                     throw new RuntimeException(e);
                                 }
                             })
-                            .reduce(null, AccordData::merge);
+                            .reduce(null, Data::merge);
         Write write = txn.update().apply(readData);
         command.writes(new Writes(command.executeAt(), txn.keys(), write));
         command.result(txn.query().compute(readData));
     }
 
+    public static Txn createTxn(String query)
+    {
+        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
+        Assert.assertNotNull(parsed);
+        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
+        return statement.createTxn(QueryOptions.DEFAULT);
+    }
+
     public static Txn createTxn(int readKey, int... writeKeys)
     {
-        AccordTxnBuilder builder = txnBuilder().withRead(format("SELECT * FROM ks.tbl WHERE k=%s AND c=0", readKey));
+        StringBuilder sb = new StringBuilder("BEGIN TRANSACTION;\n");
+        sb.append(format("SELECT * FROM ks.tbl WHERE k=%s AND c=0 AS select;\n", readKey));
         for (int key : writeKeys)
-            builder.withWrite(format("INSERT INTO ks.tbl (k, c, v) VALUES (%s, 0, 1)", key));
-        builder.withCondition("ks", "tbl", readKey, 0, NOT_EXISTS).build();
-        return builder.build();
+            sb.append(format("INSERT INTO ks.tbl (k, c, v) VALUES (%s, 0, 1);\n", key));
+        sb.append("COMMIT TRANSACTION IF select NOT EXISTS;");
+        return createTxn(sb.toString());
     }
 
     public static Txn createTxn(int key)

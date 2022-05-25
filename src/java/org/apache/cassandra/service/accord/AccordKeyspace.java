@@ -92,7 +92,6 @@ import org.apache.cassandra.schema.Views;
 import org.apache.cassandra.serializers.UUIDSerializer;
 import org.apache.cassandra.service.accord.AccordCommandsForKey.SeriesKind;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
-import org.apache.cassandra.service.accord.db.AccordData;
 import org.apache.cassandra.service.accord.serializers.CommandSerializers;
 import org.apache.cassandra.service.accord.store.StoredNavigableMap;
 import org.apache.cassandra.service.accord.store.StoredSet;
@@ -536,7 +535,7 @@ public class AccordKeyspace
                             version,
                             serializeOrNull(command.writes(), CommandSerializers.writes, version),
                             version,
-                            serializeOrNull((AccordData) command.result(), AccordData.serializer, version),
+                            serializeOrNull((TxnAppliedQuery.Applied) command.result(), TxnAppliedQuery.Applied.serializer, version),
                             serializeWaitingOn(command.waitingOnCommit.getView()),
                             serializeWaitingOn(command.waitingOnApply.getView()),
                             serializeListeners(command.storedListeners.getView()),
@@ -624,7 +623,7 @@ public class AccordKeyspace
             command.accepted.load(deserializeTimestampOrNull(row, "accepted_ballot", Ballot::new));
             command.deps.load(deserializeWithVersionOr(row, "dependencies", "dependencies_version", CommandSerializers.deps, Dependencies::new));
             command.writes.load(deserializeWithVersionOr(row, "writes", "writes_version", CommandSerializers.writes, () -> null));
-            command.result.load(deserializeWithVersionOr(row, "result", "result_version", AccordData.serializer, () -> null));
+            command.result.load(deserializeWithVersionOr(row, "result", "result_version", TxnAppliedQuery.Applied.serializer, () -> null));
             command.waitingOnCommit.load(deserializeWaitingOn(row, "waiting_on_commit"));
             command.blockingCommitOn.load(deserializeBlocking(row, "blocking_commit_on"));
             command.waitingOnApply.load(deserializeWaitingOn(row, "waiting_on_apply"));

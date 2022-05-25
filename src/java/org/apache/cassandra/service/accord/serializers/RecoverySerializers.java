@@ -28,7 +28,7 @@ import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.db.AccordData;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 
 public class RecoverySerializers
 {
@@ -87,7 +87,7 @@ public class RecoverySerializers
                 CommandSerializers.deps.serialize(recoverOk.earlierAcceptedNoWitness, out, version);
                 out.writeBoolean(recoverOk.rejectsFastPath);
                 CommandSerializers.writes.serialize(recoverOk.writes, out, version);
-                AccordData.serializer.serialize((AccordData) recoverOk.result, out, version);
+                TxnAppliedQuery.Applied.serializer.serialize((TxnAppliedQuery.Applied) recoverOk.result, out, version);
             }
         }
 
@@ -107,7 +107,7 @@ public class RecoverySerializers
                                  CommandSerializers.deps.deserialize(in, version),
                                  in.readBoolean(),
                                  CommandSerializers.writes.deserialize(in, version),
-                                 AccordData.serializer.deserialize(in, version));
+                                 TxnAppliedQuery.Applied.serializer.deserialize(in, version));
         }
 
         @Override
@@ -132,7 +132,7 @@ public class RecoverySerializers
                 size += CommandSerializers.deps.serializedSize(recoverOk.earlierAcceptedNoWitness, version);
                 size += TypeSizes.sizeof(recoverOk.rejectsFastPath);
                 size += CommandSerializers.writes.serializedSize(recoverOk.writes, version);
-                size += AccordData.serializer.serializedSize((AccordData) recoverOk.result, version);
+                size += TxnAppliedQuery.Applied.serializer.serializedSize((TxnAppliedQuery.Applied) recoverOk.result, version);
             }
             return size;
         }

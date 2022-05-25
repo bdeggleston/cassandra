@@ -29,7 +29,6 @@ import accord.txn.Txn;
 import accord.txn.TxnId;
 import accord.txn.Writes;
 import org.apache.cassandra.service.accord.api.AccordKey;
-import org.apache.cassandra.service.accord.db.AccordWrite;
 import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.service.accord.txn.TxnUpdate;

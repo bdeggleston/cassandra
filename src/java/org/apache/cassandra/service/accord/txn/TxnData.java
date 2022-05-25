@@ -66,7 +66,7 @@ public class TxnData implements Data, Result
         return merged;
     }
 
-    public static final IVersionedSerializer<TxnData> serializer = new IVersionedSerializer<TxnData>()
+    public static final IVersionedSerializer<TxnData> serializer = new IVersionedSerializer<>()
     {
         @Override
         public void serialize(TxnData data, DataOutputPlus out, int version) throws IOException

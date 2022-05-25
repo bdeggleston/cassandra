@@ -41,6 +41,8 @@ public class TxnAppliedQuery implements Query
     {
         public static final Applied TRUE = new Applied();
         public static final Applied FALSE = new Applied();
+
+        private static long SIZE = ObjectSizes.measure(TRUE);
         private Applied(){}
 
         public boolean wasApplied()
@@ -51,6 +53,11 @@ public class TxnAppliedQuery implements Query
         public static Applied valueOf(boolean b)
         {
             return b ? TRUE : FALSE;
+        }
+
+        public long estimatedSizeOnHeap()
+        {
+            return SIZE;
         }
 
         public static final IVersionedSerializer<Applied> serializer = new IVersionedSerializer<Applied>()
