@@ -49,10 +49,12 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.service.accord.AccordCommandsForKey;
+import org.apache.cassandra.service.accord.AccordObjectSizes;
 import org.apache.cassandra.service.accord.SerializationUtils;
 import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.FutureCombiner;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
@@ -65,8 +67,11 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
 {
     public static final TxnWrite EMPTY = new TxnWrite(Collections.emptyList());
 
+    private static final long EMPTY_SIZE = ObjectSizes.measure(EMPTY);
+
     public static class Update extends AbstractSerialized<PartitionUpdate>
     {
+        private static final long EMPTY_SIZE = ObjectSizes.measure(new Update(null, 0, (ByteBuffer) null));
         public final PartitionKey key;
         public final int index;
 
@@ -82,6 +87,13 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
             super(bytes);
             this.key = key;
             this.index = index;
+        }
+
+        long estimatedSizeOnHeap()
+        {
+            return EMPTY_SIZE
+                   + key.estimatedSizeOnHeap()
+                   + ByteBufferUtil.estimatedSizeOnHeap(bytes());
         }
 
         @Override
@@ -353,6 +365,14 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
             return futures.get(0);
 
         return FutureCombiner.allOf(futures);
+    }
+
+    public long estimatedSizeOnHeap()
+    {
+        long size = EMPTY_SIZE;
+        for (Update update : this)
+            size += update.estimatedSizeOnHeap();
+        return size;
     }
 
     public static final IVersionedSerializer<TxnWrite> serializer = new IVersionedSerializer<>()

@@ -19,12 +19,14 @@
 package org.apache.cassandra.service.accord.txn;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
 
@@ -32,7 +34,7 @@ import org.apache.cassandra.service.accord.api.AccordKey.PartitionKey;
  * Immutable collection of items, sorted first by their partition key
  * @param <T>
  */
-public abstract class AbstractKeySorted<T>
+public abstract class AbstractKeySorted<T> implements Iterable<T>
 {
     final T[] items;
 
@@ -48,6 +50,12 @@ public abstract class AbstractKeySorted<T>
         items.toArray(arr);
         Arrays.sort(arr, this::compare);
         this.items = arr;
+    }
+
+    @Override
+    public Iterator<T> iterator()
+    {
+        return Iterators.forArray(items);
     }
 
     @Override

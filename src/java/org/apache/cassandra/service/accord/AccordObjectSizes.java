@@ -33,6 +33,7 @@ import org.apache.cassandra.service.accord.db.AccordWrite;
 import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.service.accord.txn.TxnUpdate;
+import org.apache.cassandra.service.accord.txn.TxnWrite;
 import org.apache.cassandra.utils.ObjectSizes;
 
 public class AccordObjectSizes
@@ -88,7 +89,7 @@ public class AccordObjectSizes
         long size = EMPTY_WRITES_SIZE;
         size += timestamp(writes.executeAt);
         size += keys(writes.keys);
-        size += ((AccordWrite) writes.write).estimatedSizeOnHeap();
+        size += ((TxnWrite) writes.write).estimatedSizeOnHeap();
         return size;
     }
 
