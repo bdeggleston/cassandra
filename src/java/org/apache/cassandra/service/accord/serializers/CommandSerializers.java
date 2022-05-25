@@ -37,7 +37,7 @@ import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.service.accord.txn.TxnQuery;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.service.accord.txn.TxnUpdate;
 import org.apache.cassandra.service.accord.txn.TxnWrite;
@@ -128,7 +128,7 @@ public class CommandSerializers
         {
             KeySerializers.keys.serialize(txn.keys(), out, version);
             TxnRead.serializer.serialize((TxnRead) txn.read(), out, version);
-            TxnQuery.serializer.serialize((TxnQuery) txn.query(), out, version);
+            TxnAppliedQuery.serializer.serialize((TxnAppliedQuery) txn.query(), out, version);
             out.writeBoolean(txn.update() != null);
             if (txn.update() != null)
                 TxnUpdate.serializer.serialize((TxnUpdate) txn.update(), out, version);
@@ -140,7 +140,7 @@ public class CommandSerializers
         {
             Keys keys = KeySerializers.keys.deserialize(in, version);
             TxnRead read = TxnRead.serializer.deserialize(in, version);
-            TxnQuery query = TxnQuery.serializer.deserialize(in, version);
+            TxnAppliedQuery query = TxnAppliedQuery.serializer.deserialize(in, version);
             if (in.readBoolean())
                 return new Txn.InMemory(keys, read, query, TxnUpdate.serializer.deserialize(in, version));
             else
@@ -152,7 +152,7 @@ public class CommandSerializers
         {
             long size = KeySerializers.keys.serializedSize(txn.keys(), version);
             size += TxnRead.serializer.serializedSize((TxnRead) txn.read(), version);
-            size += TxnQuery.serializer.serializedSize((TxnQuery) txn.query(), version);
+            size += TxnAppliedQuery.serializer.serializedSize((TxnAppliedQuery) txn.query(), version);
             size += TypeSizes.sizeof(txn.update() != null);
             if (txn.update() != null)
                 size += TxnUpdate.serializer.serializedSize((TxnUpdate) txn.update(), version);
@@ -167,7 +167,7 @@ public class CommandSerializers
         {
             KeySerializers.keys.serialize(txn.keys(), out, version);
             TxnRead.serializer.serialize((TxnRead) txn.read(), out, version);
-            TxnQuery.serializer.serialize((TxnQuery) txn.query(), out, version);
+            TxnAppliedQuery.serializer.serialize((TxnAppliedQuery) txn.query(), out, version);
             out.writeBoolean(txn.update() != null);
             if (txn.update() != null)
                 TxnUpdate.serializer.serialize((TxnUpdate) txn.update(), out, version);
@@ -179,7 +179,7 @@ public class CommandSerializers
         {
             Keys keys = KeySerializers.keys.deserialize(in, version);
             TxnRead read = TxnRead.serializer.deserialize(in, version);
-            TxnQuery query = TxnQuery.serializer.deserialize(in, version);
+            TxnAppliedQuery query = TxnAppliedQuery.serializer.deserialize(in, version);
             if (in.readBoolean())
                 return new Txn.InMemory(keys, read, query, TxnUpdate.serializer.deserialize(in, version));
             else
@@ -191,7 +191,7 @@ public class CommandSerializers
         {
             long size = KeySerializers.keys.serializedSize(txn.keys(), version);
             size += TxnRead.serializer.serializedSize((TxnRead) txn.read(), version);
-            size += TxnQuery.serializer.serializedSize((TxnQuery) txn.query(), version);
+            size += TxnAppliedQuery.serializer.serializedSize((TxnAppliedQuery) txn.query(), version);
             size += TypeSizes.sizeof(txn.update() != null);
             if (txn.update() != null)
                 size += TxnUpdate.serializer.serializedSize((TxnUpdate) txn.update(), version);

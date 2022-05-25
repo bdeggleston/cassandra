@@ -51,7 +51,6 @@ public class TxnBuilder
     private final List<TxnNamedRead> reads = new ArrayList<>();
     private final List<TxnWrite.Fragment> writes = new ArrayList<>();
     private final List<TxnCondition> conditions = new ArrayList<>();
-    private TxnQuery query = TxnQuery.ALL;
 
     public static TxnBuilder builder()
     {
@@ -164,7 +163,7 @@ public class TxnBuilder
         if (writes.isEmpty())
         {
             Preconditions.checkState(conditions.isEmpty());
-            return new Txn.InMemory(toKeys(keySet), read, query);
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.NONE));
         }
         else
         {
@@ -177,7 +176,8 @@ public class TxnBuilder
                 condition = new TxnCondition.BooleanGroup(TxnCondition.Kind.AND, conditions);
 
             writes.forEach(write -> keySet.add(write.key));
-            return new Txn.InMemory(toKeys(keySet), read, query, new TxnUpdate(writes, condition));
+            TxnUpdate update = new TxnUpdate(writes, condition);
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(update.serializedCondition()), update);
         }
     }
 }

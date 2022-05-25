@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 import accord.api.Key;
 import accord.txn.Keys;
@@ -39,21 +40,25 @@ import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.ColumnReference;
+import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.ResultSet.ResultMetadata;
+import org.apache.cassandra.cql3.selection.ResultSetBuilder;
 import org.apache.cassandra.cql3.selection.Selection;
 import org.apache.cassandra.cql3.transactions.UpdateCondition;
 import org.apache.cassandra.db.ReadQuery;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadQuery;
+import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.service.accord.txn.TxnCondition;
 import org.apache.cassandra.service.accord.txn.TxnNamedRead;
-import org.apache.cassandra.service.accord.txn.TxnQuery;
 import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.service.accord.txn.TxnUpdate;
 import org.apache.cassandra.service.accord.txn.TxnWrite;
@@ -169,19 +174,26 @@ public class TransactionStatement implements CQLStatement
         if (updates.isEmpty())
         {
             Preconditions.checkState(conditions.isEmpty());
-            return new Txn.InMemory(toKeys(keySet), read, TxnQuery.ALL);
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.NONE));
         }
         else
         {
             TxnUpdate update = createUpdate(options, keySet::add);
-            return new Txn.InMemory(toKeys(keySet), read, TxnQuery.ALL, update);
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(update.serializedCondition()), update);
         }
     }
+
+    ColumnSpecification applied = new ColumnSpecification("", "", new ColumnIdentifier("(applied)", true), BooleanType.instance);
+    ResultMetadata resultMetadata = new ResultMetadata(Lists.newArrayList(applied));
 
     @Override
     public ResultMessage execute(QueryState state, QueryOptions options, long queryStartNanoTime)
     {
-        return StorageProxy.instance.txn(createTxn(options));
+        boolean applied = StorageProxy.instance.txn(createTxn(options));
+        ResultSetBuilder result = new ResultSetBuilder(resultMetadata, Selection.noopSelector(), null);
+        result.newRow(null, null);
+        result.add(BooleanType.instance.decompose(Boolean.valueOf(applied)));
+        return new ResultMessage.Rows(result.build());
     }
 
     @Override

@@ -60,6 +60,11 @@ public class TxnUpdate implements Update
         this.serializedCondition = serializedCondition;
     }
 
+    public ByteBuffer serializedCondition()
+    {
+        return serializedCondition.duplicate();
+    }
+
     public long estimatedSizeOnHeap()
     {
         long size = EMPTY_SIZE + ByteBufferUtil.estimatedSizeOnHeap(serializedCondition);

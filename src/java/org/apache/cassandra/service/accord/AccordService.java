@@ -34,7 +34,7 @@ import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.service.accord.api.AccordAgent;
 import org.apache.cassandra.service.accord.api.AccordScheduler;
-import org.apache.cassandra.service.accord.txn.TxnData;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
@@ -92,13 +92,13 @@ public class AccordService
         return TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
     }
 
-    public TxnData coordinate(Txn txn)
+    public boolean coordinate(Txn txn)
     {
         try
         {
             Future<Result> future = node.coordinate(txn);
             Result result = future.get(2, TimeUnit.SECONDS);
-            return (TxnData) result;
+            return ((TxnAppliedQuery.Applied) result).wasApplied();
         }
         catch (ExecutionException e)
         {

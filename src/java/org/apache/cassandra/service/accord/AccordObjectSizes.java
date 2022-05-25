@@ -30,7 +30,7 @@ import accord.txn.TxnId;
 import accord.txn.Writes;
 import org.apache.cassandra.service.accord.api.AccordKey;
 import org.apache.cassandra.service.accord.db.AccordWrite;
-import org.apache.cassandra.service.accord.txn.TxnQuery;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.service.accord.txn.TxnRead;
 import org.apache.cassandra.service.accord.txn.TxnUpdate;
 import org.apache.cassandra.utils.ObjectSizes;
@@ -55,7 +55,7 @@ public class AccordObjectSizes
         size += ((TxnRead) txn.read()).estimatedSizeOnHeap();
         if (txn.update() != null)
             size += ((TxnUpdate) txn.update()).estimatedSizeOnHeap();
-        size += ((TxnQuery) txn.query()).estimatedSizeOnHeap();
+        size += ((TxnAppliedQuery) txn.query()).estimatedSizeOnHeap();
         return size;
     }
 

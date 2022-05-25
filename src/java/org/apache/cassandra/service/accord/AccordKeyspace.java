@@ -96,6 +96,7 @@ import org.apache.cassandra.service.accord.db.AccordData;
 import org.apache.cassandra.service.accord.serializers.CommandSerializers;
 import org.apache.cassandra.service.accord.store.StoredNavigableMap;
 import org.apache.cassandra.service.accord.store.StoredSet;
+import org.apache.cassandra.service.accord.txn.TxnAppliedQuery;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static java.lang.String.format;
@@ -447,7 +448,7 @@ public class AccordKeyspace
             if (command.result.hasModifications())
             {
                 builder.addCell(live(CommandsColumns.result_version, timestampMicros, versionBytes));
-                builder.addCell(live(CommandsColumns.result, timestampMicros, serialize((AccordData) command.result.get(), AccordData.serializer, version)));
+                builder.addCell(live(CommandsColumns.result, timestampMicros, serialize((TxnAppliedQuery.Applied) command.result.get(), TxnAppliedQuery.Applied.serializer, version)));
             }
 
             if (command.waitingOnCommit.hasModifications())
