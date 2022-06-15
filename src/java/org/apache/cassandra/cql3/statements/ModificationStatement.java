@@ -907,7 +907,7 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         private final boolean ifNotExists;
         private final boolean ifExists;
         final boolean isForTxn;
-        final String txnReadName;
+        String txnReadName;
 
         protected Parsed(QualifiedName name,
                          StatementType type,
@@ -925,6 +925,16 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
             this.ifExists = ifExists;
             this.isForTxn = isForTxn;
             this.txnReadName = txnReadName;
+        }
+
+        public boolean hasSelfReference()
+        {
+            return false;
+        }
+
+        public void setSelfSourceName(String name)
+        {
+
         }
 
         public ModificationStatement prepare(ClientState state)

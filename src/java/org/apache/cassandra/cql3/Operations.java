@@ -113,9 +113,10 @@ public final class Operations implements Iterable<Operation>
 
     public void add(ColumnMetadata column, ReferenceOperation operation)
     {
-        // TODO: probably handle static assignments differently?
-        Preconditions.checkArgument(!column.isStatic());
-        regularSubstitutions.add(operation);
+        if (column.isStatic())
+            staticSubstitutions.add(operation);
+        else
+            regularSubstitutions.add(operation);
     }
 
     /**

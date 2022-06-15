@@ -41,6 +41,7 @@ public abstract class ReferenceOperation
         return receiver;
     }
 
+
     public abstract TxnReferenceOperation bindAndGet(QueryOptions options);
 
     public abstract static class Raw
@@ -52,6 +53,10 @@ public abstract class ReferenceOperation
             this.column = column;
         }
 
+        public abstract boolean hasSelfReference();
+        public abstract void setSelfSourceName(String name);
+
+        public abstract void setTableMetadata(TableMetadata metadata);
         public abstract ReferenceOperation prepare(TableMetadata metadata, VariableSpecifications bindVariables);
     }
 
@@ -88,6 +93,24 @@ public abstract class ReferenceOperation
                 checkTrue(!receiver.isPrimaryKeyColumn(), "Cannot use value references for primary key columns: %s", column);
                 checkTrue(receiver != null, "Unknown column %s for %s.%s", column, metadata.keyspace, metadata.name);
                 return new Assignment(receiver, value.prepare(receiver, bindVariables));
+            }
+
+            @Override
+            public boolean hasSelfReference()
+            {
+                return value.hasSelfReference();
+            }
+
+            @Override
+            public void setSelfSourceName(String name)
+            {
+                value.setSelfSourceName(name);
+            }
+
+            @Override
+            public void setTableMetadata(TableMetadata metadata)
+            {
+                value.setTableMetadata(metadata);
             }
         }
     }

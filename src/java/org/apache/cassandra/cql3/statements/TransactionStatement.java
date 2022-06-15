@@ -83,14 +83,12 @@ public class TransactionStatement implements CQLStatement
 
     private final List<NamedSelect> selects;
     private final List<ModificationStatement> updates;
-    private final List<ColumnReference> columnReferences;
     private final List<UpdateCondition> conditions;
 
-    public TransactionStatement(List<NamedSelect> selects, List<ModificationStatement> updates, List<ColumnReference> columnReferences, List<UpdateCondition> conditions)
+    public TransactionStatement(List<NamedSelect> selects, List<ModificationStatement> updates, List<UpdateCondition> conditions)
     {
         this.selects = selects;
         this.updates = updates;
-        this.columnReferences = columnReferences;
         this.conditions = conditions;
     }
 
@@ -129,7 +127,7 @@ public class TransactionStatement implements CQLStatement
     TxnCondition createCondition(QueryOptions options)
     {
         if (conditions.isEmpty())
-            return TxnCondition.NONE;
+            return TxnCondition.none();
         if (conditions.size() == 1)
             return conditions.get(0).createCondition(options);
 
@@ -174,7 +172,7 @@ public class TransactionStatement implements CQLStatement
         if (updates.isEmpty())
         {
             Preconditions.checkState(conditions.isEmpty());
-            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.NONE));
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.none()));
         }
         else
         {
@@ -236,7 +234,8 @@ public class TransactionStatement implements CQLStatement
         @Override
         public boolean isPointSelect()
         {
-            return Iterables.all(metadata.primaryKeyColumns(), selectedColumns::contains);
+            return Iterables.all(metadata.primaryKeyColumns(), selectedColumns::contains)
+                   || statement.getLimit(QueryOptions.DEFAULT) == 1;
         }
 
         @Override
@@ -329,13 +328,25 @@ public class TransactionStatement implements CQLStatement
             for (int i=0, mi=updates.size(); i<mi; i++)
             {
                 ModificationStatement.Parsed parsed = updates.get(i);
-                String name = parsed.txnReadName;
-                if (name != null)
-                    refSources.put(name, new UpdateReferenceSource(parsed));
+                if (parsed.hasSelfReference())
+                {
+                    if (parsed.txnReadName == null) parsed.txnReadName = "update" + i;
+                    parsed.setSelfSourceName(parsed.txnReadName);
+                }
+
+
+                if (parsed.txnReadName != null)
+                {
+                    checkTrue(selectNames.add(parsed.txnReadName), "The name '%s' has been used by another select", parsed.txnReadName);
+                    refSources.put(parsed.txnReadName, new UpdateReferenceSource(parsed));
+                }
             }
 
-            for (ColumnReference.Raw reference : columnReferences)
-                reference.resolveReference(refSources);
+            if (columnReferences != null)
+            {
+                for (ColumnReference.Raw reference : columnReferences)
+                    reference.resolveReference(refSources);
+            }
 
             List<ModificationStatement> preparedUpdates = new ArrayList<>(updates.size());
             for (ModificationStatement.Parsed parsed : updates)
@@ -354,12 +365,7 @@ public class TransactionStatement implements CQLStatement
             for (UpdateCondition.Raw condition : conditions)
                 preparedConditions.add(condition.prepare("[txn]", bindVariables));
 
-            List<ColumnReference> preparedReferences = new ArrayList<>(columnReferences.size());
-            for (ColumnReference.Raw reference : columnReferences)
-                preparedReferences.add(reference.prepared());
-
-
-            return new TransactionStatement(preparedSelects, preparedUpdates, preparedReferences, preparedConditions);
+            return new TransactionStatement(preparedSelects, preparedUpdates, preparedConditions);
         }
     }
 }

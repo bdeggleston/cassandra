@@ -20,6 +20,7 @@ package org.apache.cassandra.service.accord.txn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import accord.api.Data;
 import accord.api.Query;
@@ -91,6 +92,29 @@ public class TxnAppliedQuery implements Query
     public TxnAppliedQuery(ByteBuffer serializedCondition)
     {
         this.serializedCondition = serializedCondition;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TxnAppliedQuery query = (TxnAppliedQuery) o;
+        return Objects.equals(serializedCondition, query.serializedCondition);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(serializedCondition);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "TxnAppliedQuery{" +
+               "serializedCondition=" + deserialize(serializedCondition, TxnCondition.serializer) +
+               '}';
     }
 
     public long estimatedSizeOnHeap()

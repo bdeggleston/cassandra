@@ -118,6 +118,8 @@ public class ValueReference
 
     public Row getRow(FilteredPartition partition)
     {
+        if (column != null && column.isStatic())
+            return partition.staticRow();
         int maxIdx = partition.rowCount() - 1;
         if (rowIdx > maxIdx)
             return null;

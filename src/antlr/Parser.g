@@ -1717,7 +1717,17 @@ normalColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdent
 shorthandColumnOperation[UpdateStatement.OperationCollector operations, ColumnIdentifier key]
     : sig=('+=' | '-=') t=term
       {
-          addRawUpdate(operations, key, $sig.text.equals("+=") ? new Operation.Addition(t) : new Operation.Substraction(t));
+            if (isParsingTxn)
+            {
+                ReferenceValue.Raw left = new ReferenceValue.SelfReference(key);
+                ReferenceValue.Raw right = new ReferenceValue.Constant.Raw(t);
+                ReferenceValue.Raw operation = $sig.text.equals("+=") ? new ReferenceValue.Addition.Raw(left, right) : new ReferenceValue.Subtraction.Raw(left, right);
+                addRawReferenceOperation(operations, key, new ReferenceOperation.Assignment.Raw(key, operation));
+            }
+            else
+            {
+                addRawUpdate(operations, key, $sig.text.equals("+=") ? new Operation.Addition(t) : new Operation.Substraction(t));
+            }
       }
     ;
 

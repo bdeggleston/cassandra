@@ -163,13 +163,13 @@ public class TxnBuilder
         if (writes.isEmpty())
         {
             Preconditions.checkState(conditions.isEmpty());
-            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.NONE));
+            return new Txn.InMemory(toKeys(keySet), read, new TxnAppliedQuery(TxnCondition.none()));
         }
         else
         {
             TxnCondition condition;
             if (conditions.isEmpty())
-                condition = TxnCondition.NONE;
+                condition = TxnCondition.none();
             else if (conditions.size() == 1)
                 condition = conditions.get(0);
             else

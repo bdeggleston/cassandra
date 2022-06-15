@@ -49,7 +49,12 @@ import org.apache.cassandra.service.accord.txn.TxnBuilder;
 import org.apache.cassandra.service.accord.txn.TxnReferenceOperation;
 import org.apache.cassandra.service.accord.txn.TxnReferenceOperations;
 import org.apache.cassandra.service.accord.txn.TxnReferenceValue;
+import org.apache.cassandra.service.accord.txn.TxnReferenceValue.Addition;
+import org.apache.cassandra.service.accord.txn.TxnReferenceValue.Constant;
+import org.apache.cassandra.service.accord.txn.TxnReferenceValue.Substitution;
+import org.apache.cassandra.service.accord.txn.TxnReferenceValue.Subtraction;
 import org.apache.cassandra.service.accord.txn.ValueReference;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.cql3.statements.schema.CreateTableStatement.parse;
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
@@ -161,7 +166,7 @@ public class TransactionStatementTest
 
         List<TxnReferenceOperation> regularOps = new ArrayList<>();
         regularOps.add(new TxnReferenceOperation(column(TABLE1, "v"),
-                                                 new TxnReferenceValue.Substitution(reference("row2", TABLE2, "v", 0))));
+                                                 new Substitution(reference("row2", TABLE2, "v", 0))));
         TxnReferenceOperations referenceOps = new TxnReferenceOperations(TABLE1, Clustering.make(bytes(2)), regularOps, Collections.emptyList());
         Txn expected = TxnBuilder.builder()
                                  .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
@@ -191,7 +196,7 @@ public class TransactionStatementTest
 
         List<TxnReferenceOperation> regularOps = new ArrayList<>();
         regularOps.add(new TxnReferenceOperation(column(TABLE1, "v"),
-                                                   new TxnReferenceValue.Substitution(reference("row2", TABLE2, "v", 0))));
+                                                   new Substitution(reference("row2", TABLE2, "v", 0))));
         TxnReferenceOperations referenceOps = new TxnReferenceOperations(TABLE1, Clustering.make(bytes(2)), regularOps, Collections.emptyList());
         Txn expected = TxnBuilder.builder()
                                  .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2")
@@ -251,6 +256,40 @@ public class TransactionStatementTest
                                  .withEqualsCondition("row1", 0, "ks.tbl1.v", bytes(3))
                                  .withEqualsCondition("row2", 0, "ks.tbl2.v", bytes(4))
                                  .build();
+        TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
+        Assert.assertNotNull(parsed);
+        TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());
+        Txn actual = statement.createTxn(QueryOptions.DEFAULT);
+        Assert.assertEquals(expected, actual);
+    }
+
+    @Test
+    public void additionAssignmentTest()
+    {
+        String query = "BEGIN TRANSACTION;\n" +
+                       "UPDATE ks.tbl1 SET v+=1 WHERE k=1 AND c=2 AS row1;\n" +
+                       "UPDATE ks.tbl2 SET v-=1 WHERE k=2 AND c=2 AS row2;\n" +
+                       "COMMIT TRANSACTION;";
+
+        List<TxnReferenceOperation> row1Values = new ArrayList<>();
+        row1Values.add(new TxnReferenceOperation(column(TABLE1, "v"),
+                                                 new Addition(new Substitution(reference("row1", TABLE1, "v", 0)),
+                                                              new Constant(ByteBufferUtil.bytes(1)))));
+        TxnReferenceOperations row1Ops = new TxnReferenceOperations(TABLE1, Clustering.make(bytes(2)), row1Values, Collections.emptyList());
+
+        List<TxnReferenceOperation> row2Values = new ArrayList<>();
+        row2Values.add(new TxnReferenceOperation(column(TABLE2, "v"),
+                                              new Subtraction(new Substitution(reference("row2", TABLE2, "v", 0)),
+                                                              new Constant(ByteBufferUtil.bytes(1)))));
+        TxnReferenceOperations row2Ops = new TxnReferenceOperations(TABLE2, Clustering.make(bytes(2)), row2Values, Collections.emptyList());
+
+        Txn expected = TxnBuilder.builder()
+                                 .withRead("row1", "SELECT * FROM ks.tbl1 WHERE k=1 AND c=2 LIMIT 1")
+                                 .withRead("row2", "SELECT * FROM ks.tbl2 WHERE k=2 AND c=2 LIMIT 1")
+                                 .withWrite(emptyUpdate(TABLE1, 1, 2, false), row1Ops)
+                                 .withWrite(emptyUpdate(TABLE2, 2, 2, false), row2Ops)
+                                 .build();
+
         TransactionStatement.Parsed parsed = (TransactionStatement.Parsed) QueryProcessor.parseStatement(query);
         Assert.assertNotNull(parsed);
         TransactionStatement statement = (TransactionStatement) parsed.prepare(ClientState.forInternalCalls());

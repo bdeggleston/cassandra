@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.audit.AuditLogEntryType;
@@ -184,7 +185,8 @@ public class UpdateStatement extends ModificationStatement
                 }
                 else if (value instanceof ReferenceValue.Raw)
                 {
-                    ReferenceValue referenceValue = ((ReferenceValue.Raw) value).prepare(def, bindVariables);
+                    ReferenceValue.Raw raw = (ReferenceValue.Raw) value;
+                    ReferenceValue referenceValue = raw.prepare(def, bindVariables);
                     ReferenceOperation operation = new ReferenceOperation.Assignment(def, referenceValue);
                     operations.add(def, operation);
                 }
@@ -397,6 +399,7 @@ public class UpdateStatement extends ModificationStatement
             {
                 ColumnMetadata def = metadata.getExistingColumn(entry.left);
                 checkFalse(def.isPrimaryKeyColumn(), "PRIMARY KEY part %s found in SET part", def.name);
+                entry.right.setTableMetadata(metadata);
                 ReferenceOperation operation = entry.right.prepare(metadata, bindVariables);
                 operations.add(def, operation);
             }
@@ -414,6 +417,20 @@ public class UpdateStatement extends ModificationStatement
                                        restrictions,
                                        conditions,
                                        attrs);
+        }
+
+        @Override
+        public boolean hasSelfReference()
+        {
+            return super.hasSelfReference() || Iterables.any(updates.referenceOps, p -> p.right.hasSelfReference());
+        }
+
+        @Override
+        public void setSelfSourceName(String name)
+        {
+            super.setSelfSourceName(name);
+            for (Pair<ColumnIdentifier, ReferenceOperation.Raw> pair : updates.referenceOps)
+                pair.right.setSelfSourceName(name);
         }
     }
     

@@ -184,6 +184,17 @@ public class ColumnReference implements Term
             throw new UnsupportedOperationException("TODO: support collections, udts, etc");
         }
 
+        public void manualResolve(String selectName, ColumnMetadata column, int rowIndex, Term cellPath)
+        {
+            Preconditions.checkState(!isResolved);
+            this.selectName = selectName;
+            this.column = column;
+            this.rowIndex = new Constants.Value(ByteBufferUtil.bytes(rowIndex));
+            Preconditions.checkArgument(cellPath == null, "TODO: support collections etc");
+            isResolved = true;
+
+        }
+
         public void checkResolved()
         {
             if (!isResolved)
@@ -197,14 +208,26 @@ public class ColumnReference implements Term
             return column.testAssignment(keyspace, receiver);
         }
 
+
+        public static ColumnReference prepare(String keyspace, ColumnSpecification receiver,
+                                              String selectName, Term rowIndex, ColumnMetadata column, Term cellPath)
+        {
+            if (!column.testAssignment(keyspace, receiver).isAssignable())
+                throw new InvalidRequestException(String.format("Invalid reference type %s (%s) for \"%s\" of type %s", column.type, column.name, receiver.name, receiver.type.asCQL3Type()));
+            return new ColumnReference(selectName, rowIndex, column, cellPath);
+        }
+
+        public static ColumnReference prepare(String keyspace, ColumnSpecification receiver,
+                                              String selectName, int rowIndex, ColumnMetadata column, Term cellPath)
+        {
+            return prepare(keyspace, receiver, selectName, new Constants.Value(ByteBufferUtil.bytes(rowIndex)), column, cellPath);
+        }
+
         @Override
         public Term prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
             checkResolved();
-
-            if (!column.testAssignment(keyspace, receiver).isAssignable())
-                throw new InvalidRequestException(String.format("Invalid reference type %s (%s) for \"%s\" of type %s", column.type, column.name, receiver.name, receiver.type.asCQL3Type()));
-            prepared = new ColumnReference(selectName, rowIndex, column, cellPath);
+            prepared = prepare(keyspace, receiver, selectName, rowIndex, column, cellPath);
             return prepared;
         }
 

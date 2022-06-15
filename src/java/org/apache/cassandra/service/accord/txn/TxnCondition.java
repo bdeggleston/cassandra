@@ -103,14 +103,6 @@ public abstract class TxnCondition
 
     public abstract boolean applies(TxnData data);
 
-    public static final TxnCondition NONE = new TxnCondition(Kind.NONE)
-    {
-        @Override
-        public boolean applies(TxnData data)
-        {
-            return true;
-        }
-    };
     private static class None extends TxnCondition
     {
         private static final None instance = new None();
@@ -141,6 +133,11 @@ public abstract class TxnCondition
             @Override
             public long serializedSize(None condition, int version) { return 0; }
         };
+    }
+
+    public static TxnCondition none()
+    {
+        return None.instance;
     }
 
     public static class Exists extends TxnCondition

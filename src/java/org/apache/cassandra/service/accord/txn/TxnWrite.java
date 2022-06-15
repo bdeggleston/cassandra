@@ -253,9 +253,7 @@ public class TxnWrite extends AbstractKeySorted<TxnWrite.Update> implements Writ
                 builder.newRow(clustering);
             }
 
-            operations.forEach(op -> {
-                op.apply(data, builder, 0, 0);
-            });
+            operations.forEach(op -> op.apply(data, builder, 0, 0));
 
             return builder.build();
         }

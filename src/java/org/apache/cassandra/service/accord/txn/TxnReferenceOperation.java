@@ -70,7 +70,7 @@ public class TxnReferenceOperation
     public void apply(TxnData data, Row.Builder row, long timestamp, int nowInSeconds)
     {
         // FIXME: this will probably be insufficient when dealing with collection columns
-        row.addCell(BufferCell.live(receiver, timestamp, value.dereference(data)));
+        row.addCell(BufferCell.live(receiver, timestamp, value.compute(data, receiver.type)));
     }
 
     public static final IVersionedSerializer<TxnReferenceOperation> serializer = new IVersionedSerializer<TxnReferenceOperation>()
