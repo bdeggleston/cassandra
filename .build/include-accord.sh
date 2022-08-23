@@ -24,7 +24,7 @@ set -o nounset
 
 bin="$(cd "$(dirname "$0")" > /dev/null; pwd)"
 
-accord_repo='git@github.com:bdeggleston/cassandra-accord.git'
+accord_repo='https://github.com/bdeggleston/cassandra-accord.git'
 accord_branch='metadata-persistence'
 accord_src="$bin/cassandra-accord"
 
