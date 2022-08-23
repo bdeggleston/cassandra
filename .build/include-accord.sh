@@ -37,8 +37,10 @@ checkout() {
 
 _main() {
   # have we already cloned?
-  if [[ ! -e "$accord_src" ]]; then
+  if [[ ! -e "$accord_src" ]] || [[ $(cat "$accord_src/.REPO" || true) != "$accord_repo" ]]; then
+    rm -rf "$accord_src" || true
     git clone "$accord_repo" "$accord_src"
+    echo "$accord_repo" > "$accord_src/.REPO"
     checkout
   fi
   if [[ $(cat "$accord_src"/.BRANCH || true) != "$accord_branch" ]]; then
