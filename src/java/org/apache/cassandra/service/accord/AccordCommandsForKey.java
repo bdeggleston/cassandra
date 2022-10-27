@@ -64,39 +64,6 @@ public class AccordCommandsForKey extends CommandsForKey implements AccordState<
         public static final long lastExecutedMicros = 0;
     }
 
-    public static class WriteOnly extends AccordCommandsForKey implements AccordState.WriteOnly<PartitionKey, AccordCommandsForKey>
-    {
-        private Future<?> future = null;
-
-        public WriteOnly(AccordCommandStore commandStore, PartitionKey key)
-        {
-            super(commandStore, key);
-        }
-
-        @Override
-        public void future(Future<?> future)
-        {
-            Preconditions.checkArgument(this.future == null);
-            this.future = future;
-
-        }
-
-        @Override
-        public Future<?> future()
-        {
-            return future;
-        }
-
-        @Override
-        public void applyChanges(AccordCommandsForKey instance)
-        {
-            applySetChanges(this, instance, cfk -> cfk.blindWitnessed);
-            applyMapChanges(this, instance, cfk -> cfk.uncommitted.map);
-            applyMapChanges(this, instance, cfk -> cfk.committedById.map);
-            applyMapChanges(this, instance, cfk -> cfk.committedByExecuteAt.map);
-        }
-    }
-
     public enum SeriesKind
     {
         UNCOMMITTED(Command::txnId),

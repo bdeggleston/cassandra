@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Objects;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,27 +230,21 @@ public abstract class ListenerProxy implements Listener, Comparable<ListenerProx
             return bytes;
         }
 
+        private void validateContext(AccordCommand command)
+        {
+            AccordCommandStore commandStore = command.commandStore();
+            AsyncContext context = commandStore.getContext();
+            Preconditions.checkState(context.contains(command.txnId()));
+            Preconditions.checkState(context.contains(key));
+        }
+
         @Override
         public void onChange(Command c)
         {
             AccordCommand command = (AccordCommand) c;
-            AccordCommandStore commandStore = command.commandStore();
-            AsyncContext context = commandStore.getContext();
-            PreLoadContext loadCtx = PreLoadContext.contextFor(ImmutableList.of(command.txnId()), ImmutableList.of(key));
-            if (context.containsScopedItems(loadCtx))
-            {
-                logger.trace("{}: synchronously updating listening cfk {}", c.txnId(), key);
-                commandStore.commandsForKey(key).onChange(c);
-            }
-            else
-            {
-                TxnId callingTxnId = command.txnId();
-                logger.trace("{}: asynchronously updating listening cfk {}", c.txnId(), key);
-                commandStore.process(loadCtx, instance -> {
-                    Command caller = instance.command(callingTxnId);
-                    commandStore.commandsForKey(key).onChange(caller);
-                });
-            }
+            validateContext(command);
+            logger.trace("{}: synchronously updating listening cfk {}", c.txnId(), key);
+            commandStore.commandsForKey(key).onChange(c);
         }
 
         @Override

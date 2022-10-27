@@ -168,7 +168,7 @@ public class AsyncOperationTest
 
         TxnId txnId = txnId(1, clock.incrementAndGet(), 0, 1);
 
-        AccordCommand command = createCommittedAndPersist(commandStore, txnId);
+        createCommittedAndPersist(commandStore, txnId);
 
         Consumer<CommandStore> consumer = instance -> instance.command(txnId).status(Status.Executed);
         AsyncOperation<Void> operation = new AsyncOperation.ForConsumer(commandStore, singleton(txnId), emptyList(), consumer)
@@ -217,7 +217,6 @@ public class AsyncOperationTest
                                 break;
                             case SAVING:
                                 assertFutureState(cache(), txnId, false, true);
-
                         }
                         super.setState(state);
                     }

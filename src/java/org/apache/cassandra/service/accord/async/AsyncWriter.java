@@ -214,11 +214,6 @@ public class AsyncWriter
         return (AccordCommand) getForDenormalization(txnId, commandStore, context.commands, commandCache, AccordCommand.WriteOnly::new);
     }
 
-    private AccordCommandsForKey cfkForDenormalization(PartitionKey key, AsyncContext context)
-    {
-        return (AccordCommandsForKey) getForDenormalization(key, commandStore, context.commandsForKey, cfkCache, AccordCommandsForKey.WriteOnly::new);
-    }
-
     private void denormalize(AccordCommand command, AsyncContext context, Object callback)
     {
         if (!command.hasModifications())
@@ -235,17 +230,6 @@ public class AsyncWriter
             ByteBuffer summary = AccordPartialCommand.serializer.serialize(command);
             denormalizeWaitingOnSummaries(command, context, summary, cmd -> cmd.waitingOnCommit, cmd -> cmd.blockingCommitOn);
             denormalizeWaitingOnSummaries(command, context, summary, cmd -> cmd.waitingOnApply, cmd -> cmd.blockingApplyOn);
-        }
-
-        // There won't be a txn to denormalize against until the command has been preaccepted
-        if (command.status().hasBeen(Status.PreAccepted) && AccordPartialCommand.WithDeps.serializer.needsUpdate(command))
-        {
-            for (Key key : command.txn().keys())
-            {
-                PartitionKey partitionKey = (PartitionKey) key;
-                AccordCommandsForKey cfk = cfkForDenormalization(partitionKey, context);
-                cfk.updateSummaries(command);
-            }
         }
 
         if (logger.isTraceEnabled())

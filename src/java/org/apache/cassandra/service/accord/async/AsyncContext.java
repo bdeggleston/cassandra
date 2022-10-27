@@ -97,6 +97,16 @@ public class AsyncContext
     public final CommandGroup commands = new CommandGroup();
     public final Group<PartitionKey, AccordCommandsForKey> commandsForKey = new Group<>();
 
+    public boolean contains(TxnId txnId)
+    {
+        return commands.items.containsKey(txnId);
+    }
+
+    public boolean contains(PartitionKey key)
+    {
+        return commandsForKey.items.containsKey(key);
+    }
+
     public boolean containsScopedItems(PreLoadContext loadContext)
     {
         return Iterables.all(loadContext.txnIds(), commands.items::containsKey) && Iterables.all(loadContext.keys(), commandsForKey.items::containsKey);
