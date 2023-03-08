@@ -20,6 +20,7 @@ package org.apache.cassandra.service.accord;
 
 import java.util.function.Function;
 
+import com.google.common.collect.Iterables;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -151,13 +152,11 @@ public class AccordStateCacheTest
         SafeString safeString1 = instance.reference("1");
         assertCacheState(cache, 1, 1, emptyNodeSize());
         testLoad(safeString1, "1");
-        Assert.assertNull(cache.head);
-        Assert.assertNull(cache.tail);
+        Assert.assertTrue(cache.evictable().isEmpty());
 
         instance.release(safeString1);
         assertCacheState(cache, 0, 1, nodeSize(1));
-        Assert.assertSame(safeString1.global, cache.tail);
-        Assert.assertSame(safeString1.global, cache.head);
+        Assert.assertSame(safeString1.global, Iterables.getOnlyElement(cache.evictable()));
 
         SafeString safeString2 = instance.reference("2");
         assertCacheState(cache, 1, 2, DEFAULT_NODE_SIZE + nodeSize(1));
@@ -165,8 +164,8 @@ public class AccordStateCacheTest
         instance.release(safeString2);
         assertCacheState(cache, 0, 2, nodeSize(1) + nodeSize(1));
 
-        Assert.assertSame(safeString1.global, cache.tail);
-        Assert.assertSame(safeString2.global, cache.head);
+        Assert.assertSame(safeString1.global, cache.evictable().last());
+        Assert.assertSame(safeString2.global, cache.evictable().first());
     }
 
     @Test
@@ -187,8 +186,8 @@ public class AccordStateCacheTest
             instance.release(safeString);
         }
 
-        Assert.assertSame(items[0].global, cache.tail);
-        Assert.assertSame(items[2].global, cache.head);
+        Assert.assertSame(items[0].global, cache.evictable().last());
+        Assert.assertSame(items[2].global, cache.evictable().first());
         assertCacheState(cache, 0, 3, nodeSize(1) * 3);
 
         SafeString safeString = instance.reference("1");
@@ -199,8 +198,8 @@ public class AccordStateCacheTest
         // releasing item should return it to the head
         instance.release(safeString);
         assertCacheState(cache, 0, 3, nodeSize(1) * 3);
-        Assert.assertSame(items[0].global, cache.tail);
-        Assert.assertSame(items[1].global, cache.head);
+        Assert.assertSame(items[0].global, cache.evictable().last());
+        Assert.assertSame(items[1].global, cache.evictable().first());
     }
 
     @Test
@@ -221,24 +220,24 @@ public class AccordStateCacheTest
         }
 
         assertCacheState(cache, 0, 5, nodeSize(1) * 5);
-        Assert.assertSame(items[0].global, cache.tail);
-        Assert.assertSame(items[4].global, cache.head);
+        Assert.assertSame(items[0].global, cache.evictable().last());
+        Assert.assertSame(items[4].global, cache.evictable().first());
 
         SafeString safeString = instance.reference("5");
         Assert.assertTrue(instance.isReferenced(safeString.key()));
 
         // since it's not loaded, only the node size is counted here
         assertCacheState(cache, 1, 5, nodeSize(1) * 4 + nodeSize(0));
-        Assert.assertSame(items[1].global, cache.tail);
-        Assert.assertSame(items[4].global, cache.head);
+        Assert.assertSame(items[1].global, cache.evictable().last());
+        Assert.assertSame(items[4].global, cache.evictable().first());
         Assert.assertFalse(cache.keyIsCached("0"));
         Assert.assertFalse(cache.keyIsReferenced("0"));
 
         testLoad(safeString, "5");
         instance.release(safeString);
         assertCacheState(cache, 0, 5, nodeSize(1) * 5);
-        Assert.assertSame(items[1].global, cache.tail);
-        Assert.assertSame(safeString.global, cache.head);
+        Assert.assertSame(items[1].global, cache.evictable().last());
+        Assert.assertSame(safeString.global, cache.evictable().first());
     }
 
     @Test
@@ -258,18 +257,15 @@ public class AccordStateCacheTest
         }
 
         assertCacheState(cache, 5, 5, nodeSize(0) * 5);
-        Assert.assertNull(cache.head);
-        Assert.assertNull(cache.tail);
+        Assert.assertTrue(cache.evictable().isEmpty());
 
         instance.release(items[2]);
         assertCacheState(cache, 4, 4, nodeSize(0) * 4);
-        Assert.assertNull(cache.head);
-        Assert.assertNull(cache.tail);
+        Assert.assertTrue(cache.evictable().isEmpty());
 
         instance.release(items[4]);
         assertCacheState(cache, 3, 4, nodeSize(0) * 3 + nodeSize(1));
-        Assert.assertSame(items[4].global, cache.tail);
-        Assert.assertSame(items[4].global, cache.head);
+        Assert.assertSame(items[4].global, Iterables.getOnlyElement(cache.evictable()));
     }
 
     @Test
@@ -304,19 +300,19 @@ public class AccordStateCacheTest
         AccordStateCache.Instance<String, String, SafeString> instance = cache.instance(String.class, String.class, SafeString::new, String::length);
         assertCacheState(cache, 0, 0, 0);
 
+        AsyncResult<Void> saveFuture = AsyncResults.settable();
         SafeString[] items = new SafeString[4];
         for (int i=0; i<4; i++)
         {
             SafeString item = instance.reference(Integer.toString(i));
             testLoad(item, Integer.toString(i));
             Assert.assertTrue(instance.isReferenced(item.key()));
+            if (i == 0)
+                instance.addSaveResult("0", saveFuture);
             instance.release(item);
         }
 
         assertCacheState(cache, 0, 4, nodeSize(1) * 4);
-
-        AsyncResult<Void> saveFuture = AsyncResults.settable();
-        instance.addSaveResult("0", saveFuture);
         cache.setMaxSize(0);
 
         // all should have been evicted except 0
@@ -329,14 +325,17 @@ public class AccordStateCacheTest
 
     // if a future is added and another one exists for the same key, they should be merged
     @Test
-    public void testFutureMerging()
+    public void testFutureMerging() throws Throwable
     {
         AccordStateCache cache = new AccordStateCache(500);
         AccordStateCache.Instance<String, String, SafeString> instance = cache.instance(String.class, String.class, SafeString::new, String::length);
+        SafeString item = instance.reference("5");
+        testLoad(item, "5");
         AsyncResult.Settable<Void> promise1 = AsyncResults.settable();
         AsyncResult.Settable<Void> promise2 = AsyncResults.settable();
         instance.addSaveResult("5", promise1);
         instance.addSaveResult("5", promise2);
+        instance.release(item);
 
         AsyncResult<?> future = instance.getSaveResult("5");
         Assert.assertNotSame(future, promise1);
@@ -361,8 +360,7 @@ public class AccordStateCacheTest
         SafeString safeString = instance.reference("1");
         testLoad(safeString, "1");
         assertCacheState(cache, 1, 1, emptyNodeSize());
-        Assert.assertNull(cache.head);
-        Assert.assertNull(cache.tail);
+        Assert.assertTrue(cache.evictable().isEmpty());
 
         Assert.assertTrue(instance.isReferenced(safeString.key()));
         assertCacheState(cache, 1, 1, nodeSize(0));
@@ -370,8 +368,6 @@ public class AccordStateCacheTest
         safeString.set("11");
         instance.release(safeString);
         assertCacheState(cache, 0, 1, nodeSize(2));
-        Assert.assertSame(safeString.global, cache.tail);
-        Assert.assertSame(safeString.global, cache.head);
-
+        Assert.assertSame(safeString.global, Iterables.getOnlyElement(cache.evictable()));
     }
 }

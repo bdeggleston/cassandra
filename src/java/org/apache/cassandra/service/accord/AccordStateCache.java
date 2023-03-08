@@ -18,16 +18,20 @@
 
 package org.apache.cassandra.service.accord;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.MoreExecutors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +42,7 @@ import accord.utils.async.AsyncResult;
 import org.apache.cassandra.utils.ObjectSizes;
 
 import static org.apache.cassandra.service.accord.AccordLoadingState.LoadingState.FAILED;
+
 import static org.apache.cassandra.service.accord.AccordLoadingState.LoadingState.LOADED;
 
 /**
@@ -50,18 +55,46 @@ public class AccordStateCache
 {
     private static final Logger logger = LoggerFactory.getLogger(AccordStateCache.class);
 
+    class PendingSave
+    {
+        private final Object key;
+        private final AsyncResult<Void> result;
+        private PendingSave next;
+
+        public PendingSave(Object key, AsyncResult<Void> result)
+        {
+            this.key = key;
+            this.result = result;
+        }
+    }
+
     public static class Node<K, V> extends AccordLoadingState<K, V>
     {
         static final long EMPTY_SIZE = ObjectSizes.measure(new AccordStateCache.Node(null));
 
-        private Node<?, ?> prev;
-        private Node<?, ?> next;
+        private long releasedAt = Long.MIN_VALUE;
         private int references = 0;
         private long lastQueriedEstimatedSizeOnHeap = 0;
 
         public Node(K key)
         {
             super(key);
+        }
+
+        public void updateReleasedAt(long releasedAt)
+        {
+            Invariants.checkState(this.releasedAt == Long.MIN_VALUE);
+            this.releasedAt = releasedAt;
+        }
+
+        public void clearReleasedAt()
+        {
+            releasedAt = Long.MIN_VALUE;
+        }
+
+        public long releasedAt()
+        {
+            return releasedAt;
         }
 
         public int referenceCount()
@@ -86,11 +119,6 @@ public class AccordStateCache
                     return true;
                 default: throw new UnsupportedOperationException("Unknown state: " + state());
             }
-        }
-
-        private boolean isInQueue()
-        {
-            return prev != null && next != null;
         }
 
         long estimatedSizeOnHeap(ToLongFunction<V> estimator)
@@ -151,12 +179,16 @@ public class AccordStateCache
 
     private final NamedMap<Object, AsyncResult<Void>> saveResults = new NamedMap<>("saveResults");
 
-    private int unreferenced = 0;
-    Node<?, ?> head;
-    Node<?, ?> tail;
+    private int referenced = 0;
+    private final TreeSet<Node<?, ?>> evictable = new TreeSet<>(Comparator.comparing(node -> {
+        Invariants.checkState(node.releasedAt != Long.MIN_VALUE);
+        return -node.releasedAt;
+    }));
     private long maxSizeInBytes;
     private long bytesCached = 0;
     private final Stats stats = new Stats();
+    private long releaseCounter = 0;
+    private final AtomicReference<PendingSave> completedSaves = new AtomicReference<>();
 
     public AccordStateCache(long maxSizeInBytes)
     {
@@ -177,8 +209,8 @@ public class AccordStateCache
     @VisibleForTesting
     public void clear()
     {
-        head = tail = null;
         cache.clear();
+        evictable.clear();
         saveResults.clear();
     }
 
@@ -188,56 +220,41 @@ public class AccordStateCache
         return saveResults;
     }
 
-    private void unlink(Node<?, ?> node)
-    {
-        Node<?, ?> prev = node.prev;
-        Node<?, ?> next = node.next;
-
-        if (prev == null)
-        {
-            Preconditions.checkState(head == node, "previous is null but the head isnt the provided node!");
-            head = next;
-        }
-        else
-        {
-            prev.next = next;
-        }
-
-        if (next == null)
-        {
-            Preconditions.checkState(tail == node, "next is null but the tail isnt the provided node!");
-            tail = prev;
-        }
-        else
-        {
-            next.prev = prev;
-        }
-
-        node.prev = null;
-        node.next = null;
-        unreferenced--;
-    }
-
-    private void push(Node<?, ?> node)
-    {
-        if (head != null)
-        {
-            node.prev = null;
-            node.next = head;
-            head.prev = node;
-            head = node;
-        }
-        else
-        {
-            head = node;
-            tail = node;
-        }
-        unreferenced++;
-    }
-
     private <K, V> void updateSize(Node<K, V> node, ToLongFunction<V> estimator)
     {
         bytesCached += node.estimatedSizeOnHeapDelta(estimator);
+    }
+
+    private void saveCompleted(PendingSave save)
+    {
+        for (;;)
+        {
+            PendingSave current = completedSaves.get();
+            save.next = current;
+            if (completedSaves.compareAndSet(current, save))
+                return;
+        }
+    }
+
+    private void processCompletedSaves()
+    {
+        PendingSave current = completedSaves.getAndSet(null);
+        while (current != null)
+        {
+            Invariants.checkState(current.result.isDone());
+
+            Node<?, ?> node = cache.get(current.key);
+            if (node != null && node.references == 0 && canEvict(node))
+                evictable.add(node);
+
+            current = current.next;
+        }
+    }
+
+    @VisibleForTesting
+    TreeSet<Node<?, ?>> evictable()
+    {
+        return evictable;
     }
 
     // don't evict if there's an outstanding save result. If an item is evicted then reloaded
@@ -250,19 +267,14 @@ public class AccordStateCache
 
     private void maybeEvict()
     {
+        processCompletedSaves();
         if (bytesCached <= maxSizeInBytes)
             return;
 
-        Node<?, ?> current = tail;
-        while (current != null && bytesCached > maxSizeInBytes)
+        while (bytesCached > maxSizeInBytes && !evictable.isEmpty())
         {
-            Node<?, ?> evict = current;
-            current = current.prev;
-
-            // TODO (expected, efficiency): can this be reworked so we're not skipping unevictable nodes everytime we try to evict?
-            if (!canEvict(evict))
-                continue;
-
+            Node<?, ?> evict = evictable.pollLast();
+            Invariants.checkState(evict != null && canEvict(evict));
             evict(evict, true);
         }
     }
@@ -270,11 +282,6 @@ public class AccordStateCache
     private void evict(Node<?, ?> evict, boolean unlink)
     {
         logger.trace("Evicting {} {} - {}", evict.state(), evict.key(), evict.isLoaded() ? evict.value() : null);
-        if (unlink)
-            unlink(evict);
-        else
-            Invariants.checkState(!evict.isInQueue());
-
         Node<?, ?> self = cache.get(evict.key());
         Invariants.checkState(self == evict, "Leaked node detected; was attempting to remove %s but cache had %s", evict, self);
         cache.remove(evict.key());
@@ -382,6 +389,7 @@ public class AccordStateCache
                 node = new Node<>(key);
                 // need to store ref right away, so eviction can not remove
                 node.references++;
+                referenced++;
                 cache.put(key, node);
                 updateSize(node, heapEstimator);
                 maybeEvict();
@@ -404,11 +412,17 @@ public class AccordStateCache
                 stats.hits++;
                 AccordStateCache.this.stats.hits++;
                 if (node.references == 0)
-                    unlink(node);
+                {
+                    if (node.releasedAt != Long.MIN_VALUE)
+                        evictable.remove(node);
+                    referenced++;
+                }
                 else
-                    Invariants.checkState(!node.isInQueue());
+                    Invariants.checkState(node.releasedAt == Long.MIN_VALUE);
                 node.references++;
             }
+
+            node.clearReleasedAt();
 
             return node;
         }
@@ -474,9 +488,12 @@ public class AccordStateCache
                 }
                 else
                 {
+                    referenced--;
                     logger.trace("Moving {} from active pool to cache", key);
-                    Invariants.checkState(!node.isInQueue());
-                    push(node);
+                    Invariants.checkState(node.releasedAt == Long.MIN_VALUE);
+                    node.updateReleasedAt(releaseCounter++);
+                    if (canEvict(node.key()))
+                        evictable.add(node);
                 }
             }
 
@@ -487,6 +504,11 @@ public class AccordStateCache
         public boolean canEvict(K key)
         {
             return AccordStateCache.this.canEvict(cache.get(key));
+        }
+
+        public boolean canEvict(Node<K, V> node)
+        {
+            return AccordStateCache.this.canEvict(node);
         }
 
         @VisibleForTesting
@@ -509,6 +531,10 @@ public class AccordStateCache
         public void addSaveResult(K key, AsyncResult<Void> result)
         {
             logger.trace("Adding save result for {}: {}", key, result);
+            Node<?, ?> node = cache.get(key);
+            Invariants.checkState(node != null && node.referenceCount() > 0);
+            PendingSave save = new PendingSave(key, result);
+            result.addCallback(() -> saveCompleted(save), MoreExecutors.directExecutor());
             mergeAsyncResult(saveResults, key, result);
         }
 
@@ -553,13 +579,13 @@ public class AccordStateCache
     @VisibleForTesting
     int numReferencedEntries()
     {
-        return cache.size() - unreferenced;
+        return referenced;
     }
 
     @VisibleForTesting
     int numUnreferencedEntries()
     {
-        return unreferenced;
+        return cache.size() - referenced;
     }
 
     @VisibleForTesting
