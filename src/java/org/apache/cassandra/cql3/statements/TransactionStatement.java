@@ -541,6 +541,9 @@ public class TransactionStatement implements CQLStatement.CompositeCQLStatement,
                 ModificationStatement prepared = parsed.prepare(state, bindVariables);
                 checkFalse(prepared.hasConditions(), NO_CONDITIONS_IN_UPDATES_MESSAGE);
                 checkFalse(prepared.isTimestampSet(), NO_TIMESTAMPS_IN_UPDATES_MESSAGE);
+                // When an Operation requires a read, this cannot be done right away and must be done by the transaction itself,
+                // so migrate those Operations to a ReferenceOperation (which works properly in this case).
+                prepared.migrateReadRequiredOperations();
 
                 preparedUpdates.add(prepared);
             }

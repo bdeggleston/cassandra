@@ -809,7 +809,6 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         return new TxnReferenceOperations(metadata, clustering, regularOps, staticOps);
     }
 
-    @VisibleForTesting
     public void migrateReadRequiredOperations()
     {
         operations.migrateReadRequiredOperations();
@@ -823,9 +822,6 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
 
     public TxnWrite.Fragment getTxnWriteFragment(int index, ClientState state, QueryOptions options)
     {
-        // When an Operation requires a read, this cannot be done right away and must be done by the transaction itself,
-        // so migrate those Operations to a ReferenceOperation (which works properly in this case).
-        operations.migrateReadRequiredOperations();
         PartitionUpdate baseUpdate = getTxnUpdate(state, options);
         TxnReferenceOperations referenceOps = getTxnReferenceOps(options, state);
         return new TxnWrite.Fragment(index, baseUpdate, referenceOps);
