@@ -22,8 +22,6 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
-import com.google.common.base.Preconditions;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +32,7 @@ import accord.messages.MessageType;
 import accord.messages.Reply;
 import accord.messages.ReplyContext;
 import accord.messages.Request;
+import accord.utils.Invariants;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
@@ -107,7 +106,7 @@ public class AccordMessageSink implements MessageSink
     public void send(Node.Id to, Request request, Callback callback)
     {
         Verb verb = getVerb(request.type());
-        Preconditions.checkArgument(verb != null);
+        Invariants.checkArgument(verb != null);
         Message<Request> message = Message.out(verb, request);
         InetAddressAndPort endpoint = getEndpoint(to);
         logger.debug("Sending {} {} to {}", verb, message.payload, endpoint);
@@ -119,7 +118,9 @@ public class AccordMessageSink implements MessageSink
     {
         Message<?> replyTo = (Message<?>) replyContext;
         Message<?> replyMsg = replyTo.responseWith(reply);
-        Preconditions.checkArgument(replyMsg.verb() == getVerb(reply.type()));
+        Verb expectedVerb = getVerb(reply.type());
+        Verb replyVerb = replyMsg.verb();
+        Invariants.checkArgument(replyMsg.verb() == getVerb(reply.type()), "Expected verb %s, reply had %s", expectedVerb, replyVerb);
         InetAddressAndPort endpoint = getEndpoint(replyingToNode);
         logger.debug("Replying {} {} to {}", replyMsg.verb(), replyMsg.payload, endpoint);
         MessagingService.instance().send(replyMsg, endpoint);
