@@ -812,8 +812,7 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
     public ModificationStatement migrateReadRequiredOperations()
     {
         Operations operations = this.operations.migrateReadRequiredOperations();
-        if (operations == null) return this;
-        return withOperations(operations);
+        return operations == null ? this : withOperations(operations);
     }
 
     protected abstract ModificationStatement withOperations(Operations operations);
