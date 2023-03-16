@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.cql3.functions.Function;
@@ -42,29 +44,46 @@ public final class Operations implements Iterable<Operation>
     /**
      * The operations on regular columns.
      */
-    private final List<Operation> regularOperations = new ArrayList<>();
+    private final List<Operation> regularOperations;
 
     /**
      * The operations on static columns.
      */
-    private final List<Operation> staticOperations = new ArrayList<>();
+    private final List<Operation> staticOperations;
 
-    private final List<ReferenceOperation> regularSubstitutions = new ArrayList<>();
-    private final List<ReferenceOperation> staticSubstitutions = new ArrayList<>();
+    private final List<ReferenceOperation> regularSubstitutions;
+    private final List<ReferenceOperation> staticSubstitutions;
 
     public Operations(StatementType type)
     {
         this.type = type;
+        regularOperations = new ArrayList<>();
+        staticOperations = new ArrayList<>();
+        regularSubstitutions = new ArrayList<>();
+        staticSubstitutions = new ArrayList<>();
     }
 
-    public void migrateReadRequiredOperations()
+    private Operations(Operations other)
     {
-        migrateReadRequiredOperations(staticOperations, staticSubstitutions);
-        migrateReadRequiredOperations(regularOperations, regularSubstitutions);
+        type = other.type;
+        regularOperations = new ArrayList<>(other.regularOperations);
+        staticOperations = new ArrayList<>(other.staticOperations);
+        regularSubstitutions = new ArrayList<>(other.regularSubstitutions);
+        staticSubstitutions = new ArrayList<>(other.staticSubstitutions);
     }
 
-    private static void migrateReadRequiredOperations(List<Operation> src, List<ReferenceOperation> dest)
+    @Nullable
+    public Operations migrateReadRequiredOperations()
     {
+        Operations other = new Operations(this);
+        boolean mutated = migrateReadRequiredOperations(other.staticOperations, other.staticSubstitutions);
+        mutated |= migrateReadRequiredOperations(other.regularOperations, other.regularSubstitutions);
+        return mutated ? other : null;
+    }
+
+    private static boolean migrateReadRequiredOperations(List<Operation> src, List<ReferenceOperation> dest)
+    {
+        boolean mutated = false;
         Iterator<Operation> it = src.iterator();
         while (it.hasNext())
         {
@@ -73,8 +92,10 @@ public final class Operations implements Iterable<Operation>
             {
                 it.remove();
                 dest.add(ReferenceOperation.create(next));
+                mutated = true;
             }
         }
+        return mutated;
     }
 
     /**

@@ -122,15 +122,15 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
     protected final VariableSpecifications bindVariables;
 
     public final TableMetadata metadata;
-    private final Attributes attrs;
+    protected final Attributes attrs;
 
-    private final StatementRestrictions restrictions;
+    protected final StatementRestrictions restrictions;
 
     private final Operations operations;
 
     private final RegularAndStaticColumns updatedColumns;
 
-    private final Conditions conditions;
+    protected final Conditions conditions;
 
     private final RegularAndStaticColumns conditionColumns;
 
@@ -809,10 +809,14 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         return new TxnReferenceOperations(metadata, clustering, regularOps, staticOps);
     }
 
-    public void migrateReadRequiredOperations()
+    public ModificationStatement migrateReadRequiredOperations()
     {
-        operations.migrateReadRequiredOperations();
+        Operations operations = this.operations.migrateReadRequiredOperations();
+        if (operations == null) return this;
+        return withOperations(operations);
     }
+
+    protected abstract ModificationStatement withOperations(Operations operations);
 
     @VisibleForTesting
     public List<ReferenceOperation> getSubstitutions()

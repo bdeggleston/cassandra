@@ -70,6 +70,12 @@ public class UpdateStatement extends ModificationStatement
     }
 
     @Override
+    protected ModificationStatement withOperations(Operations operations)
+    {
+        return new UpdateStatement(type, bindVariables, metadata, operations, restrictions, conditions, attrs);
+    }
+
+    @Override
     public void addUpdateForKey(PartitionUpdate.Builder updateBuilder, Clustering<?> clustering, UpdateParameters params)
     {
         if (updatesRegularRows())

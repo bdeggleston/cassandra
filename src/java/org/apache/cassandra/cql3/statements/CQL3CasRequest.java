@@ -499,7 +499,11 @@ public class CQL3CasRequest implements CASRequest
         int idx = 0;
         for (RowUpdate update : updates)
         {
-            ModificationStatement modification = update.stmt;
+            // Some operations may need to migrate to run in the transaction, so need to call migrateReadRequiredOperations
+            // to make sure this migration happens.  The result can not be cached as the updates may be owned by a
+            // prepared statement, making them global state.
+            // see CASSANDRA-18337
+            ModificationStatement modification = update.stmt.migrateReadRequiredOperations();
             QueryOptions options = update.options;
             TxnWrite.Fragment fragment = modification.getTxnWriteFragment(idx++, state, options);
             fragments.add(fragment);
