@@ -4402,6 +4402,11 @@ public class DatabaseDescriptor
         conf.accord_transactions_enabled = b;
     }
 
+    public static AccordConf getAccord()
+    {
+        return conf.accord;
+    }
+
     public static boolean getForceNewPreparedStatementBehaviour()
     {
         return conf.force_new_prepared_statement_behaviour;

@@ -584,6 +584,8 @@ public class Config
 
     public boolean accord_transactions_enabled = false;
 
+    public final AccordConf accord = new AccordConf();
+
     /**
      * Optionally disable asynchronous UDF execution.
      * Disabling asynchronous UDF execution also implicitly disables the security-manager!

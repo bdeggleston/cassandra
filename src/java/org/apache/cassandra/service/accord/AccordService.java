@@ -22,12 +22,14 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import accord.api.ProgressLog;
 import accord.api.Result;
 import accord.coordinate.Preempted;
 import accord.coordinate.Timeout;
@@ -43,6 +45,7 @@ import accord.utils.DefaultRandom;
 import accord.utils.async.AsyncChains;
 import org.apache.cassandra.concurrent.Shutdownable;
 import accord.utils.async.AsyncResult;
+import org.apache.cassandra.config.AccordConf;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.WriteType;
@@ -137,6 +140,19 @@ public class AccordService implements IAccordService, Shutdownable
         this.messageSink = new AccordMessageSink();
         this.configService = new AccordConfigurationService(localId);
         this.scheduler = new AccordScheduler();
+        AccordConf conf = DatabaseDescriptor.getAccord();
+        Function<Node, ProgressLog.Factory> progressLogFactory;
+        switch (conf.progressLogType)
+        {
+            case noop:
+                progressLogFactory = ignore -> NoopProgressLog.INSTANCE;
+                break;
+            case simple:
+                progressLogFactory = SimpleProgressLog::new;
+                break;
+            default:
+                throw new IllegalStateException("Unknown type: " + conf.progressLogType);
+        }
         this.node = new Node(localId,
                              messageSink,
                              configService,
@@ -147,7 +163,7 @@ public class AccordService implements IAccordService, Shutdownable
                              new DefaultRandom(),
                              scheduler,
                              SizeOfIntersectionSorter.SUPPLIER,
-                             SimpleProgressLog::new,
+                             progressLogFactory,
                              AccordCommandStores::new);
         this.nodeShutdown = toShutdownable(node);
         this.verbHandler = new AccordVerbHandler<>(this.node);
