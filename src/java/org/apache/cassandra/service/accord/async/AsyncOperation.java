@@ -42,6 +42,8 @@ import org.apache.cassandra.service.accord.AccordSafeCommandsForKey;
 import org.apache.cassandra.service.accord.AccordSafeCommandStore;
 import org.apache.cassandra.service.accord.AccordSafeState;
 
+import static java.lang.String.format;
+
 public abstract class AsyncOperation<R> extends AsyncChains.Head<R> implements Runnable, Function<SafeCommandStore, R>
 {
     private static final Logger logger = LoggerFactory.getLogger(AsyncOperation.class);
@@ -150,7 +152,7 @@ public abstract class AsyncOperation<R> extends AsyncChains.Head<R> implements R
     {
         if (throwable != null)
         {
-            logger.error(String.format("Operation %s failed", this), throwable);
+            logger.error(format("Operation %s failed", this), throwable);
             fail(throwable);
         }
         else
@@ -181,10 +183,10 @@ public abstract class AsyncOperation<R> extends AsyncChains.Head<R> implements R
         Invariants.nonNull(throwable);
         if (state == State.FINISHED || state == State.FAILED)
         {
-            logger.error("AsyncOperation has already finished", throwable);
-            throw new IllegalStateException(String.format("Unexpected state %s", state));
+            logger.debug(format("%s has already completed with state %s. Ignoring call to fail", this, state), throwable);
+            return;
         }
-//        Invariants.checkArgument(state != State.FINISHED && state != State.FAILED, "Unexpected state %s handling exception", state, throwable);
+
         try
         {
             switch (state)
@@ -274,7 +276,7 @@ public abstract class AsyncOperation<R> extends AsyncChains.Head<R> implements R
             }
             catch (Throwable t)
             {
-                logger.error(String.format("Operation %s failed", this), t);
+                logger.error(format("Operation %s failed", this), t);
                 fail(t);
             }
             finally
