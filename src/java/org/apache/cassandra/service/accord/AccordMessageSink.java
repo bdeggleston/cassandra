@@ -118,9 +118,6 @@ public class AccordMessageSink implements MessageSink
     {
         Message<?> replyTo = (Message<?>) replyContext;
         Message<?> replyMsg = replyTo.responseWith(reply);
-        Verb expectedVerb = getVerb(reply.type());
-        Verb replyVerb = replyMsg.verb();
-        Invariants.checkArgument(replyMsg.verb() == getVerb(reply.type()), "Expected verb %s, reply had %s", expectedVerb, replyVerb);
         InetAddressAndPort endpoint = getEndpoint(replyingToNode);
         logger.debug("Replying {} {} to {}", replyMsg.verb(), replyMsg.payload, endpoint);
         MessagingService.instance().send(replyMsg, endpoint);
