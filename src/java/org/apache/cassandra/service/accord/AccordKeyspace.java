@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -482,6 +483,34 @@ public class AccordKeyspace
         return estimateMapChanges(prev, value);
     }
 
+    private static boolean mayHaveListenerUpdate(Command original, Command command)
+    {
+        if (original == null)
+            return !command.listeners().isEmpty();
+
+        if (original.listeners() == command.listeners())
+            return false;
+
+        Listeners prev = original.listeners();
+        Listeners cur = command.listeners();
+        return (cur == null || cur.isEmpty()) && (prev == null || prev.isEmpty());
+    }
+
+    private static Set<CommandListener> convertListeners(Command command)
+    {
+        if (command == null || command.listeners() == null)
+            return Collections.emptySet();
+
+        Listeners listeners = command.listeners();
+        HashSet<CommandListener> result = Sets.newHashSetWithExpectedSize(listeners.size());
+        listeners.forEach(listener -> {
+            if (!listener.isTransient())
+                result.add(listener);
+        });
+
+        return result;
+    }
+
     public static Mutation getCommandMutation(AccordCommandStore commandStore, AccordSafeCommand liveCommand, long timestampMicros)
     {
         try
@@ -507,7 +536,8 @@ public class AccordKeyspace
 
             addCellIfModified(CommandsColumns.dependencies, Command::partialDeps, CommandsSerializers.partialDeps, builder, timestampMicros, original, command);
 
-            addSetChanges(CommandsColumns.listeners, cmd -> Sets.filter(cmd.listeners(), l -> !l.isTransient()), v -> serialize(v, CommandsSerializers.listeners), builder, timestampMicros, nowInSeconds, original, command);
+            if (mayHaveListenerUpdate(original, command))
+                addSetChanges(CommandsColumns.listeners, AccordKeyspace::convertListeners, v -> serialize(v, CommandsSerializers.listeners), builder, timestampMicros, nowInSeconds, original, command);
 
             if (command.isCommitted())
             {
