@@ -24,6 +24,8 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.ArrayUtils;
 
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -91,6 +93,12 @@ public class TableId implements Comparable<TableId>
     }
 
     @Override
+    public int compareTo(TableId that)
+    {
+        return this.id.compareTo(that.id);
+    }
+
+    @Override
     public final int hashCode()
     {
         return id.hashCode();
@@ -114,7 +122,15 @@ public class TableId implements Comparable<TableId>
         out.writeLong(id.getLeastSignificantBits());
     }
 
-    public int serializedSize()
+    public <V> int serialize(V dst, ValueAccessor<V> accessor, int offset)
+    {
+        int position = offset;
+        position += accessor.putLong(dst, position, id.getMostSignificantBits());
+        position += accessor.putLong(dst, position, id.getLeastSignificantBits());
+        return position - offset;
+    }
+
+    public static int serializedSize()
     {
         return 16;
     }
@@ -124,9 +140,8 @@ public class TableId implements Comparable<TableId>
         return new TableId(new UUID(in.readLong(), in.readLong()));
     }
 
-    @Override
-    public int compareTo(TableId o)
+    public static <V> TableId deserialize(V src, ValueAccessor<V> accessor, int offset) throws IOException
     {
-        return id.compareTo(o.id);
+        return new TableId(new UUID(accessor.getLong(src, offset), accessor.getLong(src, offset + TypeSizes.LONG_SIZE)));
     }
 }
