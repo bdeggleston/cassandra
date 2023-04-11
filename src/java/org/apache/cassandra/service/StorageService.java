@@ -168,6 +168,8 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.schema.ViewMetadata;
+import org.apache.cassandra.service.accord.AccordService;
+import org.apache.cassandra.service.disk.usage.DiskUsageBroadcaster;
 import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.service.paxos.PaxosCommit;
 import org.apache.cassandra.service.paxos.PaxosRepair;
@@ -234,6 +236,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+
 import static org.apache.cassandra.config.CassandraRelevantProperties.DRAIN_EXECUTOR_TIMEOUT_MS;
 import static org.apache.cassandra.index.SecondaryIndexManager.getIndexName;
 import static org.apache.cassandra.index.SecondaryIndexManager.isIndexColumnFamily;
@@ -1236,6 +1239,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public long getTruncateRpcTimeout()
     {
         return DatabaseDescriptor.getTruncateRpcTimeout(MILLISECONDS);
+    }
+
+    public void setTransactionTimeout(long value)
+    {
+        DatabaseDescriptor.setTransactionTimeout(value);
+        logger.info("set transaction timeout to {} ms", value);
+    }
+
+    public long getTransactionTimeout()
+    {
+        return DatabaseDescriptor.getTransactionTimeout(MILLISECONDS);
     }
 
     @Deprecated
@@ -5557,5 +5571,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info("Sealing current period in metadata log");
         long period = ClusterMetadataService.instance().sealPeriod().period;
         logger.info("Current period {} is sealed", period);
+    }
+
+    public void createEpochUnsafe()
+    {
+        // FIXME: remove
+        AccordService.instance().createEpochFromConfigUnsafe();
     }
 }

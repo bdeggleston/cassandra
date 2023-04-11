@@ -130,6 +130,7 @@ import org.apache.cassandra.service.paxos.PaxosState;
 import org.apache.cassandra.service.paxos.uncommitted.UncommittedTableData;
 import org.apache.cassandra.service.reads.thresholds.CoordinatorWarnings;
 import org.apache.cassandra.service.accord.AccordService;
+import org.apache.cassandra.service.snapshot.SnapshotManager;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.streaming.StreamReceiveTask;
 import org.apache.cassandra.streaming.StreamTransferTask;
@@ -882,7 +883,7 @@ public class Instance extends IsolatedExecutor implements IInvokableInstance
                                 () -> SSTableReader.shutdownBlocking(1L, MINUTES),
                                 () -> shutdownAndWait(Collections.singletonList(ActiveRepairService.repairCommandExecutor())),
                                 () -> ActiveRepairService.instance.shutdownNowAndWait(1L, MINUTES),
-                                () -> org.apache.cassandra.service.snapshot.SnapshotManager.shutdownAndWait(1L, MINUTES),
+                                () -> SnapshotManager.shutdownAndWait(1L, MINUTES),
                                 () -> AccordService.instance().shutdownAndWait(1l, MINUTES)
             );
 
@@ -898,6 +899,8 @@ public class Instance extends IsolatedExecutor implements IInvokableInstance
                                 () -> Stage.shutdownAndWait(1L, MINUTES),
                                 () -> SharedExecutorPool.SHARED.shutdownAndWait(1L, MINUTES)
             );
+
+            error = parallelRun(error, executor, () -> AccordService.instance().shutdownAndWait(1l, MINUTES));
 
             // CommitLog must shut down after Stage, or threads from the latter may attempt to use the former.
             // (ex. A Mutation stage thread may attempt to add a mutation to the CommitLog.)
