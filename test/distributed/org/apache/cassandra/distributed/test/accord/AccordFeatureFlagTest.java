@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.cassandra.db.Keyspace;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
@@ -38,7 +39,6 @@ import org.apache.cassandra.distributed.api.IIsolatedExecutor;
 import org.apache.cassandra.distributed.test.TestBaseImpl;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.service.accord.AccordService;
 import org.apache.cassandra.utils.AssertionUtils;
 
@@ -70,7 +70,7 @@ public class AccordFeatureFlagTest extends TestBaseImpl
             
             // The Accord system keyspace should not be present:
             assertEquals("The Accord system keyspace should not exist",
-                         Optional.empty(), cluster.get(1).callOnInstance(() -> Schema.instance.getLocalKeyspaces().get(ACCORD_KEYSPACE_NAME)));
+                         Optional.empty(), cluster.get(1).callOnInstance(() -> Keyspace.open(ACCORD_KEYSPACE_NAME)));
             
             // Make sure virtual tables don't exist:
             IIsolatedExecutor.SerializableCallable<Stream<VirtualTable>> hasAccordVirtualTables = 

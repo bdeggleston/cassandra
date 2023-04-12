@@ -26,7 +26,7 @@ import accord.messages.InformOfTxnId;
 import accord.messages.SimpleReply;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.Message;
-import org.apache.cassandra.net.Messaging;
+import org.apache.cassandra.net.MessageDelivery;
 import org.apache.cassandra.net.Verb;
 import org.mockito.Mockito;
 
@@ -47,7 +47,7 @@ public class AccordMessageSinkTest
         Message<InformOfTxnId> req = Message.builder(Verb.ACCORD_INFORM_OF_TXNID_REQ, info).build();
         SimpleReply reply = SimpleReply.Ok;
 
-        Messaging messaging = Mockito.mock(Messaging.class);
+        MessageDelivery messaging = Mockito.mock(MessageDelivery.class);
         AccordMessageSink sink = new AccordMessageSink(messaging);
         sink.reply(new Node.Id(1), req, reply);
 

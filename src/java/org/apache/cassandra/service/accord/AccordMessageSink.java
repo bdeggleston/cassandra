@@ -36,7 +36,7 @@ import accord.messages.ReplyContext;
 import accord.messages.Request;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
-import org.apache.cassandra.net.Messaging;
+import org.apache.cassandra.net.MessageDelivery;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 
@@ -93,9 +93,9 @@ public class AccordMessageSink implements MessageSink
         return VerbMapping.instance.mapping.get(type);
     }
 
-    private final Messaging messaging;
+    private final MessageDelivery messaging;
 
-    public AccordMessageSink(Messaging messaging)
+    public AccordMessageSink(MessageDelivery messaging)
     {
         this.messaging = messaging;
     }
