@@ -67,7 +67,7 @@ public class AccordConfigurationService implements ConfigurationService
         Preconditions.checkArgument(epoch > current.epoch(), "Requested to fetch epoch %d which is <= %d (current epoch)", epoch, current.epoch());
         while (current.epoch() < epoch)
         {
-            current = AccordTopologyUtils.createTopology(epochs.size());
+            current = AccordTopologyUtils.createAccordTopology(epochs.size());
             unsafeAddEpoch(current);
         }
     }
@@ -88,7 +88,7 @@ public class AccordConfigurationService implements ConfigurationService
     public synchronized void createEpochFromConfig()
     {
         Topology current = currentTopology();
-        Topology topology = AccordTopologyUtils.createTopology(epochs.size());
+        Topology topology = AccordTopologyUtils.createAccordTopology(epochs.size());
         if (current.equals(topology.withEpoch(current.epoch()))) return;
         unsafeAddEpoch(topology);
     }

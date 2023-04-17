@@ -55,7 +55,7 @@ public class AccordTopologyTest
     public void minMaxTokenTest()
     {
         IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
-        Topology topology = AccordTopologyUtils.createTopology(1);
+        Topology topology = AccordTopologyUtils.createAccordTopology(1);
         Assert.assertNotEquals(0, topology.size());
         TableId tableId = Schema.instance.getTableMetadata("ks", "tbl").id;
         Token minToken = partitioner.getMinimumToken();
