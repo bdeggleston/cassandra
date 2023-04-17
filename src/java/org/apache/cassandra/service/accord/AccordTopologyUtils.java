@@ -18,83 +18,117 @@
 
 package org.apache.cassandra.service.accord;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import accord.local.Node;
 import accord.topology.Shard;
 import accord.topology.Topology;
+import accord.utils.Invariants;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.locator.EndpointsForToken;
-import org.apache.cassandra.service.accord.api.AccordRoutingKey.SentinelKey;
-import org.apache.cassandra.service.accord.api.AccordRoutingKey.TokenKey;
+import org.apache.cassandra.locator.EndpointsForRange;
+import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.schema.DistributedSchema;
+import org.apache.cassandra.schema.KeyspaceMetadata;
+import org.apache.cassandra.schema.ReplicationParams;
+import org.apache.cassandra.service.accord.api.AccordRoutingKey;
+import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tcm.Epoch;
+import org.apache.cassandra.tcm.membership.Directory;
+import org.apache.cassandra.tcm.membership.NodeId;
+import org.apache.cassandra.tcm.ownership.DataPlacement;
+import org.apache.cassandra.tcm.ownership.DataPlacements;
 
 public class AccordTopologyUtils
 {
-    private static Shard createShard(TokenRange range, EndpointsForToken natural, EndpointsForToken pending)
+    private static Shard createShard(TokenRange range, Directory directory, EndpointsForRange reads, EndpointsForRange writes)
     {
-        return new Shard(range,
-                         natural.stream().map(EndpointMapping::getId).collect(Collectors.toList()),
-                         natural.stream().map(EndpointMapping::getId).collect(Collectors.toSet()),
-                         pending.stream().map(EndpointMapping::getId).collect(Collectors.toSet()));
+        Function<InetAddressAndPort, Node.Id> endpointMapper = e -> {
+            NodeId tcmId = directory.peerId(e);
+            // FIXME: this doesn't work
+            return new Node.Id((int) tcmId.uuid.getLeastSignificantBits());
+        };
+        Set<InetAddressAndPort> endpoints = reads.endpoints();
+        Set<InetAddressAndPort> writeEndpoints = writes.endpoints();
+        List<Node.Id> nodes = endpoints.stream().map(endpointMapper).collect(Collectors.toList());
+        Set<Node.Id> fastPath = new HashSet<>(nodes);  // TODO: support fast path updates
+        Set<Node.Id> pending = endpoints.equals(writeEndpoints) ?
+                               Collections.emptySet() :
+                               writeEndpoints.stream().filter(e -> !endpoints.contains(e)).map(endpointMapper).collect(Collectors.toSet());
+
+        return new Shard(range, nodes, fastPath, pending);
     }
 
     private static TokenRange minRange(String keyspace, Token token)
     {
-        return new TokenRange(SentinelKey.min(keyspace), new TokenKey(keyspace, token));
+        return new TokenRange(AccordRoutingKey.SentinelKey.min(keyspace), new AccordRoutingKey.TokenKey(keyspace, token));
     }
 
     private static TokenRange maxRange(String keyspace, Token token)
     {
-        return new TokenRange(new TokenKey(keyspace, token), SentinelKey.max(keyspace));
+        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, token), AccordRoutingKey.SentinelKey.max(keyspace));
     }
 
     private static TokenRange range(String keyspace, Token left, Token right)
     {
-        return new TokenRange(new TokenKey(keyspace, left), new TokenKey(keyspace, right));
+        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, left), new AccordRoutingKey.TokenKey(keyspace, right));
     }
-//
-//    public static List<Shard> createShards(String keyspace, TokenMetadata tokenMetadata)
-//    {
-//        AbstractReplicationStrategy replication = Keyspace.open(keyspace).getReplicationStrategy();
-//        Set<Token> tokenSet = new HashSet<>(tokenMetadata.sortedTokens());
-//        tokenSet.addAll(tokenMetadata.getBootstrapTokens().keySet());
-//        tokenMetadata.getMovingEndpoints().forEach(p -> tokenSet.add(p.left));
-//        List<Token> tokens = new ArrayList<>(tokenSet);
-//        tokens.sort(Comparator.naturalOrder());
-//
-//        List<Shard> shards = new ArrayList<>(tokens.size() + 1);
-//        Shard finalShard = null;
-//        for (int i=0, mi=tokens.size(); i<mi; i++)
-//        {
-//            Token token = tokens.get(i);
-//            EndpointsForToken natural = replication.getNaturalReplicasForToken(token);
-//            EndpointsForToken pending = tokenMetadata.pendingEndpointsForToken(token, keyspace);
-//            if (i == 0)
-//            {
-//                shards.add(createShard(minRange(keyspace, token), natural, pending));
-//                finalShard = createShard(maxRange(keyspace, tokens.get(mi-1)), natural, pending);
-//            }
-//            else
-//            {
-//                Token prev = tokens.get(i - 1);
-//                shards.add(createShard(range(keyspace, prev, token), natural, pending));
-//            }
-//        }
-//        shards.add(finalShard);
-//
-//        return shards;
-//    }
 
-    public static Topology createTopology(long epoch)
+    private static TokenRange range(String keyspace, Range<Token> range)
     {
-        throw new UnsupportedOperationException();
-//        TokenMetadata tokenMetadata = StorageService.instance.getTokenMetadata();
-//        List<String> keyspaces = new ArrayList<>(Schema.instance.distributedKeyspaces().names());
-//        keyspaces.sort(String::compareTo);
-//
-//        List<Shard> shards = new ArrayList<>();
-//        for (String keyspace : keyspaces)
-//            shards.addAll(createShards(keyspace, tokenMetadata));
-//
-//        return new Topology(epoch, shards.toArray(new Shard[0]));
+        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, range.left), new AccordRoutingKey.TokenKey(keyspace, range.right));
+    }
+
+    public static List<Shard> createShards(KeyspaceMetadata keyspace, DataPlacements placements, Directory directory)
+    {
+        ReplicationParams replication = keyspace.params.replication;
+        DataPlacement placement = placements.get(replication);
+
+        List<Range<Token>> ranges = placement.reads.ranges();
+        List<Shard> shards = new ArrayList<>(ranges.size() + 1);
+        Shard finalShard = null;
+        for (Range<Token> range : ranges)
+        {
+            EndpointsForRange reads = placement.reads.forRange(range);
+            EndpointsForRange writes = placement.reads.forRange(range);
+
+            if (shards.isEmpty())
+            {
+                Invariants.checkState(range.isWrapAround());
+                shards.add(createShard(minRange(keyspace.name, range.right), directory, reads, writes));
+                finalShard = createShard(maxRange(keyspace.name, range.left), directory, reads, writes);
+            }
+            else
+            {
+                shards.add(createShard(range(keyspace.name, range), directory, reads, writes));
+            }
+        }
+        shards.add(finalShard);
+
+        return shards;
+    }
+
+    public static Topology createAccordTopology(Epoch epoch, DistributedSchema schema, DataPlacements placements, Directory directory)
+    {
+        List<Shard> shards = new ArrayList<>();
+        for (KeyspaceMetadata keyspace : schema.getKeyspaces())
+            shards.addAll(createShards(keyspace, placements, directory));
+        return new Topology(epoch.getEpoch(), shards.toArray(new Shard[0]));
+    }
+
+    public static Topology createAccordTopology(ClusterMetadata metadata)
+    {
+        return createAccordTopology(metadata.epoch, metadata.schema, metadata.placements, metadata.directory);
+    }
+
+    public static Topology createAccordTopology(long epoch)
+    {
+        throw new UnsupportedOperationException("Switch to ClusterMetadata -> Accord Topology");
     }
 }
