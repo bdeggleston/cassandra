@@ -18,25 +18,116 @@
 
 package org.apache.cassandra.service.accord;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.google.common.annotations.VisibleForTesting;
 
-import accord.api.ConfigurationService;
+import accord.impl.AbstractConfigurationService;
+import accord.local.Node;
 import accord.topology.Topology;
+import accord.utils.Invariants;
+import org.apache.cassandra.service.accord.AccordKeyspace.EpochDiskState;
 import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.listeners.ChangeListener;
 
 // TODO: listen to FailureDetector and rearrange fast path accordingly
-public class TCMConfigurationService implements ChangeListener
+public class TCMConfigurationService extends AbstractConfigurationService implements ChangeListener
 {
-    private final List<Topology> topologies = new ArrayList<>();
+    private EpochDiskState diskState = EpochDiskState.EMPTY;
+    private enum State { INITIALIZED, LOADING, STARTED }
 
-    private final List<ConfigurationService.Listener> listeners = new ArrayList<>();
+    private State state = State.INITIALIZED;
+    private final Listener preListener;
+    private final Listener postListener;
+
+    public TCMConfigurationService(Node.Id node)
+    {
+        super(node);
+        this.preListener = new Listener()
+        {
+            @Override
+            public synchronized void onTopologyUpdate(Topology topology)
+            {
+                if (state == State.STARTED)
+                    diskState = AccordKeyspace.saveTopology(topology, diskState);
+            }
+
+            @Override
+            public synchronized void onEpochSyncComplete(Node.Id node, long epoch)
+            {
+                if (state == State.STARTED)
+                    diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
+            }
+
+            @Override
+            public void truncateTopologyUntil(long epoch)
+            {
+                Invariants.checkState(state == State.STARTED);
+            }
+        };
+
+        this.postListener = new Listener()
+        {
+            @Override
+            public void onTopologyUpdate(Topology topology) {}
+
+            @Override
+            public void onEpochSyncComplete(Node.Id node, long epoch) {}
+
+            @Override
+            public synchronized void truncateTopologyUntil(long epoch)
+            {
+                if (state == State.STARTED)
+                    diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
+            }
+        };
+    }
+
+    public synchronized void start()
+    {
+        Invariants.checkState(state == State.INITIALIZED);
+        state = State.LOADING;
+        diskState = AccordKeyspace.loadTopologies(((epoch, topology, ids) -> {
+            if (topology != null)
+                reportTopology(topology);
+            ids.forEach(id -> epochSyncComplete(id, epoch));
+        }));
+        state = State.STARTED;
+    }
+
+    @VisibleForTesting
+    EpochDiskState diskState()
+    {
+        return diskState;
+    }
 
     @Override
     public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next)
     {
-        Topology topology = AccordTopologyUtils.createAccordTopology(next);
+        reportTopology(AccordTopologyUtils.createAccordTopology(next));
+    }
 
+    @Override
+    protected void fetchTopologyInternal(long epoch)
+    {
+        ClusterMetadataService.instance().maybeCatchup(Epoch.create(epoch));
+    }
+
+    @Override
+    protected void beginEpochSync(long epoch)
+    {
+        // TODO: run a barrier txn?
+    }
+
+    @Override
+    protected Listener preListener()
+    {
+        return preListener;
+    }
+
+    @Override
+    protected Listener postListener()
+    {
+        return postListener;
     }
 }

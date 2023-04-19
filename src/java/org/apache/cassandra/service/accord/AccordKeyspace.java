@@ -32,7 +32,9 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
@@ -58,6 +60,7 @@ import accord.primitives.Route;
 import accord.primitives.Timestamp;
 import accord.primitives.TxnId;
 import accord.primitives.Writes;
+import accord.topology.Topology;
 import accord.utils.Invariants;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -111,6 +114,7 @@ import org.apache.cassandra.service.accord.serializers.CommandsForKeySerializer;
 import org.apache.cassandra.service.accord.serializers.DepsSerializer;
 import org.apache.cassandra.service.accord.serializers.KeySerializers;
 import org.apache.cassandra.service.accord.serializers.ListenerSerializers;
+import org.apache.cassandra.service.accord.serializers.TopologySerializers;
 import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.utils.Clock;
 
@@ -128,6 +132,8 @@ public class AccordKeyspace
 
     public static final String COMMANDS = "commands";
     public static final String COMMANDS_FOR_KEY = "commands_for_key";
+    public static final String TOPOLOGIES = "topologies";
+    public static final String EPOCH_METADATA = "epoch_metadata";
 
     private static final String TIMESTAMP_TUPLE = "tuple<bigint, bigint, int>";
     private static final TupleType TIMESTAMP_TYPE = new TupleType(Lists.newArrayList(LongType.instance, LongType.instance, Int32Type.instance));
@@ -192,6 +198,7 @@ public class AccordKeyspace
         static final LocalVersionedSerializer<Writes> writes = localSerializer(CommandSerializers.writes);
         static final LocalVersionedSerializer<TxnData> result = localSerializer(TxnData.serializer);
         static final LocalVersionedSerializer<CommandListener> listeners = localSerializer(ListenerSerializers.listener);
+        static final LocalVersionedSerializer<Topology> topology = localSerializer(TopologySerializers.topology);
 
         private static <T> LocalVersionedSerializer<T> localSerializer(IVersionedSerializer<T> serializer)
         {
@@ -293,6 +300,24 @@ public class AccordKeyspace
         }
     }
 
+    private static final TableMetadata Topologies =
+        parse(TOPOLOGIES,
+              "accord topologies",
+              "CREATE TABLE %s (" +
+              "epoch bigint primary key, " +
+              "topology blob, " +
+              "synced set<int> " +
+              ')');
+
+    private static final TableMetadata EpochMetadata =
+        parse(EPOCH_METADATA,
+              "global epoch info",
+              "CREATE TABLE %s (" +
+              "key int primary key, " +
+              "min_epoch bigint, " +
+              "max_epoch bigint " +
+              ')');
+
     private static TableMetadata parse(String name, String description, String cql)
     {
         return CreateTableStatement.parse(format(cql, name), ACCORD_KEYSPACE_NAME)
@@ -309,7 +334,7 @@ public class AccordKeyspace
 
     private static Tables tables()
     {
-        return Tables.of(Commands, CommandsForKeys);
+        return Tables.of(Commands, CommandsForKeys, Topologies, EpochMetadata);
     }
 
     private static <T> ByteBuffer serialize(T obj, LocalVersionedSerializer<T> serializer) throws IOException
@@ -339,7 +364,7 @@ public class AccordKeyspace
 
     private static <T> T deserializeOrNull(ByteBuffer bytes, LocalVersionedSerializer<T> serializer) throws IOException
     {
-        return bytes != null && ! ByteBufferAccessor.instance.isEmpty(bytes) ? deserialize(bytes, serializer) : null;
+        return bytes != null && !ByteBufferAccessor.instance.isEmpty(bytes) ? deserialize(bytes, serializer) : null;
     }
 
     private static ImmutableSortedMap<Timestamp, TxnId> deserializeWaitingOnApply(Map<ByteBuffer, ByteBuffer> serialized)
@@ -715,7 +740,7 @@ public class AccordKeyspace
     private static DecoratedKey makeKey(CommandStore commandStore, PartitionKey key)
     {
         ByteBuffer pk = CommandsForKeyColumns.keyComparator.make(commandStore.id(),
-                                                                  serializeKey(key)).serializeAsPartitionKey();
+                                                                 serializeKey(key)).serializeAsPartitionKey();
         return CommandsForKeys.partitioner.decorateKey(pk);
     }
 
@@ -783,7 +808,7 @@ public class AccordKeyspace
     private static ByteBuffer cellValue(Row row, ColumnMetadata column)
     {
         Cell<?> cell = row.getCell(column);
-        return  (cell != null && !cell.isTombstone()) ? cellValue(cell) : null;
+        return (cell != null && !cell.isTombstone()) ? cellValue(cell) : null;
     }
 
     private static <T> ByteBuffer clusteringValue(Clustering<T> clustering, int idx)
@@ -813,8 +838,8 @@ public class AccordKeyspace
         for (SeriesKind kind : SeriesKind.values())
             seriesMaps.put(kind, new ImmutableSortedMap.Builder<>(Comparator.naturalOrder()));
 
-        try(ReadExecutionController controller = command.executionController();
-            FilteredPartitions partitions = FilteredPartitions.filter(command.executeLocally(controller), nowInSeconds))
+        try (ReadExecutionController controller = command.executionController();
+             FilteredPartitions partitions = FilteredPartitions.filter(command.executeLocally(controller), nowInSeconds))
         {
             if (!partitions.hasNext())
             {
@@ -862,6 +887,160 @@ public class AccordKeyspace
         {
             logger.error("Exception loading AccordCommandsForKey " + key, t);
             throw t;
+        }
+    }
+
+    public static class EpochDiskState
+    {
+        public static final EpochDiskState EMPTY = new EpochDiskState(0, 0);
+        public final long minEpoch;
+        public final long maxEpoch;
+
+        public EpochDiskState(long minEpoch, long maxEpoch)
+        {
+            Invariants.checkArgument(minEpoch >= 0);
+            Invariants.checkArgument(maxEpoch >= minEpoch);
+            this.minEpoch = minEpoch;
+            this.maxEpoch = maxEpoch;
+        }
+
+        private EpochDiskState withNewMaxEpoch(long epoch)
+        {
+            Invariants.checkArgument(epoch > maxEpoch);
+            return new EpochDiskState(Math.max(1, minEpoch), epoch);
+        }
+
+        private EpochDiskState withNewMinEpoch(long epoch)
+        {
+            Invariants.checkArgument(epoch > minEpoch);
+            Invariants.checkArgument(epoch <= maxEpoch);
+            return new EpochDiskState(epoch, maxEpoch);
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            EpochDiskState diskState = (EpochDiskState) o;
+            return minEpoch == diskState.minEpoch && maxEpoch == diskState.maxEpoch;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static void saveEpochDiskState(EpochDiskState diskState)
+    {
+        String cql = "INSERT INTO %s.%s (key, min_epoch, max_epoch) VALUES (0, ?, ?);";
+        executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, EPOCH_METADATA),
+                        diskState.minEpoch, diskState.maxEpoch);
+    }
+
+    @VisibleForTesting
+    public static EpochDiskState loadEpochDiskState()
+    {
+        String cql = "SELECT * FROM %s.%s WHERE key=0";
+        UntypedResultSet result = executeInternal(format(cql, ACCORD_KEYSPACE_NAME, EPOCH_METADATA));
+        if (result.isEmpty())
+            return null;
+        UntypedResultSet.Row row = result.one();
+        return new EpochDiskState(row.getLong("min_epoch"), row.getLong("max_epoch"));
+    }
+
+    private static EpochDiskState maybeUpdateMaxEpoch(EpochDiskState diskState, long epoch)
+    {
+        if (epoch > diskState.maxEpoch)
+        {
+            diskState = diskState.withNewMaxEpoch(epoch);
+            saveEpochDiskState(diskState);
+        }
+        return diskState;
+    }
+
+    public static EpochDiskState saveTopology(Topology topology, EpochDiskState diskState)
+    {
+        diskState = maybeUpdateMaxEpoch(diskState, topology.epoch());
+
+        try
+        {
+            String cql = "UPDATE %s.%s SET topology=? WHERE epoch=?";
+            executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
+                            serialize(topology, CommandsSerializers.topology), topology.epoch());
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+
+        return diskState;
+    }
+
+    public static EpochDiskState markTopologySynced(Node.Id node, long epoch, EpochDiskState diskState)
+    {
+        diskState = maybeUpdateMaxEpoch(diskState, epoch);
+        String cql = "UPDATE %s.%s SET synced = synced + ? WHERE epoch = ?";
+        executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
+                        Collections.singleton(node.id), epoch);
+        return diskState;
+    }
+
+    public static EpochDiskState truncateTopologyUntil(final long epoch, EpochDiskState diskState)
+    {
+        while (diskState.minEpoch < epoch)
+        {
+            long delete = diskState.minEpoch;
+            diskState = diskState.withNewMinEpoch(delete + 1);
+            saveEpochDiskState(diskState);
+            String cql = "DELETE * FROM %s.%s WHERE epoch = ?";
+            executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES), delete);
+        }
+        return diskState;
+    }
+
+    public interface TopologyLoadConsumer
+    {
+        void load(long epoch, Topology topology, Set<Node.Id> synced);
+    }
+
+    @VisibleForTesting
+    public static void loadEpoch(long epoch, TopologyLoadConsumer consumer) throws IOException
+    {
+        String cql = String.format("SELECT * FROM %s.%s WHERE epoch=?", ACCORD_KEYSPACE_NAME, TOPOLOGIES);
+
+        UntypedResultSet result = executeInternal(cql, epoch);
+        Invariants.checkState(!result.isEmpty());
+        UntypedResultSet.Row row = result.one();
+        Topology topology = row.has("topology")
+                            ? deserialize(row.getBytes("topology"), CommandsSerializers.topology)
+                            : null;
+        Set<Node.Id> syncedIds = row.has("synced")
+                                 ? row.getSet("synced", Int32Type.instance).stream().map(Node.Id::new).collect(Collectors.toSet())
+                                 : Collections.emptySet();
+
+        consumer.load(epoch, topology, syncedIds);
+
+    }
+
+    public static EpochDiskState loadTopologies(TopologyLoadConsumer consumer)
+    {
+        try
+        {
+            EpochDiskState diskState = loadEpochDiskState();
+            if (diskState == null)
+                return EpochDiskState.EMPTY;
+
+            for (long epoch=diskState.minEpoch; epoch<=diskState.maxEpoch; epoch++)
+                loadEpoch(epoch, consumer);
+
+            return diskState;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 }
