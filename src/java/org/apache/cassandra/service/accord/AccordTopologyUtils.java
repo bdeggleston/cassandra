@@ -20,6 +20,7 @@ package org.apache.cassandra.service.accord;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,7 +38,8 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.DistributedSchema;
 import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.schema.ReplicationParams;
-import org.apache.cassandra.service.accord.api.AccordRoutingKey;
+import org.apache.cassandra.service.accord.api.AccordRoutingKey.SentinelKey;
+import org.apache.cassandra.service.accord.api.AccordRoutingKey.TokenKey;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.membership.Directory;
@@ -56,7 +58,7 @@ public class AccordTopologyUtils
         };
         Set<InetAddressAndPort> endpoints = reads.endpoints();
         Set<InetAddressAndPort> writeEndpoints = writes.endpoints();
-        List<Node.Id> nodes = endpoints.stream().map(endpointMapper).collect(Collectors.toList());
+        List<Node.Id> nodes = endpoints.stream().map(endpointMapper).sorted().collect(Collectors.toList());
         Set<Node.Id> fastPath = new HashSet<>(nodes);  // TODO: support fast path updates
         Set<Node.Id> pending = endpoints.equals(writeEndpoints) ?
                                Collections.emptySet() :
@@ -65,24 +67,26 @@ public class AccordTopologyUtils
         return new Shard(range, nodes, fastPath, pending);
     }
 
-    private static TokenRange minRange(String keyspace, Token token)
+    static TokenRange minRange(String keyspace, Token token)
     {
-        return new TokenRange(AccordRoutingKey.SentinelKey.min(keyspace), new AccordRoutingKey.TokenKey(keyspace, token));
+        return new TokenRange(SentinelKey.min(keyspace), new TokenKey(keyspace, token));
     }
 
-    private static TokenRange maxRange(String keyspace, Token token)
+    static TokenRange maxRange(String keyspace, Token token)
     {
-        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, token), AccordRoutingKey.SentinelKey.max(keyspace));
+        return new TokenRange(new TokenKey(keyspace, token), SentinelKey.max(keyspace));
     }
 
-    private static TokenRange range(String keyspace, Token left, Token right)
+    static TokenRange fullRange(String keyspace)
     {
-        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, left), new AccordRoutingKey.TokenKey(keyspace, right));
+        return new TokenRange(SentinelKey.min(keyspace), SentinelKey.max(keyspace));
     }
 
-    private static TokenRange range(String keyspace, Range<Token> range)
+    static TokenRange range(String keyspace, Range<Token> range)
     {
-        return new TokenRange(new AccordRoutingKey.TokenKey(keyspace, range.left), new AccordRoutingKey.TokenKey(keyspace, range.right));
+        Token minToken = range.left.minValue();
+        return new TokenRange(range.left.equals(minToken) ? SentinelKey.min(keyspace) : new TokenKey(keyspace, range.left),
+                              range.right.equals(minToken) ? SentinelKey.max(keyspace) : new TokenKey(keyspace, range.right));
     }
 
     public static List<Shard> createShards(KeyspaceMetadata keyspace, DataPlacements placements, Directory directory)
@@ -92,24 +96,15 @@ public class AccordTopologyUtils
 
         List<Range<Token>> ranges = placement.reads.ranges();
         List<Shard> shards = new ArrayList<>(ranges.size() + 1);
-        Shard finalShard = null;
         for (Range<Token> range : ranges)
         {
             EndpointsForRange reads = placement.reads.forRange(range);
             EndpointsForRange writes = placement.reads.forRange(range);
 
-            if (shards.isEmpty())
-            {
-                Invariants.checkState(range.isWrapAround());
-                shards.add(createShard(minRange(keyspace.name, range.right), directory, reads, writes));
-                finalShard = createShard(maxRange(keyspace.name, range.left), directory, reads, writes);
-            }
-            else
-            {
-                shards.add(createShard(range(keyspace.name, range), directory, reads, writes));
-            }
+            // TCM doesn't create wrap around ranges
+            Invariants.checkArgument(!range.isWrapAround() || range.right.equals(range.right.minValue()));
+            shards.add(createShard(range(keyspace.name, range), directory, reads, writes));
         }
-        shards.add(finalShard);
 
         return shards;
     }
@@ -119,6 +114,7 @@ public class AccordTopologyUtils
         List<Shard> shards = new ArrayList<>();
         for (KeyspaceMetadata keyspace : schema.getKeyspaces())
             shards.addAll(createShards(keyspace, placements, directory));
+        shards.sort(Comparator.comparing(shard -> shard.range.end()));
         return new Topology(epoch.getEpoch(), shards.toArray(new Shard[0]));
     }
 
