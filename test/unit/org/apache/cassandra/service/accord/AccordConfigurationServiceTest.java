@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import accord.impl.AbstractConfigurationServiceTest;
 import accord.local.Node.Id;
 import accord.topology.Shard;
 import accord.topology.Topology;
@@ -42,6 +43,8 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.accord.AccordKeyspace.EpochDiskState;
 
+import static accord.impl.AbstractConfigurationServiceTest.TestListener;
+import static com.google.common.collect.ImmutableSet.of;
 import static java.lang.String.format;
 import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 import static org.apache.cassandra.cql3.statements.schema.CreateTableStatement.parse;
@@ -101,5 +104,69 @@ public class AccordConfigurationServiceTest
             Assert.assertEquals(topology1, topology);
             Assert.assertEquals(Sets.newHashSet(ID1, ID2), synced);
         });
+    }
+
+    @Test
+    public void loadTest() throws Throwable
+    {
+        TCMConfigurationService service = new TCMConfigurationService(ID1);
+        service.start();
+
+        Topology topology1 = new Topology(1, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, ID_SET));
+        service.reportTopology(topology1);
+        service.acknowledgeEpoch(1);
+        service.epochSyncComplete(ID1, 1);
+        service.epochSyncComplete(ID2, 1);
+        service.epochSyncComplete(ID3, 1);
+
+        Topology topology2 = new Topology(2, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
+        service.reportTopology(topology2);
+        service.acknowledgeEpoch(2);
+        service.epochSyncComplete(ID1, 2);
+
+        Topology topology3 = new Topology(3, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
+        service.reportTopology(topology3);
+        service.acknowledgeEpoch(3);
+
+        TCMConfigurationService loaded = new TCMConfigurationService(ID1);
+        AbstractConfigurationServiceTest.TestListener listener = new AbstractConfigurationServiceTest.TestListener(loaded, true);
+        loaded.registerListener(listener);
+        loaded.start();
+
+        listener.assertNoTruncates();
+        listener.assertTopologiesFor(1L, 2L, 3L);
+        listener.assertTopologyForEpoch(1, topology1);
+        listener.assertTopologyForEpoch(2, topology2);
+        listener.assertTopologyForEpoch(3, topology3);
+        listener.assertSyncsFor(1L, 2L);
+        listener.assertSyncsForEpoch(1, ID1, ID2, ID3);
+        listener.assertSyncsForEpoch(2, ID1);
+    }
+
+    @Test
+    public void truncateTest()
+    {
+        TCMConfigurationService service = new TCMConfigurationService(ID1);
+        TestListener serviceListener = new TestListener(service, true);
+        service.registerListener(serviceListener);
+        service.start();
+
+        Topology topology1 = new Topology(1, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, ID_SET));
+        service.reportTopology(topology1);
+
+        Topology topology2 = new Topology(2, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
+        service.reportTopology(topology2);
+
+        Topology topology3 = new Topology(3, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
+        service.reportTopology(topology3);
+        service.truncateTopologiesUntil(3);
+        Assert.assertEquals(new EpochDiskState(3, 3), service.diskState());
+        serviceListener.assertTruncates(3L);
+
+        TCMConfigurationService loaded = new TCMConfigurationService(ID1);
+        TestListener loadListener = new TestListener(loaded, true);
+        loaded.registerListener(loadListener);
+        loaded.start();
+        loadListener.assertTopologiesFor(3L);
     }
 }

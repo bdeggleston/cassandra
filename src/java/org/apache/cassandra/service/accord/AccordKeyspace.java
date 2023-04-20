@@ -918,6 +918,15 @@ public class AccordKeyspace
         }
 
         @Override
+        public String toString()
+        {
+            return "EpochDiskState{" +
+                   "minEpoch=" + minEpoch +
+                   ", maxEpoch=" + maxEpoch +
+                   '}';
+        }
+
+        @Override
         public boolean equals(Object o)
         {
             if (this == o) return true;
@@ -995,7 +1004,7 @@ public class AccordKeyspace
             long delete = diskState.minEpoch;
             diskState = diskState.withNewMinEpoch(delete + 1);
             saveEpochDiskState(diskState);
-            String cql = "DELETE * FROM %s.%s WHERE epoch = ?";
+            String cql = "DELETE FROM %s.%s WHERE epoch = ?";
             executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES), delete);
         }
         return diskState;
