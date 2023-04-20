@@ -46,23 +46,32 @@ public class TCMConfigurationService extends AbstractConfigurationService implem
         this.preListener = new Listener()
         {
             @Override
-            public synchronized void onTopologyUpdate(Topology topology)
+            public void onTopologyUpdate(Topology topology)
             {
-                if (state == State.STARTED)
-                    diskState = AccordKeyspace.saveTopology(topology, diskState);
+                synchronized (TCMConfigurationService.this)
+                {
+                    if (state == State.STARTED)
+                        diskState = AccordKeyspace.saveTopology(topology, diskState);
+                }
             }
 
             @Override
-            public synchronized void onEpochSyncComplete(Node.Id node, long epoch)
+            public void onEpochSyncComplete(Node.Id node, long epoch)
             {
-                if (state == State.STARTED)
-                    diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
+                synchronized (TCMConfigurationService.this)
+                {
+                    if (state == State.STARTED)
+                        diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
+                }
             }
 
             @Override
             public void truncateTopologyUntil(long epoch)
             {
-                Invariants.checkState(state == State.STARTED);
+                synchronized (TCMConfigurationService.this)
+                {
+                    Invariants.checkState(state == State.STARTED);
+                }
             }
         };
 
@@ -75,10 +84,13 @@ public class TCMConfigurationService extends AbstractConfigurationService implem
             public void onEpochSyncComplete(Node.Id node, long epoch) {}
 
             @Override
-            public synchronized void truncateTopologyUntil(long epoch)
+            public void truncateTopologyUntil(long epoch)
             {
-                if (state == State.STARTED)
-                    diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
+                synchronized (TCMConfigurationService.this)
+                {
+                    if (state == State.STARTED)
+                        diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
+                }
             }
         };
     }
