@@ -5571,10 +5571,4 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         long period = ClusterMetadataService.instance().sealPeriod().period;
         logger.info("Current period {} is sealed", period);
     }
-
-    public void createEpochUnsafe()
-    {
-        // FIXME: remove
-        AccordService.instance().createEpochFromConfigUnsafe();
-    }
 }

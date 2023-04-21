@@ -756,6 +756,7 @@ public class Instance extends IsolatedExecutor implements IInvokableInstance
         else
         {
             Stream peers = cluster.stream().filter(instance -> instance.isValid());
+            AccordService.instance().startup();
             ClusterMetadataService.instance().replayAndWait();
             NodeId self = Register.maybeRegister();
             if (ClusterMetadata.current().directory.peerState(self) != NodeState.JOINED)

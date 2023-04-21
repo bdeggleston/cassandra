@@ -70,6 +70,7 @@ import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.service.accord.AccordService;
 import org.apache.cassandra.tcm.ClusterMetadataService;
 import org.apache.cassandra.tcm.Startup;
 import org.apache.cassandra.metrics.CassandraMetricsRegistry;
@@ -427,6 +428,8 @@ public class CassandraDaemon
             System.err.println(e.getMessage() + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
             exitOrFail(1, "Fatal configuration error", e);
         }
+
+        AccordService.instance().startup();
 
         ClusterMetadataService.instance().replayAndWait();
 

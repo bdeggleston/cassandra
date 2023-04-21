@@ -56,6 +56,7 @@ import org.apache.cassandra.service.accord.api.AccordScheduler;
 import org.apache.cassandra.service.accord.exceptions.ReadPreemptedException;
 import org.apache.cassandra.service.accord.exceptions.WritePreemptedException;
 import org.apache.cassandra.service.accord.txn.TxnData;
+import org.apache.cassandra.tcm.ClusterMetadataService;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.ExecutorUtils;
 import org.apache.cassandra.utils.FBUtilities;
@@ -75,7 +76,7 @@ public class AccordService implements IAccordService, Shutdownable
     private final Node node;
     private final Shutdownable nodeShutdown;
     private final AccordMessageSink messageSink;
-    private final AccordConfigurationService configService;
+    private final TCMConfigurationService configService;
     private final AccordScheduler scheduler;
     private final AccordVerbHandler<? extends Request> verbHandler;
     
@@ -86,9 +87,6 @@ public class AccordService implements IAccordService, Shutdownable
         {
             return null;
         }
-
-        @Override
-        public void createEpochFromConfigUnsafe() { }
 
         @Override
         public TxnData coordinate(Txn txn, ConsistencyLevel consistencyLevel)
@@ -110,6 +108,9 @@ public class AccordService implements IAccordService, Shutdownable
         {
             throw new UnsupportedOperationException("Cannot return topology when accord_transactions_enabled = false in cassandra.yaml");
         }
+
+        @Override
+        public void startup() {}
 
         @Override
         public void shutdownAndWait(long timeout, TimeUnit unit) { }
@@ -135,7 +136,7 @@ public class AccordService implements IAccordService, Shutdownable
         Node.Id localId = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
         logger.info("Starting accord with nodeId {}", localId);
         this.messageSink = new AccordMessageSink();
-        this.configService = new AccordConfigurationService(localId);
+        this.configService = new TCMConfigurationService(localId);
         this.scheduler = new AccordScheduler();
         this.node = new Node(localId,
                              messageSink,
@@ -154,16 +155,16 @@ public class AccordService implements IAccordService, Shutdownable
     }
 
     @Override
-    public IVerbHandler<? extends Request> verbHandler()
+    public void startup()
     {
-        return verbHandler;
+        configService.start();
+        ClusterMetadataService.instance().log().addListener(configService);
     }
 
     @Override
-    @VisibleForTesting
-    public void createEpochFromConfigUnsafe()
+    public IVerbHandler<? extends Request> verbHandler()
     {
-        configService.createEpochFromConfig();
+        return verbHandler;
     }
 
     public static long nowInMicros()
