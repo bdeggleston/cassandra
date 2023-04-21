@@ -76,7 +76,7 @@ public class AccordService implements IAccordService, Shutdownable
     private final Node node;
     private final Shutdownable nodeShutdown;
     private final AccordMessageSink messageSink;
-    private final TCMConfigurationService configService;
+    private final AccordConfigurationService configService;
     private final AccordScheduler scheduler;
     private final AccordVerbHandler<? extends Request> verbHandler;
     
@@ -136,7 +136,7 @@ public class AccordService implements IAccordService, Shutdownable
         Node.Id localId = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
         logger.info("Starting accord with nodeId {}", localId);
         this.messageSink = new AccordMessageSink();
-        this.configService = new TCMConfigurationService(localId);
+        this.configService = new AccordConfigurationService(localId);
         this.scheduler = new AccordScheduler();
         this.node = new Node(localId,
                              messageSink,

@@ -84,7 +84,7 @@ public class AccordConfigurationServiceTest
     @Test
     public void initialEpochTest() throws Throwable
     {
-        TCMConfigurationService service = new TCMConfigurationService(ID1);
+        AccordConfigurationService service = new AccordConfigurationService(ID1);
         Assert.assertEquals(null, AccordKeyspace.loadEpochDiskState());
         service.start();
         Assert.assertEquals(null, AccordKeyspace.loadEpochDiskState());
@@ -109,7 +109,7 @@ public class AccordConfigurationServiceTest
     @Test
     public void loadTest() throws Throwable
     {
-        TCMConfigurationService service = new TCMConfigurationService(ID1);
+        AccordConfigurationService service = new AccordConfigurationService(ID1);
         service.start();
 
         Topology topology1 = new Topology(1, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, ID_SET));
@@ -128,7 +128,7 @@ public class AccordConfigurationServiceTest
         service.reportTopology(topology3);
         service.acknowledgeEpoch(3);
 
-        TCMConfigurationService loaded = new TCMConfigurationService(ID1);
+        AccordConfigurationService loaded = new AccordConfigurationService(ID1);
         AbstractConfigurationServiceTest.TestListener listener = new AbstractConfigurationServiceTest.TestListener(loaded, true);
         loaded.registerListener(listener);
         loaded.start();
@@ -148,7 +148,7 @@ public class AccordConfigurationServiceTest
     @Test
     public void truncateTest()
     {
-        TCMConfigurationService service = new TCMConfigurationService(ID1);
+        AccordConfigurationService service = new AccordConfigurationService(ID1);
         TestListener serviceListener = new TestListener(service, true);
         service.registerListener(serviceListener);
         service.start();
@@ -165,7 +165,7 @@ public class AccordConfigurationServiceTest
         Assert.assertEquals(new EpochDiskState(3, 3), service.diskState());
         serviceListener.assertTruncates(3L);
 
-        TCMConfigurationService loaded = new TCMConfigurationService(ID1);
+        AccordConfigurationService loaded = new AccordConfigurationService(ID1);
         TestListener loadListener = new TestListener(loaded, true);
         loaded.registerListener(loadListener);
         loaded.start();
