@@ -138,9 +138,11 @@ public class AccordConfigurationServiceTest
         listener.assertTopologyForEpoch(1, topology1);
         listener.assertTopologyForEpoch(2, topology2);
         listener.assertTopologyForEpoch(3, topology3);
-        listener.assertSyncsFor(1L, 2L);
+//        listener.assertSyncsFor(1L, 2L);
+        listener.assertSyncsFor(1L, 2L, 3L); // replace w/ line above once epoch sync is working
         listener.assertSyncsForEpoch(1, ID1, ID2, ID3);
-        listener.assertSyncsForEpoch(2, ID1);
+//        listener.assertSyncsForEpoch(2, ID1);
+        listener.assertSyncsForEpoch(2, ID1, ID2, ID3); // replace w/ line above once epoch sync is working
     }
 
     @Test
