@@ -37,62 +37,10 @@ public class TCMConfigurationService extends AbstractConfigurationService implem
     private enum State { INITIALIZED, LOADING, STARTED }
 
     private State state = State.INITIALIZED;
-    private final Listener preListener;
-    private final Listener postListener;
 
     public TCMConfigurationService(Node.Id node)
     {
         super(node);
-        this.preListener = new Listener()
-        {
-            @Override
-            public void onTopologyUpdate(Topology topology)
-            {
-                synchronized (TCMConfigurationService.this)
-                {
-                    if (state == State.STARTED)
-                        diskState = AccordKeyspace.saveTopology(topology, diskState);
-                }
-            }
-
-            @Override
-            public void onEpochSyncComplete(Node.Id node, long epoch)
-            {
-                synchronized (TCMConfigurationService.this)
-                {
-                    if (state == State.STARTED)
-                        diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
-                }
-            }
-
-            @Override
-            public void truncateTopologyUntil(long epoch)
-            {
-                synchronized (TCMConfigurationService.this)
-                {
-                    Invariants.checkState(state == State.STARTED);
-                }
-            }
-        };
-
-        this.postListener = new Listener()
-        {
-            @Override
-            public void onTopologyUpdate(Topology topology) {}
-
-            @Override
-            public void onEpochSyncComplete(Node.Id node, long epoch) {}
-
-            @Override
-            public void truncateTopologyUntil(long epoch)
-            {
-                synchronized (TCMConfigurationService.this)
-                {
-                    if (state == State.STARTED)
-                        diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
-                }
-            }
-        };
     }
 
     public synchronized void start()
@@ -126,20 +74,40 @@ public class TCMConfigurationService extends AbstractConfigurationService implem
     }
 
     @Override
-    protected void beginEpochSync(long epoch)
+    protected synchronized void beginEpochSync(long epoch)
     {
-        // TODO: run a barrier txn?
+        if (state != State.STARTED)
+            return;
+
+        // TODO: run a barrier txn and/or accord repair?
+        Topology topology = getTopologyForEpoch(epoch);
+        topology.nodes().forEach(id -> epochSyncComplete(id, epoch));
     }
 
     @Override
-    protected Listener preListener()
+    protected synchronized void topologyUpdatePreListenerNotify(Topology topology)
     {
-        return preListener;
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.saveTopology(topology, diskState);
     }
 
     @Override
-    protected Listener postListener()
+    protected void epochSyncCompletePreListenerNotify(Node.Id node, long epoch)
     {
-        return postListener;
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
+    }
+
+    @Override
+    protected void truncateTopologiesPreListenerNotify(long epoch)
+    {
+        Invariants.checkState(state == State.STARTED);
+    }
+
+    @Override
+    protected void truncateTopologiesPostListenerNotify(long epoch)
+    {
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
     }
 }
