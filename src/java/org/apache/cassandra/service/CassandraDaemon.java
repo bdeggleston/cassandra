@@ -429,7 +429,6 @@ public class CassandraDaemon
             exitOrFail(1, "Fatal configuration error", e);
         }
 
-        AccordService.instance().startup();
 
         ClusterMetadataService.instance().replayAndWait();
 

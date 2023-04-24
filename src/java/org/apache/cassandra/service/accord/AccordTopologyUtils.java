@@ -49,12 +49,17 @@ import org.apache.cassandra.tcm.ownership.DataPlacements;
 
 public class AccordTopologyUtils
 {
+    static Node.Id tcmIdToAccord(NodeId nodeId)
+    {
+        // FIXME: replace when tcm is just using ints
+        return new Node.Id((int) nodeId.uuid.getLeastSignificantBits());
+    }
+
     private static Shard createShard(TokenRange range, Directory directory, EndpointsForRange reads, EndpointsForRange writes)
     {
         Function<InetAddressAndPort, Node.Id> endpointMapper = e -> {
             NodeId tcmId = directory.peerId(e);
-            // FIXME: this doesn't work
-            return new Node.Id((int) tcmId.uuid.getLeastSignificantBits());
+            return tcmIdToAccord(tcmId);
         };
         Set<InetAddressAndPort> endpoints = reads.endpoints();
         Set<InetAddressAndPort> writeEndpoints = writes.endpoints();
@@ -118,13 +123,16 @@ public class AccordTopologyUtils
         return new Topology(epoch.getEpoch(), shards.toArray(new Shard[0]));
     }
 
+    public static EndpointMapping directoryToMapping(long epoch, Directory directory)
+    {
+        EndpointMapping.Builder builder = EndpointMapping.builder(epoch);
+        for (NodeId id : directory.peerIds())
+            builder.add(directory.endpoint(id), tcmIdToAccord(id));
+        return builder.build();
+    }
+
     public static Topology createAccordTopology(ClusterMetadata metadata)
     {
         return createAccordTopology(metadata.epoch, metadata.schema, metadata.placements, metadata.directory);
-    }
-
-    public static Topology createAccordTopology(long epoch)
-    {
-        throw new UnsupportedOperationException("Switch to ClusterMetadata -> Accord Topology");
     }
 }

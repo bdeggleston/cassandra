@@ -88,11 +88,6 @@ import static java.lang.String.format;
 
 public class AccordTestUtils
 {
-    public static Id localNodeId()
-    {
-        return EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
-    }
-
     public static class Commands
     {
         public static Command notWitnessed(TxnId txnId, PartialTxn txn)
@@ -300,7 +295,7 @@ public class AccordTestUtils
     {
         TableMetadata metadata = Schema.instance.getTableMetadata(keyspace, table);
         TokenRange range = TokenRange.fullRange(metadata.keyspace);
-        Node.Id node = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Node.Id node = new Id(1);
         Topology topology = new Topology(1, new Shard(range, Lists.newArrayList(node), Sets.newHashSet(node), Collections.emptySet()));
         NodeTimeService time = new NodeTimeService()
         {
@@ -338,7 +333,7 @@ public class AccordTestUtils
     {
         TableMetadata metadata = Schema.instance.getTableMetadata(keyspace, table);
         TokenRange range = TokenRange.fullRange(metadata.keyspace);
-        Node.Id node = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Node.Id node = new Id(1);
         Topology topology = new Topology(1, new Shard(range, Lists.newArrayList(node), Sets.newHashSet(node), Collections.emptySet()));
         AccordCommandStore store = createAccordCommandStore(node, now, topology);
         store.execute(PreLoadContext.empty(), safeStore -> ((AccordCommandStore)safeStore.commandStore()).setCacheSize(1 << 20));

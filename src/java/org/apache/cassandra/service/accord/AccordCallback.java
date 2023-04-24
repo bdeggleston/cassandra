@@ -33,17 +33,19 @@ class AccordCallback<T extends Reply> implements RequestCallback<T>
 {
     private static final Logger logger = LoggerFactory.getLogger(AccordCallback.class);
     private final Callback<T> callback;
+    private final AccordEndpointMapper endpointMapper;
 
-    public AccordCallback(Callback<T> callback)
+    public AccordCallback(Callback<T> callback, AccordEndpointMapper endpointMapper)
     {
         this.callback = callback;
+        this.endpointMapper = endpointMapper;
     }
 
     @Override
     public void onResponse(Message<T> msg)
     {
         logger.debug("Received response {} from {}", msg.payload, msg.from());
-        callback.onSuccess(EndpointMapping.endpointToId(msg.from()), msg.payload);
+        callback.onSuccess(endpointMapper.mappedId(msg.from()), msg.payload);
     }
 
     private static Throwable convertReason(RequestFailureReason reason)
@@ -58,7 +60,7 @@ class AccordCallback<T extends Reply> implements RequestCallback<T>
     {
         logger.debug("Received failure {} from {} for {}", failureReason, from, callback);
         // TODO (now): we should distinguish timeout failures with some placeholder Exception
-        callback.onFailure(EndpointMapping.endpointToId(from), convertReason(failureReason));
+        callback.onFailure(endpointMapper.mappedId(from), convertReason(failureReason));
     }
 
     @Override

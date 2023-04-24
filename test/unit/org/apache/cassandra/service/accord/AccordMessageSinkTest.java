@@ -25,6 +25,7 @@ import accord.local.Node;
 import accord.messages.InformOfTxnId;
 import accord.messages.SimpleReply;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageDelivery;
 import org.apache.cassandra.net.Verb;
@@ -39,8 +40,11 @@ public class AccordMessageSinkTest
     }
 
     @Test
-    public void informOfTxn()
+    public void informOfTxn() throws Throwable
     {
+        Node.Id id = new Node.Id(1);
+        InetAddressAndPort endpoint = InetAddressAndPort.getByName("127.0.0.1");
+        EndpointMapping mapping = EndpointMapping.builder(5).add(endpoint, id).build();
         // There was an issue where the reply was the wrong verb
         // see CASSANDRA-18375
         InformOfTxnId info = Mockito.mock(InformOfTxnId.class);
@@ -48,8 +52,8 @@ public class AccordMessageSinkTest
         SimpleReply reply = SimpleReply.Ok;
 
         MessageDelivery messaging = Mockito.mock(MessageDelivery.class);
-        AccordMessageSink sink = new AccordMessageSink(messaging);
-        sink.reply(new Node.Id(1), req, reply);
+        AccordMessageSink sink = new AccordMessageSink(messaging, mapping);
+        sink.reply(id, req, reply);
 
         Mockito.verify(messaging).send(Mockito.any(), Mockito.any());
     }

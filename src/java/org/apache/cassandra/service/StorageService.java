@@ -701,6 +701,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         NodeId self = Register.maybeRegister();
 
+        AccordService.startup(self);
+
         // finish in-progress sequences first
         finishInProgressSequences(self);
 

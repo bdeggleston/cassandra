@@ -33,16 +33,18 @@ public class AccordVerbHandler<T extends Request> implements IVerbHandler<T>
     private static final Logger logger = LoggerFactory.getLogger(AccordVerbHandler.class);
 
     private final Node node;
+    private final AccordEndpointMapper configService;
 
-    public AccordVerbHandler(Node node)
+    public AccordVerbHandler(Node node, AccordEndpointMapper endpointMapper)
     {
         this.node = node;
+        this.configService = endpointMapper;
     }
 
     @Override
     public void doVerb(Message<T> message) throws IOException
     {
         logger.debug("Receiving {} from {}", message.payload, message.from());
-        message.payload.process(node, EndpointMapping.getId(message.from()), message);
+        message.payload.process(node, configService.mappedId(message.from()), message);
     }
 }

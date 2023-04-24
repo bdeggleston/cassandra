@@ -40,6 +40,7 @@ import accord.primitives.Txn;
 import accord.primitives.TxnId;
 import accord.topology.TopologyManager;
 import accord.utils.DefaultRandom;
+import accord.utils.Invariants;
 import accord.utils.async.AsyncChains;
 import org.apache.cassandra.concurrent.Shutdownable;
 import accord.utils.async.AsyncResult;
@@ -57,9 +58,9 @@ import org.apache.cassandra.service.accord.exceptions.ReadPreemptedException;
 import org.apache.cassandra.service.accord.exceptions.WritePreemptedException;
 import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.membership.NodeId;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.ExecutorUtils;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static org.apache.cassandra.config.DatabaseDescriptor.getConcurrentAccordOps;
@@ -116,9 +117,16 @@ public class AccordService implements IAccordService, Shutdownable
         public void shutdownAndWait(long timeout, TimeUnit unit) { }
     };
 
+    private static Node.Id localId = null;
     private static class Handle
     {
         public static final AccordService instance = new AccordService();
+    }
+
+    public static void startup(NodeId tcmId)
+    {
+        localId = AccordTopologyUtils.tcmIdToAccord(tcmId);
+        instance().startup();
     }
 
     public static IAccordService instance()
@@ -133,10 +141,10 @@ public class AccordService implements IAccordService, Shutdownable
 
     private AccordService()
     {
-        Node.Id localId = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Invariants.checkState(localId != null, "static localId must be set before instantiating AccordService");
         logger.info("Starting accord with nodeId {}", localId);
-        this.messageSink = new AccordMessageSink();
         this.configService = new AccordConfigurationService(localId);
+        this.messageSink = new AccordMessageSink(configService);
         this.scheduler = new AccordScheduler();
         this.node = new Node(localId,
                              messageSink,
@@ -151,7 +159,7 @@ public class AccordService implements IAccordService, Shutdownable
                              SimpleProgressLog::new,
                              AccordCommandStores::new);
         this.nodeShutdown = toShutdownable(node);
-        this.verbHandler = new AccordVerbHandler<>(this.node);
+        this.verbHandler = new AccordVerbHandler<>(this.node, configService);
     }
 
     @Override

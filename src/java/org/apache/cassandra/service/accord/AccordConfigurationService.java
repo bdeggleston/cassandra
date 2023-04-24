@@ -24,6 +24,7 @@ import accord.impl.AbstractConfigurationService;
 import accord.local.Node;
 import accord.topology.Topology;
 import accord.utils.Invariants;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.service.accord.AccordKeyspace.EpochDiskState;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.ClusterMetadataService;
@@ -31,12 +32,13 @@ import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.listeners.ChangeListener;
 
 // TODO: listen to FailureDetector and rearrange fast path accordingly
-public class AccordConfigurationService extends AbstractConfigurationService implements ChangeListener
+public class AccordConfigurationService extends AbstractConfigurationService implements ChangeListener, AccordEndpointMapper
 {
     private EpochDiskState diskState = EpochDiskState.EMPTY;
     private enum State { INITIALIZED, LOADING, STARTED }
 
     private State state = State.INITIALIZED;
+    private volatile EndpointMapping mapping = EndpointMapping.EMPTY;
 
     public AccordConfigurationService(Node.Id node)
     {
@@ -55,6 +57,18 @@ public class AccordConfigurationService extends AbstractConfigurationService imp
         state = State.STARTED;
     }
 
+    @Override
+    public Node.Id mappedId(InetAddressAndPort endpoint)
+    {
+        return Invariants.nonNull(mapping.mappedId(endpoint));
+    }
+
+    @Override
+    public InetAddressAndPort mappedEndpoint(Node.Id id)
+    {
+        return Invariants.nonNull(mapping.mappedEndpoint(id));
+    }
+
     @VisibleForTesting
     EpochDiskState diskState()
     {
@@ -64,6 +78,12 @@ public class AccordConfigurationService extends AbstractConfigurationService imp
     @Override
     public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next)
     {
+        synchronized (this)
+        {
+            long epoch = next.epoch.getEpoch();
+            if (epoch > mapping.epoch())
+                mapping = AccordTopologyUtils.directoryToMapping(next.epoch.getEpoch(), next.directory);
+        }
         reportTopology(AccordTopologyUtils.createAccordTopology(next));
     }
 
