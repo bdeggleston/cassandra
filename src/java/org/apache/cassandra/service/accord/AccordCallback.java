@@ -28,6 +28,7 @@ import org.apache.cassandra.exceptions.RequestFailureReason;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.RequestCallback;
+import org.apache.cassandra.tcm.ClusterMetadataService;
 
 class AccordCallback<T extends Reply> implements RequestCallback<T>
 {
@@ -44,6 +45,7 @@ class AccordCallback<T extends Reply> implements RequestCallback<T>
     @Override
     public void onResponse(Message<T> msg)
     {
+        ClusterMetadataService.instance().maybeCatchup(msg.epoch());
         logger.debug("Received response {} from {}", msg.payload, msg.from());
         callback.onSuccess(endpointMapper.mappedId(msg.from()), msg.payload);
     }

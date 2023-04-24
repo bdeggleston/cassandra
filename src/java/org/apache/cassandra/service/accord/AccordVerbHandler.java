@@ -27,6 +27,7 @@ import accord.local.Node;
 import accord.messages.Request;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.tcm.ClusterMetadataService;
 
 public class AccordVerbHandler<T extends Request> implements IVerbHandler<T>
 {
@@ -44,6 +45,7 @@ public class AccordVerbHandler<T extends Request> implements IVerbHandler<T>
     @Override
     public void doVerb(Message<T> message) throws IOException
     {
+        ClusterMetadataService.instance().maybeCatchup(message.epoch());
         logger.debug("Receiving {} from {}", message.payload, message.from());
         message.payload.process(node, configService.mappedId(message.from()), message);
     }
