@@ -47,6 +47,12 @@ public class AccordVerbHandler<T extends Request> implements IVerbHandler<T>
     {
         ClusterMetadataService.instance().maybeCatchup(message.epoch());
         logger.debug("Receiving {} from {}", message.payload, message.from());
-        message.payload.process(node, configService.mappedId(message.from()), message);
+        Request request = message.payload;
+        Node.Id from = configService.mappedId(message.from());
+        // CMS updates received in another messaging thread can race with node upates
+        if (node.epoch() < request.waitForEpoch())
+            node.withEpoch(request.waitForEpoch(), () -> request.process(node, from, message));
+        else
+            request.process(node, from, message);
     }
 }
