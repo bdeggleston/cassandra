@@ -24,7 +24,7 @@ import org.junit.Test;
 import accord.local.Node;
 import accord.messages.InformOfTxnId;
 import accord.messages.SimpleReply;
-import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageDelivery;
@@ -36,7 +36,7 @@ public class AccordMessageSinkTest
     @BeforeClass
     public static void setup()
     {
-        DatabaseDescriptor.clientInitialization();
+        SchemaLoader.prepareServer();
     }
 
     @Test

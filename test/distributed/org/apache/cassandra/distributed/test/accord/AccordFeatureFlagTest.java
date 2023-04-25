@@ -70,7 +70,7 @@ public class AccordFeatureFlagTest extends TestBaseImpl
             
             // The Accord system keyspace should not be present:
             assertEquals("The Accord system keyspace should not exist",
-                         Optional.empty(), cluster.get(1).callOnInstance(() -> Keyspace.open(ACCORD_KEYSPACE_NAME)));
+                         null, cluster.get(1).callOnInstance(() -> Keyspace.open(ACCORD_KEYSPACE_NAME)));
             
             // Make sure virtual tables don't exist:
             IIsolatedExecutor.SerializableCallable<Stream<VirtualTable>> hasAccordVirtualTables = 
