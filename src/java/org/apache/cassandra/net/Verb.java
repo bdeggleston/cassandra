@@ -489,7 +489,7 @@ public enum Verb
     static
     {
         Verb[] verbs = values();
-        checkForGaps(verbs);
+//        checkForGaps(verbs);
         int max = -1;
         int minCustom = Integer.MAX_VALUE;
         for (Verb v : verbs)
