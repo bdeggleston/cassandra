@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -258,11 +259,8 @@ public class PaxosRepair2Test extends TestBaseImpl
             cluster.get(3).shutdown();
             InetAddressAndPort node3 = InetAddressAndPort.getByAddress(cluster.get(3).broadcastAddress());
 
-            for (int i = 0; i < 10; i++)
-            {
-                if (!cluster.get(1).callOnInstance(() -> FailureDetector.instance.isAlive(node3)))
-                    break;
-            }
+            Awaitility.waitAtMost(1,TimeUnit.MINUTES).until(
+            () -> !cluster.get(1).callOnInstance(() -> FailureDetector.instance.isAlive(node3)));
 
             repair(cluster, KEYSPACE, TABLE, true);
             for (int i = 0; i < cluster.size() - 1; i++)
