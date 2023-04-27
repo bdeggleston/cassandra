@@ -256,9 +256,11 @@ public class PaxosRepair2Test extends TestBaseImpl
         )
         {
             cluster.schemaChange("CREATE TABLE " + KEYSPACE + '.' + TABLE + " (k int primary key, v int)");
-            cluster.get(3).shutdown();
             InetAddressAndPort node3 = InetAddressAndPort.getByAddress(cluster.get(3).broadcastAddress());
 
+            // make sure node3 is shutdown and node1 knows it is down - waiting on shutdown
+            // in addition to
+            cluster.get(3).shutdown().get(1,TimeUnit.MINUTES);
             Awaitility.waitAtMost(1,TimeUnit.MINUTES).until(
             () -> !cluster.get(1).callOnInstance(() -> FailureDetector.instance.isAlive(node3)));
 
