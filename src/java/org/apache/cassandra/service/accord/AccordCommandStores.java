@@ -18,16 +18,20 @@
 
 package org.apache.cassandra.service.accord;
 
+import java.util.function.Supplier;
+
 import accord.api.Agent;
+import accord.api.ConfigurationService.EpochReady;
 import accord.api.DataStore;
 import accord.api.ProgressLog;
 import accord.local.CommandStores;
+import accord.local.Node;
 import accord.local.NodeTimeService;
 import accord.local.ShardDistributor;
 import accord.topology.Topology;
 import accord.utils.RandomSource;
 
-public class AccordCommandStores extends CommandStores<AccordCommandStore>
+public class AccordCommandStores extends CommandStores
 {
     private long cacheSize;
     AccordCommandStores(NodeTimeService time, Agent agent, DataStore store, RandomSource random,
@@ -57,11 +61,21 @@ public class AccordCommandStores extends CommandStores<AccordCommandStore>
         return 5 << 20; // TODO (required): make configurable
     }
 
+
     @Override
-    public synchronized void updateTopology(Topology newTopology)
+    public synchronized Supplier<EpochReady> updateTopology(Node node, Topology newTopology)
     {
-        super.updateTopology(newTopology);
-        refreshCacheSizes();
+        Supplier<EpochReady> start = super.updateTopology(node, newTopology);
+        return () -> {
+            EpochReady ready = start.get();
+            ready.metadata.addCallback(() -> {
+                synchronized (this)
+                {
+                    refreshCacheSizes();
+                }
+            });
+            return ready;
+        };
     }
 
     @Override
