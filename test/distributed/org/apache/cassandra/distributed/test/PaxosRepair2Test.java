@@ -484,6 +484,7 @@ public class PaxosRepair2Test extends TestBaseImpl
             // prepare an operation ttl + 1 hour into the past on a single node
             cluster.forEach(instance -> {
                 instance.runOnInstance(() -> {
+                    Clock.Global.logInitializationOutcome(LoggerFactory.getLogger("test-debug"));
                     backdateTimestamps(ttl + 3600);
                 });
             });
