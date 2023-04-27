@@ -519,11 +519,16 @@ public class PaxosRepair2Test extends TestBaseImpl
                 {
                     state.updateStateUnsafe(s -> {
                         Assert.assertNull(s.accepted);
-                        Assert.assertTrue(Commit.isAfter(s.committed.ballot, oldBallot));
+                        Assert.assertTrue(String.format("Commit.isAfter(s.committed.ballot=%s(%d), oldBallot=%s(%d)",
+                                                        s.committed.ballot, s.committed.ballot.uuidTimestamp(),
+                                                        oldBallot, oldBallot.uuidTimestamp()),
+                                          Commit.isAfter(s.committed.ballot, oldBallot));
                         Commit.CommittedWithTTL committed = new Commit.CommittedWithTTL(s.committed.ballot,
                                                                                         s.committed.update,
                                                                                         ballotDeletion(s.committed));
-                        Assert.assertTrue(committed.localDeletionTime < nowInSec);
+                        Assert.assertTrue(String.format("committed.localDeletionTime=%d < nowInSec=%d",
+                                                        committed.localDeletionTime, nowInSec),
+                                          committed.localDeletionTime < nowInSec);
                         return new PaxosState.Snapshot(Ballot.none(), Ballot.none(), null, committed);
                     });
                 }
