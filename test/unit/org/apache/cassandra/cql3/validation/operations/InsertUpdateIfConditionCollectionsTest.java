@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.SyntaxException;
@@ -46,6 +47,7 @@ public class InsertUpdateIfConditionCollectionsTest extends CQLTester
     @Parameterized.Parameters(name = "{index}: clusterMinVersion={0}")
     public static Collection<Object[]> data()
     {
+        ServerTestUtils.daemonInitialization();
         // [tcm] we will require upgrading from 4.1
         return Arrays.asList(new Object[]{ "4.1" }, new Object[]{ "4.0" });
     }
