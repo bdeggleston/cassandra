@@ -40,6 +40,7 @@ import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.transport.ProtocolVersion;
 
 import static java.lang.String.format;
+import static org.apache.cassandra.schema.SchemaConstants.ACCORD_KEYSPACE_NAME;
 import static org.apache.cassandra.schema.SchemaConstants.AUTH_KEYSPACE_NAME;
 import static org.apache.cassandra.schema.SchemaConstants.DISTRIBUTED_KEYSPACE_NAME;
 import static org.apache.cassandra.schema.SchemaConstants.SCHEMA_KEYSPACE_NAME;

@@ -545,6 +545,11 @@ public enum Verb
         for (int i : new int[]{ 7, 8, 12, 13, 17, 21, 25, 26, 32, 36, 64, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 78, 81, 83, 85, 86, 89, 90, 92, 96,
                                 /* gap for accord, should fix when merging to trunk */ 116, 117, 118})
             allowedMissing.add(i);
+
+        // add the gap between accord and tcm
+        for (int i=144; i<801; i++)
+            allowedMissing.add(i);
+
         List<Verb> verbs = new ArrayList<>(Arrays.asList(array));
         Collections.sort(verbs, Comparator.comparingInt(a -> a.id));
         Verb previous = null;

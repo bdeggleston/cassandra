@@ -143,6 +143,11 @@ public class Directory implements MetadataValue<Directory>
         return with(addresses, location, NodeVersion.CURRENT);
     }
 
+    public Directory with(NodeId id, NodeAddresses addresses, Location location, NodeVersion nodeVersion)
+    {
+        return with(addresses, id, id.uuid, location, nodeVersion);
+    }
+
     public Directory with(NodeAddresses addresses, Location location, NodeVersion nodeVersion)
     {
         // this is obviously not the right way to do this

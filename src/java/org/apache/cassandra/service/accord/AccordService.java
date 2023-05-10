@@ -40,6 +40,7 @@ import accord.primitives.Txn;
 import accord.primitives.TxnId;
 import accord.topology.TopologyManager;
 import accord.utils.DefaultRandom;
+import accord.utils.Invariants;
 import accord.utils.async.AsyncChains;
 import org.apache.cassandra.concurrent.Shutdownable;
 import accord.utils.async.AsyncResult;
@@ -56,9 +57,10 @@ import org.apache.cassandra.service.accord.api.AccordScheduler;
 import org.apache.cassandra.service.accord.exceptions.ReadPreemptedException;
 import org.apache.cassandra.service.accord.exceptions.WritePreemptedException;
 import org.apache.cassandra.service.accord.txn.TxnData;
+import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.membership.NodeId;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.ExecutorUtils;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static org.apache.cassandra.config.DatabaseDescriptor.getPartitioner;
@@ -87,9 +89,6 @@ public class AccordService implements IAccordService, Shutdownable
         }
 
         @Override
-        public void createEpochFromConfigUnsafe() { }
-
-        @Override
         public TxnData coordinate(Txn txn, ConsistencyLevel consistencyLevel)
         {
             throw new UnsupportedOperationException("No accord transaction should be executed when accord_transactions_enabled = false in cassandra.yaml");
@@ -111,12 +110,22 @@ public class AccordService implements IAccordService, Shutdownable
         }
 
         @Override
+        public void startup() {}
+
+        @Override
         public void shutdownAndWait(long timeout, TimeUnit unit) { }
     };
 
+    private static Node.Id localId = null;
     private static class Handle
     {
         public static final AccordService instance = new AccordService();
+    }
+
+    public static void startup(NodeId tcmId)
+    {
+        localId = AccordTopologyUtils.tcmIdToAccord(tcmId);
+        instance().startup();
     }
 
     public static IAccordService instance()
@@ -131,11 +140,11 @@ public class AccordService implements IAccordService, Shutdownable
 
     private AccordService()
     {
-        Node.Id localId = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Invariants.checkState(localId != null, "static localId must be set before instantiating AccordService");
         logger.info("Starting accord with nodeId {}", localId);
         AccordAgent agent = new AccordAgent();
-        this.messageSink = new AccordMessageSink(agent);
         this.configService = new AccordConfigurationService(localId);
+        this.messageSink = new AccordMessageSink(agent, configService);
         this.scheduler = new AccordScheduler();
         this.node = new Node(localId,
                              messageSink,
@@ -150,20 +159,20 @@ public class AccordService implements IAccordService, Shutdownable
                              SimpleProgressLog::new,
                              AccordCommandStores::new);
         this.nodeShutdown = toShutdownable(node);
-        this.verbHandler = new AccordVerbHandler<>(this.node);
+        this.verbHandler = new AccordVerbHandler<>(this.node, configService);
+    }
+
+    @Override
+    public void startup()
+    {
+        configService.start();
+        ClusterMetadataService.instance().log().addListener(configService);
     }
 
     @Override
     public IVerbHandler<? extends Request> verbHandler()
     {
         return verbHandler;
-    }
-
-    @Override
-    @VisibleForTesting
-    public void createEpochFromConfigUnsafe()
-    {
-        configService.createEpochFromConfig();
     }
 
     public static long nowInMicros()

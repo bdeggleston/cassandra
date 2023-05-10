@@ -35,8 +35,9 @@ public class EndpointMappingTest
     public void identityTest() throws Throwable
     {
         InetAddressAndPort endpoint = InetAddressAndPort.getByName("127.0.0.1");
-        Node.Id id = EndpointMapping.endpointToId(endpoint);
-        Assert.assertEquals(endpoint, EndpointMapping.idToEndpoint(id));
+        Node.Id id = new Node.Id(1);
+        EndpointMapping mapping = EndpointMapping.builder(1).add(endpoint, id).build();
+        Assert.assertEquals(endpoint, mapping.mappedEndpoint(id));
         logger.info("{} -> {}", endpoint, id);
     }
 }

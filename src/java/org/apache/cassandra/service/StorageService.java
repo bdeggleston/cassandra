@@ -169,7 +169,6 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.schema.ViewMetadata;
 import org.apache.cassandra.service.accord.AccordService;
-import org.apache.cassandra.service.disk.usage.DiskUsageBroadcaster;
 import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.service.paxos.PaxosCommit;
 import org.apache.cassandra.service.paxos.PaxosRepair;
@@ -701,6 +700,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Gossiper.waitToSettle();
 
         NodeId self = Register.maybeRegister();
+
+        AccordService.startup(self);
 
         // finish in-progress sequences first
         finishInProgressSequences(self);
@@ -5571,11 +5572,5 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info("Sealing current period in metadata log");
         long period = ClusterMetadataService.instance().sealPeriod().period;
         logger.info("Current period {} is sealed", period);
-    }
-
-    public void createEpochUnsafe()
-    {
-        // FIXME: remove
-        AccordService.instance().createEpochFromConfigUnsafe();
     }
 }

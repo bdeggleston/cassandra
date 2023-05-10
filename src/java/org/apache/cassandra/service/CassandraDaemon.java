@@ -428,6 +428,7 @@ public class CassandraDaemon
             exitOrFail(1, "Fatal configuration error", e);
         }
 
+
         ClusterMetadataService.instance().replayAndWait();
 
         // TODO: (TM/alexp), this can be made time-dependent

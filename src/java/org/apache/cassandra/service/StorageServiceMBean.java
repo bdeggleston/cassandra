@@ -1193,5 +1193,4 @@ public interface StorageServiceMBean extends NotificationEmitter
     void addToCms(List<String> endpoint);
     List<String> describeCMS();
     public void sealPeriod();
-    public void createEpochUnsafe();
 }

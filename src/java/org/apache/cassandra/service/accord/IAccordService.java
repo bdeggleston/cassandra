@@ -32,8 +32,6 @@ public interface IAccordService
 {
     IVerbHandler<? extends Request> verbHandler();
 
-    void createEpochFromConfigUnsafe();
-
     TxnData coordinate(Txn txn, ConsistencyLevel consistencyLevel);
 
     long currentEpoch();
@@ -41,6 +39,8 @@ public interface IAccordService
     void setCacheSize(long kb);
 
     TopologyManager topology();
+
+    void startup();
 
     void shutdownAndWait(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException;
 }
