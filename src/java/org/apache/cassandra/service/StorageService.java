@@ -1019,7 +1019,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             repairPaxosForTopologyChange("rebuild");
 
-            RangeStreamer streamer = new RangeStreamer(ClusterMetadata.current(),
+            ClusterMetadata metadata = ClusterMetadata.current();
+            RangeStreamer streamer = new RangeStreamer(metadata,
                                                        null,
                                                        StreamOperation.REBUILD,
                                                        useStrictConsistency /* todo: && !replacing */,
@@ -1111,8 +1112,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
 
             StreamResultFuture resultFuture = streamer.fetchAsync();
+            Future<Void> accordReady = AccordService.instance().epochReady(metadata.epoch);
+            Future<?> ready = FutureCombiner.allOf(resultFuture, accordReady);
             // wait for result
-            resultFuture.get();
+            ready.get();
         }
         catch (InterruptedException e)
         {

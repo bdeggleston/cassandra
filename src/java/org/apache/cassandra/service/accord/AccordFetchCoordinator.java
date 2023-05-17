@@ -230,6 +230,7 @@ public class AccordFetchCoordinator extends AbstractFetchCoordinator implements 
                 Invariants.checkState(ksm != null, "Keyspace %s not found", keyspace);
                 Invariants.checkState(ksm.tables.size() > 0, "Keyspace '%s' has no tables", keyspace);
 
+                // FIXME: may also be relocation
                 StreamPlan plan = new StreamPlan(StreamOperation.BOOTSTRAP, 1, false,
                                                  null, PreviewKind.NONE).flushBeforeTransfer(true);
 
