@@ -85,6 +85,7 @@ import org.apache.cassandra.schema.SchemaVersionVerbHandler;
 import org.apache.cassandra.service.accord.serializers.BeginInvalidationSerializers;
 import org.apache.cassandra.service.accord.serializers.CheckStatusSerializers;
 import org.apache.cassandra.service.accord.serializers.EnumSerializer;
+import org.apache.cassandra.service.accord.serializers.FetchSerializers;
 import org.apache.cassandra.service.accord.serializers.GetDepsSerializers;
 import org.apache.cassandra.service.accord.serializers.InformDurableSerializers;
 import org.apache.cassandra.service.accord.serializers.InformHomeDurableSerializers;
@@ -280,6 +281,8 @@ public enum Verb
     ACCORD_CHECK_STATUS_REQ         (140, P2, writeTimeout, IMMEDIATE,          () -> CheckStatusSerializers.request,       () -> AccordService.instance().verbHandler(), ACCORD_CHECK_STATUS_RSP       ),
     ACCORD_GET_DEPS_RSP             (143, P2, writeTimeout, REQUEST_RESPONSE,   () -> GetDepsSerializers.reply,             RESPONSE_HANDLER                                                            ),
     ACCORD_GET_DEPS_REQ             (142, P2, writeTimeout, IMMEDIATE,          () -> GetDepsSerializers.request,           () -> AccordService.instance().verbHandler(), ACCORD_GET_DEPS_RSP           ),
+    ACCORD_FETCH_DATA_RSP           (145, P2, writeTimeout, REQUEST_RESPONSE,   () -> FetchSerializers.reply,               RESPONSE_HANDLER                                                            ),
+    ACCORD_FETCH_DATA_REQ           (144, P2, writeTimeout, IMMEDIATE,          () -> FetchSerializers.request,             () -> AccordService.instance().verbHandler(), ACCORD_FETCH_DATA_RSP         ),
 
 
     // generic failure response
@@ -547,7 +550,7 @@ public enum Verb
             allowedMissing.add(i);
 
         // add the gap between accord and tcm
-        for (int i=144; i<801; i++)
+        for (int i=146; i<801; i++)
             allowedMissing.add(i);
 
         List<Verb> verbs = new ArrayList<>(Arrays.asList(array));

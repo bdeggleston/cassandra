@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import accord.api.ConfigurationService.EpochReady;
 import accord.impl.AbstractConfigurationServiceTest;
 import accord.local.Node.Id;
 import accord.topology.Shard;
@@ -114,19 +115,19 @@ public class AccordConfigurationServiceTest
 
         Topology topology1 = new Topology(1, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, ID_SET));
         service.reportTopology(topology1);
-        service.acknowledgeEpoch(1);
+        service.acknowledgeEpoch(EpochReady.done(1));
         service.epochSyncComplete(ID1, 1);
         service.epochSyncComplete(ID2, 1);
         service.epochSyncComplete(ID3, 1);
 
         Topology topology2 = new Topology(2, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
         service.reportTopology(topology2);
-        service.acknowledgeEpoch(2);
+        service.acknowledgeEpoch(EpochReady.done(2));
         service.epochSyncComplete(ID1, 2);
 
         Topology topology3 = new Topology(3, new Shard(AccordTopologyUtils.fullRange("ks"), ID_LIST, of(ID1, ID2)));
         service.reportTopology(topology3);
-        service.acknowledgeEpoch(3);
+        service.acknowledgeEpoch(EpochReady.done(3));
 
         AccordConfigurationService loaded = new AccordConfigurationService(ID1);
         AbstractConfigurationServiceTest.TestListener listener = new AbstractConfigurationServiceTest.TestListener(loaded, true);

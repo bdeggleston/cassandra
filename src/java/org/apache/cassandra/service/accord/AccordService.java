@@ -78,6 +78,7 @@ public class AccordService implements IAccordService, Shutdownable
     private final AccordMessageSink messageSink;
     private final AccordConfigurationService configService;
     private final AccordScheduler scheduler;
+    private final AccordDataStore dataStore;
     private final AccordVerbHandler<? extends Request> verbHandler;
     
     private static final IAccordService NOOP_SERVICE = new IAccordService()
@@ -146,11 +147,12 @@ public class AccordService implements IAccordService, Shutdownable
         this.configService = new AccordConfigurationService(localId);
         this.messageSink = new AccordMessageSink(agent, configService);
         this.scheduler = new AccordScheduler();
+        this.dataStore = new AccordDataStore();
         this.node = new Node(localId,
                              messageSink,
                              configService,
                              AccordService::uniqueNow,
-                             () -> null,
+                             () -> dataStore,
                              new KeyspaceSplitter(new EvenSplit<>(DatabaseDescriptor.getAccordShardCount(), getPartitioner().accordSplitter())),
                              agent,
                              new DefaultRandom(),
