@@ -32,7 +32,7 @@ import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.listeners.ChangeListener;
 
 // TODO: listen to FailureDetector and rearrange fast path accordingly
-public class AccordConfigurationService extends AbstractConfigurationService implements ChangeListener, AccordEndpointMapper
+public class AccordConfigurationService extends AbstractConfigurationService<AccordConfigurationService.EpochState, AccordConfigurationService.EpochHistory> implements ChangeListener, AccordEndpointMapper
 {
     private EpochDiskState diskState = EpochDiskState.EMPTY;
     private enum State { INITIALIZED, LOADING, STARTED }
@@ -40,9 +40,32 @@ public class AccordConfigurationService extends AbstractConfigurationService imp
     private State state = State.INITIALIZED;
     private volatile EndpointMapping mapping = EndpointMapping.EMPTY;
 
+    static class EpochState extends AbstractConfigurationService.AbstractEpochState
+    {
+        public EpochState(long epoch)
+        {
+            super(epoch);
+        }
+    }
+
+    static class EpochHistory extends AbstractConfigurationService.AbstractEpochHistory<EpochState>
+    {
+        @Override
+        protected EpochState createEpochState(long epoch)
+        {
+            return new EpochState(epoch);
+        }
+    }
+
     public AccordConfigurationService(Node.Id node)
     {
         super(node);
+    }
+
+    @Override
+    protected EpochHistory createEpochHistory()
+    {
+        return new EpochHistory();
     }
 
     public synchronized void start()
