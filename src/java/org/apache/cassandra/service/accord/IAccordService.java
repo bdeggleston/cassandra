@@ -23,6 +23,7 @@ import accord.primitives.Txn;
 import accord.topology.TopologyManager;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.net.IVerbHandler;
+import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.utils.concurrent.Future;
@@ -51,4 +52,6 @@ public interface IAccordService
      * for any ranges gained in the given epoch
      */
     Future<Void> epochReady(Epoch epoch);
+
+    void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message);
 }

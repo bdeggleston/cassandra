@@ -51,6 +51,8 @@ import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.metrics.AccordClientRequestMetrics;
 import org.apache.cassandra.net.IVerbHandler;
+import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.accord.api.AccordAgent;
 import org.apache.cassandra.service.accord.api.AccordRoutingKey.KeyspaceSplitter;
 import org.apache.cassandra.service.accord.api.AccordScheduler;
@@ -126,6 +128,9 @@ public class AccordService implements IAccordService, Shutdownable
         {
             return BOOTSTRAP_SUCCESS;
         }
+
+        @Override
+        public void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message) {}
     };
 
     private static Node.Id localId = null;
@@ -334,6 +339,13 @@ public class AccordService implements IAccordService, Shutdownable
             else promise.tryFailure(failure);
         });
         return promise;
+    }
+
+    @Override
+    public void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message)
+    {
+        configService.remoteSyncComplete(message.payload.from, message.payload.epoch);
+        MessagingService.instance().respond(new AccordLocalSyncNotifier.Acknowledgement(node.id()), message);
     }
 
     private static Shutdownable toShutdownable(Node node)

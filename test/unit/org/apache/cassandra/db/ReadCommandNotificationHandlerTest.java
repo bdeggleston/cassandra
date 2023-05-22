@@ -52,7 +52,7 @@ import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class ReadCommandVerbHandlerTest
+public class ReadCommandNotificationHandlerTest
 {
     private final static Random random = new Random();
 
