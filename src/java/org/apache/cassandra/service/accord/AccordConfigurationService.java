@@ -28,7 +28,11 @@ import accord.local.Node;
 import accord.topology.Topology;
 import accord.utils.Invariants;
 import org.agrona.collections.Long2ObjectHashMap;
+import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.net.MessageDelivery;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.accord.AccordKeyspace.EpochDiskState;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.ClusterMetadataService;
@@ -38,6 +42,8 @@ import org.apache.cassandra.tcm.listeners.ChangeListener;
 // TODO: listen to FailureDetector and rearrange fast path accordingly
 public class AccordConfigurationService extends AbstractConfigurationService<AccordConfigurationService.EpochState, AccordConfigurationService.EpochHistory> implements ChangeListener, AccordEndpointMapper, AccordLocalSyncNotifier.Listener
 {
+    private final MessageDelivery messagingService;
+    private final IFailureDetector failureDetector;
     private EpochDiskState diskState = EpochDiskState.EMPTY;
     private enum State { INITIALIZED, LOADING, STARTED }
 
@@ -71,9 +77,16 @@ public class AccordConfigurationService extends AbstractConfigurationService<Acc
         }
     }
 
-    public AccordConfigurationService(Node.Id node)
+    public AccordConfigurationService(Node.Id node, MessageDelivery messagingService, IFailureDetector failureDetector)
     {
         super(node);
+        this.messagingService = messagingService;
+        this.failureDetector = failureDetector;
+    }
+
+    public AccordConfigurationService(Node.Id node)
+    {
+        this(node, MessagingService.instance(), FailureDetector.instance);
     }
 
     @Override
@@ -86,13 +99,14 @@ public class AccordConfigurationService extends AbstractConfigurationService<Acc
     {
         Invariants.checkState(state == State.INITIALIZED);
         state = State.LOADING;
+        updateMapping(ClusterMetadata.current());
         diskState = AccordKeyspace.loadTopologies(((epoch, topology, syncStatus, pendingSyncNotify, remoteSyncComplete) -> {
             if (topology != null)
                 reportTopology(topology, syncStatus == SyncStatus.NOT_STARTED);
 
             getOrCreateEpochState(epoch).setSyncStatus(syncStatus);
             if (syncStatus == SyncStatus.NOTIFYING)
-                syncNotifiers.put(epoch, new AccordLocalSyncNotifier(epoch, localId, pendingSyncNotify, this, this));
+                syncNotifiers.put(epoch, new AccordLocalSyncNotifier(epoch, localId, pendingSyncNotify, this, messagingService, failureDetector, this));
 
             remoteSyncComplete.forEach(id -> remoteSyncComplete(id, epoch));
         }));
@@ -118,15 +132,22 @@ public class AccordConfigurationService extends AbstractConfigurationService<Acc
         return diskState;
     }
 
+    @VisibleForTesting
+    synchronized void updateMapping(EndpointMapping mapping)
+    {
+        if (mapping.epoch() > this.mapping.epoch())
+            this.mapping = mapping;
+    }
+
+    synchronized void updateMapping(ClusterMetadata metadata)
+    {
+        updateMapping(AccordTopologyUtils.directoryToMapping(metadata.epoch.getEpoch(), metadata.directory));
+    }
+
     @Override
     public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next)
     {
-        synchronized (this)
-        {
-            long epoch = next.epoch.getEpoch();
-            if (epoch > mapping.epoch())
-                mapping = AccordTopologyUtils.directoryToMapping(next.epoch.getEpoch(), next.directory);
-        }
+        updateMapping(next);
         reportTopology(AccordTopologyUtils.createAccordTopology(next));
     }
 
@@ -145,7 +166,7 @@ public class AccordConfigurationService extends AbstractConfigurationService<Acc
             return;
 
         Set<Node.Id> pendingNotification = topology.nodes().stream().filter(i -> !localId.equals(i)).collect(Collectors.toSet());
-        AccordLocalSyncNotifier notifier = new AccordLocalSyncNotifier(epoch, localId, pendingNotification, this, this);
+        AccordLocalSyncNotifier notifier = new AccordLocalSyncNotifier(epoch, localId, pendingNotification, this, messagingService, failureDetector, this);
         syncNotifiers.put(epoch, notifier);
         diskState = AccordKeyspace.setNotifyingLocalSync(epoch, pendingNotification, diskState);
         epochState.setSyncStatus(SyncStatus.NOTIFYING);

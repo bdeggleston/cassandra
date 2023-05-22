@@ -1012,7 +1012,7 @@ public class AccordKeyspace
     public static EpochDiskState setNotifyingLocalSync(long epoch, Set<Node.Id> pending, EpochDiskState diskState)
     {
         diskState = maybeUpdateMaxEpoch(diskState, epoch);
-        String cql = "UPDATE %s.%s SET sync_state = ? pending_sync_notify = ? WHERE epoch = ?";
+        String cql = "UPDATE %s.%s SET sync_state = ?, pending_sync_notify = ? WHERE epoch = ?";
         executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
                         SyncStatus.NOTIFYING.ordinal(),
                         pending.stream().map(i -> i.id).collect(Collectors.toSet()),
@@ -1032,7 +1032,7 @@ public class AccordKeyspace
     public static EpochDiskState setCompletedLocalSync(long epoch, EpochDiskState diskState)
     {
         diskState = maybeUpdateMaxEpoch(diskState, epoch);
-        String cql = "UPDATE %s.%s SET sync_state = ? pending_sync_notify = {} WHERE epoch = ?";
+        String cql = "UPDATE %s.%s SET sync_state = ?, pending_sync_notify = ? WHERE epoch = ?";
         executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
                         SyncStatus.COMPLETED.ordinal(),
                         epoch);

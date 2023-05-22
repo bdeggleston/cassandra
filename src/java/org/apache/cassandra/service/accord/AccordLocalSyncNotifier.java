@@ -29,7 +29,6 @@ import accord.local.Node;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.RequestFailureReason;
-import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.IFailureDetector;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -37,7 +36,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
-import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.MessageDelivery;
 import org.apache.cassandra.net.RequestCallback;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.service.accord.serializers.TopologySerializers;
@@ -59,11 +58,13 @@ public class AccordLocalSyncNotifier implements RequestCallback<AccordLocalSyncN
     private final AccordEndpointMapper endpointMapper;
     private final IFailureDetector failureDetector;
     private final Listener listener;
+    private final MessageDelivery messagingService;
 
     public AccordLocalSyncNotifier(long epoch,
                                    Node.Id from, Set<Node.Id> pendingNotifications,
                                    AccordEndpointMapper endpointMapper,
-                                   IFailureDetector failureDetector, Listener listener)
+                                   MessageDelivery messagingService, IFailureDetector failureDetector,
+                                   Listener listener)
     {
         this.epoch = epoch;
         this.from = from;
@@ -71,14 +72,7 @@ public class AccordLocalSyncNotifier implements RequestCallback<AccordLocalSyncN
         this.endpointMapper = endpointMapper;
         this.failureDetector = failureDetector;
         this.listener = listener;
-    }
-
-    public AccordLocalSyncNotifier(long epoch, Node.Id from,
-                                   Set<Node.Id> pendingNotifications,
-                                   AccordEndpointMapper endpointMapper,
-                                   Listener listener)
-    {
-        this(epoch, from, pendingNotifications, endpointMapper, FailureDetector.instance, listener);
+        this.messagingService = messagingService;
     }
 
     private void notify(Node.Id to)
@@ -87,7 +81,7 @@ public class AccordLocalSyncNotifier implements RequestCallback<AccordLocalSyncN
         if (failureDetector.isAlive(toEp))
         {
             Message<Notification> msg = Message.out(Verb.ACCORD_SYNC_NOTIFY_REQ, new Notification(epoch, from, to));
-            MessagingService.instance().sendWithCallback(msg, toEp, this);
+            messagingService.sendWithCallback(msg, toEp, this);
         }
         else
         {
