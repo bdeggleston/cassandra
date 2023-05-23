@@ -82,9 +82,11 @@ import org.apache.cassandra.schema.SchemaMutationsSerializer;
 import org.apache.cassandra.schema.SchemaPullVerbHandler;
 import org.apache.cassandra.schema.SchemaPushVerbHandler;
 import org.apache.cassandra.schema.SchemaVersionVerbHandler;
+import org.apache.cassandra.service.accord.AccordLocalSyncNotifier;
 import org.apache.cassandra.service.accord.serializers.BeginInvalidationSerializers;
 import org.apache.cassandra.service.accord.serializers.CheckStatusSerializers;
 import org.apache.cassandra.service.accord.serializers.EnumSerializer;
+import org.apache.cassandra.service.accord.serializers.FetchSerializers;
 import org.apache.cassandra.service.accord.serializers.GetDepsSerializers;
 import org.apache.cassandra.service.accord.serializers.InformDurableSerializers;
 import org.apache.cassandra.service.accord.serializers.InformHomeDurableSerializers;
@@ -280,6 +282,10 @@ public enum Verb
     ACCORD_CHECK_STATUS_REQ         (140, P2, writeTimeout, IMMEDIATE,          () -> CheckStatusSerializers.request,       () -> AccordService.instance().verbHandler(), ACCORD_CHECK_STATUS_RSP       ),
     ACCORD_GET_DEPS_RSP             (143, P2, writeTimeout, REQUEST_RESPONSE,   () -> GetDepsSerializers.reply,             RESPONSE_HANDLER                                                            ),
     ACCORD_GET_DEPS_REQ             (142, P2, writeTimeout, IMMEDIATE,          () -> GetDepsSerializers.request,           () -> AccordService.instance().verbHandler(), ACCORD_GET_DEPS_RSP           ),
+    ACCORD_FETCH_DATA_RSP           (145, P2, writeTimeout, REQUEST_RESPONSE,   () -> FetchSerializers.reply,               RESPONSE_HANDLER                                                            ),
+    ACCORD_FETCH_DATA_REQ           (144, P2, writeTimeout, IMMEDIATE,          () -> FetchSerializers.request,             () -> AccordService.instance().verbHandler(), ACCORD_FETCH_DATA_RSP         ),
+    ACCORD_SYNC_NOTIFY_RSP          (147, P2, writeTimeout, REQUEST_RESPONSE,   () -> AccordLocalSyncNotifier.Acknowledgement.serializer, RESPONSE_HANDLER                                              ),
+    ACCORD_SYNC_NOTIFY_REQ          (146, P2, writeTimeout, IMMEDIATE,          () -> AccordLocalSyncNotifier.Notification.serializer, () -> AccordLocalSyncNotifier.verbHandler, ACCORD_SYNC_NOTIFY_RSP),
 
 
     // generic failure response
@@ -545,6 +551,11 @@ public enum Verb
         for (int i : new int[]{ 7, 8, 12, 13, 17, 21, 25, 26, 32, 36, 64, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 78, 81, 83, 85, 86, 89, 90, 92, 96,
                                 /* gap for accord, should fix when merging to trunk */ 116, 117, 118})
             allowedMissing.add(i);
+
+        // add the gap between accord and tcm
+        for (int i=148; i<801; i++)
+            allowedMissing.add(i);
+
         List<Verb> verbs = new ArrayList<>(Arrays.asList(array));
         Collections.sort(verbs, Comparator.comparingInt(a -> a.id));
         Verb previous = null;

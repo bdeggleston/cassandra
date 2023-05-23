@@ -18,26 +18,19 @@
 
 package org.apache.cassandra.service.accord;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import accord.api.DataStore;
 import accord.local.Node;
-import org.apache.cassandra.locator.InetAddressAndPort;
+import accord.local.SafeCommandStore;
+import accord.primitives.Ranges;
+import accord.primitives.SyncPoint;
 
-public class EndpointMappingTest
+public class AccordDataStore implements DataStore
 {
-    private static final Logger logger = LoggerFactory.getLogger(EndpointMappingTest.class);
-
-    @Test
-    public void identityTest() throws Throwable
+    @Override
+    public FetchResult fetch(Node node, SafeCommandStore safeStore, Ranges ranges, SyncPoint syncPoint, FetchRanges callback)
     {
-        InetAddressAndPort endpoint = InetAddressAndPort.getByName("127.0.0.1");
-        Node.Id id = new Node.Id(1);
-        EndpointMapping mapping = EndpointMapping.builder(1).add(endpoint, id).build();
-        Assert.assertEquals(endpoint, mapping.mappedEndpoint(id));
-        logger.info("{} -> {}", endpoint, id);
+        AccordFetchCoordinator coordinator = new AccordFetchCoordinator(node, ranges, syncPoint, callback, safeStore.commandStore());
+        coordinator.start();
+        return coordinator.result();
     }
 }

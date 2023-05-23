@@ -44,6 +44,7 @@ import accord.api.Write;
 import accord.impl.CommandsForKey;
 import accord.impl.InMemoryCommandStore;
 import accord.local.Command;
+import accord.local.CommandStore;
 import accord.local.CommandStores;
 import accord.local.CommonAttributes;
 import accord.local.Node;
@@ -78,7 +79,6 @@ import org.apache.cassandra.service.accord.api.PartitionKey;
 import org.apache.cassandra.service.accord.serializers.CommandsForKeySerializer;
 import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.service.accord.txn.TxnRead;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
@@ -88,11 +88,6 @@ import static java.lang.String.format;
 
 public class AccordTestUtils
 {
-    public static Id localNodeId()
-    {
-        return EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
-    }
-
     public static class Commands
     {
         public static Command notWitnessed(TxnId txnId, PartialTxn txn)
@@ -197,7 +192,7 @@ public class AccordTestUtils
     public static Pair<Writes, Result> processTxnResult(AccordCommandStore commandStore, TxnId txnId, PartialTxn txn, Timestamp executeAt) throws Throwable
     {
         AtomicReference<Pair<Writes, Result>> result = new AtomicReference<>();
-        getUninterruptibly(commandStore.execute(PreLoadContext.contextFor(Collections.emptyList(), txn.keys()),
+        getUninterruptibly(commandStore.execute(PreLoadContext.contextFor(txn.keys()),
                               safeStore -> {
                                   TxnRead read = (TxnRead) txn.read();
                                   Data readData = read.keys().stream().map(key -> {
@@ -215,9 +210,9 @@ public class AccordTestUtils
                                                           }
                                                       })
                                                       .reduce(null, TxnData::merge);
-                                  Write write = txn.update().apply(readData);
-                                  result.set(Pair.create(new Writes(executeAt, (Keys)txn.keys(), write),
-                                                         txn.query().compute(txnId, readData, txn.read(), txn.update())));
+                                  Write write = txn.update().apply(executeAt, readData);
+                                  result.set(Pair.create(new Writes(txnId, executeAt, txn.keys(), write),
+                                                         txn.query().compute(txnId, executeAt, readData, txn.read(), txn.update())));
                               }));
         return result.get();
     }
@@ -292,7 +287,11 @@ public class AccordTestUtils
         public SingleEpochRanges(Ranges ranges)
         {
             this.ranges = ranges;
-            this.current = new CommandStores.RangesForEpoch(1, ranges);
+        }
+
+        private void set(CommandStore store)
+        {
+            this.current = new CommandStores.RangesForEpoch(1, ranges, store);
         }
     }
 
@@ -300,7 +299,7 @@ public class AccordTestUtils
     {
         TableMetadata metadata = Schema.instance.getTableMetadata(keyspace, table);
         TokenRange range = TokenRange.fullRange(metadata.keyspace);
-        Node.Id node = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Node.Id node = new Id(1);
         Topology topology = new Topology(1, new Shard(range, Lists.newArrayList(node), Sets.newHashSet(node), Collections.emptySet()));
         NodeTimeService time = new NodeTimeService()
         {
@@ -309,12 +308,15 @@ public class AccordTestUtils
             @Override public long now() {return now.getAsLong(); }
             @Override public Timestamp uniqueNow(Timestamp atLeast) { return Timestamp.fromValues(1, now.getAsLong(), node); }
         };
-        return new InMemoryCommandStore.Synchronized(0,
+
+        SingleEpochRanges holder = new SingleEpochRanges(Ranges.of(range));
+        InMemoryCommandStore.Synchronized result = new InMemoryCommandStore.Synchronized(0,
                                                      time,
                                                      new AccordAgent(),
                                                      null,
-                                                     cs -> null,
-                                                     new SingleEpochRanges(Ranges.of(range)));
+                                                     cs -> null, holder);
+        holder.set(result);
+        return result;
     }
 
     public static AccordCommandStore createAccordCommandStore(Node.Id node, LongSupplier now, Topology topology)
@@ -326,19 +328,23 @@ public class AccordTestUtils
             @Override public long now() {return now.getAsLong(); }
             @Override public Timestamp uniqueNow(Timestamp atLeast) { return Timestamp.fromValues(1, now.getAsLong(), node); }
         };
-        return new AccordCommandStore(0,
+
+        SingleEpochRanges holder = new SingleEpochRanges(topology.rangesForNode(node));
+        AccordCommandStore result = new AccordCommandStore(0,
                                       time,
                                       new AccordAgent(),
                                       null,
                                       cs -> NOOP_PROGRESS_LOG,
-                                      new SingleEpochRanges(topology.rangesForNode(node)));
+                                      holder);
+        holder.set(result);
+        return result;
     }
 
     public static AccordCommandStore createAccordCommandStore(LongSupplier now, String keyspace, String table)
     {
         TableMetadata metadata = Schema.instance.getTableMetadata(keyspace, table);
         TokenRange range = TokenRange.fullRange(metadata.keyspace);
-        Node.Id node = EndpointMapping.endpointToId(FBUtilities.getBroadcastAddressAndPort());
+        Node.Id node = new Id(1);
         Topology topology = new Topology(1, new Shard(range, Lists.newArrayList(node), Sets.newHashSet(node), Collections.emptySet()));
         AccordCommandStore store = createAccordCommandStore(node, now, topology);
         store.execute(PreLoadContext.empty(), safeStore -> ((AccordCommandStore)safeStore.commandStore()).setCacheSize(1 << 20));
