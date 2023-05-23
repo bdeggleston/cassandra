@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import accord.local.Node;
+import accord.utils.Invariants;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.exceptions.RequestFailureReason;
@@ -99,21 +100,27 @@ public class AccordLocalSyncNotifier implements RequestCallback<AccordLocalSyncN
         pendingNotifications.forEach(this::notify);
     }
 
-    @Override
-    public synchronized void onResponse(Message<Acknowledgement> msg)
+    public synchronized void onResponse(InetAddressAndPort fromEp, Node.Id from)
     {
         try
         {
-            listener.onEndpointAck(msg.payload.from, epoch);
-            pendingNotifications.remove(msg.payload.from);
+            Invariants.checkArgument(endpointMapper.mappedId(fromEp).equals(from));
+            listener.onEndpointAck(from, epoch);
+            pendingNotifications.remove(from);
             if (pendingNotifications.isEmpty())
                 listener.onComplete(epoch);
         }
         catch (Throwable t)
         {
-            logger.error(String.format("Unhandled exception handling sync ack on epoch %s from %s", epoch, msg.from()), t);
-            scheduleNotify(msg.payload.from);
+            logger.error(String.format("Unhandled exception handling sync ack on epoch %s from %s", epoch, fromEp), t);
+            scheduleNotify(from);
         }
+    }
+
+    @Override
+    public synchronized void onResponse(Message<Acknowledgement> msg)
+    {
+        onResponse(msg.from(), msg.payload.from);
     }
 
     @Override

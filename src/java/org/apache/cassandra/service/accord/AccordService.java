@@ -275,12 +275,6 @@ public class AccordService implements IAccordService, Shutdownable
                             : new ReadPreemptedException(consistencyLevel, 0, 0, false, txnId.toString());
     }
 
-    @VisibleForTesting
-    AccordMessageSink messageSink()
-    {
-        return messageSink;
-    }
-
     @Override
     public void setCacheSize(long kb)
     {
@@ -344,8 +338,9 @@ public class AccordService implements IAccordService, Shutdownable
     @Override
     public void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message)
     {
+        Invariants.checkArgument(localId.equals(message.payload.to));
         configService.remoteSyncComplete(message.payload.from, message.payload.epoch);
-        MessagingService.instance().respond(new AccordLocalSyncNotifier.Acknowledgement(node.id()), message);
+        MessagingService.instance().respond(new AccordLocalSyncNotifier.Acknowledgement(localId), message);
     }
 
     private static Shutdownable toShutdownable(Node node)
