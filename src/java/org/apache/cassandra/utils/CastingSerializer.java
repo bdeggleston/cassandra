@@ -46,14 +46,14 @@ public class CastingSerializer<Generic, Specific extends Generic> implements IVe
     @Override
     public void serialize(Generic generic, DataOutputPlus out, int version) throws IOException
     {
-        specificSerializer.serialize(specificClass.cast(genericClass), out, version);
+        specificSerializer.serialize(specificClass.cast(generic), out, version);
     }
 
     @Override
     public Generic deserialize(DataInputPlus in, int version) throws IOException
     {
         Generic result = specificSerializer.deserialize(in, version);
-        if (!specificClass.isInstance(result))
+        if (result != null && !specificClass.isInstance(result))
             throw new IllegalStateException("Expected instance of " + specificClass.getName());
         return result;
     }
@@ -61,6 +61,6 @@ public class CastingSerializer<Generic, Specific extends Generic> implements IVe
     @Override
     public long serializedSize(Generic generic, int version)
     {
-        return specificSerializer.serializedSize(specificClass.cast(genericClass), version);
+        return specificSerializer.serializedSize(specificClass.cast(generic), version);
     }
 }
