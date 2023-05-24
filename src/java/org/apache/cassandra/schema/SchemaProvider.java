@@ -219,6 +219,8 @@ public interface SchemaProvider
     // TODO: remove?
     public abstract void saveSystemKeyspace();
 
+    Keyspaces getLocalKeyspaces();
+
     /**
      * Find the function with the specified name and arguments.
      *

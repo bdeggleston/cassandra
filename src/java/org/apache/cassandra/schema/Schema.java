@@ -30,6 +30,8 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.config.CassandraRelevantProperties;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
@@ -91,7 +93,22 @@ public final class Schema implements SchemaProvider
      */
     private Schema()
     {
-        this.localKeyspaces = Keyspaces.of(SchemaKeyspace.metadata(), SystemKeyspace.metadata(), AccordKeyspace.metadata());
+        if (CassandraRelevantProperties.FORCE_LOAD_LOCAL_KEYSPACES.getBoolean() || isDaemonInitialized() || isToolInitialized())
+        {
+            this.localKeyspaces = DatabaseDescriptor.getAccordTransactionsEnabled()
+                                  ? Keyspaces.of(SchemaKeyspace.metadata(), SystemKeyspace.metadata(), AccordKeyspace.metadata())
+                                  : Keyspaces.of(SchemaKeyspace.metadata(), SystemKeyspace.metadata());
+        }
+        else
+        {
+            this.localKeyspaces = Keyspaces.none();
+        }
+    }
+
+    @Override
+    public Keyspaces getLocalKeyspaces()
+    {
+        return localKeyspaces;
     }
 
     /**

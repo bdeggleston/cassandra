@@ -316,6 +316,12 @@ public class MockSchema
         private final SchemaProvider originalSchemaProvider = Schema.instance;
 
         @Override
+        public Keyspaces getLocalKeyspaces()
+        {
+            return originalSchemaProvider.getLocalKeyspaces();
+        }
+
+        @Override
         public Set<String> getKeyspaces()
         {
             Set<String> kss = new HashSet<>(originalSchemaProvider.getKeyspaces());
