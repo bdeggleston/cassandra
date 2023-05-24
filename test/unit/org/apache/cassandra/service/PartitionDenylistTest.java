@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.cql3.UntypedResultSet;
@@ -46,6 +47,8 @@ public class PartitionDenylistTest
     @BeforeClass
     public static void init()
     {
+        ServerTestUtils.daemonInitialization();
+
         CQLTester.prepareServer();
         process("create keyspace "+ks_cql+" with replication = {'class':'SimpleStrategy', 'replication_factor':1}", ConsistencyLevel.ONE);
         process("CREATE TABLE "+ks_cql+".table1 ("

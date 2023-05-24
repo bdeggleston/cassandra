@@ -27,6 +27,7 @@ public class RemoveWithoutDroppingTest
 //    @BeforeClass
 //    public static void beforeClass()
 //    {
+//        ServerTestUtils.daemonInitialization();
 //        System.setProperty(SchemaUpdateHandlerFactoryProvider.SUH_FACTORY_CLASS_PROPERTY, TestSchemaUpdateHandlerFactory.class.getName());
 //        CQLTester.prepareServer();
 //        Schema.instance.registerListener(listener);
