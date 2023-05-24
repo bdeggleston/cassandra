@@ -165,6 +165,8 @@ public class Config
     @Replaces(oldName = "slow_query_log_timeout_in_ms", converter = Converters.MILLIS_DURATION_LONG, deprecated = true)
     public volatile DurationSpec.LongMillisecondsBound slow_query_log_timeout = new DurationSpec.LongMillisecondsBound("500ms");
 
+    public volatile DurationSpec.LongMillisecondsBound transaction_timeout = new DurationSpec.LongMillisecondsBound("30s");
+
     public volatile DurationSpec.LongMillisecondsBound stream_transfer_task_timeout = new DurationSpec.LongMillisecondsBound("12h");
 
     public volatile DurationSpec.LongMillisecondsBound cms_await_timeout = new DurationSpec.LongMillisecondsBound("120000ms");
@@ -175,7 +177,6 @@ public class Config
      * How often we should snapshot the cluster metadata.
      */
     public volatile int metadata_snapshot_frequency = 100;
-
 
     public volatile double phi_convict_threshold = 8.0;
 
@@ -1211,10 +1212,10 @@ public class Config
             String value;
             try
             {
-                // Field.get() can throw NPE if the value of the field is null
-                value = field.get(config).toString();
+                Object obj = field.get(config);
+                value = obj != null ? obj.toString() : "null";
             }
-            catch (NullPointerException | IllegalAccessException npe)
+            catch (IllegalAccessException npe)
             {
                 value = "null";
             }
