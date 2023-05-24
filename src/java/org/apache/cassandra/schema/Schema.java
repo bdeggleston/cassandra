@@ -39,6 +39,7 @@ import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.ClusterMetadataService;
 import org.apache.cassandra.tcm.transformations.AlterSchema;
+import org.apache.cassandra.service.accord.AccordKeyspace;
 
 import static com.google.common.collect.Iterables.size;
 import static org.apache.cassandra.config.DatabaseDescriptor.isDaemonInitialized;
@@ -90,7 +91,7 @@ public final class Schema implements SchemaProvider
      */
     private Schema()
     {
-        this.localKeyspaces = Keyspaces.of(SchemaKeyspace.metadata(), SystemKeyspace.metadata());
+        this.localKeyspaces = Keyspaces.of(SchemaKeyspace.metadata(), SystemKeyspace.metadata(), AccordKeyspace.metadata());
     }
 
     /**

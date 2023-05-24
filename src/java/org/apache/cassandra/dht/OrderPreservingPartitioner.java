@@ -228,9 +228,14 @@ public class OrderPreservingPartitioner implements IPartitioner
         {
             // todo (rebase): I have no recollection of why this is needed - investigate
             if (o == MAXIMUM)
-                    return -1;
+                return -1;
 
             return super.compareTo(o);
+        }
+
+        public int tokenHash()
+        {
+            return token.hashCode();
         }
     }
 

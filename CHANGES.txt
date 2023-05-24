@@ -1,3 +1,6 @@
+accord
+ * CEP-15 (C*): Messaging and storage engine integration (CASSANDRA-17103)
+
 5.0
  * Use jdk-dependent checkstyle version to check the source code (CASSANDRA-18262)
  * Provide summary of failed SessionInfo's in StreamResultFuture (CASSANDRA-17199)
