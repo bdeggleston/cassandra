@@ -78,6 +78,8 @@ public class AccordMessageSink implements MessageSink
             mapping.put(MessageType.GET_DEPS_REQ,           Verb.ACCORD_GET_DEPS_REQ);
             mapping.put(MessageType.GET_DEPS_RSP,           Verb.ACCORD_GET_DEPS_RSP);
             mapping.put(MessageType.SIMPLE_RSP,             Verb.ACCORD_SIMPLE_RSP);
+            mapping.put(MessageType.FETCH_DATA_REQ,         Verb.ACCORD_FETCH_DATA_REQ);
+            mapping.put(MessageType.FETCH_DATA_RSP,         Verb.ACCORD_FETCH_DATA_RSP);
 
             for (MessageType type : MessageType.values())
             {

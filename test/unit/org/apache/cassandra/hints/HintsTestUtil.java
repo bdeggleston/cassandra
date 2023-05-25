@@ -88,44 +88,4 @@ final class HintsTestUtil
         }
         return spy;
     }
-
-    static class MockFailureDetector implements IFailureDetector
-    {
-        boolean isAlive = true;
-
-        public boolean isAlive(InetAddressAndPort ep)
-        {
-            return isAlive;
-        }
-
-        public void interpret(InetAddressAndPort ep)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public void report(InetAddressAndPort ep)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public void registerFailureDetectionEventListener(IFailureDetectionEventListener listener)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public void unregisterFailureDetectionEventListener(IFailureDetectionEventListener listener)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public void remove(InetAddressAndPort ep)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public void forceConviction(InetAddressAndPort ep)
-        {
-            throw new UnsupportedOperationException();
-        }
-    }
 }

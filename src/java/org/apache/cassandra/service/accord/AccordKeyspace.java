@@ -74,9 +74,11 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringComparator;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Columns;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.RegularAndStaticColumns;
@@ -122,6 +124,7 @@ import org.apache.cassandra.schema.Types;
 import org.apache.cassandra.schema.UserFunctions;
 import org.apache.cassandra.schema.Views;
 import org.apache.cassandra.serializers.UUIDSerializer;
+import org.apache.cassandra.service.accord.AccordConfigurationService.SyncStatus;
 import org.apache.cassandra.service.accord.api.AccordRoutingKey;
 import org.apache.cassandra.service.accord.api.PartitionKey;
 import org.apache.cassandra.service.accord.serializers.CommandSerializers;
@@ -352,7 +355,9 @@ public class AccordKeyspace
               "CREATE TABLE %s (" +
               "epoch bigint primary key, " +
               "topology blob, " +
-              "synced set<int> " +
+              "sync_state int, " +
+              "pending_sync_notify set<int>, " + // nodes that need to be told we're synced
+              "remote_sync_complete set<int> " +  // nodes that have told us they're synced
               ')').build();
 
     private static final TableMetadata EpochMetadata =
@@ -370,6 +375,11 @@ public class AccordKeyspace
                                    .id(TableId.forSystemTable(ACCORD_KEYSPACE_NAME, name))
                                    .comment(description)
                                    .gcGraceSeconds((int) TimeUnit.DAYS.toSeconds(90));
+    }
+
+    private static void flush(TableMetadata table)
+    {
+        Keyspace.open(table.keyspace).getColumnFamilyStore(table.name).forceBlockingFlush(ColumnFamilyStore.FlushReason.ACCORD);
     }
 
     public static KeyspaceMetadata metadata()
@@ -1266,6 +1276,7 @@ public class AccordKeyspace
 
     private static EpochDiskState maybeUpdateMaxEpoch(EpochDiskState diskState, long epoch)
     {
+        Invariants.checkArgument(epoch >= diskState.minEpoch);
         if (epoch > diskState.maxEpoch)
         {
             diskState = diskState.withNewMaxEpoch(epoch);
@@ -1283,6 +1294,7 @@ public class AccordKeyspace
             String cql = "UPDATE %s.%s SET topology=? WHERE epoch=?";
             executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
                             serialize(topology, CommandsSerializers.topology), topology.epoch());
+            flush(Topologies);
         }
         catch (IOException e)
         {
@@ -1292,12 +1304,43 @@ public class AccordKeyspace
         return diskState;
     }
 
-    public static EpochDiskState markTopologySynced(Node.Id node, long epoch, EpochDiskState diskState)
+    public static EpochDiskState markRemoteTopologySync(Node.Id node, long epoch, EpochDiskState diskState)
     {
         diskState = maybeUpdateMaxEpoch(diskState, epoch);
-        String cql = "UPDATE %s.%s SET synced = synced + ? WHERE epoch = ?";
+        String cql = "UPDATE %s.%s SET remote_sync_complete = remote_sync_complete + ? WHERE epoch = ?";
         executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
                         Collections.singleton(node.id), epoch);
+        flush(Topologies);
+        return diskState;
+    }
+
+    public static EpochDiskState setNotifyingLocalSync(long epoch, Set<Node.Id> pending, EpochDiskState diskState)
+    {
+        diskState = maybeUpdateMaxEpoch(diskState, epoch);
+        String cql = "UPDATE %s.%s SET sync_state = ?, pending_sync_notify = ? WHERE epoch = ?";
+        executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
+                        SyncStatus.NOTIFYING.ordinal(),
+                        pending.stream().map(i -> i.id).collect(Collectors.toSet()),
+                        epoch);
+        return diskState;
+    }
+
+    public static EpochDiskState markLocalSyncAck(Node.Id node, long epoch, EpochDiskState diskState)
+    {
+        diskState = maybeUpdateMaxEpoch(diskState, epoch);
+        String cql = "UPDATE %s.%s SET pending_sync_notify = pending_sync_notify - ? WHERE epoch = ?";
+        executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
+                        Collections.singleton(node.id), epoch);
+        return diskState;
+    }
+
+    public static EpochDiskState setCompletedLocalSync(long epoch, EpochDiskState diskState)
+    {
+        diskState = maybeUpdateMaxEpoch(diskState, epoch);
+        String cql = "UPDATE %s.%s SET sync_state = ?, pending_sync_notify = ? WHERE epoch = ?";
+        executeInternal(String.format(cql, ACCORD_KEYSPACE_NAME, TOPOLOGIES),
+                        SyncStatus.COMPLETED.ordinal(),
+                        epoch);
         return diskState;
     }
 
@@ -1316,7 +1359,7 @@ public class AccordKeyspace
 
     public interface TopologyLoadConsumer
     {
-        void load(long epoch, Topology topology, Set<Node.Id> synced);
+        void load(long epoch, Topology topology, SyncStatus syncStatus, Set<Node.Id> pendingSyncNotify, Set<Node.Id> remoteSyncComplete);
     }
 
     @VisibleForTesting
@@ -1330,11 +1373,18 @@ public class AccordKeyspace
         Topology topology = row.has("topology")
                             ? deserialize(row.getBytes("topology"), CommandsSerializers.topology)
                             : null;
-        Set<Node.Id> syncedIds = row.has("synced")
-                                 ? row.getSet("synced", Int32Type.instance).stream().map(Node.Id::new).collect(Collectors.toSet())
-                                 : Collections.emptySet();
 
-        consumer.load(epoch, topology, syncedIds);
+        SyncStatus syncStatus = row.has("sync_state")
+                                ? SyncStatus.values()[row.getInt("sync_state")]
+                                : SyncStatus.NOT_STARTED;
+        Set<Node.Id> pendingSyncNotify = row.has("pending_sync_notify")
+                                         ? row.getSet("pending_sync_notify", Int32Type.instance).stream().map(Node.Id::new).collect(Collectors.toSet())
+                                         : Collections.emptySet();
+        Set<Node.Id> remoteSyncComplete = row.has("remote_sync_complete")
+                                          ? row.getSet("remote_sync_complete", Int32Type.instance).stream().map(Node.Id::new).collect(Collectors.toSet())
+                                          : Collections.emptySet();
+
+        consumer.load(epoch, topology, syncStatus, pendingSyncNotify, remoteSyncComplete);
 
     }
 

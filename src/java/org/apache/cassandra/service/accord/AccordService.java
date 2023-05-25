@@ -51,6 +51,8 @@ import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.metrics.AccordClientRequestMetrics;
 import org.apache.cassandra.net.IVerbHandler;
+import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.accord.api.AccordAgent;
 import org.apache.cassandra.service.accord.api.AccordRoutingKey.KeyspaceSplitter;
 import org.apache.cassandra.service.accord.api.AccordScheduler;
@@ -58,9 +60,13 @@ import org.apache.cassandra.service.accord.exceptions.ReadPreemptedException;
 import org.apache.cassandra.service.accord.exceptions.WritePreemptedException;
 import org.apache.cassandra.service.accord.txn.TxnData;
 import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.membership.NodeId;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.ExecutorUtils;
+import org.apache.cassandra.utils.concurrent.AsyncPromise;
+import org.apache.cassandra.utils.concurrent.Future;
+import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static org.apache.cassandra.config.DatabaseDescriptor.getPartitioner;
@@ -72,12 +78,14 @@ public class AccordService implements IAccordService, Shutdownable
 
     public static final AccordClientRequestMetrics readMetrics = new AccordClientRequestMetrics("AccordRead");
     public static final AccordClientRequestMetrics writeMetrics = new AccordClientRequestMetrics("AccordWrite");
+    private static final Future<Void> BOOTSTRAP_SUCCESS = ImmediateFuture.success(null);
 
     private final Node node;
     private final Shutdownable nodeShutdown;
     private final AccordMessageSink messageSink;
     private final AccordConfigurationService configService;
     private final AccordScheduler scheduler;
+    private final AccordDataStore dataStore;
     private final AccordVerbHandler<? extends Request> verbHandler;
 
     private static final IAccordService NOOP_SERVICE = new IAccordService()
@@ -114,6 +122,15 @@ public class AccordService implements IAccordService, Shutdownable
 
         @Override
         public void shutdownAndWait(long timeout, TimeUnit unit) { }
+
+        @Override
+        public Future<Void> epochReady(Epoch epoch)
+        {
+            return BOOTSTRAP_SUCCESS;
+        }
+
+        @Override
+        public void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message) {}
     };
 
     private static Node.Id localId = null;
@@ -146,11 +163,12 @@ public class AccordService implements IAccordService, Shutdownable
         this.configService = new AccordConfigurationService(localId);
         this.messageSink = new AccordMessageSink(agent, configService);
         this.scheduler = new AccordScheduler();
+        this.dataStore = new AccordDataStore();
         this.node = new Node(localId,
                              messageSink,
                              configService,
                              AccordService::uniqueNow,
-                             () -> AccordDataStore.INSTANCE,
+                             () -> dataStore,
                              new KeyspaceSplitter(new EvenSplit<>(DatabaseDescriptor.getAccordShardCount(), getPartitioner().accordSplitter())),
                              agent,
                              new DefaultRandom(),
@@ -257,12 +275,6 @@ public class AccordService implements IAccordService, Shutdownable
                             : new ReadPreemptedException(consistencyLevel, 0, 0, false, txnId.toString());
     }
 
-    @VisibleForTesting
-    AccordMessageSink messageSink()
-    {
-        return messageSink;
-    }
-
     @Override
     public void setCacheSize(long kb)
     {
@@ -315,6 +327,26 @@ public class AccordService implements IAccordService, Shutdownable
     public Node node()
     {
         return node;
+    }
+
+    @Override
+    public Future<Void> epochReady(Epoch epoch)
+    {
+        AsyncPromise<Void> promise = new AsyncPromise<>();
+        AsyncResult<Void> ready = configService.epochReady(epoch.getEpoch());
+        ready.addCallback((result, failure) -> {
+            if (failure == null) promise.trySuccess(result);
+            else promise.tryFailure(failure);
+        });
+        return promise;
+    }
+
+    @Override
+    public void remoteSyncComplete(Message<AccordLocalSyncNotifier.Notification> message)
+    {
+        Invariants.checkArgument(localId.equals(message.payload.to));
+        configService.remoteSyncComplete(message.payload.from, message.payload.epoch);
+        MessagingService.instance().respond(new AccordLocalSyncNotifier.Acknowledgement(localId), message);
     }
 
     private static Shutdownable toShutdownable(Node node)
