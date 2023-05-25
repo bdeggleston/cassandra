@@ -117,7 +117,6 @@ public abstract class AccordTestBase extends TestBaseImpl
     {
         for (String ddl : ddls)
             SHARED_CLUSTER.schemaChange(ddl);
-        SHARED_CLUSTER.forEach(node -> node.runOnInstance(() -> AccordService.instance().createEpochFromConfigUnsafe()));
 
         // Evict commands from the cache immediately to expose problems loading from disk.
         SHARED_CLUSTER.forEach(node -> node.runOnInstance(() -> AccordService.instance().setCacheSize(0)));

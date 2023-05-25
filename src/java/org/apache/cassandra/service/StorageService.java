@@ -701,6 +701,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         NodeId self = Register.maybeRegister();
 
+        AccordService.startup(self);
+
         // finish in-progress sequences first
         finishInProgressSequences(self);
 
@@ -5570,10 +5572,5 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         logger.info("Sealing current period in metadata log");
         long period = ClusterMetadataService.instance().sealPeriod().period;
         logger.info("Current period {} is sealed", period);
-    }
-
-    public void createEpochUnsafe()
-    {
-        AccordService.instance().createEpochFromConfigUnsafe();
     }
 }

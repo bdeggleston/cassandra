@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Digest;
 
 /**
@@ -50,8 +51,9 @@ public final class SchemaConstants
     public static final String VIRTUAL_VIEWS = "system_views";
 
     /* system keyspace names (the ones with LocalStrategy replication strategy) */
-    public static final Set<String> LOCAL_SYSTEM_KEYSPACE_NAMES =
-        ImmutableSet.of(SYSTEM_KEYSPACE_NAME, SCHEMA_KEYSPACE_NAME, ACCORD_KEYSPACE_NAME);
+    public static final Set<String> LOCAL_SYSTEM_KEYSPACE_NAMES = DatabaseDescriptor.getAccordTransactionsEnabled()
+                                                                  ? ImmutableSet.of(SYSTEM_KEYSPACE_NAME, SCHEMA_KEYSPACE_NAME, ACCORD_KEYSPACE_NAME)
+                                                                  : ImmutableSet.of(SYSTEM_KEYSPACE_NAME, SCHEMA_KEYSPACE_NAME);
 
     /* virtual table system keyspace names */
     public static final Set<String> VIRTUAL_SYSTEM_KEYSPACE_NAMES =

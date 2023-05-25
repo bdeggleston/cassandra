@@ -25,91 +25,119 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.annotation.concurrent.GuardedBy;
 
 import accord.api.ConfigurationService;
+import com.google.common.annotations.VisibleForTesting;
+
+import accord.impl.AbstractConfigurationService;
 import accord.local.Node;
 import accord.topology.Topology;
+import accord.utils.Invariants;
+import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.service.accord.AccordKeyspace.EpochDiskState;
+import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.Epoch;
+import org.apache.cassandra.tcm.listeners.ChangeListener;
 
-/**
- * Currently a stubbed out config service meant to be triggered from a dtest
- */
-public class AccordConfigurationService implements ConfigurationService
+// TODO: listen to FailureDetector and rearrange fast path accordingly
+public class AccordConfigurationService extends AbstractConfigurationService implements ChangeListener, AccordEndpointMapper
 {
-    private final Node.Id localId;
-    private final List<Listener> listeners = new CopyOnWriteArrayList<>();
-    @GuardedBy("this")
-    private final List<Topology> epochs = new ArrayList<>();
+    private EpochDiskState diskState = EpochDiskState.EMPTY;
+    private enum State { INITIALIZED, LOADING, STARTED }
 
-    public AccordConfigurationService(Node.Id localId)
+    private State state = State.INITIALIZED;
+    private volatile EndpointMapping mapping = EndpointMapping.EMPTY;
+
+    public AccordConfigurationService(Node.Id node)
     {
-        this.localId = localId;
-        epochs.add(Topology.EMPTY);
+        super(node);
+    }
+
+    public synchronized void start()
+    {
+        Invariants.checkState(state == State.INITIALIZED);
+        state = State.LOADING;
+        diskState = AccordKeyspace.loadTopologies(((epoch, topology, ids) -> {
+            if (topology != null)
+                reportTopology(topology);
+            ids.forEach(id -> epochSyncComplete(id, epoch));
+        }));
+        state = State.STARTED;
     }
 
     @Override
-    public void registerListener(Listener listener)
+    public Node.Id mappedId(InetAddressAndPort endpoint)
     {
-        listeners.add(listener);
+        return Invariants.nonNull(mapping.mappedId(endpoint));
     }
 
     @Override
-    public synchronized Topology currentTopology()
+    public InetAddressAndPort mappedEndpoint(Node.Id id)
     {
-        return epochs.get(epochs.size() - 1);
+        return Invariants.nonNull(mapping.mappedEndpoint(id));
+    }
+
+    @VisibleForTesting
+    EpochDiskState diskState()
+    {
+        return diskState;
     }
 
     @Override
-    public synchronized Topology getTopologyForEpoch(long epoch)
+    public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next)
     {
-        return epochs.get((int) epoch);
-    }
-
-    @Override
-    public synchronized void fetchTopologyForEpoch(long epoch)
-    {
-        Topology current = currentTopology();
-        if (epoch < current.epoch())
-            return;
-        while (current.epoch() < epoch)
+        synchronized (this)
         {
-            current = AccordTopologyUtils.createTopology(epochs.size());
-            unsafeAddEpoch(current);
+            long epoch = next.epoch.getEpoch();
+            if (epoch > mapping.epoch())
+                mapping = AccordTopologyUtils.directoryToMapping(next.epoch.getEpoch(), next.directory);
         }
+        reportTopology(AccordTopologyUtils.createAccordTopology(next));
     }
 
     @Override
-    public void acknowledgeEpoch(EpochReady ready)
+    protected void fetchTopologyInternal(long epoch)
     {
-        Topology acknowledged = getTopologyForEpoch(ready.epoch);
-        for (Node.Id node : acknowledged.nodes())
-        {
-            if (node.equals(localId))
-                continue;
-
-            ready.coordination.addCallback(() -> {
-                for (Listener listener : listeners)
-                    listener.onEpochSyncComplete(node, ready.epoch);
-            });
-        }
+        ClusterMetadataService.instance().maybeCatchup(Epoch.create(epoch));
     }
 
-    public synchronized void createEpochFromConfig()
+    @Override
+    protected void epochSyncComplete(Topology topology)
     {
-        Topology current = currentTopology();
-        Topology topology = AccordTopologyUtils.createTopology(epochs.size());
-        if (current.equals(topology.withEpoch(current.epoch()))) return;
-        unsafeAddEpoch(topology);
+        throw new UnsupportedOperationException("TODO: disseminate sync complete to other nodes");
     }
 
-    private void unsafeAddEpoch(Topology topology)
+    @Override
+    protected synchronized void topologyUpdatePreListenerNotify(Topology topology)
     {
-        epochs.add(topology);
-        for (Listener listener : listeners)
-            listener.onTopologyUpdate(topology);
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.saveTopology(topology, diskState);
+    }
 
-        // TODO: This is a hack to enable simplistic cluster reuse for TxnAuthTest, AccordCQLTest, etc.
-        // Since we don't have a dist sys that sets this up, we have to just lie...
-        EndpointMapping.knownIds().forEach(id -> {
-            for (Listener listener : listeners)
-                listener.onEpochSyncComplete(id, topology.epoch());
-        });
+    @Override
+    protected void topologyUpdatePostListenerNotify(Topology topology)
+    {
+        super.topologyUpdatePostListenerNotify(topology);
+        // TODO: start sync for relevant ranges
+        throw new UnsupportedOperationException("TODO: begin sync");
+    }
+
+    @Override
+    protected void epochSyncCompletePreListenerNotify(Node.Id node, long epoch)
+    {
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.markTopologySynced(node, epoch, diskState);
+    }
+
+    @Override
+    protected void truncateTopologiesPreListenerNotify(long epoch)
+    {
+        Invariants.checkState(state == State.STARTED);
+    }
+
+    @Override
+    protected void truncateTopologiesPostListenerNotify(long epoch)
+    {
+        if (state == State.STARTED)
+            diskState = AccordKeyspace.truncateTopologyUntil(epoch, diskState);
     }
 }

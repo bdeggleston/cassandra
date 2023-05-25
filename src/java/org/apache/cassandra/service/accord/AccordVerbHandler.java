@@ -27,24 +27,28 @@ import accord.local.Node;
 import accord.messages.Request;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.tcm.ClusterMetadataService;
 
 public class AccordVerbHandler<T extends Request> implements IVerbHandler<T>
 {
     private static final Logger logger = LoggerFactory.getLogger(AccordVerbHandler.class);
 
     private final Node node;
+    private final AccordEndpointMapper configService;
 
-    public AccordVerbHandler(Node node)
+    public AccordVerbHandler(Node node, AccordEndpointMapper endpointMapper)
     {
         this.node = node;
+        this.configService = endpointMapper;
     }
 
     @Override
     public void doVerb(Message<T> message) throws IOException
     {
+        ClusterMetadataService.instance().maybeCatchup(message.epoch());
         logger.debug("Receiving {} from {}", message.payload, message.from());
         T request = message.payload;
-        Node.Id from = EndpointMapping.getId(message.from());
+        Node.Id from = configService.mappedId(message.from());
         long knownEpoch = request.knownEpoch();
         if (!node.topology().hasEpoch(knownEpoch))
         {
