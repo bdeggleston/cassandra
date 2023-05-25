@@ -31,6 +31,7 @@ import org.apache.cassandra.utils.bytecomparable.ByteSource;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.serialization.Version;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.utils.bytecomparable.ByteSourceInverse;
 
 public abstract class Token implements RingPosition<Token>, Serializable
 {
@@ -44,6 +45,16 @@ public abstract class Token implements RingPosition<Token>, Serializable
     {
         public abstract ByteBuffer toByteArray(Token token);
         public abstract Token fromByteArray(ByteBuffer bytes);
+
+        public byte[] toOrderedByteArray(Token token, ByteComparable.Version version)
+        {
+            return ByteSourceInverse.readBytes(asComparableBytes(token, version));
+        }
+
+        public Token fromOrderedByteArray(byte[] bytes, ByteComparable.Version version)
+        {
+            return fromComparableBytes(ByteSource.peekable(ByteSource.fixedLength(bytes)), version);
+        }
 
         /**
          * Produce a byte-comparable representation of the token.
