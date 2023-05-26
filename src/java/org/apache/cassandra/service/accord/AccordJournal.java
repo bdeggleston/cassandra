@@ -484,7 +484,7 @@ public class AccordJournal
         static
         {
             // make noise early if we forget to update our version mappings
-            Invariants.checkState(MessagingService.current_version == MessagingService.VERSION_40);
+            Invariants.checkState(MessagingService.current_version == MessagingService.VERSION_50);
         }
 
         private static int msVersion(int version)
@@ -492,7 +492,7 @@ public class AccordJournal
             switch (version)
             {
                 default: throw new IllegalArgumentException();
-                case 1: return MessagingService.VERSION_40;
+                case 1: return MessagingService.VERSION_50;
             }
         }
     }
