@@ -130,7 +130,7 @@ public class UncommittedTableData
                 Token token = peeking.peek().key.getToken();
                 if (!range.contains(token))
                 {
-                    if (range.right.compareTo(token) < 0)
+                    if (!range.right.isMinimum() && range.right.compareTo(token) < 0)
                         rangeIterator.next();
                     else
                         peeking.next();
