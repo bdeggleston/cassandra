@@ -95,9 +95,35 @@ public class UncommittedTableDataTest
         }
     };
 
+    private static FilterFactory filterFactory(List<Range<Token>> ranges)
+    {
+        return new FilterFactory()
+        {
+            List<Range<Token>> getReplicatedRanges()
+            {
+                return ranges;
+            }
+
+            PaxosRepairHistory getPaxosRepairHistory()
+            {
+                return PaxosRepairHistory.EMPTY;
+            }
+        };
+    }
+
+    private static FilterFactory filterFactory(Range<Token>... ranges)
+    {
+        return filterFactory(Lists.newArrayList(ranges));
+    }
+
+    private static UncommittedTableData load(File directory, TableId cfid, FilterFactory filterFactory)
+    {
+        return UncommittedTableData.load(directory, cfid, filterFactory);
+    }
+
     private static UncommittedTableData load(File directory, TableId cfid)
     {
-        return UncommittedTableData.load(directory, cfid, NOOP_FACTORY);
+        return load(directory, cfid, NOOP_FACTORY);
     }
 
     MockDataFile mockFile(String table, TableId cfid, long generation, boolean temp)
@@ -646,5 +672,22 @@ public class UncommittedTableDataTest
         tableData.createMergeTask().run();
         assertIteratorContents(tableData.iterator(ALL_RANGES),  kl(uncommitted(5, ballots[1]),
                                                                    uncommitted(7, ballots[2])));
+    }
+
+    @Test
+    public void filteringIterator() throws Exception
+    {
+        Ballot[] ballots = createBallots(10);
+        List<PaxosKeyState> expected = new ArrayList<>(ballots.length);
+        UncommittedTableData tableData = load(directory, CFID, filterFactory(r(tk(3), null)));
+        for (int i=0; i<ballots.length; i++)
+        {
+            Ballot ballot = ballots[i];
+            DecoratedKey dk = dk(i);
+            expected.add(new PaxosKeyState(CFID, dk, ballot, false));
+        }
+
+        mergeWithUpdates(tableData, expected);
+        assertIteratorContents(tableData.iterator(Collections.singleton(r(null, null))), expected.subList(4, 10));
     }
 }
