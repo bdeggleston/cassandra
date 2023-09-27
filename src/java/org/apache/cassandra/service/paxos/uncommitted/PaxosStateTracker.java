@@ -126,6 +126,7 @@ public class PaxosStateTracker
 
         if (stateDirectory == null)
             stateDirectory = stateDirectory(directories[0]);
+        logger.info("Loading paxos state from {}", stateDirectory);
 
         boolean rebuildNeeded = !hasExistingData || forceRebuild();
 

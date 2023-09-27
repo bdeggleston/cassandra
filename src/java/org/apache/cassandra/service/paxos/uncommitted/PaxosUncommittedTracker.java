@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -225,6 +226,12 @@ public class PaxosUncommittedTracker
         tableStates = ImmutableMap.of();
     }
 
+    @VisibleForTesting
+    public synchronized boolean hasStateFor(TableId tableId)
+    {
+        return tableStates.containsKey(tableId);
+    }
+
     public synchronized void start()
     {
         if (started)
@@ -269,6 +276,36 @@ public class PaxosUncommittedTracker
     synchronized void consolidateFiles()
     {
         tableStates.values().forEach(UncommittedTableData::maybeScheduleMerge);
+        Set<TableId> droppedTables = null;
+        for (UncommittedTableData tableData : tableStates.values())
+        {
+            if (Schema.instance.getTableMetadata(tableData.tableId()) == null)
+            {
+                droppedTables = droppedTables != null ? droppedTables : new HashSet<>();
+                droppedTables.add(tableData.tableId());
+            }
+            else
+            {
+                tableData.maybeScheduleMerge();
+            }
+        }
+
+        if (droppedTables == null)
+            return;
+
+        ImmutableMap.Builder<TableId, UncommittedTableData> builder = ImmutableMap.builder();
+        for (UncommittedTableData tableData : tableStates.values())
+        {
+            if (droppedTables.contains(tableData.tableId()))
+            {
+                tableData.truncate();
+                continue;
+            }
+
+            builder.put(tableData.tableId(), tableData);
+        }
+
+        tableStates = builder.build();
     }
 
     synchronized void schedulePaxosAutoRepairs()
