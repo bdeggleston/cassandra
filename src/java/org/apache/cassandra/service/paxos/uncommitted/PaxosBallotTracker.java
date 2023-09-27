@@ -97,6 +97,7 @@ public class PaxosBallotTracker
         if (!file.exists())
             return new PaxosBallotTracker(directory, Ballot.none(), Ballot.none());
 
+        logger.info("Loading paxos ballot tracker data");
         try (RandomAccessReader reader = RandomAccessReader.open(file))
         {
             int version = reader.readInt();
