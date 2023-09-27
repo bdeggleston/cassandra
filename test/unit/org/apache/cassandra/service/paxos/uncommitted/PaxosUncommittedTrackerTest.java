@@ -245,4 +245,49 @@ public class PaxosUncommittedTrackerTest
         Assert.assertEquals(Lists.newArrayList(Iterables.concat(expected.subList(1, 5), expected.subList(6, 9))),
                                              uncommittedList(tracker, Lists.newArrayList(r(0, 4), r(5, 8))));
     }
+
+    /**
+     * Check that table state is removed
+     */
+    @Test
+    public void droppedTables() throws Throwable
+    {
+        TableId dropped = TableId.generate();
+        UncommittedTableData droppedState = tracker.getOrCreateTableState(dropped);
+        Assert.assertTrue(tracker.hasStateFor(dropped));
+        Assert.assertEquals(0, droppedState.numFiles());
+        int size = 10;
+        PaxosKeyState[] expectedArr = new PaxosKeyState[size];
+        Ballot[] ballots = createBallots(size);
+
+        for (int i=0; i<size; i+=2)
+        {
+            Ballot ballot = ballots[i];
+            DecoratedKey dk = dk(i);
+            updates.inProgress(dropped, dk, ballot);
+            PaxosKeyState ballotState = new PaxosKeyState(dropped, dk, ballot, false);;
+            expectedArr[i] = ballotState;
+        }
+
+        tracker.flushUpdates(null);
+
+        for (int i=1; i<size; i+=2)
+        {
+            Ballot ballot = ballots[i];
+            DecoratedKey dk = dk(i);
+            updates.inProgress(dropped, dk, ballot);
+            PaxosKeyState ballotState = new PaxosKeyState(dropped, dk, ballot, false);;
+            expectedArr[i] = ballotState;
+        }
+
+        tracker.flushUpdates(null);
+
+        Assert.assertEquals(2, droppedState.numFiles());
+        Assert.assertTrue(tracker.hasStateFor(dropped));
+
+        tracker.consolidateFiles();
+
+        Assert.assertEquals(0, droppedState.numFiles());
+        Assert.assertFalse(tracker.hasStateFor(dropped));
+    }
 }
