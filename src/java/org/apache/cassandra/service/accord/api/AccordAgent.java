@@ -68,11 +68,6 @@ public class AccordAgent implements Agent
         // TODO: this
     }
 
-    public void onStale(Timestamp staleSince, Ranges ranges)
-    {
-        // TODO: this
-    }
-
     @Override
     public void onInconsistentTimestamp(Command command, Timestamp prev, Timestamp next)
     {

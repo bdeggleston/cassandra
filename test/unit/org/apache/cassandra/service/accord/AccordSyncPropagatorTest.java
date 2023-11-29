@@ -362,11 +362,7 @@ public class AccordSyncPropagatorTest
             {
                 if (self.equals(ep)) return true;
 
-<<<<<<< HEAD
                 return !nodeRuns.computeIfAbsent(ep, ignore -> Gens.bools().biasedRepeatingRuns(.01, rs.nextInt(3, 15))).next(rs);
-=======
-                return !nodeRuns.computeIfAbsent(ep, ignore -> Gens.bools().biasedRepeatingRuns(.01, 100)).next(rs);
->>>>>>> 402eb2b7ff (deps pruning integration)
             }
 
             @Override
