@@ -132,6 +132,13 @@ public class AccordAgent implements Agent
         return 32;
     }
 
+    // TODO (expected): we probably want additional configuration here
+    @Override
+    public long maxConflictsHlcPruneDelta()
+    {
+        return SECONDS.toMicros(10);
+    }
+
     /**
      * Create an empty transaction that Accord can use for its internal transactions. This is not suitable
      * for tests since it skips validation done by regular transactions.
