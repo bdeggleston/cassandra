@@ -107,9 +107,7 @@ import static org.apache.cassandra.distributed.test.accord.AccordMigrationRaceTe
 import static org.apache.cassandra.distributed.util.QueryResultUtil.assertThat;
 import static org.apache.cassandra.exceptions.RequestFailureReason.RETRY_ON_DIFFERENT_TRANSACTION_SYSTEM;
 import static org.apache.cassandra.utils.Throwables.runUnchecked;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /*
  * Test that non-transactional write operations such as regular mutations, batch log, and hints
