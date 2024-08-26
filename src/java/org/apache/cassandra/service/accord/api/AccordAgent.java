@@ -43,8 +43,7 @@ import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 
 import static accord.primitives.Routable.Domain.Key;
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.*;
 import static org.apache.cassandra.config.DatabaseDescriptor.getReadRpcTimeout;
 import static org.apache.cassandra.service.consensus.migration.ConsensusKeyMigrationState.maybeSaveAccordKeyMigrationLocally;
 
@@ -136,7 +135,7 @@ public class AccordAgent implements Agent
     @Override
     public long maxConflictsHlcPruneDelta()
     {
-        return SECONDS.toMicros(10);
+        return MILLISECONDS.toMicros(1000);
     }
 
     /**
