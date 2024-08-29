@@ -25,6 +25,7 @@ import java.util.function.IntFunction;
 
 import accord.api.RoutingKey;
 import accord.local.DurableBefore;
+import accord.local.MaxConflicts;
 import accord.local.RedundantBefore;
 import accord.primitives.Range;
 import accord.primitives.Ranges;
@@ -104,6 +105,7 @@ public class CommandStoreSerializers
     }
 
     public static IVersionedSerializer<ReducingRangeMap<Timestamp>> rejectBefore = new ReducingRangeMapSerializer<>(CommandSerializers.nullableTimestamp, Timestamp[]::new, ReducingRangeMap.SerializerSupport::create);
+    public static IVersionedSerializer<MaxConflicts> maxConflicts = new ReducingRangeMapSerializer<>(CommandSerializers.nullableTimestamp, Timestamp[]::new, MaxConflicts.SerializerSupport::create);
     public static IVersionedSerializer<DurableBefore> durableBefore = new ReducingRangeMapSerializer<>(NullableSerializer.wrap(new IVersionedSerializer<DurableBefore.Entry>()
     {
         @Override

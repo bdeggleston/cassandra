@@ -33,6 +33,7 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 
 import accord.api.Key;
+import accord.local.*;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +43,6 @@ import accord.api.DataStore;
 import accord.api.ProgressLog;
 import accord.local.cfk.CommandsForKey;
 import accord.impl.TimestampsForKey;
-import accord.local.Command;
-import accord.local.CommandStore;
-import accord.local.DurableBefore;
-import accord.local.NodeTimeService;
-import accord.local.PreLoadContext;
-import accord.local.RedundantBefore;
-import accord.local.SafeCommandStore;
 import accord.primitives.Keys;
 import accord.primitives.Ranges;
 import accord.primitives.RoutableKey;
@@ -571,6 +565,13 @@ public class AccordCommandStore extends CommandStore implements CacheSize
         super.setRedundantBefore(newRedundantBefore);
         // TODO (required): this needs to be synchronous, or at least needs to take effect before we rely upon it
         AccordKeyspace.updateRedundantBefore(this, newRedundantBefore);
+    }
+
+    @Override
+    protected void setMaxConflicts(MaxConflicts maxConflicts) {
+        super.setMaxConflicts(maxConflicts);
+        // TODO (required): this may cause problems if messages are played back over this
+        AccordKeyspace.updateMaxConflicts(this, maxConflicts);
     }
 
     public NavigableMap<TxnId, Ranges> bootstrapBeganAt() { return super.bootstrapBeganAt(); }

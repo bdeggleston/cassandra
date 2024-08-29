@@ -38,6 +38,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
+import accord.local.*;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -50,14 +51,6 @@ import org.slf4j.LoggerFactory;
 import accord.api.Key;
 import accord.local.cfk.CommandsForKey;
 import accord.impl.TimestampsForKey;
-import accord.local.Command;
-import accord.local.CommandStore;
-import accord.local.DurableBefore;
-import accord.local.Listeners;
-import accord.local.Node;
-import accord.local.RedundantBefore;
-import accord.local.SaveStatus;
-import accord.local.Status;
 import accord.local.Status.Durability;
 import accord.primitives.Ranges;
 import accord.primitives.Routable;
@@ -256,6 +249,7 @@ public class AccordKeyspace
         static final LocalVersionedSerializer<RedundantBefore> redundantBefore = localSerializer(CommandStoreSerializers.redundantBefore);
         static final LocalVersionedSerializer<NavigableMap<TxnId, Ranges>> bootstrapBeganAt = localSerializer(CommandStoreSerializers.bootstrapBeganAt);
         static final LocalVersionedSerializer<NavigableMap<Timestamp, Ranges>> safeToRead = localSerializer(CommandStoreSerializers.safeToRead);
+        static final LocalVersionedSerializer<MaxConflicts> maxConflicts = localSerializer(CommandStoreSerializers.maxConflicts);
 
         private static <T> LocalVersionedSerializer<T> localSerializer(IVersionedSerializer<T> serializer)
         {
@@ -669,6 +663,7 @@ public class AccordKeyspace
               "safe_to_read blob, " +
               "redundant_before blob, " +
               "durable_before blob, " +
+              "max_conflicts blob, " +
               "PRIMARY KEY(store_id)" +
               ')').build();
 
@@ -1676,6 +1671,11 @@ public class AccordKeyspace
     public static Future<?> updateSafeToRead(CommandStore commandStore, NavigableMap<Timestamp, Ranges> safeToRead)
     {
         return updateCommandStoreMetadata(commandStore, "safe_to_read", safeToRead, LocalVersionedSerializers.safeToRead);
+    }
+
+    public static Future<?> updateMaxConflicts(CommandStore commandStore, MaxConflicts maxConflicts)
+    {
+        return updateCommandStoreMetadata(commandStore, "max_conflicts", maxConflicts, LocalVersionedSerializers.maxConflicts);
     }
 
     public interface CommandStoreMetadataConsumer
