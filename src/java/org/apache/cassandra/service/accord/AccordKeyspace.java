@@ -873,38 +873,9 @@ public class AccordKeyspace
         }
 
         @VisibleForTesting
-        public ByteBuffer serializeKey(CommandStore store, AccordRoutingKey key)
-        {
-            AccordRoutingKeyByteSource.Serializer serializer = TABLE_SERIALIZERS.computeIfAbsent(key.table(), ignore -> {
-                IPartitioner partitioner;
-                if (key.kindOfRoutingKey() == AccordRoutingKey.RoutingKeyKind.TOKEN)
-                    partitioner = key.asTokenKey().token().getPartitioner();
-                else
-                    partitioner = SchemaHolder.schema.getTablePartitioner(key.table());
-                return AccordRoutingKeyByteSource.variableLength(partitioner);
-            });
-            ByteSource[] srcs = {
-                    Int32Type.instance.asComparableBytes(Int32Type.instance.decompose(store.id()), ByteComparable.Version.OSS50),
-
-
-            };
-
-            byte[] bytes = serializer.serializeNoTable(key);
-            return ByteBuffer.wrap(bytes);
-        }
-
-        @VisibleForTesting
         public ByteBuffer serializeKeyNoTable(AccordRoutingKey key)
         {
-            AccordRoutingKeyByteSource.Serializer serializer = TABLE_SERIALIZERS.computeIfAbsent(key.table(), ignore -> {
-                IPartitioner partitioner;
-                if (key.kindOfRoutingKey() == AccordRoutingKey.RoutingKeyKind.TOKEN)
-                    partitioner = key.asTokenKey().token().getPartitioner();
-                else
-                    partitioner = SchemaHolder.schema.getTablePartitioner(key.table());
-                return AccordRoutingKeyByteSource.variableLength(partitioner);
-            });
-            byte[] bytes = serializer.serializeNoTable(key);
+            byte[] bytes = getRoutingKeySerializer(key).serializeNoTable(key);
             return ByteBuffer.wrap(bytes);
         }
 
@@ -1527,15 +1498,7 @@ public class AccordKeyspace
     @VisibleForTesting
     public static ByteBuffer serializeRoutingKey(AccordRoutingKey routingKey)
     {
-        AccordRoutingKeyByteSource.Serializer serializer = TABLE_SERIALIZERS.computeIfAbsent(routingKey.table(), ignore -> {
-            IPartitioner partitioner;
-            if (routingKey.kindOfRoutingKey() == AccordRoutingKey.RoutingKeyKind.TOKEN)
-                partitioner = routingKey.asTokenKey().token().getPartitioner();
-            else
-                partitioner = SchemaHolder.schema.getTablePartitioner(routingKey.table());
-            return AccordRoutingKeyByteSource.variableLength(partitioner);
-        });
-        byte[] bytes = serializer.serialize(routingKey);
+        byte[] bytes = getRoutingKeySerializer(routingKey).serialize(routingKey);
         return ByteBuffer.wrap(bytes);
     }
 
