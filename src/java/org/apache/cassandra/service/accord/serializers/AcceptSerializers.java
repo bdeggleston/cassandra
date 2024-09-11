@@ -118,6 +118,9 @@ public class AcceptSerializers
                 case RejectedBallot:
                     out.writeByte(4);
                     CommandSerializers.ballot.serialize(reply.supersededBy, out, version);
+                    break;
+                case Truncated:
+                    out.writeInt(5);
             }
         }
 
@@ -136,6 +139,8 @@ public class AcceptSerializers
                     return AcceptReply.REDUNDANT;
                 case 4:
                     return new AcceptReply(CommandSerializers.ballot.deserialize(in, version));
+                case 5:
+                    return AcceptReply.TRUNCATED;
             }
         }
 
@@ -145,12 +150,13 @@ public class AcceptSerializers
             long size = TypeSizes.BYTE_SIZE;
             switch (reply.outcome())
             {
-                default: throw new AssertionError();
+                default: throw new AssertionError("Unhandled Accept outcome type: " + reply.outcome());
                 case Success:
                     if (reply.deps != null)
                         size += DepsSerializer.partialDeps.serializedSize(reply.deps, version);
                     break;
                 case Redundant:
+                case Truncated:
                     break;
                 case RejectedBallot:
                     size += CommandSerializers.ballot.serializedSize(reply.supersededBy, version);
