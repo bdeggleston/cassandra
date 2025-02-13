@@ -23,15 +23,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.DiskBoundaries;
-import org.apache.cassandra.db.PartitionPosition;
-import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.CompactionTask;
 import org.apache.cassandra.db.lifecycle.ILifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -62,6 +57,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final long minRepairedAt;
     protected final TimeUUID pendingRepair;
     protected final boolean isTransient;
+    protected final MutationIdMetadata mutationIdMetadata;
 
     protected final SSTableRewriter sstableWriter;
     protected final ILifecycleTransaction txn;
@@ -97,6 +93,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         minRepairedAt = CompactionTask.getMinRepairedAt(nonExpiredSSTables);
         pendingRepair = CompactionTask.getPendingRepair(nonExpiredSSTables);
         isTransient = CompactionTask.getIsTransient(nonExpiredSSTables);
+        mutationIdMetadata = CompactionTask.getMutationIdMetadata(nonExpiredSSTables);
         DiskBoundaries db = cfs.getDiskBoundaries();
         diskBoundaries = db.positions;
         locations = db.directories;
@@ -328,6 +325,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
                          .setTransientSSTable(isTransient)
                          .setRepairedAt(minRepairedAt)
                          .setPendingRepair(pendingRepair)
+                         .setMutationIdMetadata(mutationIdMetadata)
                          .setSecondaryIndexGroups(cfs.indexManager.listIndexGroups())
                          .addDefaultComponents(cfs.indexManager.listIndexGroups());
     }

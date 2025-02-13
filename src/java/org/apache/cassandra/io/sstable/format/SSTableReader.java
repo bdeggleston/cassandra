@@ -44,6 +44,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Longs;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,11 +55,6 @@ import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.CassandraRelevantProperties;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.PartitionPosition;
-import org.apache.cassandra.db.SerializationHeader;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -1148,6 +1144,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public TimeUUID getPendingRepair()
     {
         return sstableMetadata.pendingRepair;
+    }
+
+    public MutationIdMetadata getMutationIdMetadata()
+    {
+        return sstableMetadata.mutationIdMetadata;
     }
 
     public long getRepairedAt()

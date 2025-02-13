@@ -42,14 +42,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.DiskBoundaries;
-import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
 import org.apache.cassandra.db.compaction.AbstractStrategyHolder.TaskSupplier;
@@ -1253,6 +1250,7 @@ public class CompactionStrategyManager implements INotificationConsumer
                                                        long repairedAt,
                                                        TimeUUID pendingRepair,
                                                        boolean isTransient,
+                                                       MutationIdMetadata mutationIdMetadata,
                                                        IntervalSet<CommitLogPosition> commitLogPositions,
                                                        int sstableLevel,
                                                        SerializationHeader header,
@@ -1269,6 +1267,7 @@ public class CompactionStrategyManager implements INotificationConsumer
                                                                                               repairedAt,
                                                                                               pendingRepair,
                                                                                               isTransient,
+                                                                                              mutationIdMetadata,
                                                                                               commitLogPositions,
                                                                                               sstableLevel,
                                                                                               header,

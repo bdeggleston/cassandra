@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.cassandra.db.*;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,12 +36,6 @@ import net.jpountz.lz4.LZ4Factory;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.BufferDecoratedKey;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionTime;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Rows;
 import org.apache.cassandra.db.streaming.CassandraStreamHeader;
@@ -459,7 +454,8 @@ public class StreamReaderTest
                                        fakeSession,
                                        fakeSeq,
                                        System.currentTimeMillis(),
-                                       pendingRepair);
+                                       pendingRepair,
+                                       MutationIdMetadata.NONE);
     }
 
     private static CassandraStreamHeader streamMessageHeader(int...tokens)
@@ -498,9 +494,9 @@ public class StreamReaderTest
             super(header, streamHeader, session);
         }
 
-        protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, SSTableFormat<?,?> format) throws IOException
+        protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, MutationIdMetadata mutationIdMetadata, SSTableFormat<?,?> format) throws IOException
         {
-            return super.createWriter(cfs, totalSize, repairedAt, pendingRepair, format);
+            return super.createWriter(cfs, totalSize, repairedAt, pendingRepair, mutationIdMetadata, format);
         }
 
         @Override

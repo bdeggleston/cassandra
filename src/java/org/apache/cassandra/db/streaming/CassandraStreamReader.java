@@ -26,15 +26,10 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.UnmodifiableIterator;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionTime;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.RegularAndStaticColumns;
-import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.apache.cassandra.db.rows.DeserializationHelper;
 import org.apache.cassandra.db.rows.EncodingStats;
@@ -83,6 +78,7 @@ public class CassandraStreamReader implements IStreamReader
     protected final Version inputVersion;
     protected final long repairedAt;
     protected final TimeUUID pendingRepair;
+    protected final MutationIdMetadata mutationIdMetadata;
     protected final int sstableLevel;
     protected final SerializationHeader.Component header;
     protected final int fileSeqNum;
@@ -102,6 +98,7 @@ public class CassandraStreamReader implements IStreamReader
         this.inputVersion = streamHeader.version;
         this.repairedAt = header.repairedAt;
         this.pendingRepair = header.pendingRepair;
+        this.mutationIdMetadata = header.mutationIdMetadata;
         this.sstableLevel = streamHeader.sstableLevel;
         this.header = streamHeader.serializationHeader;
         this.fileSeqNum = header.sequenceNumber;
@@ -131,7 +128,7 @@ public class CassandraStreamReader implements IStreamReader
         try (StreamCompressionInputStream streamCompressionInputStream = new StreamCompressionInputStream(inputPlus, current_version))
         {
             TrackedDataInputPlus in = new TrackedDataInputPlus(streamCompressionInputStream);
-            writer = createWriter(cfs, totalSize, repairedAt, pendingRepair, inputVersion.format);
+            writer = createWriter(cfs, totalSize, repairedAt, pendingRepair, mutationIdMetadata, inputVersion.format);
             deserializer = getDeserializer(cfs.metadata(), in, inputVersion, session, writer);
             String sequenceName = writer.getFilename() + '-' + fileSeqNum;
             long lastBytesRead = 0;
@@ -172,7 +169,7 @@ public class CassandraStreamReader implements IStreamReader
     {
         return header != null? header.toHeader(metadata) : null; //pre-3.0 sstable have no SerializationHeader
     }
-    protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, SSTableFormat<?, ?> format) throws IOException
+    protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, MutationIdMetadata mutationIdMetadata, SSTableFormat<?, ?> format) throws IOException
     {
         Directories.DataDirectory localDir = cfs.getDirectories().getWriteableLocation(totalSize);
         if (localDir == null)
@@ -182,7 +179,7 @@ public class CassandraStreamReader implements IStreamReader
         Preconditions.checkState(streamReceiver instanceof CassandraStreamReceiver);
         LifecycleNewTracker lifecycleNewTracker = CassandraStreamReceiver.fromReceiver(session.getAggregator(tableId)).createLifecycleNewTracker();
 
-        RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs, estimatedKeys, repairedAt, pendingRepair, false, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
+        RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs, estimatedKeys, repairedAt, pendingRepair, false, mutationIdMetadata, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
         return writer;
     }
 

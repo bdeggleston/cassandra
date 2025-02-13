@@ -25,16 +25,11 @@ import java.util.concurrent.Callable;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.DiskBoundaries;
-import org.apache.cassandra.db.PartitionPosition;
-import org.apache.cassandra.db.SerializationHeader;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.commitlog.IntervalSet;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.partitions.Partition;
@@ -211,6 +206,7 @@ public class Flushing
                                             ActiveRepairService.UNREPAIRED_SSTABLE,
                                             ActiveRepairService.NO_PENDING_REPAIR,
                                             false,
+                                            MutationIdMetadata.fixme(),
                                             new IntervalSet<>(flushSet.commitLogLowerBound(),
                                                               flushSet.commitLogUpperBound()),
                                             new SerializationHeader(true,

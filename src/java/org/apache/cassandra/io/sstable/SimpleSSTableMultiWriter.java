@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.cassandra.db.MutationIdMetadata;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
@@ -111,6 +112,7 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
                                             long repairedAt,
                                             TimeUUID pendingRepair,
                                             boolean isTransient,
+                                            MutationIdMetadata mutationIdMetadata,
                                             TableMetadataRef metadata,
                                             IntervalSet<CommitLogPosition> commitLogPositions,
                                             int sstableLevel,
@@ -127,6 +129,7 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter
                                             .setRepairedAt(repairedAt)
                                             .setPendingRepair(pendingRepair)
                                             .setTransientSSTable(isTransient)
+                                            .setMutationIdMetadata(mutationIdMetadata)
                                             .setTableMetadataRef(metadata)
                                             .setMetadataCollector(metadataCollector)
                                             .setSerializationHeader(header)
