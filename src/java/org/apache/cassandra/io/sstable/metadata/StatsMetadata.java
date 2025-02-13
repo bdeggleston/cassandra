@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.cassandra.db.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -29,10 +30,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.BufferClusteringBound;
-import org.apache.cassandra.db.ClusteringBound;
-import org.apache.cassandra.db.Slice;
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -80,6 +77,7 @@ public class StatsMetadata extends MetadataComponent
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
+    public final MutationIdMetadata mutationIdMetadata;
     // just holds the current encoding stats to avoid allocating - it is not serialized
     public final EncodingStats encodingStats;
 
@@ -123,6 +121,7 @@ public class StatsMetadata extends MetadataComponent
                          TimeUUID pendingRepair,
                          boolean isTransient,
                          boolean hasPartitionLevelDeletions,
+                         MutationIdMetadata mutationIdMetadata,
                          ByteBuffer firstKey,
                          ByteBuffer lastKey)
     {
@@ -148,6 +147,7 @@ public class StatsMetadata extends MetadataComponent
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
+        this.mutationIdMetadata = mutationIdMetadata;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
         this.hasPartitionLevelDeletions = hasPartitionLevelDeletions;
         this.firstKey = firstKey;
@@ -208,6 +208,7 @@ public class StatsMetadata extends MetadataComponent
                                  pendingRepair,
                                  isTransient,
                                  hasPartitionLevelDeletions,
+                                 mutationIdMetadata,
                                  firstKey,
                                  lastKey);
     }
@@ -237,6 +238,7 @@ public class StatsMetadata extends MetadataComponent
                                  newPendingRepair,
                                  newIsTransient,
                                  hasPartitionLevelDeletions,
+                                 mutationIdMetadata,
                                  firstKey,
                                  lastKey);
     }
@@ -270,6 +272,7 @@ public class StatsMetadata extends MetadataComponent
                        .append(originatingHostId, that.originatingHostId)
                        .append(pendingRepair, that.pendingRepair)
                        .append(hasPartitionLevelDeletions, that.hasPartitionLevelDeletions)
+                       .append(mutationIdMetadata, that.mutationIdMetadata)
                        .append(firstKey, that.firstKey)
                        .append(lastKey, that.lastKey)
                        .build();
@@ -300,6 +303,7 @@ public class StatsMetadata extends MetadataComponent
                        .append(originatingHostId)
                        .append(pendingRepair)
                        .append(hasPartitionLevelDeletions)
+                       .append(mutationIdMetadata)
                        .append(firstKey)
                        .append(lastKey)
                        .build();
@@ -386,6 +390,9 @@ public class StatsMetadata extends MetadataComponent
             {
                 size += Double.BYTES;
             }
+
+            if (version.hasMutationTrackingMetadata())
+                size += MutationIdMetadata.serializer.serializedSize(component.mutationIdMetadata, version.correspondingMessagingVersion());
 
             return size;
         }
@@ -510,6 +517,9 @@ public class StatsMetadata extends MetadataComponent
             {
                 out.writeDouble(component.tokenSpaceCoverage);
             }
+
+            if (version.hasMutationTrackingMetadata())
+                MutationIdMetadata.serializer.serialize(component.mutationIdMetadata, out, version.correspondingMessagingVersion());
         }
 
         private void serializeImprovedMinMax(Version version, StatsMetadata component, DataOutputPlus out) throws IOException
@@ -655,6 +665,10 @@ public class StatsMetadata extends MetadataComponent
                 tokenSpaceCoverage = in.readDouble();
             }
 
+            MutationIdMetadata mutationIdMetadata = MutationIdMetadata.NONE;
+            if (version.hasMutationTrackingMetadata())
+                mutationIdMetadata = MutationIdMetadata.serializer.deserialize(in, version.correspondingMessagingVersion());
+
             return new StatsMetadata(partitionSizes,
                                      columnCounts,
                                      commitLogIntervals,
@@ -678,6 +692,7 @@ public class StatsMetadata extends MetadataComponent
                                      pendingRepair,
                                      isTransient,
                                      hasPartitionLevelDeletions,
+                                     mutationIdMetadata,
                                      firstKey,
                                      lastKey);
         }

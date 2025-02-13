@@ -38,14 +38,11 @@ import java.util.stream.Stream;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.*;
 import org.junit.Test;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Token;
@@ -1281,7 +1278,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
             DecoratedKey key = MockSchema.readerBounds(generation);
             SerializationHeader header = SerializationHeader.make(cfs.metadata(), Collections.emptyList());
             StatsMetadata metadata = (StatsMetadata) new MetadataCollector(cfs.metadata().comparator)
-                                                     .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false, header, key.getKey().slice(), key.getKey().slice())
+                                                     .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false, MutationIdMetadata.NONE, header, key.getKey().slice(), key.getKey().slice())
                                                      .get(MetadataType.STATS);
             SSTableReader reader = new BigTableReader.Builder(descriptor).setComponents(components)
                                                                          .setTableMetadataRef(cfs.metadata)
@@ -1317,7 +1314,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
             DecoratedKey key = MockSchema.readerBounds(generation);
             SerializationHeader header = SerializationHeader.make(cfs.metadata(), Collections.emptyList());
             StatsMetadata metadata = (StatsMetadata) new MetadataCollector(cfs.metadata().comparator)
-                                                     .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false, header, key.getKey().slice(), key.getKey().slice())
+                                                     .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false, MutationIdMetadata.NONE, header, key.getKey().slice(), key.getKey().slice())
                                                      .get(MetadataType.STATS);
             SSTableReader reader = new BtiTableReader.Builder(descriptor).setComponents(components)
                                                                          .setTableMetadataRef(cfs.metadata)

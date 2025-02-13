@@ -131,6 +131,11 @@ public class MutationId implements Comparable<MutationId>, Serializable
         return l.compareTo(r) < 0 ? l : r;
     }
 
+    public static MutationId max(MutationId l, MutationId r)
+    {
+        return l.compareTo(r) > 0 ? l : r;
+    }
+
     @Override
     public boolean equals(Object o)
     {

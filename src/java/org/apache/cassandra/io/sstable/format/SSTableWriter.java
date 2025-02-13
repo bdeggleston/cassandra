@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import org.apache.cassandra.db.MutationIdMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +74,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
     protected long repairedAt;
     protected TimeUUID pendingRepair;
     protected boolean isTransient;
+    protected MutationIdMetadata mutationIdMetadata;
     protected long maxDataAge = -1;
     protected final long keyCount;
     protected final MetadataCollector metadataCollector;
@@ -101,6 +103,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         this.repairedAt = builder.getRepairedAt();
         this.pendingRepair = builder.getPendingRepair();
         this.isTransient = builder.isTransientSSTable();
+        this.mutationIdMetadata = builder.getMutationIdMetadata();
         this.metadataCollector = builder.getMetadataCollector();
         this.header = builder.getSerializationHeader();
         this.mmappedRegionsCache = builder.getMmappedRegionsCache();
@@ -333,6 +336,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
                                                   repairedAt,
                                                   pendingRepair,
                                                   isTransient,
+                                                  mutationIdMetadata,
                                                   header,
                                                   first.retainable().getKey(),
                                                   last.retainable().getKey());
@@ -437,6 +441,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         private boolean transientSSTable;
         private SerializationHeader serializationHeader;
         private List<Index.Group> indexGroups;
+        private MutationIdMetadata mutationIdMetadata = MutationIdMetadata.NONE;
 
         public B setMetadataCollector(MetadataCollector metadataCollector)
         {
@@ -459,6 +464,12 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         public B setPendingRepair(TimeUUID pendingRepair)
         {
             this.pendingRepair = pendingRepair;
+            return (B) this;
+        }
+
+        public B setMutationIdMetadata(MutationIdMetadata mutationIdMetadata)
+        {
+            this.mutationIdMetadata = mutationIdMetadata;
             return (B) this;
         }
 
@@ -538,6 +549,11 @@ public abstract class SSTableWriter extends SSTable implements Transactional
         public boolean isTransientSSTable()
         {
             return transientSSTable;
+        }
+
+        public MutationIdMetadata getMutationIdMetadata()
+        {
+            return mutationIdMetadata;
         }
 
         public SerializationHeader getSerializationHeader()
