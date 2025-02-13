@@ -15,7 +15,6 @@ import java.util.Objects;
  */
 public class MutationIdRanges
 {
-    // TODO: check usages in tests and replace with generated values
     public static final MutationIdRanges NONE = new MutationIdRanges(MutationId.none(), MutationId.none());
     public final MutationId minId;
     public final MutationId maxId;

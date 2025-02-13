@@ -26,6 +26,7 @@ import java.util.TreeSet;
 
 import com.google.common.primitives.Ints;
 
+import org.apache.cassandra.db.MutationIdRanges;
 import org.junit.Assert;
 
 import org.apache.cassandra.db.DecoratedKey;
@@ -144,6 +145,10 @@ public class MutationTrackingUtils
         return result;
     }
 
+    public static MutationIdRanges generateRanges()
+    {
+        return new MutationIdRanges(MutationId.createNext(), MutationId.createNext());
+    }
 
     public static void assertIdsForKey(IInvokableInstance node, String keyspaceName, String tableName, int key, Set<MutationId> expected)
     {
