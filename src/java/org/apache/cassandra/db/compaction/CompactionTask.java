@@ -415,7 +415,7 @@ public class CompactionTask extends AbstractCompactionTask
             return mutationIdRanges;
 
         for (SSTableReader sstable: sstables)
-            mutationIdRanges = mutationIdRanges.merge(sstable.getSSTableMetadata().mutationIdRanges);
+            mutationIdRanges = mutationIdRanges.merge(sstable.getMutationIdRanges());
 
         return mutationIdRanges;
     }

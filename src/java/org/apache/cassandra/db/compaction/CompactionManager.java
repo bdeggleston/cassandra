@@ -1801,7 +1801,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
             if (minLevel == Integer.MAX_VALUE)
                 minLevel = sstable.getSSTableLevel();
 
-            mutationIdRanges = mutationIdRanges.merge(sstable.getSSTableMetadata().mutationIdRanges);
+            mutationIdRanges = mutationIdRanges.merge(sstable.getMutationIdRanges());
             if (minLevel != sstable.getSSTableLevel())
             {
                 minLevel = 0;
