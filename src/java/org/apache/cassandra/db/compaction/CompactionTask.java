@@ -30,7 +30,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.RateLimiter;
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.apache.cassandra.db.compaction.unified.UnifiedCompactionTask;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -408,16 +408,16 @@ public class CompactionTask extends AbstractCompactionTask
         return isTransient;
     }
 
-    public static MutationIdMetadata getMutationIdMetadata(Set<SSTableReader> sstables)
+    public static MutationIdRanges getMutationIdRanges(Set<SSTableReader> sstables)
     {
-        MutationIdMetadata mutationIdMetadata = MutationIdMetadata.NONE;
+        MutationIdRanges mutationIdRanges = MutationIdRanges.NONE;
         if (sstables.isEmpty())
-            return mutationIdMetadata;
+            return mutationIdRanges;
 
         for (SSTableReader sstable: sstables)
-            mutationIdMetadata = mutationIdMetadata.merge(sstable.getSSTableMetadata().mutationIdMetadata);
+            mutationIdRanges = mutationIdRanges.merge(sstable.getSSTableMetadata().mutationIdRanges);
 
-        return mutationIdMetadata;
+        return mutationIdRanges;
     }
 
 

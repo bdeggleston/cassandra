@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import com.google.common.base.Objects;
 
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -47,7 +47,7 @@ public class StreamMessageHeader
     public final int sequenceNumber;
     public final long repairedAt;
     public final TimeUUID pendingRepair;
-    public final MutationIdMetadata mutationIdMetadata;
+    public final MutationIdRanges mutationIdRanges;
     public final InetAddressAndPort sender;
 
     public StreamMessageHeader(TableId tableId,
@@ -57,7 +57,7 @@ public class StreamMessageHeader
                                int sessionIndex,
                                int sequenceNumber,
                                long repairedAt,
-                               TimeUUID pendingRepair, MutationIdMetadata mutationIdMetadata)
+                               TimeUUID pendingRepair, MutationIdRanges mutationIdRanges)
     {
         this.tableId = tableId;
         this.sender = sender;
@@ -67,7 +67,7 @@ public class StreamMessageHeader
         this.sequenceNumber = sequenceNumber;
         this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
-        this.mutationIdMetadata = mutationIdMetadata;
+        this.mutationIdRanges = mutationIdRanges;
     }
 
     @Override
@@ -122,7 +122,7 @@ public class StreamMessageHeader
             {
                 header.pendingRepair.serialize(out);
             }
-            MutationIdMetadata.serializer.serialize(header.mutationIdMetadata, out, version);
+            MutationIdRanges.serializer.serialize(header.mutationIdRanges, out, version);
         }
 
         public StreamMessageHeader deserialize(DataInputPlus in, int version) throws IOException
@@ -135,9 +135,9 @@ public class StreamMessageHeader
             int sequenceNumber = in.readInt();
             long repairedAt = in.readLong();
             TimeUUID pendingRepair = in.readBoolean() ? TimeUUID.deserialize(in) : null;
-            MutationIdMetadata mutationIdMetadata = MutationIdMetadata.serializer.deserialize(in, version);
+            MutationIdRanges mutationIdRanges = MutationIdRanges.serializer.deserialize(in, version);
 
-            return new StreamMessageHeader(tableId, sender, planId, sendByFollower, sessionIndex, sequenceNumber, repairedAt, pendingRepair, mutationIdMetadata);
+            return new StreamMessageHeader(tableId, sender, planId, sendByFollower, sessionIndex, sequenceNumber, repairedAt, pendingRepair, mutationIdRanges);
         }
 
         public long serializedSize(StreamMessageHeader header, int version)
@@ -151,7 +151,7 @@ public class StreamMessageHeader
             size += TypeSizes.sizeof(header.repairedAt);
             size += TypeSizes.sizeof(header.pendingRepair != null);
             size += header.pendingRepair != null ? TimeUUID.sizeInBytes() : 0;
-            size += MutationIdMetadata.serializer.serializedSize(header.mutationIdMetadata, version);
+            size += MutationIdRanges.serializer.serializedSize(header.mutationIdRanges, version);
 
             return size;
         }

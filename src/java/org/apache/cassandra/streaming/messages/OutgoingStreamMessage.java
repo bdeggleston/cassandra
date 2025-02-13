@@ -75,7 +75,7 @@ public class OutgoingStreamMessage extends StreamMessage
                                               sequenceNumber,
                                               stream.getRepairedAt(),
                                               stream.getPendingRepair(),
-                                              stream.getMutationIdMetadata());
+                                              stream.getMutationIdRanges());
     }
 
     public synchronized void serialize(StreamingDataOutputPlus out, int version, StreamSession session) throws IOException

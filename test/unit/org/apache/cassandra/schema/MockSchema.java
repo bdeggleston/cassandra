@@ -209,7 +209,7 @@ public class MockSchema
                                                                                   UNREPAIRED_SSTABLE,
                                                                                   null,
                                                                                   false,
-                                                                                  MutationIdMetadata.NONE,
+                                                                                  MutationIdRanges.NONE,
                                                                                   header,
                                                                                   first.retainable().getKey().slice(),
                                                                                   last.retainable().getKey().slice())
@@ -252,7 +252,7 @@ public class MockSchema
                 BufferDecoratedKey first = readerBounds(firstToken);
                 BufferDecoratedKey last = readerBounds(lastToken);
                 StatsMetadata metadata = (StatsMetadata) collector.sstableLevel(level)
-                                                                  .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, UNREPAIRED_SSTABLE, null, false, MutationIdMetadata.NONE, header, first.retainable().getKey(), last.retainable().getKey())
+                                                                  .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, UNREPAIRED_SSTABLE, null, false, MutationIdRanges.NONE, header, first.retainable().getKey(), last.retainable().getKey())
                                                                   .get(MetadataType.STATS);
                 BtiTableReader reader = new BtiTableReader.Builder(descriptor).setComponents(components)
                                                                               .setTableMetadataRef(cfs.metadata)

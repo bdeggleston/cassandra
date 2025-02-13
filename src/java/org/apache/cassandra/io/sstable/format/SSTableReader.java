@@ -1146,9 +1146,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.pendingRepair;
     }
 
-    public MutationIdMetadata getMutationIdMetadata()
+    public MutationIdRanges getMutationIdRanges()
     {
-        return sstableMetadata.mutationIdMetadata;
+        return sstableMetadata.mutationIdRanges;
     }
 
     public long getRepairedAt()

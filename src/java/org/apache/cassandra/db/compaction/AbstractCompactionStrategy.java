@@ -28,7 +28,7 @@ import java.util.Set;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -559,7 +559,7 @@ public abstract class AbstractCompactionStrategy
                                                        long repairedAt,
                                                        TimeUUID pendingRepair,
                                                        boolean isTransient,
-                                                       MutationIdMetadata mutationIdMetadata,
+                                                       MutationIdRanges mutationIdRanges,
                                                        IntervalSet<CommitLogPosition> commitLogPositions,
                                                        int sstableLevel,
                                                        SerializationHeader header,
@@ -571,7 +571,7 @@ public abstract class AbstractCompactionStrategy
                                                repairedAt,
                                                pendingRepair,
                                                isTransient,
-                                               mutationIdMetadata,
+                                               mutationIdRanges,
                                                cfs.metadata,
                                                commitLogPositions,
                                                sstableLevel,

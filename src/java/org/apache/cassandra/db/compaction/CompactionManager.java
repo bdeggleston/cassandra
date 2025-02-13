@@ -1595,7 +1595,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
              CompactionIterator ci = new CompactionIterator(OperationType.CLEANUP, Collections.singletonList(scanner), controller, nowInSec, nextTimeUUID(), active, null))
         {
             StatsMetadata metadata = sstable.getSSTableMetadata();
-            writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, metadata.repairedAt, metadata.pendingRepair, metadata.isTransient, metadata.mutationIdMetadata, sstable, txn));
+            writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, metadata.repairedAt, metadata.pendingRepair, metadata.isTransient, metadata.mutationIdRanges, sstable, txn));
             long lastBytesScanned = 0;
 
             while (ci.hasNext())
@@ -1760,7 +1760,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
                                              long repairedAt,
                                              TimeUUID pendingRepair,
                                              boolean isTransient,
-                                             MutationIdMetadata mutationIdMetadata,
+                                             MutationIdRanges mutationIdRanges,
                                              SSTableReader sstable,
                                              LifecycleTransaction txn)
     {
@@ -1772,7 +1772,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
                          .setRepairedAt(repairedAt)
                          .setPendingRepair(pendingRepair)
                          .setTransientSSTable(isTransient)
-                         .setMutationIdMetadata(mutationIdMetadata)
+                         .setMutationIdRanges(mutationIdRanges)
                          .setTableMetadataRef(cfs.metadata)
                          .setMetadataCollector(new MetadataCollector(cfs.metadata().comparator).sstableLevel(sstable.getSSTableLevel()))
                          .setSerializationHeader(sstable.header)
@@ -1792,7 +1792,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
     {
         FileUtils.createDirectory(compactionFileLocation);
         int minLevel = Integer.MAX_VALUE;
-        MutationIdMetadata mutationIdMetadata = MutationIdMetadata.NONE;
+        MutationIdRanges mutationIdRanges = MutationIdRanges.NONE;
         // if all sstables have the same level, we can compact them together without creating overlap during anticompaction
         // note that we only anticompact from unrepaired sstables, which is not leveled, but we still keep original level
         // after first migration to be able to drop the sstables back in their original place in the repaired sstable manifest
@@ -1801,7 +1801,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
             if (minLevel == Integer.MAX_VALUE)
                 minLevel = sstable.getSSTableLevel();
 
-            mutationIdMetadata = mutationIdMetadata.merge(sstable.getSSTableMetadata().mutationIdMetadata);
+            mutationIdRanges = mutationIdRanges.merge(sstable.getSSTableMetadata().mutationIdRanges);
             if (minLevel != sstable.getSSTableLevel())
             {
                 minLevel = 0;
@@ -1814,7 +1814,7 @@ public class CompactionManager implements CompactionManagerMBean, ICompactionMan
                          .setKeyCount(expectedBloomFilterSize)
                          .setRepairedAt(repairedAt)
                          .setPendingRepair(pendingRepair)
-                         .setMutationIdMetadata(mutationIdMetadata)
+                         .setMutationIdRanges(mutationIdRanges)
                          .setTransientSSTable(isTransient)
                          .setTableMetadataRef(cfs.metadata)
                          .setMetadataCollector(new MetadataCollector(sstables, cfs.metadata().comparator).sstableLevel(minLevel))

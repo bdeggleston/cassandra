@@ -57,7 +57,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final long minRepairedAt;
     protected final TimeUUID pendingRepair;
     protected final boolean isTransient;
-    protected final MutationIdMetadata mutationIdMetadata;
+    protected final MutationIdRanges mutationIdRanges;
 
     protected final SSTableRewriter sstableWriter;
     protected final ILifecycleTransaction txn;
@@ -93,7 +93,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         minRepairedAt = CompactionTask.getMinRepairedAt(nonExpiredSSTables);
         pendingRepair = CompactionTask.getPendingRepair(nonExpiredSSTables);
         isTransient = CompactionTask.getIsTransient(nonExpiredSSTables);
-        mutationIdMetadata = CompactionTask.getMutationIdMetadata(nonExpiredSSTables);
+        mutationIdRanges = CompactionTask.getMutationIdRanges(nonExpiredSSTables);
         DiskBoundaries db = cfs.getDiskBoundaries();
         diskBoundaries = db.positions;
         locations = db.directories;
@@ -325,7 +325,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
                          .setTransientSSTable(isTransient)
                          .setRepairedAt(minRepairedAt)
                          .setPendingRepair(pendingRepair)
-                         .setMutationIdMetadata(mutationIdMetadata)
+                         .setMutationIdRanges(mutationIdRanges)
                          .setSecondaryIndexGroups(cfs.indexManager.listIndexGroups())
                          .addDefaultComponents(cfs.indexManager.listIndexGroups());
     }

@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -230,7 +230,7 @@ public class EntireSSTableStreamConcurrentComponentMutationTest
         concurrentMutations.get(3, TimeUnit.MINUTES);
 
         session.prepareReceiving(new StreamSummary(sstable.metadata().id, 1, 5104));
-        StreamMessageHeader messageHeader = new StreamMessageHeader(sstable.metadata().id, peer, session.planId(), false, 0, 0, 0, null, MutationIdMetadata.NONE);
+        StreamMessageHeader messageHeader = new StreamMessageHeader(sstable.metadata().id, peer, session.planId(), false, 0, 0, 0, null, MutationIdRanges.NONE);
 
         try (DataInputBuffer in = new DataInputBuffer(serializedFile.nioBuffer(), false))
         {

@@ -92,7 +92,7 @@ public class MetadataCollector implements PartitionStatisticsCollector
                                  null,
                                  false,
                                  true,
-                                 MutationIdMetadata.NONE,
+                                 MutationIdRanges.NONE,
                                  ByteBufferUtil.EMPTY_BYTE_BUFFER,
                                  ByteBufferUtil.EMPTY_BYTE_BUFFER);
     }
@@ -347,7 +347,7 @@ public class MetadataCollector implements PartitionStatisticsCollector
         this.hasLegacyCounterShards = this.hasLegacyCounterShards || hasLegacyCounterShards;
     }
 
-    public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance, long repairedAt, TimeUUID pendingRepair, boolean isTransient, MutationIdMetadata mutationIdMetadata, SerializationHeader header, ByteBuffer firstKey, ByteBuffer lastKey)
+    public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance, long repairedAt, TimeUUID pendingRepair, boolean isTransient, MutationIdRanges mutationIdRanges, SerializationHeader header, ByteBuffer firstKey, ByteBuffer lastKey)
     {
         assert minClustering.kind() == ClusteringPrefix.Kind.CLUSTERING || minClustering.kind().isStart();
         assert maxClustering.kind() == ClusteringPrefix.Kind.CLUSTERING || maxClustering.kind().isEnd();
@@ -377,7 +377,7 @@ public class MetadataCollector implements PartitionStatisticsCollector
                                                              pendingRepair,
                                                              isTransient,
                                                              hasPartitionLevelDeletions,
-                                                             mutationIdMetadata,
+                                                             mutationIdRanges,
                                                              firstKey,
                                                              lastKey));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));

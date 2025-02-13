@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
@@ -227,7 +227,7 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
                                                        long repairedAt,
                                                        TimeUUID pendingRepair,
                                                        boolean isTransient,
-                                                       MutationIdMetadata mutationIdMetadata,
+                                                       MutationIdRanges mutationIdRanges,
                                                        IntervalSet<CommitLogPosition> commitLogPositions,
                                                        int sstableLevel,
                                                        SerializationHeader header,
@@ -253,7 +253,7 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
                                                  repairedAt,
                                                  pendingRepair,
                                                  isTransient,
-                                                 mutationIdMetadata,
+                                                 mutationIdRanges,
                                                  commitLogPositions,
                                                  sstableLevel,
                                                  header,

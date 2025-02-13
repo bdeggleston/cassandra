@@ -77,7 +77,7 @@ public class StatsMetadata extends MetadataComponent
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public final MutationIdMetadata mutationIdMetadata;
+    public final MutationIdRanges mutationIdRanges;
     // just holds the current encoding stats to avoid allocating - it is not serialized
     public final EncodingStats encodingStats;
 
@@ -121,7 +121,7 @@ public class StatsMetadata extends MetadataComponent
                          TimeUUID pendingRepair,
                          boolean isTransient,
                          boolean hasPartitionLevelDeletions,
-                         MutationIdMetadata mutationIdMetadata,
+                         MutationIdRanges mutationIdRanges,
                          ByteBuffer firstKey,
                          ByteBuffer lastKey)
     {
@@ -147,7 +147,7 @@ public class StatsMetadata extends MetadataComponent
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.mutationIdMetadata = mutationIdMetadata;
+        this.mutationIdRanges = mutationIdRanges;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
         this.hasPartitionLevelDeletions = hasPartitionLevelDeletions;
         this.firstKey = firstKey;
@@ -208,7 +208,7 @@ public class StatsMetadata extends MetadataComponent
                                  pendingRepair,
                                  isTransient,
                                  hasPartitionLevelDeletions,
-                                 mutationIdMetadata,
+                                 mutationIdRanges,
                                  firstKey,
                                  lastKey);
     }
@@ -238,7 +238,7 @@ public class StatsMetadata extends MetadataComponent
                                  newPendingRepair,
                                  newIsTransient,
                                  hasPartitionLevelDeletions,
-                                 mutationIdMetadata,
+                                 mutationIdRanges,
                                  firstKey,
                                  lastKey);
     }
@@ -272,7 +272,7 @@ public class StatsMetadata extends MetadataComponent
                        .append(originatingHostId, that.originatingHostId)
                        .append(pendingRepair, that.pendingRepair)
                        .append(hasPartitionLevelDeletions, that.hasPartitionLevelDeletions)
-                       .append(mutationIdMetadata, that.mutationIdMetadata)
+                       .append(mutationIdRanges, that.mutationIdRanges)
                        .append(firstKey, that.firstKey)
                        .append(lastKey, that.lastKey)
                        .build();
@@ -303,7 +303,7 @@ public class StatsMetadata extends MetadataComponent
                        .append(originatingHostId)
                        .append(pendingRepair)
                        .append(hasPartitionLevelDeletions)
-                       .append(mutationIdMetadata)
+                       .append(mutationIdRanges)
                        .append(firstKey)
                        .append(lastKey)
                        .build();
@@ -392,7 +392,7 @@ public class StatsMetadata extends MetadataComponent
             }
 
             if (version.hasMutationTrackingMetadata())
-                size += MutationIdMetadata.serializer.serializedSize(component.mutationIdMetadata, version.correspondingMessagingVersion());
+                size += MutationIdRanges.serializer.serializedSize(component.mutationIdRanges, version.correspondingMessagingVersion());
 
             return size;
         }
@@ -519,7 +519,7 @@ public class StatsMetadata extends MetadataComponent
             }
 
             if (version.hasMutationTrackingMetadata())
-                MutationIdMetadata.serializer.serialize(component.mutationIdMetadata, out, version.correspondingMessagingVersion());
+                MutationIdRanges.serializer.serialize(component.mutationIdRanges, out, version.correspondingMessagingVersion());
         }
 
         private void serializeImprovedMinMax(Version version, StatsMetadata component, DataOutputPlus out) throws IOException
@@ -665,9 +665,9 @@ public class StatsMetadata extends MetadataComponent
                 tokenSpaceCoverage = in.readDouble();
             }
 
-            MutationIdMetadata mutationIdMetadata = MutationIdMetadata.NONE;
+            MutationIdRanges mutationIdRanges = MutationIdRanges.NONE;
             if (version.hasMutationTrackingMetadata())
-                mutationIdMetadata = MutationIdMetadata.serializer.deserialize(in, version.correspondingMessagingVersion());
+                mutationIdRanges = MutationIdRanges.serializer.deserialize(in, version.correspondingMessagingVersion());
 
             return new StatsMetadata(partitionSizes,
                                      columnCounts,
@@ -692,7 +692,7 @@ public class StatsMetadata extends MetadataComponent
                                      pendingRepair,
                                      isTransient,
                                      hasPartitionLevelDeletions,
-                                     mutationIdMetadata,
+                                     mutationIdRanges,
                                      firstKey,
                                      lastKey);
         }

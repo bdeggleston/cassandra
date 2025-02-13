@@ -455,7 +455,7 @@ public class StreamReaderTest
                                        fakeSeq,
                                        System.currentTimeMillis(),
                                        pendingRepair,
-                                       MutationIdMetadata.NONE);
+                                       MutationIdRanges.NONE);
     }
 
     private static CassandraStreamHeader streamMessageHeader(int...tokens)
@@ -494,9 +494,9 @@ public class StreamReaderTest
             super(header, streamHeader, session);
         }
 
-        protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, MutationIdMetadata mutationIdMetadata, SSTableFormat<?,?> format) throws IOException
+        protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, MutationIdRanges mutationIdRanges, SSTableFormat<?,?> format) throws IOException
         {
-            return super.createWriter(cfs, totalSize, repairedAt, pendingRepair, mutationIdMetadata, format);
+            return super.createWriter(cfs, totalSize, repairedAt, pendingRepair, mutationIdRanges, format);
         }
 
         @Override

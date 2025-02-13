@@ -13,14 +13,14 @@ import java.util.Objects;
  *
  * currently just min max, but should expand to contain per-coordinator/shard id ranges
  */
-public class MutationIdMetadata
+public class MutationIdRanges
 {
     // TODO: check usages in tests and replace with generated values
-    public static final MutationIdMetadata NONE = new MutationIdMetadata(MutationId.none(), MutationId.none());
+    public static final MutationIdRanges NONE = new MutationIdRanges(MutationId.none(), MutationId.none());
     public final MutationId minId;
     public final MutationId maxId;
 
-    public MutationIdMetadata(MutationId minId, MutationId maxId)
+    public MutationIdRanges(MutationId minId, MutationId maxId)
     {
         this.minId = minId;
         this.maxId = maxId;
@@ -30,7 +30,7 @@ public class MutationIdMetadata
     public boolean equals(Object o)
     {
         if (o == null || getClass() != o.getClass()) return false;
-        MutationIdMetadata that = (MutationIdMetadata) o;
+        MutationIdRanges that = (MutationIdRanges) o;
         return Objects.equals(minId, that.minId) && Objects.equals(maxId, that.maxId);
     }
 
@@ -40,29 +40,29 @@ public class MutationIdMetadata
         return Objects.hash(minId, maxId);
     }
 
-    public MutationIdMetadata merge(MutationIdMetadata that)
+    public MutationIdRanges merge(MutationIdRanges that)
     {
         if (this == NONE)
             return that;
         if (that == NONE)
             return this;
-        return new MutationIdMetadata(MutationId.minNotNone(this.minId, that.minId), MutationId.max(this.maxId, that.maxId));
+        return new MutationIdRanges(MutationId.minNotNone(this.minId, that.minId), MutationId.max(this.maxId, that.maxId));
     }
 
-    public static MutationIdMetadata merge(MutationIdMetadata l, MutationIdMetadata r)
+    public static MutationIdRanges merge(MutationIdRanges l, MutationIdRanges r)
     {
-        return new MutationIdMetadata(MutationId.minNotNone(l.minId, r.minId), MutationId.max(l.maxId, r.maxId));
+        return new MutationIdRanges(MutationId.minNotNone(l.minId, r.minId), MutationId.max(l.maxId, r.maxId));
     }
 
-    public static MutationIdMetadata fixme()
+    public static MutationIdRanges fixme()
     {
         throw new RuntimeException("TODO");
     }
 
-    public static final IVersionedSerializer<MutationIdMetadata> serializer = new IVersionedSerializer<MutationIdMetadata>()
+    public static final IVersionedSerializer<MutationIdRanges> serializer = new IVersionedSerializer<MutationIdRanges>()
     {
         @Override
-        public void serialize(MutationIdMetadata metadata, DataOutputPlus out, int version) throws IOException
+        public void serialize(MutationIdRanges metadata, DataOutputPlus out, int version) throws IOException
         {
             if (version < MessagingService.VERSION_52)
                 return;
@@ -71,16 +71,16 @@ public class MutationIdMetadata
         }
 
         @Override
-        public MutationIdMetadata deserialize(DataInputPlus in, int version) throws IOException
+        public MutationIdRanges deserialize(DataInputPlus in, int version) throws IOException
         {
             if (version < MessagingService.VERSION_52)
-                return MutationIdMetadata.NONE;
-            return new MutationIdMetadata(MutationId.serializer.deserialize(in, version),
-                                          MutationId.serializer.deserialize(in, version));
+                return MutationIdRanges.NONE;
+            return new MutationIdRanges(MutationId.serializer.deserialize(in, version),
+                                        MutationId.serializer.deserialize(in, version));
         }
 
         @Override
-        public long serializedSize(MutationIdMetadata metadata, int version)
+        public long serializedSize(MutationIdRanges metadata, int version)
         {
             if (version < MessagingService.VERSION_52)
                 return 0;

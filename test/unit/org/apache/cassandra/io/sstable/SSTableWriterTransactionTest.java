@@ -21,7 +21,7 @@ package org.apache.cassandra.io.sstable;
 import java.io.IOException;
 import java.util.Collection;
 
-import org.apache.cassandra.db.MutationIdMetadata;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
@@ -73,7 +73,7 @@ public class SSTableWriterTransactionTest extends AbstractTransactionalTest
 
         private TestableBTW(Descriptor desc)
         {
-            this(desc, SSTableTxnWriter.create(cfs, desc, 0, 0, null, false, MutationIdMetadata.NONE,
+            this(desc, SSTableTxnWriter.create(cfs, desc, 0, 0, null, false, MutationIdRanges.NONE,
                                                new SerializationHeader(true, cfs.metadata(),
                                                                        cfs.metadata().regularAndStaticColumns(),
                                                                        EncodingStats.NO_STATS)));
