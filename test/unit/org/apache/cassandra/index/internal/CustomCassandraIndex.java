@@ -31,25 +31,13 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.Util;
 import org.apache.cassandra.cql3.Operator;
 import org.apache.cassandra.cql3.statements.schema.IndexTarget;
-import org.apache.cassandra.db.CBuilder;
-import org.apache.cassandra.db.Clustering;
-import org.apache.cassandra.db.ClusteringComparator;
-import org.apache.cassandra.db.ClusteringPrefix;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionTime;
-import org.apache.cassandra.db.LivenessInfo;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.ReadCommand;
-import org.apache.cassandra.db.RegularAndStaticColumns;
-import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.db.WriteContext;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
@@ -472,7 +460,7 @@ public class CustomCassandraIndex implements Index
                                                                cell));
         Row row = BTreeRow.noCellLiveRow(buildIndexClustering(rowKey, clustering, cell), info);
         PartitionUpdate upd = partitionUpdate(valueKey, row);
-        indexCfs.getWriteHandler().write(upd, ctx, false);
+        indexCfs.getWriteHandler().write(MutationId.fixme(), upd, ctx, false);
         logger.debug("Inserted entry into index for value {}", valueKey);
     }
 
@@ -518,7 +506,7 @@ public class CustomCassandraIndex implements Index
     {
         Row row = BTreeRow.emptyDeletedRow(indexClustering, Row.Deletion.regular(deletion));
         PartitionUpdate upd = partitionUpdate(indexKey, row);
-        indexCfs.getWriteHandler().write(upd, ctx, false);
+        indexCfs.getWriteHandler().write(MutationId.fixme(), upd, ctx, false);
         logger.debug("Removed index entry for value {}", indexKey);
     }
 

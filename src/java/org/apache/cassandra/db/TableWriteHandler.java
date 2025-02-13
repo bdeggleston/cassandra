@@ -22,5 +22,5 @@ import org.apache.cassandra.db.partitions.PartitionUpdate;
 
 public interface TableWriteHandler
 {
-    void write(PartitionUpdate update, WriteContext context, boolean updateIndexes);
+    void write(MutationId mutationId, PartitionUpdate update, WriteContext context, boolean updateIndexes);
 }

@@ -26,15 +26,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.BufferDecoratedKey;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.PartitionPosition;
-import org.apache.cassandra.db.Slices;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
@@ -104,7 +100,7 @@ public class SkipListMemtable extends AbstractAllocatorMemtable
      * commitLogSegmentPosition should only be null if this is a secondary index, in which case it is *expected* to be null
      */
     @Override
-    public long put(PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
+    public long put(MutationId mutationId, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
     {
         Cloner cloner = allocator.cloner(opGroup);
         AtomicBTreePartition previous = partitions.get(update.partitionKey());
@@ -127,6 +123,7 @@ public class SkipListMemtable extends AbstractAllocatorMemtable
             }
         }
 
+        mutationId.failIfNotNone();
         BTreePartitionUpdater updater = previous.addAll(update, cloner, opGroup, indexer);
         updateMin(minTimestamp, update.stats().minTimestamp);
         updateMin(minLocalDeletionTime, update.stats().minLocalDeletionTime);

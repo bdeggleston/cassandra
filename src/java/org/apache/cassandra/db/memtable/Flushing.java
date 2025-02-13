@@ -206,7 +206,7 @@ public class Flushing
                                             ActiveRepairService.UNREPAIRED_SSTABLE,
                                             ActiveRepairService.NO_PENDING_REPAIR,
                                             false,
-                                            MutationIdRanges.fixme(),
+                                            MutationIdRanges.NONE,
                                             new IntervalSet<>(flushSet.commitLogLowerBound(),
                                                               flushSet.commitLogUpperBound()),
                                             new SerializationHeader(true,

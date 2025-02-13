@@ -74,6 +74,11 @@ public class MutationId implements Comparable<MutationId>, Serializable
         return Integer.compare(node, o.node);
     }
 
+    public void failIfNotNone()
+    {
+        if (!isNone())
+            throw new RuntimeException("TODO: add support for mutation ids");
+    }
 
     public static MutationId create(int node, long timestamp)
     {

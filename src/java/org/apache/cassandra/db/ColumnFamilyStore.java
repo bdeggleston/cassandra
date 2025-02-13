@@ -1459,7 +1459,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
      * @param context write context for current update
      * @param updateIndexes whether secondary indexes should be updated
      */
-    public void apply(PartitionUpdate update, CassandraWriteContext context, boolean updateIndexes)
+    public void apply(MutationId mutationId, PartitionUpdate update, CassandraWriteContext context, boolean updateIndexes)
 
     {
         long start = nanoTime();
@@ -1469,7 +1469,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         {
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
             UpdateTransaction indexer = newUpdateTransaction(update, context, updateIndexes, mt);
-            long timeDelta = mt.put(update, indexer, opGroup);
+            long timeDelta = mt.put(mutationId, update, indexer, opGroup);
             DecoratedKey key = update.partitionKey();
             invalidateCachedPartition(key);
             metric.topWritePartitionFrequency.addSample(key.getKey(), 1);

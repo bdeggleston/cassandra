@@ -53,6 +53,11 @@ public class MutationIdRanges
         return new MutationIdRanges(MutationId.minNotNone(l.minId, r.minId), MutationId.max(l.maxId, r.maxId));
     }
 
+    public MutationIdRanges add(MutationId mutationId)
+    {
+        return new MutationIdRanges(MutationId.minNotNone(minId, mutationId), MutationId.max(maxId, mutationId));
+    }
+
     public static MutationIdRanges fixme()
     {
         throw new RuntimeException("TODO");

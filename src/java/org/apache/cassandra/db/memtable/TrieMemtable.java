@@ -29,19 +29,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
+import org.apache.cassandra.db.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.BufferDecoratedKey;
-import org.apache.cassandra.db.Clustering;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionInfo;
-import org.apache.cassandra.db.PartitionPosition;
-import org.apache.cassandra.db.RegularAndStaticColumns;
-import org.apache.cassandra.db.Slices;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
@@ -180,12 +172,13 @@ public class TrieMemtable extends AbstractShardedMemtable
      * commitLogSegmentPosition should only be null if this is a secondary index, in which case it is *expected* to be null
      */
     @Override
-    public long put(PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
+    public long put(MutationId mutationId, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
     {
         try
         {
             DecoratedKey key = update.partitionKey();
             MemtableShard shard = shards[boundaries.getShardForKey(key)];
+            mutationId.failIfNotNone();
             long colUpdateTimeDelta = shard.put(key, update, indexer, opGroup);
 
             if (shard.data.reachedAllocatedSizeThreshold() && !switchRequested.getAndSet(true))
