@@ -141,6 +141,12 @@ public class SkipListMemtable extends AbstractAllocatorMemtable
     }
 
     @Override
+    public MutationIdRanges getMutationIdRanges()
+    {
+        return mutationIdCollector.get();
+    }
+
+    @Override
     public MemtableUnfilteredPartitionIterator partitionIterator(final ColumnFilter columnFilter,
                                                                  final DataRange dataRange,
                                                                  SSTableReadsListener readsListener)

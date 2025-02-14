@@ -860,6 +860,12 @@ public class ColumnFamilyStoreTest
             }
 
             @Override
+            public MutationIdRanges getMutationIdRanges()
+            {
+                return MutationIdRanges.NONE;
+            }
+
+            @Override
             public void addMemoryUsageTo(MemoryUsage usage)
             {
             }

@@ -21,6 +21,7 @@ package org.apache.cassandra.db.memtable;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.concurrent.NotThreadSafe;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -199,6 +200,10 @@ public interface Memtable extends Comparable<Memtable>, UnfilteredSource
 
     /** Size of the data not accounting for any metadata / mapping overheads */
     long getLiveDataSize();
+
+    /** Snapshot of the mutation id ranges applied to this memtable */
+    @VisibleForTesting
+    MutationIdRanges getMutationIdRanges();
 
     /**
      * Number of "operations" (in the sense defined in {@link PartitionUpdate#operationCount()}) the memtable has

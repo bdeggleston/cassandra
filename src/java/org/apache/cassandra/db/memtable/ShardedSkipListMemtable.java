@@ -152,6 +152,15 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
         return total;
     }
 
+    @Override
+    public MutationIdRanges getMutationIdRanges()
+    {
+        MutationIdRanges ranges = MutationIdRanges.NONE;
+        for (MemtableShard shard : shards)
+            ranges = ranges.merge(shard.mutationIdCollector.get());
+        return ranges;
+    }
+
     /**
      * Returns the minTS if one available, otherwise NO_MIN_TIMESTAMP.
      *
