@@ -320,6 +320,8 @@ public interface Memtable extends Comparable<Memtable>, UnfilteredSource
         /** Statistics required for writing an sstable efficiently */
         EncodingStats encodingStats();
 
+        MutationIdRanges mutationIdRanges();
+
         default TableMetadata metadata()
         {
             return memtable().metadata();

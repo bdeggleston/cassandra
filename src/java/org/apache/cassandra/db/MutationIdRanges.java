@@ -48,6 +48,11 @@ public class MutationIdRanges
         return new MutationIdRanges(MutationId.minNotNone(this.minId, that.minId), MutationId.max(this.maxId, that.maxId));
     }
 
+    public MutationIdRanges subset(PartitionPosition from, PartitionPosition to)
+    {
+        return this;
+    }
+
     public static MutationIdRanges merge(MutationIdRanges l, MutationIdRanges r)
     {
         return new MutationIdRanges(MutationId.minNotNone(l.minId, r.minId), MutationId.max(l.maxId, r.maxId));

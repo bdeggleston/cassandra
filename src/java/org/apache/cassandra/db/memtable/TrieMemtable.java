@@ -355,6 +355,7 @@ public class TrieMemtable extends AbstractShardedMemtable
         }
         long partitionKeySize = keySize;
         int partitionCount = keyCount;
+        MutationIdRanges mutationIdRanges = mutationIdCollector.get().subset(from, to);
 
         return new AbstractFlushablePartitionSet<MemtablePartition>()
         {
@@ -389,6 +390,12 @@ public class TrieMemtable extends AbstractShardedMemtable
             public long partitionKeysSize()
             {
                 return partitionKeySize;
+            }
+
+            @Override
+            public MutationIdRanges mutationIdRanges()
+            {
+                return mutationIdRanges;
             }
         };
     }

@@ -270,6 +270,7 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
         long partitionKeySize = keySize;
         int partitionCount = keyCount;
         Iterator<AtomicBTreePartition> toFlush = getPartitionIterator(from, true, to,false);
+        MutationIdRanges mutationIdRanges = mutationIdCollector.get().subset(from, to);
 
         return new AbstractFlushablePartitionSet<AtomicBTreePartition>()
         {
@@ -301,6 +302,12 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
             public long partitionKeysSize()
             {
                 return partitionKeySize;
+            }
+
+            @Override
+            public MutationIdRanges mutationIdRanges()
+            {
+                return mutationIdRanges;
             }
         };
     }
