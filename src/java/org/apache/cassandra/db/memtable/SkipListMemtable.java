@@ -123,13 +123,13 @@ public class SkipListMemtable extends AbstractAllocatorMemtable
             }
         }
 
-        mutationId.failIfNotNone();
         BTreePartitionUpdater updater = previous.addAll(update, cloner, opGroup, indexer);
         updateMin(minTimestamp, update.stats().minTimestamp);
         updateMin(minLocalDeletionTime, update.stats().minLocalDeletionTime);
         liveDataSize.addAndGet(initialSize + updater.dataSize);
         columnsCollector.update(update.columns());
         statsCollector.update(update.stats());
+        mutationIdCollector.add(mutationId);
         currentOperations.addAndGet(update.operationCount());
         return updater.colUpdateTimeDelta;
     }

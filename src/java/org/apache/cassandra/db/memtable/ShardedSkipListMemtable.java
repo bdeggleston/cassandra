@@ -118,8 +118,7 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
     {
         DecoratedKey key = update.partitionKey();
         MemtableShard shard = shards[boundaries.getShardForKey(key)];
-        mutationId.failIfNotNone();
-        return shard.put(key, update, indexer, opGroup);
+        return shard.put(mutationId, key, update, indexer, opGroup);
     }
 
     /**
@@ -328,6 +327,7 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
         private final ColumnsCollector columnsCollector;
 
         private final StatsCollector statsCollector;
+        private final MutationIdCollector mutationIdCollector;
 
         @Unmetered  // total pool size should not be included in memtable's deep size
         private final MemtableAllocator allocator;
@@ -339,11 +339,12 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
         {
             this.columnsCollector = new ColumnsCollector(metadata.get().regularAndStaticColumns());
             this.statsCollector = new StatsCollector();
+            this.mutationIdCollector = new MutationIdCollector();
             this.allocator = allocator;
             this.metadata = metadata;
         }
 
-        public long put(DecoratedKey key, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
+        public long put(MutationId mutationId, DecoratedKey key, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
         {
             Cloner cloner = allocator.cloner(opGroup);
             AtomicBTreePartition previous = partitions.get(key);
@@ -372,6 +373,7 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
             liveDataSize.addAndGet(initialSize + updater.dataSize);
             columnsCollector.update(update.columns());
             statsCollector.update(update.stats());
+            mutationIdCollector.add(mutationId);
             currentOperations.addAndGet(update.operationCount());
             return updater.colUpdateTimeDelta;
         }
@@ -481,13 +483,13 @@ public class ShardedSkipListMemtable extends AbstractShardedMemtable
          *
          * commitLogSegmentPosition should only be null if this is a secondary index, in which case it is *expected* to be null
          */
-        public long put(PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
+        public long put(MutationId mutationId, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup)
         {
             DecoratedKey key = update.partitionKey();
             MemtableShard shard = shards[boundaries.getShardForKey(key)];
             synchronized (shard)
             {
-                return shard.put(key, update, indexer, opGroup);
+                return shard.put(mutationId, key, update, indexer, opGroup);
             }
         }
 

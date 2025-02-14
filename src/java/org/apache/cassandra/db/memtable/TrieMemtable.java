@@ -178,8 +178,7 @@ public class TrieMemtable extends AbstractShardedMemtable
         {
             DecoratedKey key = update.partitionKey();
             MemtableShard shard = shards[boundaries.getShardForKey(key)];
-            mutationId.failIfNotNone();
-            long colUpdateTimeDelta = shard.put(key, update, indexer, opGroup);
+            long colUpdateTimeDelta = shard.put(mutationId, key, update, indexer, opGroup);
 
             if (shard.data.reachedAllocatedSizeThreshold() && !switchRequested.getAndSet(true))
             {
@@ -430,6 +429,7 @@ public class TrieMemtable extends AbstractShardedMemtable
         private final ColumnsCollector columnsCollector;
 
         private final StatsCollector statsCollector;
+        private final MutationIdCollector mutationIdCollector;
 
         @Unmetered  // total pool size should not be included in memtable's deep size
         private final MemtableAllocator allocator;
@@ -443,11 +443,12 @@ public class TrieMemtable extends AbstractShardedMemtable
             this.data = new InMemoryTrie<>(BUFFER_TYPE);
             this.columnsCollector = new AbstractMemtable.ColumnsCollector(metadata.get().regularAndStaticColumns());
             this.statsCollector = new AbstractMemtable.StatsCollector();
+            this.mutationIdCollector = new AbstractMemtable.MutationIdCollector();
             this.allocator = allocator;
             this.metrics = metrics;
         }
 
-        public long put(DecoratedKey key, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup) throws InMemoryTrie.SpaceExhaustedException
+        public long put(MutationId mutationId, DecoratedKey key, PartitionUpdate update, UpdateTransaction indexer, OpOrder.Group opGroup) throws InMemoryTrie.SpaceExhaustedException
         {
             BTreePartitionUpdater updater = new BTreePartitionUpdater(allocator, allocator.cloner(opGroup), opGroup, indexer);
             boolean locked = writeLock.tryLock();
@@ -485,6 +486,7 @@ public class TrieMemtable extends AbstractShardedMemtable
 
                     columnsCollector.update(update.columns());
                     statsCollector.update(update.stats());
+                    mutationIdCollector.add(mutationId);
                 }
             }
             finally

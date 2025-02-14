@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.cassandra.db.MutationId;
+import org.apache.cassandra.db.MutationIdRanges;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -44,6 +46,7 @@ public abstract class AbstractMemtable implements Memtable
     protected final AtomicLong currentOperations = new AtomicLong(0);
     protected final ColumnsCollector columnsCollector;
     protected final StatsCollector statsCollector = new StatsCollector();
+    protected final MutationIdCollector mutationIdCollector = new MutationIdCollector();
     // The smallest timestamp for all partitions stored in this memtable
     protected AtomicLong minTimestamp = new AtomicLong(Long.MAX_VALUE);
     // The smallest local deletion time for all partitions in this memtable
@@ -218,6 +221,30 @@ public abstract class AbstractMemtable implements Memtable
         public EncodingStats get()
         {
             return stats.get();
+        }
+    }
+
+    protected static class MutationIdCollector
+    {
+        private final AtomicReference<MutationIdRanges> ranges = new AtomicReference<>(MutationIdRanges.NONE);
+
+        public void add(MutationId mutationId)
+        {
+            if (mutationId.isNone())
+                return;
+
+            while (true)
+            {
+                MutationIdRanges current = ranges.get();
+                MutationIdRanges updated = current.add(mutationId);
+                if (ranges.compareAndSet(current, updated))
+                    return;
+            }
+        }
+
+        public MutationIdRanges get()
+        {
+            return ranges.get();
         }
     }
 
