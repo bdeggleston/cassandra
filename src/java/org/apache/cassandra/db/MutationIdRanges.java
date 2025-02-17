@@ -26,6 +26,15 @@ public class MutationIdRanges
     }
 
     @Override
+    public String toString()
+    {
+        return "MutationIdRanges{" +
+                "minId=" + minId +
+                ", maxId=" + maxId +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object o)
     {
         if (o == null || getClass() != o.getClass()) return false;

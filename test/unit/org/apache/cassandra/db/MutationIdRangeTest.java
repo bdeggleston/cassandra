@@ -21,45 +21,70 @@ package org.apache.cassandra.db;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.lifecycle.View;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.memtable.Memtable;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.schema.ReplicationType;
-import org.apache.cassandra.schema.TableId;
-import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.schema.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@RunWith(Parameterized.class)
 public class MutationIdRangeTest
 {
-    private static final String KS = "ks";
-    private static final String TBL = "tbl";
-    private static TableId cfid;
+    private static final AtomicInteger keyspaceNumber = new AtomicInteger();
+
+    static
+    {
+        DatabaseDescriptor.daemonInitialization();
+    }
 
     @BeforeClass
     public static void setupClass()
     {
         SchemaLoader.prepareServer();
-        TableMetadata tableMetadata = TableMetadata.builder("ks", "tbl")
-                                                   .addPartitionKeyColumn("k", Int32Type.instance)
-                                                   .addRegularColumn("v", Int32Type.instance)
-                                                   .build();
-        cfid = tableMetadata.id;
-        SchemaLoader.createKeyspace(KS, KeyspaceParams.simple(1, ReplicationType.logged), tableMetadata);
+    }
+
+    @Parameter
+    public String memtableConfig;
+
+    @Parameters(name="{0}")
+    public static Collection<String> memtableConfigs()
+    {
+        List<String> memtableConfigs = new ArrayList<>();
+        for (String config : DatabaseDescriptor.getMemtableConfigurations().keySet())
+        {
+            try
+            {
+                MemtableParams.get(config);
+                memtableConfigs.add(config);
+            }
+            catch (ConfigurationException e)
+            {
+                // skip if the config is meant to validate config parsing
+            }
+        }
+
+        memtableConfigs.sort(String.CASE_INSENSITIVE_ORDER);
+        return memtableConfigs;
     }
 
     private static Mutation createMutation(TableMetadata tableMetadata, int k, int v)
     {
         DecoratedKey key = tableMetadata.partitioner.decorateKey(ByteBufferUtil.bytes(1));
-        SimpleBuilders.MutationBuilder builder = new SimpleBuilders.MutationBuilder(KS, key);
+        SimpleBuilders.MutationBuilder builder = new SimpleBuilders.MutationBuilder(tableMetadata.keyspace, key);
         PartitionUpdate.SimpleBuilder partition = builder.update(tableMetadata);
         partition.row().add("v", 1);
         Mutation mutation = builder.build();
@@ -95,15 +120,33 @@ public class MutationIdRangeTest
         Assert.assertEquals(numSSTables, view.liveSSTables().size());
     }
 
+    private static String nextKeyspaceName()
+    {
+        return "ks_" + keyspaceNumber.getAndIncrement();
+    }
+
     /**
      * Test that mutation ids go from the memtable to sstables, and are combined during compaction
      */
     @Test
     public void mutationIdLifecycleTest()
     {
+        String ks = nextKeyspaceName();
+        String tbl = "tbl";
+        TableMetadata tableMetadata = TableMetadata.builder(ks, tbl)
+                                                   .addPartitionKeyColumn("k", Int32Type.instance)
+                                                   .addRegularColumn("v", Int32Type.instance)
+                                                   .build();
+
+        TableParams tableParams = tableMetadata.params;
+        tableParams = tableParams.unbuild().memtable(MemtableParams.get(memtableConfig)).build();
+        tableMetadata = tableMetadata.withSwapped(tableParams);
+
+        SchemaLoader.createKeyspace(ks, KeyspaceParams.simple(1, ReplicationType.logged), tableMetadata);
+
         // TODO: check against all memtable types (David Capwell style)
-        Keyspace keyspace = Keyspace.open(KS);
-        ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(TBL);
+        Keyspace keyspace = Keyspace.open(ks);
+        ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(tbl);
         cfs.disableAutoCompaction();
 
         // pre-apply
