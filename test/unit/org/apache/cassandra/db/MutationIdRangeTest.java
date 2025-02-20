@@ -84,7 +84,7 @@ public class MutationIdRangeTest
     private static Mutation createMutation(TableMetadata tableMetadata, int k, int v)
     {
         DecoratedKey key = tableMetadata.partitioner.decorateKey(ByteBufferUtil.bytes(1));
-        SimpleBuilders.MutationBuilder builder = new SimpleBuilders.MutationBuilder(tableMetadata.keyspace, key);
+        SimpleBuilders.MutationBuilder builder = new SimpleBuilders.MutationBuilder(MutationId.createFor(tableMetadata), tableMetadata.keyspace, key);
         PartitionUpdate.SimpleBuilder partition = builder.update(tableMetadata);
         partition.row().add("v", 1);
         Mutation mutation = builder.build();
