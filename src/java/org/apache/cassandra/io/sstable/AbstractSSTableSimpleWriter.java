@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.MutationIdRanges;
@@ -66,6 +67,9 @@ abstract class AbstractSSTableSimpleWriter implements Closeable
         this.columns = columns;
         indexGroups = new ArrayList<>();
     }
+
+    @VisibleForTesting
+    public abstract long bytesWritten();
 
     protected void setSSTableFormatType(SSTableFormat<?, ?> type)
     {

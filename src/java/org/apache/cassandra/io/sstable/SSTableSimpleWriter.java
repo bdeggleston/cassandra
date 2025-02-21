@@ -157,4 +157,10 @@ class SSTableSimpleWriter extends AbstractSSTableSimpleWriter
     {
         getOrCreateWriter().append(update.unfilteredIterator());
     }
+
+    @Override
+    public long bytesWritten()
+    {
+        return writer.getBytesWritten();
+    }
 }

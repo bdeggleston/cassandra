@@ -77,6 +77,11 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         return writer.getOnDiskBytesWritten();
     }
 
+    public long getBytesWritten()
+    {
+        return writer.getBytesWritten();
+    }
+
     protected Throwable doCommit(Throwable accumulate)
     {
         return writer.commit(txn.commit(accumulate));
