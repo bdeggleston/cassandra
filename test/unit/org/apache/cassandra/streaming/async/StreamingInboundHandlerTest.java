@@ -21,6 +21,7 @@ package org.apache.cassandra.streaming.async;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.distributed.test.tracking.MutationTrackingUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -30,7 +31,6 @@ import org.junit.Test;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
@@ -65,7 +65,7 @@ public class StreamingInboundHandlerTest
     @BeforeClass
     public static void before()
     {
-        DatabaseDescriptor.daemonInitialization();
+        SchemaLoader.prepareServer();
     }
 
     @Before
