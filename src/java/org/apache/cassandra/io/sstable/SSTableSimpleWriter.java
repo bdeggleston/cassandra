@@ -161,6 +161,6 @@ class SSTableSimpleWriter extends AbstractSSTableSimpleWriter
     @Override
     public long bytesWritten()
     {
-        return writer.getBytesWritten();
+        return writer != null ? writer.getBytesWritten() : 0;
     }
 }
