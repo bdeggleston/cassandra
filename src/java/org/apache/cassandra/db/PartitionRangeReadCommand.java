@@ -404,7 +404,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
     }
 
     @Override
-    public UnfilteredPartitionIterator augmentResultWithMutations(UnfilteredPartitionIterator result, Collection<Mutation> mutations)
+    UnfilteredPartitionIterator augmentResultWithMutationsInternal(UnfilteredPartitionIterator result, Collection<Mutation> mutations)
     {
         if (mutations.isEmpty())
             return result;

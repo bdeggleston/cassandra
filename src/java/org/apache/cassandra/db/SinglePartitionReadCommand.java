@@ -851,7 +851,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     }
 
     @Override
-    public UnfilteredPartitionIterator augmentResultWithMutations(UnfilteredPartitionIterator result, Collection<Mutation> mutations)
+    public UnfilteredPartitionIterator augmentResultWithMutationsInternal(UnfilteredPartitionIterator result, Collection<Mutation> mutations)
     {
         if (mutations.isEmpty())
             return result;

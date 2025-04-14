@@ -460,11 +460,6 @@ public abstract class ReadCommand extends AbstractReadQuery
 
     protected abstract UnfilteredPartitionIterator queryStorage(ColumnFamilyStore cfs, ReadExecutionController executionController);
 
-    /**
-     * Used by TrackedReadReconciliation, applies missing mutations to a read result
-     */
-    public abstract UnfilteredPartitionIterator augmentResultWithMutations(UnfilteredPartitionIterator result, Collection<Mutation> mutations);
-
     public abstract UnfilteredPartitionIterator queryJournal(Collection<ShortMutationId> mutationIds);
 
     protected abstract MutationSummary createMutationSummaryInternal(boolean includePending);
@@ -546,6 +541,44 @@ public abstract class ReadCommand extends AbstractReadQuery
         }
     }
 
+    private UnfilteredPartitionIterator filterAndLimitResult(ReadExecutionController executionController, Index.Searcher searcher, UnfilteredPartitionIterator iterator)
+    {
+
+        // If we've used a 2ndary index, we know the result already satisfy the primary expression used, so
+        // no point in checking it again.
+        RowFilter filter = (null == searcher) ? rowFilter() : indexQueryPlan.postIndexQueryFilter();
+
+        /*
+         * TODO: We'll currently do filtering by the rowFilter here because it's convenient. However,
+         * we'll probably want to optimize by pushing it down the layer (like for dropped columns) as it
+         * would be more efficient (the sooner we discard stuff we know we don't care, the less useless
+         * processing we do on it).
+         */
+        iterator = filter.filter(iterator, nowInSec());
+
+        // apply the limits/row counter; this transformation is stopping and would close the iterator as soon
+        // as the count is observed; if that happens in the middle of an open RT, its end bound will not be included.
+        // If tracking repaired data, the counter is needed for overreading repaired data, otherwise we can
+        // optimise the case where this.limit = DataLimits.NONE which skips an unnecessary transform
+        if (executionController != null && executionController.isTrackingRepairedStatus())
+        {
+            DataLimits.Counter limit =
+                    limits().newCounter(nowInSec(), false, selectsFullPartition(), metadata().enforceStrictLiveness());
+            iterator = limit.applyTo(iterator);
+            // ensure that a consistent amount of repaired data is read on each replica. This causes silent
+            // overreading from the repaired data set, up to limits(). The extra data is not visible to
+            // the caller, only iterated to produce the repaired data digest.
+            iterator = executionController.getRepairedDataInfo().extend(iterator, limit);
+        }
+        else
+        {
+            iterator = limits().filter(iterator, nowInSec(), selectsFullPartition());
+        }
+
+        // because of the above, we need to append an aritifical end bound if the source iterator was stopped short by a counter.
+        return RTBoundCloser.close(iterator);
+    }
+
     /**
      * Executes this command on the local host.
      *
@@ -595,39 +628,7 @@ public abstract class ReadCommand extends AbstractReadQuery
                 iterator = RTBoundValidator.validate(withoutPurgeableTombstones(iterator, cfs, executionController), Stage.PURGED, false);
                 iterator = withMetricsRecording(iterator, cfs.metric, startTimeNanos);
 
-                // If we've used a 2ndary index, we know the result already satisfy the primary expression used, so
-                // no point in checking it again.
-                RowFilter filter = (null == searcher) ? rowFilter() : indexQueryPlan.postIndexQueryFilter();
-
-                /*
-                 * TODO: We'll currently do filtering by the rowFilter here because it's convenient. However,
-                 * we'll probably want to optimize by pushing it down the layer (like for dropped columns) as it
-                 * would be more efficient (the sooner we discard stuff we know we don't care, the less useless
-                 * processing we do on it).
-                 */
-                iterator = filter.filter(iterator, nowInSec());
-
-                // apply the limits/row counter; this transformation is stopping and would close the iterator as soon
-                // as the count is observed; if that happens in the middle of an open RT, its end bound will not be included.
-                // If tracking repaired data, the counter is needed for overreading repaired data, otherwise we can
-                // optimise the case where this.limit = DataLimits.NONE which skips an unnecessary transform
-                if (executionController.isTrackingRepairedStatus())
-                {
-                    DataLimits.Counter limit =
-                    limits().newCounter(nowInSec(), false, selectsFullPartition(), metadata().enforceStrictLiveness());
-                    iterator = limit.applyTo(iterator);
-                    // ensure that a consistent amount of repaired data is read on each replica. This causes silent
-                    // overreading from the repaired data set, up to limits(). The extra data is not visible to
-                    // the caller, only iterated to produce the repaired data digest.
-                    iterator = executionController.getRepairedDataInfo().extend(iterator, limit);
-                }
-                else
-                {
-                    iterator = limits().filter(iterator, nowInSec(), selectsFullPartition());
-                }
-
-                // because of the above, we need to append an aritifical end bound if the source iterator was stopped short by a counter.
-                return RTBoundCloser.close(iterator);
+                return filterAndLimitResult(executionController, searcher, iterator);
             }
             catch (RuntimeException | Error e)
             {
@@ -639,6 +640,20 @@ public abstract class ReadCommand extends AbstractReadQuery
         {
             COMMAND.set(null);
         }
+    }
+
+    /**
+     * Used by TrackedReadReconciliation, applies missing mutations to a read result
+     */
+    abstract UnfilteredPartitionIterator augmentResultWithMutationsInternal(UnfilteredPartitionIterator result, Collection<Mutation> mutations);
+
+    public final UnfilteredPartitionIterator augmentResultWithMutations(UnfilteredPartitionIterator result, Collection<Mutation> mutations)
+    {
+        if (mutations.isEmpty())
+            return result;
+
+        result = augmentResultWithMutationsInternal(result, mutations);
+        return filterAndLimitResult(null, null, result);
     }
 
     protected abstract void recordLatency(TableMetrics metric, long latencyNanos);
