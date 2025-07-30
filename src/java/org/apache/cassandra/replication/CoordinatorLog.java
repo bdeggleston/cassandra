@@ -253,12 +253,10 @@ public abstract class CoordinatorLog
     static class CoordinatorLogPrimary extends CoordinatorLog
     {
         private final AtomicLong sequenceId = new AtomicLong(-1);
-        private final UnreconciledMutations unreconciledMutations;
 
         CoordinatorLogPrimary(int localHostId, CoordinatorLogId logId, Participants participants)
         {
             super(localHostId, logId, participants);
-            unreconciledMutations = new UnreconciledMutations();
         }
 
         @Override
