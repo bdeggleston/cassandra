@@ -46,18 +46,24 @@ import static org.apache.cassandra.utils.concurrent.Semaphore.newSemaphore;
 // TODO (expected): handle temporarily down nodes
 public final class ActiveLogReconciler implements Shutdownable
 {
-    private final Interruptible executor =
-        executorFactory().infiniteLoop("Active-Log-Reconciler", new SendRunnable(), SAFE, NON_DAEMON, SYNCHRONIZED);
-
     public enum Priority { HIGH, REGULAR }
 
-    private final Semaphore haveWork = newSemaphore(1);
-
     // prioritised delivery of mutations that are needed by reads;
-    private final ManyToOneConcurrentLinkedQueue<Task> highPriorityTasks = new ManyToOneConcurrentLinkedQueue<>();
+    private final ManyToOneConcurrentLinkedQueue<Task> highPriorityTasks;
 
     // regular write retries
-    private final ManyToOneConcurrentLinkedQueue<Task> regularPriorityTasks = new ManyToOneConcurrentLinkedQueue<>();
+    private final ManyToOneConcurrentLinkedQueue<Task> regularPriorityTasks;
+
+    private final Interruptible executor;
+    private final Semaphore haveWork;
+
+    ActiveLogReconciler()
+    {
+        highPriorityTasks = new ManyToOneConcurrentLinkedQueue<>();
+        regularPriorityTasks = new ManyToOneConcurrentLinkedQueue<>();
+        haveWork = newSemaphore(1);
+        executor = executorFactory().infiniteLoop("Active-Log-Reconciler", new SendRunnable(), SAFE, NON_DAEMON, SYNCHRONIZED);
+    }
 
     /**
      * Schedule delivery of a mutation to the specified host
