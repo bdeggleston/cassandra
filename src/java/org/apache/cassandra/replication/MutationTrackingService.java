@@ -133,20 +133,23 @@ public class MutationTrackingService
     public void sentWriteRequest(Mutation mutation, IntHashSet toHostIds)
     {
         Preconditions.checkArgument(!mutation.id().isNone());
-        outgoingMutations.sentWriteRequest(mutation, toHostIds);
+//        outgoingMutations.sentWriteRequest(mutation, toHostIds);
     }
 
     public void receivedWriteResponse(ShortMutationId mutationId, InetAddressAndPort fromHost)
     {
         Preconditions.checkArgument(!mutationId.isNone());
-        getShard(mutationId).receivedWriteResponse(mutationId, fromHost);
-        outgoingMutations.receivedWriteResponse(mutationId, ClusterMetadata.current().directory.peerId(fromHost).id());
+        Shard shard = getShardNullable(mutationId);
+        // A response to the coordinator (for a forwarded write) won't have the coordinator log matching it
+        if (shard != null)
+            shard.receivedWriteResponse(mutationId, fromHost);
+//        outgoingMutations.receivedWriteResponse(mutationId, ClusterMetadata.current().directory.peerId(fromHost).id());
     }
 
     public void retryFailedWrite(ShortMutationId mutationId, InetAddressAndPort onHost, RequestFailureReason reason)
     {
         Preconditions.checkArgument(!mutationId.isNone());
-        outgoingMutations.writeFailed(mutationId, reason, onHost);
+//        outgoingMutations.writeFailed(mutationId, reason, onHost);
         activeReconciler.schedule(mutationId, onHost, ActiveLogReconciler.Priority.REGULAR);
     }
 
