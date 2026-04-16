@@ -141,6 +141,7 @@ import org.apache.cassandra.service.accord.fastpath.SimpleFastPathStrategy;
 import org.apache.cassandra.service.consensus.TransactionalMode;
 import org.apache.cassandra.service.consensus.migration.ConsensusMigrationState;
 import org.apache.cassandra.service.replication.migration.MutationTrackingMigrationState;
+import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.extensions.ExtensionKey;
@@ -1985,9 +1986,10 @@ public final class CassandraGenerators
                 InProgressSequences inProgressSequences = InProgressSequences.EMPTY;
                 ConsensusMigrationState consensusMigrationState = ConsensusMigrationState.EMPTY;
                 MutationTrackingMigrationState mutationTrackingMigrationState = MutationTrackingMigrationState.EMPTY;
+                SatelliteFailoverProcessState satelliteFailoverState = SatelliteFailoverProcessState.EMPTY;
                 Map<ExtensionKey<?, ?>, ExtensionValue<?>> extensions = ImmutableMap.of();
                 AccordStaleReplicas accordStaleReplicas = accordStaleReplicasGen.generate(rnd);
-                return new ClusterMetadata(epoch, partitioner, schema, directory, tokenMap, placements, accordFastPath, lockedRanges, inProgressSequences, consensusMigrationState, mutationTrackingMigrationState, extensions, accordStaleReplicas);
+                return new ClusterMetadata(epoch, partitioner, schema, directory, tokenMap, placements, accordFastPath, lockedRanges, inProgressSequences, consensusMigrationState, mutationTrackingMigrationState, satelliteFailoverState, extensions, accordStaleReplicas);
             };
         }
     }

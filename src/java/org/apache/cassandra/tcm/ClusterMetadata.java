@@ -68,6 +68,7 @@ import org.apache.cassandra.service.accord.AccordTopology;
 import org.apache.cassandra.service.consensus.migration.ConsensusMigrationState;
 import org.apache.cassandra.service.consensus.migration.TableMigrationState;
 import org.apache.cassandra.service.replication.migration.MutationTrackingMigrationState;
+import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
 import org.apache.cassandra.tcm.extensions.ExtensionKey;
 import org.apache.cassandra.tcm.extensions.ExtensionValue;
 import org.apache.cassandra.tcm.membership.Directory;
@@ -113,6 +114,7 @@ public class ClusterMetadata
     public final InProgressSequences inProgressSequences;
     public final ConsensusMigrationState consensusMigrationState;
     public final MutationTrackingMigrationState mutationTrackingMigrationState;
+    public final SatelliteFailoverProcessState satelliteFailoverState;
     public final ImmutableMap<ExtensionKey<?,?>, ExtensionValue<?>> extensions;
     public final AccordStaleReplicas accordStaleReplicas;
 
@@ -152,6 +154,7 @@ public class ClusterMetadata
              InProgressSequences.EMPTY,
              ConsensusMigrationState.EMPTY,
              MutationTrackingMigrationState.EMPTY,
+             SatelliteFailoverProcessState.EMPTY,
              ImmutableMap.of(),
              AccordStaleReplicas.EMPTY);
     }
@@ -167,6 +170,7 @@ public class ClusterMetadata
                            InProgressSequences inProgressSequences,
                            ConsensusMigrationState consensusMigrationState,
                            MutationTrackingMigrationState mutationTrackingMigrationState,
+                           SatelliteFailoverProcessState satelliteFailoverState,
                            Map<ExtensionKey<?, ?>, ExtensionValue<?>> extensions,
                            AccordStaleReplicas accordStaleReplicas)
     {
@@ -182,6 +186,7 @@ public class ClusterMetadata
              inProgressSequences,
              consensusMigrationState,
              mutationTrackingMigrationState,
+             satelliteFailoverState,
              extensions,
              accordStaleReplicas);
     }
@@ -198,6 +203,7 @@ public class ClusterMetadata
                            InProgressSequences inProgressSequences,
                            ConsensusMigrationState consensusMigrationState,
                            MutationTrackingMigrationState mutationTrackingMigrationState,
+                           SatelliteFailoverProcessState satelliteFailoverState,
                            Map<ExtensionKey<?, ?>, ExtensionValue<?>> extensions,
                            AccordStaleReplicas accordStaleReplicas)
     {
@@ -217,6 +223,7 @@ public class ClusterMetadata
         this.inProgressSequences = inProgressSequences;
         this.consensusMigrationState = consensusMigrationState;
         this.mutationTrackingMigrationState = mutationTrackingMigrationState;
+        this.satelliteFailoverState = satelliteFailoverState;
         this.extensions = ImmutableMap.copyOf(extensions);
         this.locator = Locator.usingDirectory(directory);
         this.accordStaleReplicas = accordStaleReplicas;
@@ -276,6 +283,7 @@ public class ClusterMetadata
                                    capLastModified(inProgressSequences, epoch),
                                    capLastModified(consensusMigrationState, epoch),
                                    capLastModified(mutationTrackingMigrationState, epoch),
+                                   capLastModified(satelliteFailoverState, epoch),
                                    capLastModified(extensions, epoch),
                                    capLastModified(accordStaleReplicas, epoch));
     }
@@ -300,6 +308,7 @@ public class ClusterMetadata
                                    inProgressSequences,
                                    consensusMigrationState,
                                    mutationTrackingMigrationState,
+                                   satelliteFailoverState,
                                    extensions,
                                    accordStaleReplicas);
     }
@@ -480,6 +489,7 @@ public class ClusterMetadata
         private InProgressSequences inProgressSequences;
         private ConsensusMigrationState consensusMigrationState;
         private MutationTrackingMigrationState mutationTrackingMigrationState;
+        private SatelliteFailoverProcessState satelliteFailoverState;
         private final Map<ExtensionKey<?, ?>, ExtensionValue<?>> extensions;
         private final Set<MetadataKey> modifiedKeys;
         private AccordStaleReplicas accordStaleReplicas;
@@ -498,6 +508,7 @@ public class ClusterMetadata
             this.inProgressSequences = metadata.inProgressSequences;
             this.consensusMigrationState = metadata.consensusMigrationState;
             this.mutationTrackingMigrationState = metadata.mutationTrackingMigrationState;
+            this.satelliteFailoverState = metadata.satelliteFailoverState;
             extensions = new HashMap<>(metadata.extensions);
             modifiedKeys = new HashSet<>();
             accordStaleReplicas = metadata.accordStaleReplicas;
@@ -705,6 +716,12 @@ public class ClusterMetadata
             return this;
         }
 
+        public Transformer with(SatelliteFailoverProcessState satelliteFailoverState)
+        {
+            this.satelliteFailoverState = satelliteFailoverState;
+            return this;
+        }
+
         public Transformer with(ExtensionKey<?, ?> key, ExtensionValue<?> obj)
         {
             if (MetadataKeys.CORE_METADATA.containsKey(key))
@@ -818,6 +835,12 @@ public class ClusterMetadata
                 mutationTrackingMigrationState = mutationTrackingMigrationState.withLastModified(epoch);
             }
 
+            if (satelliteFailoverState != base.satelliteFailoverState)
+            {
+                modifiedKeys.add(MetadataKeys.SATELLITE_FAILOVER_STATE);
+                satelliteFailoverState = satelliteFailoverState.withLastModified(epoch);
+            }
+
             if (consensusMigrationState != base.consensusMigrationState || schema != base.schema)
             {
                 consensusMigrationState.validateAgainstSchema(schema);
@@ -840,6 +863,7 @@ public class ClusterMetadata
                                                        inProgressSequences,
                                                        consensusMigrationState,
                                                        mutationTrackingMigrationState,
+                                                       satelliteFailoverState,
                                                        extensions,
                                                        accordStaleReplicas),
                                    ImmutableSet.copyOf(modifiedKeys));
@@ -859,6 +883,7 @@ public class ClusterMetadata
                                        inProgressSequences,
                                        consensusMigrationState,
                                        mutationTrackingMigrationState,
+                                       satelliteFailoverState,
                                        extensions,
                     accordStaleReplicas);
         }
@@ -1126,6 +1151,8 @@ public class ClusterMetadata
             }
             if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
                 MutationTrackingMigrationState.serializer.serialize(metadata.mutationTrackingMigrationState, out, version);
+            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
+                SatelliteFailoverProcessState.serializer.serialize(metadata.satelliteFailoverState, out, version);
 
             LockedRanges.serializer.serialize(metadata.lockedRanges, out, version);
             InProgressSequences.serializer.serialize(metadata.inProgressSequences, out, version);
@@ -1193,6 +1220,16 @@ public class ClusterMetadata
                 mutationTrackingMigrationState = MutationTrackingMigrationState.EMPTY;
             }
 
+            SatelliteFailoverProcessState satelliteFailoverState;
+            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
+            {
+                satelliteFailoverState = SatelliteFailoverProcessState.serializer.deserialize(in, version);
+            }
+            else
+            {
+                satelliteFailoverState = SatelliteFailoverProcessState.EMPTY;
+            }
+
             LockedRanges lockedRanges = LockedRanges.serializer.deserialize(in, version);
             InProgressSequences ips = InProgressSequences.serializer.deserialize(in, version);
             int items = in.readInt();
@@ -1216,6 +1253,7 @@ public class ClusterMetadata
                                        ips,
                                        consensusMigrationState,
                                        mutationTrackingMigrationState,
+                                       satelliteFailoverState,
                                        extensions,
                                        staleReplicas);
         }
@@ -1265,6 +1303,8 @@ public class ClusterMetadata
 
             if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
                 size += MutationTrackingMigrationState.serializer.serializedSize(metadata.mutationTrackingMigrationState, version);
+            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
+                size += SatelliteFailoverProcessState.serializer.serializedSize(metadata.satelliteFailoverState, version);
 
             size += LockedRanges.serializer.serializedSize(metadata.lockedRanges, version) +
                     InProgressSequences.serializer.serializedSize(metadata.inProgressSequences, version);

@@ -18,6 +18,7 @@
 package org.apache.cassandra.locator;
 
 import java.net.InetAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -28,24 +29,32 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.schema.AlterSchemaStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.dht.Murmur3Partitioner.LongToken;
+import org.apache.cassandra.dht.NormalizedRanges;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.distributed.test.log.ClusterMetadataTestHelper;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.paxos.Ballot;
 import org.apache.cassandra.service.paxos.Commit;
 import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.service.paxos.SatellitePaxosParticipants;
 import org.apache.cassandra.service.reads.tracked.TrackedRead;
 import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tcm.transformations.AdvanceSatelliteFailoverState;
+import org.apache.cassandra.tcm.transformations.AlterSchema;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
@@ -75,10 +84,8 @@ public class SatellitePaxosFailoverTest extends SatelliteReplicationStrategyTest
     public void testShouldRejectPaxosReturnsTrueDuringTransitionAck() throws Exception
     {
         createDualDCKeyspace("dc1");
+        alterKeyspacePrimary(DUAL_DC_KEYSPACE, "dc2");
         SatelliteReplicationStrategy strategy = getSRS(DUAL_DC_KEYSPACE);
-
-        strategy.setFailoverState(SatelliteFailoverState.FailoverStateMap.allRanges(
-            SatelliteFailoverState.FailoverInfo.transitionAck("dc1")));
 
         assertTrue("Should reject paxos during TRANSITION_ACK", strategy.shouldRejectPaxos(TOKEN));
     }
@@ -107,12 +114,16 @@ public class SatellitePaxosFailoverTest extends SatelliteReplicationStrategyTest
     public void testShouldRejectPaxosReturnsFalseDuringTransition() throws Exception
     {
         // Local node is in dc1 and dc1 is the new primary during TRANSITION — should allow
-        createDualDCKeyspace("dc1");
+        createDualDCKeyspace("dc2");
+        alterKeyspacePrimary(DUAL_DC_KEYSPACE, "dc1");
+        // Advance to TRANSITION
+        Token min = DatabaseDescriptor.getPartitioner().getMinimumToken();
+        NormalizedRanges<Token> fullRange = NormalizedRanges.normalizedRanges(
+            Collections.singleton(new Range<>(min, min)));
+        ClusterMetadataTestHelper.commit(new AdvanceSatelliteFailoverState(
+        DUAL_DC_KEYSPACE, fullRange, AdvanceSatelliteFailoverState.TargetState.TRANSITION));
+
         SatelliteReplicationStrategy strategy = getSRS(DUAL_DC_KEYSPACE);
-
-        strategy.setFailoverState(SatelliteFailoverState.FailoverStateMap.allRanges(
-            SatelliteFailoverState.FailoverInfo.transition("dc2")));
-
         assertFalse("Should not reject paxos during TRANSITION when in primary DC", strategy.shouldRejectPaxos(TOKEN));
     }
 
@@ -126,11 +137,9 @@ public class SatellitePaxosFailoverTest extends SatelliteReplicationStrategyTest
     @Test
     public void testPaxosParticipantsRejectedDuringTransitionAck() throws Exception
     {
-        createDualDCKeyspace("dc2");
+        createDualDCKeyspace("dc1");
+        alterKeyspacePrimary(DUAL_DC_KEYSPACE, "dc2");
         SatelliteReplicationStrategy strategy = getSRS(DUAL_DC_KEYSPACE);
-
-        strategy.setFailoverState(SatelliteFailoverState.FailoverStateMap.allRanges(
-            SatelliteFailoverState.FailoverInfo.transitionAck("dc1")));
 
         try
         {
@@ -159,11 +168,9 @@ public class SatellitePaxosFailoverTest extends SatelliteReplicationStrategyTest
     @Test
     public void testSendPaxosCommitMutationsRejectedDuringTransitionAck() throws Exception
     {
-        createDualDCKeyspace("dc2");
+        createDualDCKeyspace("dc1");
+        alterKeyspacePrimary(DUAL_DC_KEYSPACE, "dc2");
         SatelliteReplicationStrategy strategy = getSRS(DUAL_DC_KEYSPACE);
-
-        strategy.setFailoverState(SatelliteFailoverState.FailoverStateMap.allRanges(
-            SatelliteFailoverState.FailoverInfo.transitionAck("dc1")));
 
         TableMetadata table = tableMetadata(DUAL_DC_KEYSPACE);
         DecoratedKey key = table.partitioner.decorateKey(bytes("test_key"));
@@ -284,6 +291,21 @@ public class SatellitePaxosFailoverTest extends SatelliteReplicationStrategyTest
         spp.onPrepareStarted(new TrackedRead.Id(1, 100L), 42, new int[] { 1, 2, 3 }, null);
 
         assertEquals(0, captured.size());
+    }
+
+    private void alterKeyspacePrimary(String keyspace, String newPrimary) throws Exception
+    {
+        String cql = "ALTER KEYSPACE " + keyspace + " WITH replication = {" +
+                     "'class': 'SatelliteReplicationStrategy', " +
+                     "'dc1': '3', " +
+                     "'dc1.satellite.sat1': '3/3', " +
+                     "'dc2': '3', " +
+                     "'dc2.satellite.sat2': '3/3', " +
+                     "'primary': '" + newPrimary + "'" +
+                     "} AND replication_type = 'tracked'";
+        AlterSchemaStatement stmt = (AlterSchemaStatement) QueryProcessor.parseStatement(cql)
+            .prepare(ClientState.forInternalCalls());
+        ClusterMetadataTestHelper.commit(new AlterSchema(stmt));
     }
 
     private static class MessageCapture

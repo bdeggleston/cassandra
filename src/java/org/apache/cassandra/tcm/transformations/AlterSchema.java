@@ -62,6 +62,9 @@ import org.apache.cassandra.schema.ViewMetadata;
 import org.apache.cassandra.schema.Views;
 import org.apache.cassandra.service.consensus.migration.ConsensusMigrationState;
 import org.apache.cassandra.service.replication.migration.MutationTrackingMigrationState;
+import org.apache.cassandra.locator.SatelliteReplicationStrategy;
+import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
+import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.ClusterMetadata.Transformer;
 import org.apache.cassandra.tcm.ClusterMetadataService;
@@ -259,6 +262,7 @@ public class AlterSchema implements Transformation
         }
         next = maybeUpdateConsensusMigrationState(prev.consensusMigrationState, next, diff.altered, diff.dropped);
         next = maybeUpdateMutationTrackingMigrationState(nextEpoch, prev.mutationTrackingMigrationState, next, diff.altered, diff.dropped);
+        next = maybeUpdateSatelliteFailoverState(prev.satelliteFailoverState, next, diff.altered, diff.dropped);
         return Transformation.success(next, LockedRanges.AffectedRanges.EMPTY);
     }
 
@@ -397,6 +401,73 @@ public class AlterSchema implements Transformation
 
         if (migrationState != prev)
             next = next.with(migrationState);
+
+        return next;
+    }
+
+    /**
+     * Detect primary DC changes in satellite replication keyspaces and initialize failover state.
+     * Also cleans up failover state for dropped keyspaces or keyspaces that changed away from SRS.
+     * Validates that no concurrent transfer is in progress and that the source DC has a satellite.
+     */
+    public static Transformer maybeUpdateSatelliteFailoverState(SatelliteFailoverProcessState prev,
+                                                                Transformer next,
+                                                                ImmutableList<KeyspaceDiff> altered,
+                                                                Keyspaces dropped)
+    {
+        SatelliteFailoverProcessState failoverState = prev;
+
+        // Clean up failover state for dropped keyspaces
+        for (KeyspaceMetadata ks : dropped)
+        {
+            if (failoverState.hasActiveTransfer(ks.name))
+            {
+                logger.info("Cleaning up satellite failover state for dropped keyspace {}", ks.name);
+                failoverState = failoverState.withoutKeyspace(ks.name);
+            }
+        }
+
+        for (KeyspaceDiff diff : altered)
+        {
+            // If strategy changed away from SRS, clean up any orphaned failover state
+            if (diff.before.params.replication.klass == SatelliteReplicationStrategy.class
+                && diff.after.params.replication.klass != SatelliteReplicationStrategy.class)
+            {
+                if (failoverState.hasActiveTransfer(diff.before.name))
+                {
+                    logger.info("Cleaning up satellite failover state for keyspace {} (strategy changed away from SRS)", diff.before.name);
+                    failoverState = failoverState.withoutKeyspace(diff.before.name);
+                }
+                continue;
+            }
+
+            // Only applies to SatelliteReplicationStrategy keyspaces
+            if (diff.after.params.replication.klass != SatelliteReplicationStrategy.class)
+                continue;
+
+            String oldPrimary = diff.before.params.replication.options.get("primary");
+            String newPrimary = diff.after.params.replication.options.get("primary");
+
+            if (oldPrimary == null || oldPrimary.equals(newPrimary))
+                continue;
+
+            // don't stomp on in progress transition
+            if (failoverState.hasActiveTransfer(diff.before.name))
+                throw new InvalidRequestException("Cannot change primary DC while failover is in progress for keyspace " + diff.before.name);
+
+            // Initialize failover: full token range into TRANSITION_ACK
+            Token minToken = DatabaseDescriptor.getPartitioner().getMinimumToken();
+            NormalizedRanges<Token> fullRange = NormalizedRanges.normalizedRanges(
+                Collections.singleton(new Range<>(minToken, minToken)));
+
+            failoverState = failoverState.withFailoverInitiated(diff.after.name, oldPrimary, next.epoch(), fullRange);
+
+            logger.info("Initiating satellite failover for keyspace {}: primary {} -> {}",
+                        diff.after.name, oldPrimary, newPrimary);
+        }
+
+        if (failoverState != prev)
+            next = next.with(failoverState);
 
         return next;
     }
