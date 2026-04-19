@@ -188,6 +188,7 @@ public class MutationTrackingService
     private final ReplicatedOffsetsBroadcaster offsetsBroadcaster = new ReplicatedOffsetsBroadcaster();
     private final LogStatePersister offsetsPersister = new LogStatePersister();
     private final ActiveLogReconciler activeReconciler = new ActiveLogReconciler();
+    private final BackgroundReconciler backgroundReconciler = new BackgroundReconciler();
 
     private final IncomingMutations incomingMutations = new IncomingMutations();
     private final OutgoingMutations outgoingMutations = new OutgoingMutations();
@@ -225,6 +226,7 @@ public class MutationTrackingService
 
         offsetsBroadcaster.start();
         offsetsPersister.start();
+        backgroundReconciler.start();
 
         ExpiredStatePurger.instance.register(incomingMutations);
 
@@ -1372,6 +1374,94 @@ public class MutationTrackingService
         return rows.one().getInt("host_log_id");
     }
 
+    private static class BackgroundReconciler
+    {
+        private static final long RECONCILE_INTERVAL_MILLIS = 1_000;
+
+        private volatile boolean isPaused = false;
+
+        void start()
+        {
+            executor.scheduleWithFixedDelay(this::run,
+                                            RECONCILE_INTERVAL_MILLIS,
+                                            RECONCILE_INTERVAL_MILLIS,
+                                            TimeUnit.MILLISECONDS);
+        }
+
+        void run()
+        {
+            MutationTrackingService.instance().forEachKeyspace(this::run);
+        }
+
+        private void run(KeyspaceShards shards)
+        {
+            if (!isPaused)
+                shards.forEachShard(this::run);
+        }
+
+        private void run(Shard shard)
+        {
+            try
+            {
+                List<Offsets.Immutable> missing = shard.collectLocallyMissingOffsets();
+                if (missing.isEmpty()) return;
+
+                for (Offsets.Immutable offsets : missing)
+                {
+                    // Prefer pulling from the coordinator
+                    int coordinatorHostId = offsets.logId().hostId();
+                    InetAddressAndPort coordinator = ClusterMetadata.current().directory.endpoint(new NodeId(coordinatorHostId));
+                    InetAddressAndPort pullFrom = FailureDetector.instance.isAlive(coordinator)
+                                                  ? coordinator
+                                                  : findAliveReplica(shard, coordinatorHostId);
+                    if (pullFrom == null)
+                    {
+                        logger.debug("No coordinator or replica is available to process the pull mutation request for missing offset {}",
+                                     offsets);
+                        continue; // No reachable source
+                    }
+
+                    // TODO (expected): backoff, rate limits, per host and total
+                    PullMutationsRequest request = new PullMutationsRequest(offsets);
+                    logger.trace("Requesting pull mutation request from replica {} for missing offset {}", pullFrom, offsets);
+                    MessagingService.instance().send(Message.out(Verb.PULL_MUTATIONS_REQ, request), pullFrom);
+                }
+            }
+            catch (Throwable throwable)
+            {
+                // Avoid throwing an exception in the reconciliation step to prevent the scheduled task from
+                // being killed
+                logger.error("Exception encountered during background reconciliation of shard={}", shard, throwable);
+            }
+        }
+
+        private InetAddressAndPort findAliveReplica(Shard shard, int excludeHostId)
+        {
+            for (InetAddressAndPort replica : shard.remoteReplicas())
+            {
+                int replicaId = ClusterMetadata.current().directory.peerId(replica).id();
+                if (replicaId != excludeHostId && FailureDetector.instance.isAlive(replica))
+                {
+                    logger.trace("Found alive replica {} with replica id {}", replica, replicaId);
+                    return replica;
+                }
+            }
+            return null;
+        }
+
+        @VisibleForTesting
+        void pauseForTesting()
+        {
+            isPaused = true;
+        }
+
+        @VisibleForTesting
+        void resumeForTesting()
+        {
+            isPaused = false;
+        }
+    }
+
     // TODO (later): a more intelligent heuristic for offsets included in broadcasts
     private static class ReplicatedOffsetsBroadcaster
     {
@@ -1489,6 +1579,24 @@ public class MutationTrackingService
     public void resumeActiveReconciler()
     {
         activeReconciler.resumeForTesting();
+    }
+
+    @VisibleForTesting
+    public void reconcileForTesting()
+    {
+        backgroundReconciler.run();
+    }
+
+    @VisibleForTesting
+    public void pauseBackgroundReconciler()
+    {
+        backgroundReconciler.pauseForTesting();
+    }
+
+    @VisibleForTesting
+    public void resumeBackgroundReconciler()
+    {
+        backgroundReconciler.resumeForTesting();
     }
 
     @VisibleForTesting
