@@ -582,6 +582,13 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
         }
     }
 
+    /**
+     * For the read repair tests we want to disable the background reconciliation process to rely
+     * on the read repair machinery instead.
+     *
+     * @param cluster the cluster for the test
+     * @return the cluster with the background reconciliation process disabled on all instances
+     */
     static Cluster disableBackgroundReconciler(Cluster cluster)
     {
         for (IInvokableInstance instance : cluster)
