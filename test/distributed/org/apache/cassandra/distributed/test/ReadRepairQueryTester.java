@@ -29,6 +29,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import org.apache.cassandra.distributed.Cluster;
+import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.service.reads.repair.ReadRepairStrategy;
 
@@ -124,6 +125,11 @@ public abstract class ReadRepairQueryTester extends TestBaseImpl
                               .withConfig(config -> config.set("read_request_timeout", "1m")
                                                           .set("write_request_timeout", "1m"))
                               .start());
+
+        // Disable background reconciler for read repair tests to avoid having the
+        // background reconciler repair before the read repair takes effect
+        for (int i = 1; i <= NUM_NODES; i++)
+            cluster.get(i).runOnInstance(() -> MutationTrackingService.instance().pauseBackgroundReconciler());
     }
 
     @AfterClass
