@@ -29,7 +29,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import org.apache.cassandra.distributed.Cluster;
-import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.service.reads.repair.ReadRepairStrategy;
 
