@@ -84,6 +84,8 @@ import org.apache.cassandra.audit.AuditLogOptions;
 import org.apache.cassandra.auth.AuthCacheService;
 import org.apache.cassandra.auth.AuthSchemaChangeListener;
 import org.apache.cassandra.batchlog.BatchlogManager;
+import org.apache.cassandra.concurrent.ExecutorFactory;
+import org.apache.cassandra.concurrent.ExecutorPlus;
 import org.apache.cassandra.concurrent.ExecutorLocals;
 import org.apache.cassandra.concurrent.FutureTask;
 import org.apache.cassandra.concurrent.FutureTaskWithResources;
@@ -156,6 +158,8 @@ import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.locator.SnitchAdapter;
 import org.apache.cassandra.locator.SystemReplicas;
+import org.apache.cassandra.locator.satellites.KeyspaceFailoverState;
+import org.apache.cassandra.locator.satellites.SatelliteFailoverProcess;
 import org.apache.cassandra.metrics.Sampler;
 import org.apache.cassandra.metrics.SamplingManager;
 import org.apache.cassandra.metrics.StorageMetrics;
@@ -235,6 +239,7 @@ import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.FutureCombiner;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 import org.apache.cassandra.utils.logging.LoggingSupportFactory;
 import org.apache.cassandra.utils.progress.ProgressEvent;
 import org.apache.cassandra.utils.progress.ProgressEventType;
@@ -1720,6 +1725,88 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         ConsensusMigrationState snapshot = cm.consensusMigrationState;
         Map<String, Object> snapshotAsMap = snapshot.toMap(keyspaceNames, tableNames);
         return pojoMapToString(snapshotAsMap, format);
+    }
+
+    @Override
+    public String advanceSatelliteFailover(@Nonnull String keyspace,
+                                           @Nullable String rangesStr,
+                                           boolean ackOnly,
+                                           boolean barrierOnly,
+                                           boolean force)
+    {
+        List<Range<Token>> ranges;
+        if (rangesStr == null)
+        {
+            ranges = getLocalRanges(keyspace);
+        }
+        else
+        {
+            ranges = new ArrayList<>(RepairOption.parseRanges(rangesStr, DatabaseDescriptor.getPartitioner()));
+            List<Range<Token>> localRanges = getLocalRanges(keyspace);
+            for (Range<Token> r : ranges)
+            {
+                if (localRanges.stream().noneMatch(lr -> lr.contains(r)))
+                    throw new IllegalArgumentException("Range " + r + " is not a local range for keyspace " + keyspace);
+            }
+        }
+
+        if (ranges.isEmpty())
+            throw new IllegalArgumentException("No ranges to process for keyspace " + keyspace);
+
+        ClusterMetadata metadata = ClusterMetadata.current();
+        SatelliteFailoverProcess process = SatelliteFailoverProcess.create(
+            ranges, SharedContext.Global.instance, MessagingService.instance(), metadata, keyspace);
+
+        if (process == null)
+            return "No active satellite failover for keyspace " + keyspace;
+
+        ExecutorPlus executor = ExecutorFactory.Global.executorFactory().pooled("SatelliteFailover-" + keyspace, FBUtilities.getAvailableProcessors());
+        try
+        {
+            Future<?> future = process.start(executor, ackOnly, barrierOnly, force);
+            future.get();
+            return "Satellite failover advanced successfully for keyspace " + keyspace;
+        }
+        catch (ExecutionException e)
+        {
+            throw new RuntimeException("Satellite failover failed for keyspace " + keyspace, e.getCause());
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+            throw new UncheckedInterruptedException();
+        }
+        finally
+        {
+            executor.shutdown();
+            try
+            {
+                executor.awaitTermination(1, MINUTES);
+            }
+            catch (InterruptedException e)
+            {
+                throw new UncheckedInterruptedException(e);
+            }
+        }
+    }
+
+    @Override
+    public String getSatelliteFailoverStatus(@Nonnull String keyspace)
+    {
+        ClusterMetadata metadata = ClusterMetadata.current();
+        KeyspaceFailoverState state = metadata.satelliteFailoverState.getKeyspaceState(keyspace);
+
+        if (state == null)
+            return "No active satellite failover for keyspace " + keyspace;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Satellite Failover Status: ").append(keyspace).append('\n');
+        sb.append("  From DC: ").append(state.fromDC).append('\n');
+        sb.append("  Started at epoch: ").append(state.processStarted).append('\n');
+        state.forEachRange((range, rangeState) -> sb.append("    ").append(range).append(" → ").append(rangeState).append('\n'));
+        sb.append("  Complete: ").append(state.isComplete());
+
+        return sb.toString();
     }
 
     public Map<String,List<Integer>> getConcurrency(List<String> stageNames)

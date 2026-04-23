@@ -486,6 +486,23 @@ public class Paxos
             return get(cfm, key.getToken(), consistency);
         }
 
+        /**
+         * Resolve paxos participants for repair. This is to support SatelliteReplicationStrategy failover, which
+         * only allows paxos repair operations and rejects client paxos operations during part of failover
+         */
+        static Participants getForRepair(TableMetadata table, DecoratedKey key, ConsistencyLevel consistency)
+        {
+            ClusterMetadata metadata = ClusterMetadata.current();
+            AbstractReplicationStrategy strategy = Keyspace.open(table.keyspace).getReplicationStrategy();
+            return strategy.paxosParticipantsForRepair(metadata, table, key.getToken(), consistency, FailureDetector.isReplicaAlive);
+        }
+
+        static Participants getForRepair(ClusterMetadata metadata, TableMetadata table, Token token, ConsistencyLevel consistency, Predicate<Replica> isReplicaAlive)
+        {
+            AbstractReplicationStrategy strategy = Keyspace.open(table.keyspace).getReplicationStrategy();
+            return strategy.paxosParticipantsForRepair(metadata, table, token, consistency, isReplicaAlive);
+        }
+
         int sizeOfPoll()
         {
             return electorateLive.size();

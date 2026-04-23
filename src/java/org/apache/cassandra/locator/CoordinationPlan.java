@@ -87,6 +87,8 @@ public abstract class CoordinationPlan<E extends Endpoints<E>, P extends Replica
 
     public abstract P replicas();
 
+    public abstract CoordinationPlan<E, P> copyWithResetTracker();
+
     /**
      * The response tracker for determining completion/success.
      *
@@ -126,6 +128,12 @@ public abstract class CoordinationPlan<E extends Endpoints<E>, P extends Replica
         {
             return replicas;
         }
+
+        @Override
+        public ForWrite copyWithResetTracker()
+        {
+            return new ForWrite(replicas, responses().resetCopy());
+        }
     }
 
     public static class ForWriteWithIdeal extends CoordinationPlan.ForWrite
@@ -160,6 +168,12 @@ public abstract class CoordinationPlan<E extends Endpoints<E>, P extends Replica
             int blockFor = plan.consistencyLevel().blockFor(plan.replicationStrategy());
             ResponseTracker tracker = new SimpleResponseTracker(blockFor, plan.contacts().size());
             return new ForWriteWithIdeal(metadata, plan, tracker, null);
+        }
+
+        @Override
+        public ForWriteWithIdeal copyWithResetTracker()
+        {
+            return new ForWriteWithIdeal(metadata, replicas(), responses().resetCopy(), ideal.copyWithResetTracker());
         }
     }
 
