@@ -83,6 +83,7 @@ import org.apache.cassandra.distributed.shared.DistributedTestBase;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.service.accord.AccordCache;
 
 import static java.lang.System.currentTimeMillis;
@@ -451,5 +452,22 @@ public class TestBaseImpl extends DistributedTestBase
                 throw new AssertionError("Test failed after flushing node " + i + ":\n" + t, t);
             }
         }
+    }
+
+    /**
+     * Useful for tests that rely on different repair mechanisms, for example for read repair tests
+     * where the test relies on the read repair machinery, we want to explicitly disable the
+     * background reconciliation process.
+     *
+     * @param cluster the cluster for the test
+     * @return the cluster with the background reconciliation process disabled on all instances
+     */
+    public static Cluster disableBackgroundReconciler(Cluster cluster)
+    {
+        for (IInvokableInstance instance : cluster)
+        {
+            instance.runOnInstance(() -> MutationTrackingService.instance().pauseBackgroundReconciler());
+        }
+        return cluster;
     }
 }

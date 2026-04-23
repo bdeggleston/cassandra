@@ -92,7 +92,7 @@ public class TrackedTransferBounceTest extends TrackedTransferTestBase
     {
         IInstanceInitializer initializer = ByteBuddyInjections.SkipActivation.install(1, 2, 3);
 
-        try (Cluster cluster = cluster(config, initializer))
+        try (Cluster cluster = disableBackgroundReconciler(cluster(config, initializer)))
         {
             // Make sure we fail on commit...
             ByteBuddyInjections.SkipActivation.setup(cluster, COMMIT);

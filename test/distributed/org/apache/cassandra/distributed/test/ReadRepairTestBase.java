@@ -54,7 +54,6 @@ import org.apache.cassandra.distributed.api.ConsistencyLevel;
 import org.apache.cassandra.distributed.api.Feature;
 import org.apache.cassandra.distributed.api.ICoordinator;
 import org.apache.cassandra.distributed.api.IInstanceConfig;
-import org.apache.cassandra.distributed.api.IInvokableInstance;
 import org.apache.cassandra.distributed.api.IMessageFilters.Filter;
 import org.apache.cassandra.distributed.api.TokenSupplier;
 import org.apache.cassandra.distributed.shared.NetworkTopology;
@@ -62,7 +61,6 @@ import org.apache.cassandra.distributed.test.accord.AccordTestBase;
 import org.apache.cassandra.distributed.test.tracking.MutationTrackingUtils;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.ReplicaPlan;
-import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.service.consensus.TransactionalMode;
 import org.apache.cassandra.service.reads.repair.BlockingReadRepair;
@@ -580,22 +578,6 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
             assertRows(cluster.coordinator(1).execute(withTable("SELECT * FROM %s WHERE pk=? AND ck>=? AND ck<?;"),
                                                       ConsistencyLevel.ALL, pk, 1L, 3L));
         }
-    }
-
-    /**
-     * For the read repair tests we want to disable the background reconciliation process to rely
-     * on the read repair machinery instead.
-     *
-     * @param cluster the cluster for the test
-     * @return the cluster with the background reconciliation process disabled on all instances
-     */
-    static Cluster disableBackgroundReconciler(Cluster cluster)
-    {
-        for (IInvokableInstance instance : cluster)
-        {
-            instance.runOnInstance(() -> MutationTrackingService.instance().pauseBackgroundReconciler());
-        }
-        return cluster;
     }
 
     public static class RRHelper
