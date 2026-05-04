@@ -368,7 +368,11 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
 
         for (Range<Token> range : ranges)
         {
-            EndpointsForRange endpointsForRange = calculateNaturalReplicas(range.right, metadata);
+            EndpointsForRange endpointsForRange = NetworkTopologyStrategy.calculateNaturalReplicas(range.right,
+                                                                                                   range,
+                                                                                                   metadata.directory,
+                                                                                                   metadata.tokenMap,
+                                                                                                   allDCs);
             builder.withReplicaGroup(VersionedEndpoints.forRange(epoch, endpointsForRange));
         }
 
