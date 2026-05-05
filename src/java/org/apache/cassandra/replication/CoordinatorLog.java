@@ -235,9 +235,9 @@ public abstract class CoordinatorLog
     private void updatePersistedReplicatedOffsets(Offsets offsets, int onNodeId)
     {
         persistedOffsets.get(onNodeId).addAll(offsets);
-        logger.debug("done applying PO, now {}", persistedOffsets);
+        logger.trace("done applying PO, now {}", persistedOffsets);
         reconciledPersistedOffsets.addAll(persistedOffsets.intersection());
-        logger.debug("done applying PRO, now {}", reconciledPersistedOffsets);
+        logger.trace("done applying PRO, now {}", reconciledPersistedOffsets);
     }
 
     public void recordFullyReconciledOffsets(Offsets.Immutable reconciled)
