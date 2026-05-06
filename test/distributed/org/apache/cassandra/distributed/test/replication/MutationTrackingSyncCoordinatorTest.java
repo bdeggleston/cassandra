@@ -227,6 +227,53 @@ public class MutationTrackingSyncCoordinatorTest extends TestBaseImpl
     }
 
     @Test
+    public void testSyncCoordinatorCompletesWhenAlreadyReconciled() throws Throwable
+    {
+        try (Cluster cluster = builder().withNodes(3).start())
+        {
+            createTrackedKeyspace(cluster, "5");
+
+            // Write data at ALL so all replicas have it
+            for (int i = 0; i < 10; i++)
+            {
+                cluster.coordinator(1).execute(
+                    "INSERT INTO " + tableName("5") + " (k, v) VALUES (?, ?)",
+                    ConsistencyLevel.ALL, i, i);
+            }
+
+            // Broadcast offsets so all nodes are aware of each other's state
+            for (int i = 1; i <= 3; i++)
+                cluster.get(i).runOnInstance(() -> MutationTrackingService.instance().broadcastOffsetsForTesting());
+
+            // Give offset broadcasts time to propagate
+            Thread.sleep(1000);
+
+            // Start coordinator - should complete quickly since all replicas are already in sync
+            Boolean completed = cluster.get(1).callOnInstance(() -> {
+                Range<Token> range = fullTokenRange();
+                RepairJobDesc desc = new RepairJobDesc(TimeUUID.Generator.nextTimeUUID(),
+                                                       TimeUUID.Generator.nextTimeUUID(),
+                                                       KS_NAME + '5', "", java.util.List.of(range));
+                MutationTrackingSyncCoordinator coordinator = new MutationTrackingSyncCoordinator(
+                    SharedContext.Global.instance, desc, null, ClusterMetadata.current());
+                coordinator.start();
+
+                try
+                {
+                    coordinator.awaitCompletion();
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    return false;
+                }
+            });
+
+            assertTrue("Sync coordinator should complete when all replicas are already reconciled", completed);
+        }
+    }
+
+    @Test
     public void testSyncCoordinatorCancel() throws Throwable
     {
         try (Cluster cluster = builder().withNodes(3).start())
