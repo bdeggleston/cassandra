@@ -385,10 +385,10 @@ public class Paxos
         private final EndpointsForToken electorateNatural;
         final EndpointsForToken electorateLive;
 
-        final EndpointsForToken all;
-        final EndpointsForToken allLive;
-        final EndpointsForToken allDown;
-        final EndpointsForToken pending;
+        public final EndpointsForToken all;
+        public final EndpointsForToken allLive;
+        public final EndpointsForToken allDown;
+        public final EndpointsForToken pending;
 
         /**
          * The number of responses we require to reach desired consistency from members of {@code contact}

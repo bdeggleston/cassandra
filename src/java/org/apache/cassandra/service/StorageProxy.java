@@ -4366,12 +4366,12 @@ public class StorageProxy implements StorageProxyMBean
 
         // Check if current coordinator is not a replica
         Token tk = key.getToken();
-        EndpointsForToken allReplicas = ReplicaLayout.forTokenWriteLiveAndDown(ClusterMetadata.current(), keyspace, tk)
-                                                     .all();
-        EndpointsForToken liveReplicas = allReplicas.filter(FailureDetector.isReplicaAlive);
 
+        TableMetadata tableMetadata = ksMetadata.getTableNullable(cfName);
+
+        Paxos.Participants participants = Paxos.Participants.get(ClusterMetadata.current(), tableMetadata, tk, consistencyForPaxos);
         InetAddressAndPort localEndpoint = FBUtilities.getBroadcastAddressAndPort();
-        boolean isLocalReplica = allReplicas.contains(localEndpoint);
+        boolean isLocalReplica = participants.all.contains(localEndpoint);
 
         if (isLocalReplica)
             return null; // Local node is a replica, no forwarding needed
@@ -4380,17 +4380,17 @@ public class StorageProxy implements StorageProxyMBean
         if (alreadyForwarded)
         {
             logger.error("Received forwarded CAS for keyspace {} table {} key {} but local node {} is not a replica. Replicas are: {}",
-                        keyspaceName, cfName, key, localEndpoint, allReplicas);
+                        keyspaceName, cfName, key, localEndpoint, participants.all);
             Tracing.trace("ERROR: Received forwarded CAS but local node is not a replica");
             throw new InvalidRequestException("Forwarded CAS received by non-replica node " + localEndpoint);
         }
 
         // Find best replica to forward to using proximity-based selection
-        if (liveReplicas.isEmpty())
+        if (participants.allLive.isEmpty())
             throw new UnavailableException("No live replicas available for CAS forwarding", consistencyForPaxos, 1, 0);
 
         // Sort by proximity and select the best coordinator
-        EndpointsForToken sortedReplicas = DatabaseDescriptor.getNodeProximity().sortedByProximity(localEndpoint, liveReplicas);
+        EndpointsForToken sortedReplicas = DatabaseDescriptor.getNodeProximity().sortedByProximity(localEndpoint, participants.allLive);
         InetAddressAndPort replicaCoordinator = sortedReplicas.get(0).endpoint();
 
         // Create forward request
