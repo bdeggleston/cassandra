@@ -585,7 +585,9 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
 
         // Paxos consensus operates entirely within the primary DC
         Predicate<Replica> inPrimaryDC = rp -> metadata.locator.location(rp.endpoint()).datacenter.equals(primaryDC);
+
         ReplicaLayout.ForTokenWrite primaryAll = liveAndDownLayout.filter(inPrimaryDC);
+        EndpointsForToken primaryLive = liveAndDownLayout.all().filter(inPrimaryDC.and(isReplicaAlive));
 
         // Satellite/secondary DC endpoints for reads during prepare and writes during commit.
         // Only include the primary DC's satellite and other full DCs — not satellites of other DCs.
@@ -607,7 +609,7 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
                                               consistencyForConsensus,
                                               primaryAll,
                                               primaryAll, // DC filtering happens earlier
-                                              live,
+                                              primaryLive,
                                               (cm) -> Paxos.Participants.get(cm, table, token, consistencyForConsensus),
                                               satelliteEndpoints);
     }
