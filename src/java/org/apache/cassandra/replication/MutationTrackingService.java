@@ -49,6 +49,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.DurationSpec;
+import org.apache.cassandra.config.MutationTrackingSpec;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DecoratedKey;
@@ -87,6 +89,7 @@ import org.apache.cassandra.tcm.membership.NodeId;
 import org.apache.cassandra.tcm.ownership.ReplicaGroups;
 import org.apache.cassandra.tcm.ownership.VersionedEndpoints;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.MBeanWrapper;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -96,19 +99,25 @@ import static org.apache.cassandra.cql3.QueryProcessor.executeInternal;
 
 // TODO (expected): persistence (handle restarts)
 // TODO (expected): handle topology changes
-public class MutationTrackingService
+public class MutationTrackingService implements MutationTrackingMBean
 {
+    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=MutationTrackingService";
     public static final String DISABLED_MESSAGE = "Mutation tracking is not enabled. (See mutation_tracking.enabled in cassandra.yaml)";
 
     private static final MutationTrackingService instance;
     private static final ScheduledExecutorPlus executor;
 
+    private static final MutationTrackingSpec config;
+
     static
     {
-        if (DatabaseDescriptor.getMutationTrackingEnabled())
+        config = DatabaseDescriptor.getMutationTrackingConfig();
+
+        if (config.enabled)
         {
             instance = new MutationTrackingService();
             executor = executorFactory().scheduled("Mutation-Tracking-Service", NORMAL);
+            MBeanWrapper.instance.registerMBean(instance, MBEAN_NAME);
         }
         else
         {
@@ -129,12 +138,12 @@ public class MutationTrackingService
 
     public static boolean isEnabled()
     {
-        return DatabaseDescriptor.getMutationTrackingEnabled();
+        return config.enabled;
     }
 
     public static void ensureEnabled()
     {
-        if (!DatabaseDescriptor.getMutationTrackingEnabled())
+        if (!config.enabled)
             throw new IllegalStateException(DISABLED_MESSAGE);
     }
 
@@ -231,6 +240,41 @@ public class MutationTrackingService
         ExpiredStatePurger.instance.register(incomingMutations);
 
         started = true;
+    }
+
+    @Override
+    public void setMutationTrackingBackgroundReconciliationEnabled(boolean enabled)
+    {
+        if (enabled != config.background_reconciliation_enabled)
+        {
+            logger.info("{} mutation tracking background reconciliation", enabled ? "Enabling" : "Disabling");
+            config.background_reconciliation_enabled = enabled;
+        }
+    }
+
+    @Override
+    public boolean getMutationTrackingBackgroundReconciliationEnabled()
+    {
+        return config.background_reconciliation_enabled;
+    }
+
+    @Override
+    public void setMutationTrackingBackgroundReconciliationIntervalMilliseconds(long intervalMilliseconds)
+    {
+        if (intervalMilliseconds  != config.background_reconciliation_interval.toMilliseconds())
+        {
+            DurationSpec.LongMillisecondsBound backgroundReconciliationInterval =
+            new DurationSpec.LongMillisecondsBound(intervalMilliseconds, TimeUnit.MILLISECONDS);
+            logger.info("Setting mutation tracking background reconciliation interval from {} to {}",
+                        config.background_reconciliation_interval, backgroundReconciliationInterval);
+            config.background_reconciliation_interval = backgroundReconciliationInterval;
+        }
+    }
+
+    @Override
+    public long getMutationTrackingBackgroundReconciliationIntervalMilliseconds()
+    {
+        return config.background_reconciliation_interval.toMilliseconds();
     }
 
     public void pauseOffsetBroadcast(boolean pause)
@@ -1376,16 +1420,29 @@ public class MutationTrackingService
 
     private static class BackgroundReconciler
     {
-        private static final long RECONCILE_INTERVAL_MILLIS = 1_000;
-
         private volatile boolean isPaused = false;
 
         void start()
         {
-            executor.scheduleWithFixedDelay(this::run,
-                                            RECONCILE_INTERVAL_MILLIS,
-                                            RECONCILE_INTERVAL_MILLIS,
-                                            TimeUnit.MILLISECONDS);
+            scheduleNext();
+        }
+
+        private void scheduleNext()
+        {
+            long intervalMillis = config.background_reconciliation_interval.toMilliseconds();
+            executor.schedule(this::runAndReschedule, intervalMillis, TimeUnit.MILLISECONDS);
+        }
+
+        private void runAndReschedule()
+        {
+            try
+            {
+                run();
+            }
+            finally
+            {
+                scheduleNext();
+            }
         }
 
         void run()
@@ -1395,7 +1452,8 @@ public class MutationTrackingService
 
         private void run(KeyspaceShards shards)
         {
-            if (!isPaused)
+            boolean isEnabled = config.background_reconciliation_enabled;
+            if (isEnabled && !isPaused)
                 shards.forEachShard(this::run);
         }
 
