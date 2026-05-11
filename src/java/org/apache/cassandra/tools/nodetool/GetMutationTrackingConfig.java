@@ -19,8 +19,6 @@ package org.apache.cassandra.tools.nodetool;
 
 import java.io.PrintStream;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import org.apache.cassandra.tools.NodeProbe;
 
 import picocli.CommandLine.Command;
@@ -28,8 +26,7 @@ import picocli.CommandLine.Command;
 @Command(name = "getmutationtrackingconfig", description = "Print mutation tracking configurations")
 public class GetMutationTrackingConfig extends AbstractCommand
 {
-    @VisibleForTesting
-    protected static PrintStream out = System.out;
+    private static PrintStream out = System.out;
 
     @Override
     public void execute(NodeProbe probe)

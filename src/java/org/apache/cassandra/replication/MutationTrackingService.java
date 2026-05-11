@@ -233,6 +233,9 @@ public class MutationTrackingService implements MutationTrackingMBean
 
         onNewClusterMetadata(null, metadata);
 
+        if (!keyspaceShards.isEmpty() && !config.background_reconciliation_enabled)
+            logBackgroundReconciliationDisabledWarning(keyspaceShards.keySet());
+
         offsetsBroadcaster.start();
         offsetsPersister.start();
         backgroundReconciler.start();
@@ -911,6 +914,14 @@ public class MutationTrackingService implements MutationTrackingMBean
             // recalculating the shards will repopulate this via the existing callbacks
             log2ShardMap = new ConcurrentHashMap<>();
             keyspaceShards = applyUpdatedMetadata(keyspaceShards, prev, next, this::nextLogId, this::onNewLog);
+
+            if (!config.background_reconciliation_enabled)
+            {
+                Set<String> newKeyspaces = new HashSet<>(keyspaceShards.keySet());
+                newKeyspaces.removeAll(originalKeyspaceShards.keySet());
+                if (!newKeyspaces.isEmpty())
+                    logBackgroundReconciliationDisabledWarning(newKeyspaces);
+            }
         }
         catch (Throwable t)
         {
@@ -1094,6 +1105,12 @@ public class MutationTrackingService implements MutationTrackingMBean
         }
 
         return unwrapped;
+    }
+
+    private void logBackgroundReconciliationDisabledWarning(Set<String> keyspaces)
+    {
+        logger.warn("Background reconciliation is disabled but mutation tracking keyspaces exist: {}. " +
+                    "Unreconciled mutations will not be automatically repaired in the background.", keyspaces);
     }
 
     public static class KeyspaceShards
