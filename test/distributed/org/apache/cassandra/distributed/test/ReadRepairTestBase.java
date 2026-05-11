@@ -139,7 +139,8 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
 
     private void testReadRepair(ReadRepairStrategy strategy, boolean brrThroughAccord) throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.create(3, c -> c.with(Feature.GOSSIP, Feature.NETWORK)))))
+        try (Cluster cluster = init(Cluster.create(3, c -> c.with(Feature.GOSSIP, Feature.NETWORK)
+                                                            .set("mutation_tracking.background_reconciliation_enabled", "false"))))
         {
             createKeyspace(cluster);
             TransactionalMode transactionalMode = brrThroughAccord ? TransactionalMode.test_unsafe_writes : TransactionalMode.off;
@@ -175,7 +176,8 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
     @Test
     public void readRepairTimeoutTest() throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.create(3, c -> c.with(Feature.GOSSIP, Feature.NETWORK)))))
+        try (Cluster cluster = init(Cluster.create(3, c -> c.with(Feature.GOSSIP, Feature.NETWORK)
+                                                            .set("mutation_tracking.background_reconciliation_enabled", "false"))))
         {
             final long reducedReadTimeout = 3000L;
             createKeyspace(cluster);
@@ -210,7 +212,7 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
     @Test
     public void failingReadRepairTest() throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(builder().withNodes(3).start())))
+        try (Cluster cluster = init(disableBackgroundReconciler(builder().withNodes(3)).start()))
         {
             createKeyspace(cluster);
             cluster.schemaChange(withTable("CREATE TABLE %s (pk int, ck int, v int, PRIMARY KEY (pk, ck)) WITH read_repair='blocking'"));
@@ -238,7 +240,7 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
         MutationTrackingUtils.fixmeSkipIfTracked(replicationType(), "Token moves not supported");
         // TODO: rewrite using FuzzTestBase to control progress through decommission
         // TODO: fails with vnode enabled
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.build(4).withoutVNodes().start(), 3)))
+        try (Cluster cluster = init(disableBackgroundReconciler(Cluster.build(4).withoutVNodes()).start(), 3))
         {
             List<Token> tokens = cluster.tokens();
 
@@ -297,7 +299,7 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
     public void alterRFAndRunReadRepair() throws Throwable
     {
         MutationTrackingUtils.fixmeSkipIfTracked(replicationType(), "RF changes not supported");
-        try (Cluster cluster = disableBackgroundReconciler(builder().withNodes(2).start()))
+        try (Cluster cluster = disableBackgroundReconciler(builder().withNodes(2)).start())
         {
             cluster.schemaChange(format("CREATE KEYSPACE %s WITH replication = " +
                                         "{'class': 'SimpleStrategy', 'replication_factor': 1} " +
@@ -359,7 +361,7 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
      */
     private void testRangeSliceQueryWithTombstones(boolean flush) throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.create(2))))
+        try (Cluster cluster = init(Cluster.create(2, c -> c.set("mutation_tracking.background_reconciliation_enabled", "false"))))
         {
             createKeyspace(cluster);
             cluster.schemaChange(withTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY(k, c))"));
@@ -426,15 +428,16 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
         MutationTrackingUtils.fixmeSkipIfTracked(replicationType(), "Token moves not supported");
         ExecutorPlus es = ExecutorFactory.Global.executorFactory().sequential("query-executor");
         String key = "test1";
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.build()
+        try (Cluster cluster = init(disableBackgroundReconciler(Cluster.build()
                                            .withConfig(config -> config.with(Feature.GOSSIP, Feature.NETWORK)
                                                                        .set("read_request_timeout", format("%dms", Integer.MAX_VALUE))
                                                                        .set("native_transport_timeout", format("%dms", Integer.MAX_VALUE))
+                                                                       .set("mutation_tracking.background_reconciliation_enabled", "false")
                                            )
                                            .withTokenSupplier(TokenSupplier.evenlyDistributedTokens(4))
                                            .withNodeIdTopology(NetworkTopology.singleDcNetworkTopology(4, "dc0", "rack0"))
-                                           .withNodes(3)
-                                           .start())))
+                                           .withNodes(3))
+                                           .start()))
         {
             createKeyspace(cluster);
             cluster.schemaChange(withTable("CREATE TABLE %s (\n" +
@@ -526,7 +529,7 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
     @Test
     public void testGCableTombstoneResurrectionOnRangeSliceQuery() throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(Cluster.create(2))))
+        try (Cluster cluster = init(Cluster.create(2, c -> c.set("mutation_tracking.background_reconciliation_enabled", "false"))))
         {
             createKeyspace(cluster);
             cluster.schemaChange(withTable("CREATE TABLE %s (k int, c int, PRIMARY KEY(k, c)) " +
@@ -564,10 +567,10 @@ public abstract class ReadRepairTestBase extends TestBaseImpl
     @Test
     public void partitionDeletionRTTimestampTieTest() throws Throwable
     {
-        try (Cluster cluster = disableBackgroundReconciler(init(builder()
+        try (Cluster cluster = init(disableBackgroundReconciler(builder()
                                     .withNodes(3)
-                                    .withInstanceInitializer(RRHelper::install)
-                                    .start())))
+                                    .withInstanceInitializer(RRHelper::install))
+                                    .start()))
         {
             createKeyspace(cluster);
             cluster.schemaChange(withTable("CREATE TABLE %s (pk bigint,ck bigint,value bigint, PRIMARY KEY (pk, ck)) WITH  CLUSTERING ORDER BY (ck ASC) AND read_repair='blocking';"));

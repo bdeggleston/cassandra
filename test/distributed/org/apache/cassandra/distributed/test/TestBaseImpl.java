@@ -470,4 +470,17 @@ public class TestBaseImpl extends DistributedTestBase
         }
         return cluster;
     }
+
+    /**
+     * Useful for tests that rely on different repair mechanisms, for example for read repair tests
+     * where the test relies on the read repair machinery, we want to start the cluster with the
+     * background reconciliation process disabled.
+     *
+     * @param builder the cluster builder
+     * @return the cluster builder with the background reconciliation process configuration disabled
+     */
+    public static Cluster.Builder disableBackgroundReconciler(Cluster.Builder builder)
+    {
+        return builder.appendConfig(c -> c.set("mutation_tracking.background_reconciliation_enabled", "false"));
+    }
 }

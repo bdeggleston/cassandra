@@ -122,10 +122,10 @@ public abstract class ReadRepairQueryTester extends TestBaseImpl
     {
         // Disable background reconciler for read repair tests to avoid having the
         // background reconciler repair before the read repair takes effect
-        cluster = disableBackgroundReconciler(init(Cluster.build(NUM_NODES)
-                                                          .withConfig(config -> config.set("read_request_timeout", "1m")
-                                                                                      .set("write_request_timeout", "1m"))
-                                                          .start()));
+        cluster = init(disableBackgroundReconciler(Cluster.build(NUM_NODES)
+                              .withConfig(config -> config.set("read_request_timeout", "1m")
+                                                          .set("write_request_timeout", "1m")))
+                              .start());
     }
 
     @AfterClass
