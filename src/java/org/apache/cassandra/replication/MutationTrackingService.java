@@ -1437,8 +1437,6 @@ public class MutationTrackingService implements MutationTrackingMBean
 
     private static class BackgroundReconciler
     {
-        private volatile boolean isPaused = false;
-
         void start()
         {
             scheduleNext();
@@ -1469,8 +1467,7 @@ public class MutationTrackingService implements MutationTrackingMBean
 
         private void run(KeyspaceShards shards)
         {
-            boolean isEnabled = config.background_reconciliation_enabled;
-            if (isEnabled && !isPaused)
+            if (config.background_reconciliation_enabled)
                 shards.forEachShard(this::run);
         }
 
@@ -1522,18 +1519,6 @@ public class MutationTrackingService implements MutationTrackingMBean
                 }
             }
             return null;
-        }
-
-        @VisibleForTesting
-        void pauseForTesting()
-        {
-            isPaused = true;
-        }
-
-        @VisibleForTesting
-        void resumeForTesting()
-        {
-            isPaused = false;
         }
     }
 
@@ -1665,13 +1650,13 @@ public class MutationTrackingService implements MutationTrackingMBean
     @VisibleForTesting
     public void pauseBackgroundReconciler()
     {
-        backgroundReconciler.pauseForTesting();
+        config.background_reconciliation_enabled = false;
     }
 
     @VisibleForTesting
     public void resumeBackgroundReconciler()
     {
-        backgroundReconciler.resumeForTesting();
+        config.background_reconciliation_enabled = true;
     }
 
     @VisibleForTesting
