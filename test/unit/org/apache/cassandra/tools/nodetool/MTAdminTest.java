@@ -32,7 +32,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class SetMutationTrackingConfigTest
+public class MTAdminTest
 {
     @Mock
     private NodeProbe probe;
@@ -40,14 +40,14 @@ public class SetMutationTrackingConfigTest
     @Mock
     private PrintStream out;
 
-    private SetMutationTrackingConfig cmd;
+    private MTAdmin.SetConfig cmd;
 
     @Before
     public void setUp()
     {
         MockitoAnnotations.initMocks(this);
         when(probe.isMutationTrackingDisabled()).thenReturn(false);
-        cmd = new SetMutationTrackingConfig();
+        cmd = new MTAdmin.SetConfig();
         cmd.out = out;
     }
 
