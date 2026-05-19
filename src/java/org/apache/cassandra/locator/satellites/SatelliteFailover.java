@@ -55,8 +55,8 @@ public class SatelliteFailover
 
         /**
          * First step of failover. The entire ring is put into this state as part of the primary dc schema changes.
-         * Before a range exits the TRANSITION_ACK state, a QoQ of nodes in the old and new query groups must report
-         * an epoch >= the epoch that changed the primary DC. If the old primary has not been disabled, paxos repair
+         * Before a range exits the TRANSITION_ACK state, a QoQ of nodes in the old query group must report an
+         * epoch >= the epoch that changed the primary DC. If the old primary has not been disabled, paxos repair
          * must also be completed on a quorum of replicas in the old DC as well.
          * During TRANSITION_ACK, coordinators will not start paxos operations. This temporary gap in paxos availability
          * prevents the different full dcs from performing conflicting paxos operations concurrently. The paxos repair
