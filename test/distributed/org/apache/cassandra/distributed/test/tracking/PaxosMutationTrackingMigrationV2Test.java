@@ -35,6 +35,7 @@ import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.Ep
 import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.MessageSpy;
 import org.apache.cassandra.hints.HintsService;
 import org.apache.cassandra.metrics.StorageMetrics;
+import org.apache.cassandra.metrics.TCMMetrics;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.schema.ReplicationType;
@@ -55,6 +56,7 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertReplicasAreExactly;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertReplicasHaveValue;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.awaitReplicationType;
+import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.blockProactiveTcm;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.buildPaxosCluster;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.casAsync;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.casAsyncExpectingFailure;
@@ -1271,5 +1273,179 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                              2, hold.withMutationId());
             }
         }
+    }
+
+    // ===== Replica-behind coverage (Issue 2): coordinator ahead, replica catches up on demand =====
+    //
+    // The coordinator-behind path (replica AHEAD of coordinator -> CoordinatorBehindException) is
+    // covered by the tests above. These tests cover the inverse, previously-untested branch of
+    // MigrationRouter.checkPaxos{Prepare,Commit}Migration: when the coordinator's message carries a
+    // HIGHER epoch than the handler (message.epoch().isAfter(metadata.epoch)), the handler must
+    // fetchLogFromPeerOrCMS, catch up, find it now agrees with the coordinator, and proceed WITHOUT
+    // error and WITHOUT bumping coordinatorBehindReplication.
+    //
+    // Setup keeps replicas 2 and 3 behind by dropping their proactive TCM (TCM_REPLICATION /
+    // TCM_NOTIFY_REQ) while leaving on-demand fetch open, so the ONLY way they can advance is the
+    // handler's own catch-up. (EpochPin cannot be used: it also blocks the fetch and would deadlock.)
+
+    /**
+     * Advance coordinator node 1 to {@code toType} while holding replicas 2 and 3 at {@code fromType}.
+     * The keyspace must already exist. Replicas 2 and 3 keep their old epoch (proactive TCM dropped)
+     * but can still catch up on demand.
+     */
+    private void advanceCoordinatorAheadOfReplicas(String ks, String fromType, String toType)
+    {
+        blockProactiveTcm(cluster, 2, 3);
+        // Drive the ALTER from node 1 (the CMS) at CL.ONE so it does not wait for 2,3 to enact.
+        alterReplicationTypeFrom(cluster, 1, ks, toType, ConsistencyLevel.ONE);
+        awaitReplicationType(cluster, ks, ReplicationType.valueOf(toType), 1);
+        assertNodeSees(cluster, 2, ks, ReplicationType.valueOf(fromType));
+        assertNodeSees(cluster, 3, ks, ReplicationType.valueOf(fromType));
+    }
+
+    private long coordinatorBehindCount(int node)
+    {
+        return cluster.get(node).callsOnInstance(() -> TCMMetrics.instance.coordinatorBehindReplication.getCount()).call();
+    }
+
+    /*
+     * Replica-behind, PREPARE path, tracked -> untracked.
+     * Coordinator (untracked, ahead) issues a SERIAL read whose prepare carries an UNTRACKED read.
+     * The behind replicas (tracked) disagree, see the higher epoch, fetch-and-catch-up to untracked,
+     * then agree and serve the read. No COORDINATOR_BEHIND, no retry.
+     */
+    @Test
+    public void testPrepareReadReplicaBehindCatchesUpToUntracked() throws Throwable
+    {
+        String ks = createKeyspace(cluster, "pmt_v2", "tracked");
+        assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
+
+        // Seed a row while everyone still agrees (tracked) so the SERIAL read has data to return.
+        cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 7)",
+                                       ConsistencyLevel.QUORUM);
+
+        advanceCoordinatorAheadOfReplicas(ks, "tracked", "untracked");
+
+        long behind2 = coordinatorBehindCount(2);
+        long behind3 = coordinatorBehindCount(3);
+
+        try (MessageSpy prepareSpy = on(cluster, Verb.PAXOS2_PREPARE_REQ)
+                                     .from(1)
+                                     .to(2, 3)
+                                     .checkReadTracked()
+                                     .expect(2)
+                                     .start())
+        {
+            Object[][] result = cluster.coordinator(1).execute("SELECT * FROM " + ks + ".tbl WHERE k = " + KEY,
+                                                               ConsistencyLevel.SERIAL);
+            prepareSpy.await();
+
+            assertEquals("SERIAL read should return the seeded row", 1, result.length);
+            assertEquals("Value should be 7", 7, result[0][1]);
+            assertEquals("Ahead (untracked) coordinator sends untracked reads on both prepares",
+                         2, prepareSpy.withUntrackedRead());
+            assertEquals("No tracked reads should be sent by the untracked coordinator",
+                         0, prepareSpy.withTrackedRead());
+        }
+
+        // Both replicas caught up on demand (proactive TCM was blocked) and neither flagged the
+        // coordinator behind -- proving the message.epoch().isAfter(metadata.epoch) fetch branch.
+        awaitReplicationType(cluster, ks, ReplicationType.untracked, 2, 3);
+        assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
+        assertEquals("Replica 3 must not have flagged coordinator-behind", behind3, coordinatorBehindCount(3));
+    }
+
+    /*
+     * Replica-behind, COMMIT path, untracked -> tracked.
+     * During an untracked->tracked migration only WRITES become tracked immediately; reads stay
+     * untracked until the migration completes. So the prepare's (untracked) read AGREES with the
+     * behind replicas and does NOT catch them up -- it is the COMMIT (which carries a mutation ID
+     * because the ahead coordinator routes writes as tracked) that diverges. The behind replicas
+     * fetch-and-catch-up in the commit handler and apply on the tracked path. This naturally
+     * isolates checkPaxosCommitMigration's fetch branch without dropping the prepare.
+     */
+    @Test
+    public void testCommitReplicaBehindCatchesUpToTracked() throws Throwable
+    {
+        String ks = createKeyspace(cluster, "pmt_v2", "untracked");
+        assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
+
+        advanceCoordinatorAheadOfReplicas(ks, "untracked", "tracked");
+
+        long behind2 = coordinatorBehindCount(2);
+        long behind3 = coordinatorBehindCount(3);
+
+        try (MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+                                    .from(1)
+                                    .to(2, 3)
+                                    .checkMutationId()
+                                    .expect(2)
+                                    .start())
+        {
+            Object[][] result = cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 13) IF NOT EXISTS",
+                                                               ConsistencyLevel.SERIAL, ConsistencyLevel.QUORUM);
+            commitSpy.await();
+
+            assertCasApplied(result);
+            assertEquals("No commit retry expected -- the behind replicas catch up rather than rejecting",
+                         2, commitSpy.total());
+            assertEquals("Ahead (tracked) coordinator's commits carry a mutation ID",
+                         2, commitSpy.withMutationId());
+        }
+
+        // The behind replicas reached the tracked epoch only via the commit handler's
+        // fetch-and-catch-up (proactive TCM was blocked), and neither flagged the coordinator behind.
+        awaitReplicationType(cluster, ks, ReplicationType.tracked, 2, 3);
+        assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
+        assertEquals("Replica 3 must not have flagged coordinator-behind", behind3, coordinatorBehindCount(3));
+
+        assertReplicasHaveValue(cluster, ks, KEY, 13, 1, 2, 3);
+    }
+
+    /*
+     * Replica-behind, COMMIT path, tracked -> untracked.
+     * To exercise checkPaxosCommitMigration's fetch branch specifically (rather than letting the
+     * preceding prepare-read catch the replica up), the prepare to node 2 is dropped: node 3 forms
+     * the prepare quorum with the coordinator and catches up during prepare, while node 2's ONLY
+     * higher-epoch trigger is the commit it later receives. Node 2 must then fetch-and-catch-up in
+     * the commit handler, apply on the untracked path, and not flag the coordinator behind.
+     */
+    @Test
+    public void testCommitReplicaBehindCatchesUpToUntracked() throws Throwable
+    {
+        String ks = createKeyspace(cluster, "pmt_v2", "tracked");
+        assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
+
+        advanceCoordinatorAheadOfReplicas(ks, "tracked", "untracked");
+
+        // Prevent node 2 from catching up during prepare so the commit handler is the one that must.
+        cluster.filters().verbs(Verb.PAXOS2_PREPARE_REQ.id).to(2).drop();
+
+        long behind2 = coordinatorBehindCount(2);
+
+        try (MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+                                    .from(1)
+                                    .to(2, 3)
+                                    .checkMutationId()
+                                    .expect(2)
+                                    .start())
+        {
+            Object[][] result = cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 11) IF NOT EXISTS",
+                                                               ConsistencyLevel.SERIAL, ConsistencyLevel.QUORUM);
+            commitSpy.await();
+
+            assertCasApplied(result);
+            assertEquals("No commit retry expected -- the behind replica catches up rather than rejecting",
+                         2, commitSpy.total());
+            assertEquals("Ahead (untracked) coordinator's commits carry no mutation ID",
+                         0, commitSpy.withMutationId());
+        }
+
+        // Node 2 never received a prepare, so the only path to the untracked epoch was the commit
+        // handler's fetch-and-catch-up; it must not have flagged the coordinator behind.
+        awaitReplicationType(cluster, ks, ReplicationType.untracked, 2);
+        assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
+
+        assertReplicasHaveValue(cluster, ks, KEY, 11, 1, 2, 3);
     }
 }

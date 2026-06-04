@@ -407,6 +407,28 @@ public class PaxosMigrationTestUtils
         return new EpochPin(cluster, node);
     }
 
+    /**
+     * Keep {@code nodes} from learning new TCM epochs proactively by dropping inbound
+     * TCM_REPLICATION and TCM_NOTIFY_REQ, while leaving on-demand catch-up
+     * (TCM_FETCH_PEER_LOG / TCM_FETCH_CMS_LOG, and their responses) untouched.
+     *
+     * This is the "replica behind" counterpart to {@link EpochPin}. EpochPin freezes a node
+     * completely (it also holds the outbound fetch requests), which would deadlock a handler
+     * that must call fetchLogFromPeerOrCMS to catch up. Dropping only the proactive push lets a
+     * behind replica fetch-and-catch-up the moment it receives a message carrying a higher epoch,
+     * which is exactly the MigrationRouter "coordinator ahead" branch under test.
+     *
+     * The returned filter is cleared by the usual {@code cluster.filters().reset()} in @After.
+     */
+    public static IMessageFilters.Filter blockProactiveTcm(Cluster cluster, int... nodes)
+    {
+        return cluster.filters()
+                      .inbound(true)
+                      .verbs(Verb.TCM_REPLICATION.id, Verb.TCM_NOTIFY_REQ.id)
+                      .to(nodes)
+                      .drop();
+    }
+
     public static final class EpochPin implements AutoCloseable
     {
         private final AssertingLatch releaseTcm;
