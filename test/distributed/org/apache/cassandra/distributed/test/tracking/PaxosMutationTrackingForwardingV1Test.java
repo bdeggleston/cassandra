@@ -109,7 +109,12 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
 
         try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_FORWARD_REQ)
                               .expect(1)
-                              .start())
+                              .start();
+             MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+                                    .to(1, 2, 3)
+                                    .checkMutationId()
+                                    .expect(2)
+                                    .start())
         {
             Object[][] result = cluster.coordinator(4)
                                        .execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42) IF NOT EXISTS",
@@ -118,8 +123,17 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
 
             assertCasApplied(result);
             spy.await();
+            commitSpy.await();
             assertEquals("PAXOS_COMMIT_FORWARD_REQ should have been sent exactly once",
                          1, spy.total());
+            // The forward target re-coordinates on the tracked keyspace via commitPaxosTracked:
+            // it commits locally and sends PAXOS_COMMIT_REQ to the two other replicas, each
+            // carrying the freshly assigned mutation ID. Verify that on the wire, not just the
+            // forward count.
+            assertEquals("Forward target should send 2 sub-commits to the other replicas",
+                         2, commitSpy.total());
+            assertEquals("Every forwarded sub-commit on a tracked keyspace must carry a mutation ID",
+                         2, commitSpy.withMutationId());
         }
 
         assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);

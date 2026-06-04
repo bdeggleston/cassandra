@@ -455,6 +455,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         // Also count PAXOS2_PREPARE_REFRESH_REQ to verify no stale ballot refresh.
         try (MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
                                     .to(2, 3, 4)
+                                    .checkMutationId()
                                     .expect(2)
                                     .start();
              MessageSpy refreshSpy = on(cluster, Verb.PAXOS2_PREPARE_REFRESH_REQ)
@@ -472,6 +473,11 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             // Assert: PAXOS_COMMIT_REQ sent to remote replicas (2), no retry
             assertEquals("PAXOS_COMMIT_REQ should match remote replica count (no retry)",
                          2, commitSpy.total());
+
+            // Assert: commits carry NO mutation ID -- proves the untracked commit path on the wire,
+            // not merely that two messages were sent.
+            assertEquals("PAXOS_COMMIT_REQ must carry no mutation ID after migration to untracked",
+                         0, commitSpy.withMutationId());
 
             // Assert: no PAXOS2_PREPARE_REFRESH_REQ (no stale ballot to refresh)
             assertEquals("No PAXOS2_PREPARE_REFRESH_REQ expected (no stale data)",
@@ -869,6 +875,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         cluster.filters().reset();
 
         try (MessageSpy spy = on(cluster, Verb.PAXOS2_COMMIT_AND_PREPARE_REQ)
+                              .checkMutationId()
                               .start())
         {
             Object[][] result = cluster.coordinator(4).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 1) IF NOT EXISTS",
@@ -880,6 +887,10 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             // Non-replica coordinator sends commitAndPrepare to ALL 3 replicas (no local execute).
             assertEquals("commitAndPrepare should send PAXOS2_COMMIT_AND_PREPARE_REQ to all 3 replicas (coordinator is non-replica)",
                          3, spy.total());
+
+            // Untracked keyspace: the embedded commit must carry no mutation ID on the wire.
+            assertEquals("PAXOS2_COMMIT_AND_PREPARE_REQ on an untracked keyspace must carry no mutation ID",
+                         0, spy.withMutationId());
         }
 
         assertReplicasHaveValue(cluster, ks, KEY, 1, 1, 2, 3);
@@ -998,6 +1009,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                                .from(2)
                                .to(1, 3)
                                .holdAll()
+                               .checkMutationId()
                                .expect(2)
                                .start())
         {
@@ -1038,6 +1050,11 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                 // Verify the commitAndPrepare handler was actually invoked (otherwise we didn't test it).
                 assertEquals("PAXOS2_COMMIT_AND_PREPARE_REQ must arrive at both tracked handlers",
                              2, hold.total());
+
+                // The coordinator (node 2) still saw untracked when it sent, so the held payload
+                // must carry no mutation ID -- this is what makes the tracked handlers reject it.
+                assertEquals("Held commitAndPrepare from the untracked coordinator must carry no mutation ID",
+                             0, hold.withMutationId());
 
                 // Verify data state: no replica should have a committed v=42 row.
                 assertReplicaHasNoRow(cluster, ks, KEY, 1);
