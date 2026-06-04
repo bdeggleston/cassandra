@@ -301,4 +301,47 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
         assertEquals("Retry PAXOS_COMMIT_REQ from node 4 should NOT carry mutation IDs (untracked path)",
                      0, retryCommitsWithId.get());
     }
+
+    /*
+     * V1 commit forwarding reached via an untracked -> tracked migration (review-feedback gap: the
+     * existing commit-forwarding tests only cover steady-state tracked and the tracked -> untracked
+     * direction). The keyspace is created untracked -- where a non-replica coordinator commits
+     * directly -- then migrated to tracked. Once writes are tracked, a non-replica (node 4) must
+     * forward the commit to a replica to obtain a mutation id (inverse of testV1CommitForwardingFallbackToUntracked).
+     */
+    @Test
+    public void testV1CommitForwardingDuringMigrationToTracked() throws Throwable
+    {
+        String ks = newKeyspace("untracked");
+
+        alterReplicationType(cluster, ks, "tracked");
+        ClusterUtils.awaitTCMCatchUp(cluster);
+
+        try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_FORWARD_REQ)
+                              .expect(1)
+                              .start();
+             MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+                                    .to(1, 2, 3)
+                                    .checkMutationId()
+                                    .expect(2)
+                                    .start())
+        {
+            Object[][] result = cluster.coordinator(4)
+                                       .execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42) IF NOT EXISTS",
+                                                ConsistencyLevel.SERIAL,
+                                                ConsistencyLevel.QUORUM);
+
+            assertCasApplied(result);
+            spy.await();
+            commitSpy.await();
+            assertEquals("Commit must be forwarded once after migration to tracked",
+                         1, spy.total());
+            assertEquals("Forward target should send 2 sub-commits to the other replicas",
+                         2, commitSpy.total());
+            assertEquals("Every forwarded sub-commit on the migrated-to-tracked keyspace must carry a mutation ID",
+                         2, commitSpy.withMutationId());
+        }
+
+        assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);
+    }
 }
