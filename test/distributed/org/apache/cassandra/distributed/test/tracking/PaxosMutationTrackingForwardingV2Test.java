@@ -96,7 +96,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
     }
 
     @Test
-    public void testPrepareRefreshForwardHandler() throws Throwable
+    public void testPrepareRefreshForwardHandler()
     {
         String ks = newKeyspace("untracked");
 
@@ -123,7 +123,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
         // Count PAXOS_PREPARE_REFRESH_FORWARD_REQ arrivals at any replica.
         MessageSpy forwardSpy = on(cluster, Verb.PAXOS_PREPARE_REFRESH_FORWARD_REQ)
-                                .inbound()
                                 .start();
 
         // Custom spy: extract the mutation ID string from each PAXOS2_PREPARE_REFRESH_REQ payload so
@@ -133,7 +132,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         AtomicInteger refreshWithMutationId = new AtomicInteger();
         Set<String> observedMutationIds = ConcurrentHashMap.newKeySet();
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_REFRESH_REQ.id)
                .messagesMatching((from, to, msg) -> {
                    String mutId = cluster.get(to).callsOnInstance(() -> {
@@ -167,7 +165,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // haveReadResponseWithLatest=true, triggering refreshStaleParticipants rather than
         // FOUND_INCOMPLETE_COMMITTED.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_RSP.id)
                .from(3)
                .to(4)
@@ -212,25 +209,21 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
             // the first CAS's v=42 is present on node 1's system.paxos.
             if (!casThrew)
                 assertCasNotApplied(casResult);
+
+            // Node 1 always has the data (original committer). Node 2 received the refresh (it was
+            // the sole stale participant targeted by refreshStaleParticipants). Node 3 never responded
+            // to prepare (its PAXOS2_PREPARE_RSP was dropped) so it was never in needLatest and was
+            // not targeted for refresh.
+            // Assert while filters are still active — the PAXOS2_PREPARE_RSP block on node 3 keeps
+            // it from receiving any refresh.
+            assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2);
+            assertReplicaHasNoRow(cluster, ks, KEY, 3);
         }
         finally
         {
             cluster.filters().reset();
             forwardSpy.close();
         }
-
-        // Prepare-refresh commits v=42 to at least a quorum of the 3 replicas as part of the
-        // prepare phase. Whether the subsequent CAS commit succeeds or times out, the refresh
-        // durability guarantee still holds.
-        int nodesWithData = 0;
-        for (int i : new int[]{ 1, 2, 3 })
-        {
-            Object[][] nodeResult = cluster.get(i).executeInternal("SELECT v FROM " + ks + ".tbl WHERE k = " + KEY);
-            if (nodeResult.length == 1 && Integer.valueOf(42).equals(nodeResult[0][0]))
-                nodesWithData++;
-        }
-        assertTrue("Quorum (2 or 3) of replicas should have v=42 after prepare-refresh, but " + nodesWithData + " had it",
-                   nodesWithData >= 2 && nodesWithData <= 3);
     }
 
     /**
@@ -243,7 +236,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
      * nodes, no deadlock.
      */
     @Test
-    public void testPrepareRefreshForwardHandlerTargetFailure() throws Throwable
+    public void testPrepareRefreshForwardHandlerTargetFailure()
     {
         String ks = newKeyspace("untracked");
 
@@ -271,7 +264,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // FAILED_SENTINEL instantly without waiting for the real write_request_timeout.
         // respondWithTimeout actively produces a response, so this filter stays manual.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_REFRESH_REQ.id)
                .to(2, 3)
                .messagesMatching((from, to, msg) -> {
@@ -283,23 +275,19 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // without the high-priority reconciler replicating data from node 1's journal.
         cluster.filters().verbs(Verb.MT_PUSH_MUTATION_REQ.id).drop();
 
-        MessageSpy forwardSpy = on(cluster, Verb.PAXOS_PREPARE_REFRESH_FORWARD_REQ)
-                                .inbound()
-                                .start();
-
         // Drop prepare responses from node 3 so quorum can only be formed by node 1 + node 2.
         // Node 1 has the latest committed ballot, triggering refreshStaleParticipants.
-        cluster.filters()
-               .inbound(true)
-               .verbs(Verb.PAXOS2_PREPARE_RSP.id)
-               .from(3)
-               .to(4)
-               .drop();
 
         // Node 2's refresh receives an immediate failure (FAILED_SENTINEL), quorum unreachable, CAS must throw.
-        boolean casThrew = false;
-        try
+        try (MessageSpy forwardSpy = on(cluster, Verb.PAXOS_PREPARE_REFRESH_FORWARD_REQ)
+                                     .start())
         {
+            cluster.filters()
+                   .verbs(Verb.PAXOS2_PREPARE_RSP.id)
+                   .from(3)
+                   .to(4)
+                   .drop();
+            boolean casThrew = false;
             try
             {
                 cluster.coordinator(4).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 99) IF NOT EXISTS",
@@ -321,11 +309,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
             assertReplicaHasNoRow(cluster, ks, KEY, 2);
             assertReplicaHasNoRow(cluster, ks, KEY, 3);
         }
-        finally
-        {
-            cluster.filters().reset();
-            forwardSpy.close();
-        }
     }
 
     /**
@@ -335,7 +318,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
      * when one electorate member is unresponsive during prepare.
      */
     @Test
-    public void testPrepareRefreshForwardHandlerPartialFailureAchievesQuorum() throws Throwable
+    public void testPrepareRefreshForwardHandlerPartialFailureAchievesQuorum()
     {
         String ks = newKeyspace("untracked");
 
@@ -362,7 +345,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // will not be targeted for refresh. Node 2's refresh proceeds unblocked, giving quorum
         // (node 1 + node 2 = 2 >= quorum).
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_REFRESH_REQ.id)
                .to(3)
                .messagesMatching((from, to, msg) -> {
@@ -370,23 +352,19 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
                    return true;
                }).drop();
 
-        MessageSpy forwardSpy = on(cluster, Verb.PAXOS_PREPARE_REFRESH_FORWARD_REQ)
-                                .inbound()
-                                .start();
-
         // Drop prepare responses from node 3 so quorum can only be formed by node 1 + node 2.
         // Node 1 has the latest committed ballot, triggering refreshStaleParticipants.
-        cluster.filters()
-               .inbound(true)
-               .verbs(Verb.PAXOS2_PREPARE_RSP.id)
-               .from(3)
-               .to(4)
-               .drop();
 
         // Only node 2 is targeted for refresh (node 3 never responded to prepare). The single
         // refresh succeeds: quorum = 2 with node 1 (has data) + node 2 (refresh success).
-        try
+        try (MessageSpy forwardSpy = on(cluster, Verb.PAXOS_PREPARE_REFRESH_FORWARD_REQ)
+                                     .start())
         {
+            cluster.filters()
+                   .verbs(Verb.PAXOS2_PREPARE_RSP.id)
+                   .from(3)
+                   .to(4)
+                   .drop();
             Object[][] casResult = cluster.coordinator(4).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 99) IF NOT EXISTS",
                                                                   ConsistencyLevel.SERIAL, ConsistencyLevel.QUORUM);
 
@@ -395,34 +373,30 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
             int forwards = forwardSpy.total();
             assertTrue("At least 1 forward should have been sent, got " + forwards, forwards >= 1);
-        }
-        finally
-        {
-            cluster.filters().reset();
-            forwardSpy.close();
-        }
 
-        // Node 2 received the refresh; node 3 has no data (it was never targeted for refresh
-        // because it did not respond to prepare).
-        assertReplicasHaveValue(cluster, ks, KEY, 42, 2);
-        assertReplicaHasNoRow(cluster, ks, KEY, 3);
+            // Node 1 always has the data (original committer). Node 2 received the refresh
+            // successfully. Node 3 has no data (it was never targeted for refresh because it did
+            // not respond to prepare).
+            // Assert while filters are still active — the PAXOS2_PREPARE_REFRESH_REQ block on
+            // node 3 keeps it clean.
+            assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2);
+            assertReplicaHasNoRow(cluster, ks, KEY, 3);
+        }
     }
 
     // V2 Commit Forwarding Tests (Paxos2CommitForwardHandler)
 
     @Test
-    public void testV2CommitForwardingFromNonReplica() throws Throwable
+    public void testV2CommitForwardingFromNonReplica()
     {
         String ks = newKeyspace("tracked");
 
         MessageSpy forwardSpy = on(cluster, Verb.PAXOS2_COMMIT_FORWARD_REQ)
-                                .inbound()
                                 .expect(1)
                                 .start();
         // The forward target re-coordinates on the tracked keyspace: it commits locally and sends
         // PAXOS_COMMIT_REQ to the two other replicas, each carrying the freshly assigned mutation ID.
         MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
-                               .inbound()
                                .to(1, 2, 3)
                                .checkMutationId()
                                .expect(2)
@@ -454,7 +428,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // the forward handler should then commit on the untracked path (no mutation IDs on
         // PAXOS_COMMIT_REQ).
         MessageSpy hold = on(cluster, Verb.PAXOS2_COMMIT_FORWARD_REQ)
-                          .inbound()
                           .holdAll()
                           .start();
 
@@ -462,7 +435,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // the other 2 replicas. Quorum = 2, so the 2nd remote commit may still be in-flight when
         // the CAS returns — expect(2) waits for both.
         MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
-                               .inbound()
                                .to(1, 2, 3)
                                .checkMutationId()
                                .expect(2)
@@ -498,7 +470,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
     }
 
     @Test
-    public void testV2CommitForwardingRetryAfterCoordinatorBehind() throws Throwable
+    public void testV2CommitForwardingRetryAfterCoordinatorBehind()
     {
         String ks = newKeyspace("tracked");
 
@@ -514,7 +486,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
         // Learn which replica the snitch chose for the forward — any of {1,2,3} is possible.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_COMMIT_FORWARD_REQ.id)
                .messagesMatching((from, to, msg) -> {
                    forwardTarget.set(to);
@@ -525,7 +496,6 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         // PAXOS_COMMIT_REQ at replicas to verify the retry fires, and check retry messages (from
         // node 4) for mutation ID absence. Conditional behaviour inside one filter — stays manual.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS_COMMIT_REQ.id)
                .to(1, 2, 3)
                .messagesMatching((from, to, msg) -> {
@@ -593,7 +563,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
      * forwarding decision (the inverse of testV2CommitForwardingFallbackToUntracked).
      */
     @Test
-    public void testV2CommitForwardingDuringMigrationToTracked() throws Throwable
+    public void testV2CommitForwardingDuringMigrationToTracked()
     {
         String ks = newKeyspace("untracked");
 
@@ -601,13 +571,11 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         MessageSpy forwardSpy = on(cluster, Verb.PAXOS2_COMMIT_FORWARD_REQ)
-                                .inbound()
                                 .expect(1)
                                 .start();
         // The forward target re-coordinates on the now-tracked keyspace: it commits locally and
         // sends PAXOS_COMMIT_REQ to the two other replicas, each carrying a mutation ID.
         MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
-                               .inbound()
                                .to(1, 2, 3)
                                .checkMutationId()
                                .expect(2)

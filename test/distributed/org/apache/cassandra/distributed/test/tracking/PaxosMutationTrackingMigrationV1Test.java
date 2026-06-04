@@ -44,6 +44,7 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertCasApplied;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertCasException;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertCasNotApplied;
+import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertReplicaHasNoRow;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.assertReplicasHaveValue;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.awaitReplicationType;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.buildPaxosCluster;
@@ -94,7 +95,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
      * Verifies: MigrationRouter.shouldUseTrackedForWrites() returns true during migration
      */
     @Test
-    public void testCasDuringMigrationToTracked() throws Throwable
+    public void testCasDuringMigrationToTracked()
     {
         String ks = createKeyspace(cluster, "pmt_v1", "untracked");
 
@@ -138,10 +139,9 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         for (int i = 1; i <= cluster.size(); i++)
         {
             int nodeId = i;
-            cluster.get(i).runOnInstance(() -> {
+            cluster.get(i).runOnInstance(() ->
                 assertTrue("Node " + nodeId + ": MutationTrackingService should be enabled",
-                           MutationTrackingService.isEnabled());
-            });
+                           MutationTrackingService.isEnabled()));
         }
 
         assertReplicasHaveValue(cluster, ks, 1, 1, 1, 2, 3);
@@ -157,7 +157,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
      * V1 message: PAXOS_COMMIT_REQ via StorageProxy.sendCommit()
      */
     @Test
-    public void testStaleIdStrippedOnRecommit() throws Throwable
+    public void testStaleIdStrippedOnRecommit()
     {
         String ks = createKeyspace(cluster, "pmt_v1", "tracked");
 
@@ -225,7 +225,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
      * Exact inbound count == 2 proves no COORDINATOR_BEHIND retry.
      */
     @Test
-    public void testCommitAfterMigrationToUntracked() throws Throwable
+    public void testCommitAfterMigrationToUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v1", "tracked");
 
@@ -336,7 +336,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
      * catch up, so the first commit attempt's inner timeout fires, failing the CAS without retrying.
      */
     @Test
-    public void testCommitRetryLoopTimeout() throws Throwable
+    public void testCommitRetryLoopTimeout()
     {
         String ks = createKeyspace(cluster, "pmt_v1", "tracked");
 
@@ -344,7 +344,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         // "Hold" rather than "drop": messages block on a latch with a safety-net timeout so they
         // eventually flow after the test, preventing an indefinite fetchLogFromPeerOrCMS stall
         // on node 2 that would bleed into later tests.
-        try (EpochPin pin = epochPin(cluster, 2))
+        try (EpochPin ignored = epochPin(cluster, 2))
         {
             // ALTER to untracked via node 1 at CL.ONE so we don't wait for schema agreement
             // on TCM-blocked node 2.
@@ -393,6 +393,13 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
                              spy.total(), spy.withMutationId());
 
                 assertTrue("CAS should have failed", threw);
+
+                // Node 2 is the coordinator AND a replica; its local commit (executeOnSelf) fires
+                // before the quorum wait, so v=42 is locally durable. Nodes 1,3 rejected with
+                // COORDINATOR_BEHIND — they never applied the commit.
+                assertReplicasHaveValue(cluster, ks, 1, 42, 2);
+                assertReplicaHasNoRow(cluster, ks, 1, 1);
+                assertReplicaHasNoRow(cluster, ks, 1, 3);
             }
         }
     }

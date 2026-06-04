@@ -103,7 +103,7 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
      * via PaxosCommitForwardHandler.
      */
     @Test
-    public void testV1CommitForwardingFromNonReplica() throws Throwable
+    public void testV1CommitForwardingFromNonReplica()
     {
         String ks = newKeyspace("tracked");
 
@@ -160,10 +160,10 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
         // After migration to untracked, the forward handler commits via the untracked path.
         // The proposal never had a mutation ID (it is only assigned inside commitPaxosTracked),
         // so we verify no PAXOS_COMMIT_REQ carries one.
-        MessageSpy hold = on(cluster, Verb.PAXOS_COMMIT_FORWARD_REQ)
-                          .holdAll()
-                          .start();
-        try (MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+        try (MessageSpy hold = on(cluster, Verb.PAXOS_COMMIT_FORWARD_REQ)
+                               .holdAll()
+                               .start();
+             MessageSpy commitSpy = on(cluster, Verb.PAXOS_COMMIT_REQ)
                                     .to(1, 2, 3)
                                     .checkMutationId()
                                     .start())
@@ -183,11 +183,6 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
             assertEquals("No PAXOS_COMMIT_REQ should carry a mutation ID after fallback to untracked",
                          0, commitSpy.withMutationId());
         }
-        finally
-        {
-            // Ensure release + filter off even if assertions fail, so filter threads don't leak.
-            hold.close();
-        }
     }
 
     /*
@@ -205,7 +200,7 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
      * propagates out of the retry loop and the CAS fails with CasWriteTimeout.
      */
     @Test
-    public void testV1CommitForwardingRetryAfterCoordinatorBehind() throws Throwable
+    public void testV1CommitForwardingRetryAfterCoordinatorBehind()
     {
         String ks = newKeyspace("tracked");
 
@@ -233,7 +228,6 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
         // compose cleanly — the cluster filter system applies ALL matching filters.
         AtomicInteger retryCommitsWithId = new AtomicInteger();
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS_COMMIT_REQ.id)
                .to(2, 3)
                .messagesMatching((from, to, msg) -> {
@@ -310,7 +304,7 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
      * forward the commit to a replica to obtain a mutation id (inverse of testV1CommitForwardingFallbackToUntracked).
      */
     @Test
-    public void testV1CommitForwardingDuringMigrationToTracked() throws Throwable
+    public void testV1CommitForwardingDuringMigrationToTracked()
     {
         String ks = newKeyspace("untracked");
 

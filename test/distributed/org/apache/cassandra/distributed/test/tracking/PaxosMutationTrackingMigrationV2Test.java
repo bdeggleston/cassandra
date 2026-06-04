@@ -122,7 +122,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * Verifies: MigrationRouter.shouldUseTrackedForWrites() returns true during migration
      */
     @Test
-    public void testCasDuringMigrationToTracked() throws Throwable
+    public void testCasDuringMigrationToTracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -195,13 +195,14 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * reads require ALL writes to be tracked for monotonicity.
      */
     @Test
-    public void testPrepareReadDuringMigrationIsUntracked() throws Throwable
+    public void testPrepareReadDuringMigrationIsUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
         cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42)",
                                        ConsistencyLevel.QUORUM);
+        assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);
 
         alterReplicationType(cluster, ks, "tracked");
 
@@ -249,7 +250,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * 2b: After migration to untracked, the Paxos prepare read uses untracked routing.
      */
     @Test
-    public void testPrepareReadAfterMigrationToUntrackedIsUntracked() throws Throwable
+    public void testPrepareReadAfterMigrationToUntrackedIsUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -308,7 +309,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * prepare read uses tracked routing.
      */
     @Test
-    public void testPrepareReadOnTrackedKeyspaceIsTracked() throws Throwable
+    public void testPrepareReadOnTrackedKeyspaceIsTracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -370,7 +371,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * V2 message: PAXOS2_PREPARE_REFRESH_REQ via PaxosPrepareRefresh.refresh()
      */
     @Test
-    public void testStaleIdStrippedOnRecommit() throws Throwable
+    public void testStaleIdStrippedOnRecommit()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -445,7 +446,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * Inbound count == 2 proves no COORDINATOR_BEHIND retry (one batch to 2 remote replicas).
      */
     @Test
-    public void testCommitAfterMigrationToUntracked() throws Throwable
+    public void testCommitAfterMigrationToUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -565,7 +566,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      *       -> generates mutation ID locally (calls generateMutationIdAndPersistLocally())
      */
     @Test
-    public void testPrepareRefreshGeneratesMutationId() throws Throwable
+    public void testPrepareRefreshGeneratesMutationId()
     {
         // Create as UNTRACKED -- commits will have no mutation ID
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
@@ -696,7 +697,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * failures, it throws immediately. This test blocks commit messages to trigger a timeout.
      */
     @Test
-    public void testCommitFailureThrowsFromRetryLoop() throws Throwable
+    public void testCommitFailureThrowsFromRetryLoop()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -705,7 +706,6 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         // callback fires without waiting for the real write_request_timeout.
         // Local commit succeeds (1/3) but quorum (2) is not met -> Paxos.cas() throws.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS_COMMIT_REQ.id)
                .from(1).to(2, 3, 4)
                .messagesMatching((from, to, msg) -> {
@@ -726,6 +726,13 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         }
 
         assertTrue("CAS should have failed due to commit timeout", threw);
+
+        // Node 1 is the coordinator AND a replica; its local commit (executeOnSelf) fires
+        // before the quorum wait, so v=42 is locally durable despite the CAS reporting failure.
+        // Nodes 2,3 only received the synthetic TIMEOUT response — no commit landed there.
+        assertReplicasHaveValue(cluster, ks, KEY, 42, 1);
+        assertReplicaHasNoRow(cluster, ks, KEY, 2);
+        assertReplicaHasNoRow(cluster, ks, KEY, 3);
     }
 
     /*
@@ -742,7 +749,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * check falls through to FOUND_INCOMPLETE_COMMITTED.
      */
     @Test
-    public void testCommitAndPrepareViaIncompleteCommitted() throws Throwable
+    public void testCommitAndPrepareViaIncompleteCommitted()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -770,7 +777,6 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         // This guarantees FOUND_INCOMPLETE_COMMITTED (not FOUND_INCOMPLETE_ACCEPTED).
         AssertingLatch node2Responded = new AssertingLatch("testCommitAndPrepareViaIncompleteCommitted node2Responded");
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_RSP.id)
                .from(2)
                .to(1)
@@ -780,7 +786,6 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                }).drop();
 
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS2_PREPARE_RSP.id)
                .from(3)
                .to(1)
@@ -856,7 +861,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * only. A second CAS discovers FOUND_INCOMPLETE_ACCEPTED -> re-propose -> commitAndPrepare().
      */
     @Test
-    public void testCommitAndPrepareViaIncompleteAccepted() throws Throwable
+    public void testCommitAndPrepareViaIncompleteAccepted()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -911,7 +916,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * commitAndPrepare handler by engineering a scenario where prepare succeeds first.
      */
     @Test
-    public void testPrepareRejectsAfterMigration() throws Throwable
+    public void testPrepareRejectsAfterMigration()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -934,7 +939,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         cluster.filters().reset();
 
-        try (EpochPin pin = epochPin(cluster, 2))
+        try (EpochPin ignored = epochPin(cluster, 2))
         {
             // ALTER to tracked from node 1 (CMS). Use CL.ONE to avoid waiting for node 2's agreement.
             alterReplicationTypeFrom(cluster, 1, ks, "tracked", ConsistencyLevel.ONE);
@@ -967,6 +972,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             // successfully committed on any replica. The handler rejected the new CAS's commit,
             // and the prior round never reached a committed state either.
             assertReplicaHasNoRow(cluster, ks, KEY, 1);
+            assertReplicaHasNoRow(cluster, ks, KEY, 2);
+            assertReplicaHasNoRow(cluster, ks, KEY, 3);
         }
     }
 
@@ -1020,28 +1027,20 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             CompletableFuture<Throwable> casResult = casAsyncExpectingFailure(cluster, 2,
                                                                                "INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42) IF NOT EXISTS");
 
-            EpochPin pin = null;
-            try
+            hold.awaitFirstArrival();
+            // Pin node 2 at its current epoch so it stays untracked while we ALTER via node 1.
+            // The pin must remain active until AFTER hold.release() — releasing it early lets node 2
+            // catch up, changing the semantics of the held messages.
+            try(EpochPin ignored = epochPin(cluster, 2))
             {
-                hold.awaitFirstArrival();
-
-                // Pin node 2 at its current epoch so it stays untracked while we ALTER via node 1.
-                pin = epochPin(cluster, 2);
-
                 // ALTER to tracked from node 1 (CMS). CL.ONE so we don't wait for node 2.
                 alterReplicationTypeFrom(cluster, 1, ks, "tracked", ConsistencyLevel.ONE);
 
                 // Wait for node 3 to see tracked. Node 2 stays untracked.
                 awaitReplicationType(cluster, ks, ReplicationType.tracked, 3);
                 assertNodeSees(cluster, 2, ks, ReplicationType.untracked);
-            }
-            finally
-            {
                 hold.release();
-            }
 
-            try
-            {
                 // Held messages are now released. Handlers see tracked; coordinator's message carries
                 // untracked-era payload (no mutation ID, coordinatorSaysTracked=false). The handler's
                 // checkPaxosCommitMigration detects the disagreement → CoordinatorBehindException.
@@ -1058,13 +1057,12 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                 assertEquals("Held commitAndPrepare from the untracked coordinator must carry no mutation ID",
                              0, hold.withMutationId());
 
-                // Verify data state: no replica should have a committed v=42 row.
+                // Verify data state: node 2 (coordinator + replica) committed locally via
+                // executeOnSelf() before the quorum wait, so it has the row even though the
+                // CAS ultimately failed. Nodes 1,3 rejected in their handlers so have no row.
+                assertReplicasHaveValue(cluster, ks, KEY, 42, 2);
                 assertReplicaHasNoRow(cluster, ks, KEY, 1);
-            }
-            finally
-            {
-                if (pin != null)
-                    pin.close();
+                assertReplicaHasNoRow(cluster, ks, KEY, 3);
             }
         }
     }
@@ -1079,7 +1077,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * so the code strips the ID before committing via the untracked path.
      */
     @Test
-    public void testCommitAndPrepareStripsIdAfterMigrationToUntracked() throws Throwable
+    public void testCommitAndPrepareStripsIdAfterMigrationToUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -1153,7 +1151,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * Writing hints with mutation IDs causes IllegalStateException on replay after migration.
      */
     @Test
-    public void testTrackedPaxosCommitDoesNotWriteHints() throws Throwable
+    public void testTrackedPaxosCommitDoesNotWriteHints()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -1162,17 +1160,18 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         // delayed PaxosCommit.onFailure callbacks from contaminating the hint count.
         // Current test's mutations are created after this threshold and pass through.
         // Capture inside node 1 (the coordinator) so both sides of the comparison use the same clock.
-        long now = cluster.get(1).callOnInstance(() -> System.nanoTime());
+        long now = cluster.get(1).callOnInstance(System::nanoTime);
         cluster.forEach(instance -> instance.runOnInstance(() -> HintsService.setRejectHintsBeforeNanos(now)));
 
-        long hintsBefore = cluster.get(1).callOnInstance(() ->
-            StorageMetrics.totalHints.getCount());
+        @SuppressWarnings("Convert2MethodRef") long hintsBefore = cluster.get(1).callOnInstance(() -> StorageMetrics.totalHints.getCount());
+
+        // Block reconciler pushes so node 3 stays clean for the assertion below.
+        cluster.filters().verbs(Verb.MT_PUSH_MUTATION_REQ.id).drop();
 
         // Drop PAXOS_COMMIT_REQ from node 1 to node 3 and respond with TIMEOUT immediately
         // so PaxosCommit.onFailure() fires without waiting for the real write_request_timeout.
         // shouldHint() returns true for a live node; with the fix, isTracked()=true prevents the hint write.
         cluster.filters()
-               .inbound(true)
                .verbs(Verb.PAXOS_COMMIT_REQ.id)
                .from(1).to(3)
                .messagesMatching((from, to, msg) -> {
@@ -1187,17 +1186,16 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         assertCasApplied(result);
 
-        // Synthetic TIMEOUT fires the callback almost immediately; 1s is a generous safety margin.
-        // With isTracked()=true, submitHint should NOT be called.
-        Thread.sleep(1000);
-
-        long hintsAfter = cluster.get(1).callOnInstance(() ->
-            StorageMetrics.totalHints.getCount());
+        // The synthetic TIMEOUT response triggers onFailure synchronously within the CAS
+        // coordination path — by the time execute() returns, the callback has already run.
+        // If the hint-suppression fix were broken, totalHints would have incremented already.
+        @SuppressWarnings("Convert2MethodRef") long hintsAfter = cluster.get(1).callOnInstance(() -> StorageMetrics.totalHints.getCount());
         assertEquals("No hints should be written for tracked Paxos commits", hintsBefore, hintsAfter);
 
         // Verify data state: quorum committed on nodes 1,2 (node 3 was blocked).
-        cluster.filters().reset();
+        // Assert BEFORE resetting filters — the MT_PUSH_MUTATION_REQ block keeps node 3 clean.
         assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2);
+        assertReplicaHasNoRow(cluster, ks, KEY, 3);
     }
 
     /*
@@ -1224,7 +1222,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
-        try (EpochPin pin = epochPin(cluster, 2))
+        try (EpochPin ignored = epochPin(cluster, 2))
         {
             // Hold PAXOS_COMMIT_REQ from node 2 at nodes 1,3 until after the ALTER. Prepare
             // is not filtered so it proceeds to completion.
@@ -1271,6 +1269,13 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                 // proving COORDINATOR_BEHIND is the rejection reason
                 assertEquals("All commit attempts from stranded coordinator should carry mutation IDs (tracked path)",
                              2, hold.withMutationId());
+
+                // Node 2 is the coordinator AND a replica; its local commit (executeOnSelf) fires
+                // before the quorum wait, so v=42 is locally durable. Nodes 1,3 rejected with
+                // COORDINATOR_BEHIND — they never applied the commit.
+                assertReplicasHaveValue(cluster, ks, KEY, 42, 2);
+                assertReplicaHasNoRow(cluster, ks, KEY, 1);
+                assertReplicaHasNoRow(cluster, ks, KEY, 3);
             }
         }
     }
@@ -1305,6 +1310,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
     private long coordinatorBehindCount(int node)
     {
+        //noinspection Convert2MethodRef
         return cluster.get(node).callsOnInstance(() -> TCMMetrics.instance.coordinatorBehindReplication.getCount()).call();
     }
 
@@ -1315,7 +1321,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * then agree and serve the read. No COORDINATOR_BEHIND, no retry.
      */
     @Test
-    public void testPrepareReadReplicaBehindCatchesUpToUntracked() throws Throwable
+    public void testPrepareReadReplicaBehindCatchesUpToUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -1323,6 +1329,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         // Seed a row while everyone still agrees (tracked) so the SERIAL read has data to return.
         cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 7)",
                                        ConsistencyLevel.QUORUM);
+        assertReplicasHaveValue(cluster, ks, KEY, 7, 1, 2, 3);
 
         advanceCoordinatorAheadOfReplicas(ks, "tracked", "untracked");
 
@@ -1365,7 +1372,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * isolates checkPaxosCommitMigration's fetch branch without dropping the prepare.
      */
     @Test
-    public void testCommitReplicaBehindCatchesUpToTracked() throws Throwable
+    public void testCommitReplicaBehindCatchesUpToTracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
@@ -1411,7 +1418,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * the commit handler, apply on the untracked path, and not flag the coordinator behind.
      */
     @Test
-    public void testCommitReplicaBehindCatchesUpToUntracked() throws Throwable
+    public void testCommitReplicaBehindCatchesUpToUntracked()
     {
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });

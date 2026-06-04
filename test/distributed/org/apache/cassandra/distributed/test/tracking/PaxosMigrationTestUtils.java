@@ -19,10 +19,8 @@
 package org.apache.cassandra.distributed.test.tracking;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -230,22 +228,6 @@ public class PaxosMigrationTestUtils
         return createKeyspace(cluster, prefix, replicationType, 3);
     }
 
-    public static void awaitMigrationComplete(Cluster cluster, String keyspace)
-    {
-        String ks = keyspace;
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-        while (true)
-        {
-            boolean migrating = cluster.get(1).callOnInstance(() ->
-                ClusterMetadata.current().mutationTrackingMigrationState.isMigrating(ks));
-            if (!migrating)
-                return;
-            if (System.nanoTime() >= deadline)
-                throw new AssertionError("Migration did not complete within 30s for keyspace " + keyspace);
-            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-        }
-    }
-
     public static void alterReplicationType(Cluster cluster, String keyspace, String replicationType)
     {
         cluster.schemaChange("ALTER KEYSPACE " + keyspace + " WITH replication = " +
@@ -423,7 +405,7 @@ public class PaxosMigrationTestUtils
     public static IMessageFilters.Filter blockProactiveTcm(Cluster cluster, int... nodes)
     {
         return cluster.filters()
-                      .inbound(true)
+                      .inbound()
                       .verbs(Verb.TCM_REPLICATION.id, Verb.TCM_NOTIFY_REQ.id)
                       .to(nodes)
                       .drop();
@@ -432,28 +414,26 @@ public class PaxosMigrationTestUtils
     public static final class EpochPin implements AutoCloseable
     {
         private final AssertingLatch releaseTcm;
-        private final IMessageFilters.Filter inboundFilter;
-        private final IMessageFilters.Filter outboundFilter;
 
         private EpochPin(Cluster cluster, int node)
         {
             this.releaseTcm = new AssertingLatch("EpochPin release for node " + node);
-            this.inboundFilter = cluster.filters()
-                                        .inbound(true)
-                                        .verbs(Verb.TCM_REPLICATION.id, Verb.TCM_NOTIFY_REQ.id)
-                                        .to(node)
-                                        .messagesMatching((from, to, msg) -> {
-                                            releaseTcm.await();
-                                            return false;
-                                        }).drop();
-            this.outboundFilter = cluster.filters()
-                                         .inbound(true)
-                                         .verbs(Verb.TCM_FETCH_CMS_LOG_REQ.id, Verb.TCM_FETCH_PEER_LOG_REQ.id)
-                                         .from(node)
-                                         .messagesMatching((from, to, msg) -> {
-                                             releaseTcm.await();
-                                             return false;
-                                         }).drop();
+            cluster.filters()
+                   .inbound()
+                   .verbs(Verb.TCM_REPLICATION.id, Verb.TCM_NOTIFY_REQ.id)
+                   .to(node)
+                   .messagesMatching((from, to, msg) -> {
+                       releaseTcm.await();
+                       return false;
+                   }).drop();
+            cluster.filters()
+                   .inbound()
+                   .verbs(Verb.TCM_FETCH_CMS_LOG_REQ.id, Verb.TCM_FETCH_PEER_LOG_REQ.id)
+                   .from(node)
+                   .messagesMatching((from, to, msg) -> {
+                       releaseTcm.await();
+                       return false;
+                   }).drop();
         }
 
         @Override
@@ -465,24 +445,13 @@ public class PaxosMigrationTestUtils
             // in @After.
             releaseTcm.countDown();
         }
-
-        public IMessageFilters.Filter inboundFilter()
-        {
-            return inboundFilter;
-        }
-
-        public IMessageFilters.Filter outboundFilter()
-        {
-            return outboundFilter;
-        }
     }
 
     // --- MessageSpy: fluent wrapper over cluster filter + counter + latch boilerplate ---
 
     /**
      * Create a {@link Builder} that configures a spy (or dropper) over one or more message verbs
-     * on the given cluster. Default direction is inbound. Returns a {@link MessageSpy} once
-     * {@link Builder#start()} is called.
+     * on the given cluster. Returns a {@link MessageSpy} once {@link Builder#start()} is called.
      */
     public static Builder on(Cluster cluster, Verb... verbs)
     {
@@ -490,7 +459,7 @@ public class PaxosMigrationTestUtils
     }
 
     /**
-     * Fluent builder for {@link MessageSpy}. Configures direction, source/destination nodes,
+     * Fluent builder for {@link MessageSpy}. Configures source/destination nodes,
      * mutation-id checking, expected message count, hold/release behavior, and whether messages
      * should be dropped or allowed through.
      */
@@ -500,14 +469,12 @@ public class PaxosMigrationTestUtils
         private final int[] verbIds;
         private int[] fromNodes;
         private int[] toNodes;
-        private boolean inbound = true;
         private boolean checkMutationId = false;
         private boolean checkReadTracked = false;
         private int expect = 0;
         private boolean holdAll = false;
         private int holdFirst = 0;
         private boolean drop = false;
-        private final List<IMessageFilters.Matcher> observers = new ArrayList<>();
 
         private Builder(Cluster cluster, Verb... verbs)
         {
@@ -526,19 +493,6 @@ public class PaxosMigrationTestUtils
         public Builder to(int... nodes)
         {
             this.toNodes = nodes;
-            return this;
-        }
-
-        /** Set the filter to apply on inbound (the default) or outbound traffic. */
-        public Builder inbound()
-        {
-            this.inbound = true;
-            return this;
-        }
-
-        public Builder inbound(boolean inbound)
-        {
-            this.inbound = inbound;
             return this;
         }
 
@@ -588,13 +542,6 @@ public class PaxosMigrationTestUtils
             return this;
         }
 
-        /** Register an extra observer invoked on every matching message (after counting / holding). */
-        public Builder onEach(IMessageFilters.Matcher observer)
-        {
-            this.observers.add(observer);
-            return this;
-        }
-
         public MessageSpy start()
         {
             return new MessageSpy(this);
@@ -615,7 +562,6 @@ public class PaxosMigrationTestUtils
         private final AtomicInteger withTrackedRead = new AtomicInteger();
         private final AtomicInteger withUntrackedRead = new AtomicInteger();
         private final AtomicInteger held = new AtomicInteger();
-        private final AtomicInteger passedThrough = new AtomicInteger();
         private final AssertingLatch deliveryLatch;
         private final AssertingLatch firstArrivalLatch;
         private final AssertingLatch holdLatch;
@@ -630,12 +576,12 @@ public class PaxosMigrationTestUtils
             this.drop = b.drop;
             this.holdFirst = b.holdFirst;
             this.holdAll = b.holdAll;
-            this.deliveryLatch = b.expect > 0 ? new AssertingLatch(b.expect, "MessageSpy delivery (expect=" + b.expect + ")")
+            this.deliveryLatch = b.expect > 0 ? new AssertingLatch(b.expect, "MessageSpy delivery (expect=" + b.expect + ')')
                                               : null;
             this.firstArrivalLatch = new AssertingLatch("MessageSpy first arrival");
             this.holdLatch = (b.holdAll || b.holdFirst > 0) ? new AssertingLatch("MessageSpy hold release") : null;
 
-            IMessageFilters.Builder fb = cluster.filters().inbound(b.inbound).verbs(b.verbIds);
+            IMessageFilters.Builder fb = cluster.filters().inbound().verbs(b.verbIds);
             if (b.fromNodes != null)
                 fb = fb.from(b.fromNodes);
             if (b.toNodes != null)
@@ -643,7 +589,6 @@ public class PaxosMigrationTestUtils
 
             final boolean checkId = b.checkMutationId;
             final boolean checkRead = b.checkReadTracked;
-            final List<IMessageFilters.Matcher> observers = b.observers;
             this.filter = fb.messagesMatching((from, to, msg) -> {
                 total.incrementAndGet();
                 firstArrivalLatch.countDown();
@@ -665,9 +610,6 @@ public class PaxosMigrationTestUtils
                     }
                 }
 
-                for (IMessageFilters.Matcher observer : observers)
-                    observer.matches(from, to, msg);
-
                 // Hold before signaling deliveryLatch so the held-message-count stays accurate
                 // while the hold is still active.
                 boolean shouldHold = holdAll || (holdFirst > 0 && total.get() <= holdFirst);
@@ -675,10 +617,6 @@ public class PaxosMigrationTestUtils
                 {
                     held.incrementAndGet();
                     holdLatch.await();
-                }
-                else
-                {
-                    passedThrough.incrementAndGet();
                 }
 
                 if (deliveryLatch != null)
@@ -711,11 +649,6 @@ public class PaxosMigrationTestUtils
         public int held()
         {
             return held.get();
-        }
-
-        public int passedThrough()
-        {
-            return passedThrough.get();
         }
 
         /** Block until the {@code expect(N)} count is reached. Throws if no expectation was set. */
