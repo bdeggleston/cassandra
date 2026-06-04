@@ -33,6 +33,7 @@ import org.apache.cassandra.distributed.api.ConsistencyLevel;
 import org.apache.cassandra.distributed.shared.ClusterUtils;
 import org.apache.cassandra.distributed.test.TestBaseImpl;
 import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.MessageSpy;
+import org.apache.cassandra.metrics.ClientRequestsMetricsHolder;
 import org.apache.cassandra.net.Verb;
 
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.alterReplicationType;
@@ -46,6 +47,7 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.on;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.pauseHintsAndReconciler;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for V1 Paxos handler-level forwarding paths with CAS-level forwarding disabled.
@@ -204,6 +206,9 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
     {
         String ks = newKeyspace("tracked");
 
+        @SuppressWarnings("Convert2MethodRef")
+        long retryBefore = cluster.get(4).callOnInstance(() -> ClientRequestsMetricsHolder.casWriteMetrics.retryCoordinatorBehind.getCount());
+
         // Pre-insert so the CAS condition is met on first try
         cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 1)",
                                        ConsistencyLevel.ALL);
@@ -294,6 +299,13 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
         // Retry messages from node 4 (untracked path) must not carry mutation IDs
         assertEquals("Retry PAXOS_COMMIT_REQ from node 4 should NOT carry mutation IDs (untracked path)",
                      0, retryCommitsWithId.get());
+
+        // Verify the retryCoordinatorBehind metric was incremented on the coordinator (node 4).
+        // StorageProxy.commitPaxos marks this when CoordinatorBehindException is caught and retried.
+        @SuppressWarnings("Convert2MethodRef")
+        long retryAfter = cluster.get(4).callOnInstance(() -> ClientRequestsMetricsHolder.casWriteMetrics.retryCoordinatorBehind.getCount());
+        assertTrue("casWriteMetrics.retryCoordinatorBehind should have been incremented on coordinator node 4",
+                   retryAfter > retryBefore);
     }
 
     /*

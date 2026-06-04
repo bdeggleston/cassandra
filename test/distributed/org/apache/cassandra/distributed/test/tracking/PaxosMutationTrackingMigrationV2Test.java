@@ -34,6 +34,7 @@ import org.apache.cassandra.distributed.test.TestBaseImpl;
 import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.EpochPin;
 import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.MessageSpy;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.metrics.ClientRequestsMetricsHolder;
 import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.metrics.TCMMetrics;
 import org.apache.cassandra.net.Verb;
@@ -507,6 +508,9 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
+        @SuppressWarnings("Convert2MethodRef")
+        long retryBefore = cluster.get(1).callOnInstance(() -> ClientRequestsMetricsHolder.casWriteMetrics.retryCoordinatorBehind.getCount());
+
         // Inbound filter at nodes 2, 3, 4: hold ALL PAXOS_COMMIT_REQ arrivals
         // until after the schema change. The first batch arrives with old epoch (tracked),
         // but by the time the handler processes it, the node is at new epoch (untracked).
@@ -554,6 +558,14 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);
         assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+
+        // Verify the retryCoordinatorBehind metric was incremented on the coordinator (node 1).
+        // Paxos.cas() marks this at the top of the commit retry loop when COORDINATOR_BEHIND
+        // responses are detected and a retry is viable.
+        @SuppressWarnings("Convert2MethodRef")
+        long retryAfter = cluster.get(1).callOnInstance(() -> ClientRequestsMetricsHolder.casWriteMetrics.retryCoordinatorBehind.getCount());
+        assertTrue("casWriteMetrics.retryCoordinatorBehind should have been incremented on coordinator node 1",
+                   retryAfter > retryBefore);
     }
 
     /*
