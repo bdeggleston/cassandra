@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.Util;
+import org.apache.cassandra.db.EmbeddableSinglePartitionReadCommand;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.marshal.Int32Type;
@@ -79,6 +80,35 @@ public class PaxosMigrationTestUtils
     {
         Message<?> deserialized = Instance.deserializeMessage(msg);
         return payloadHasMutationId(deserialized.payload);
+    }
+
+    // Must be called inside callsOnInstance() on the receiving node.
+    // Returns true if the prepare message carries a tracked read, false if untracked, null if no read field.
+    public static Boolean messageReadIsTracked(IMessage msg)
+    {
+        Message<?> deserialized = Instance.deserializeMessage(msg);
+        Object payload = deserialized.payload;
+        try
+        {
+            Field readField = null;
+            Class<?> cls = payload.getClass();
+            while (cls != null && readField == null)
+            {
+                try { readField = cls.getDeclaredField("read"); }
+                catch (NoSuchFieldException e) { cls = cls.getSuperclass(); }
+            }
+            if (readField == null)
+                return null;
+            readField.setAccessible(true);
+            Object read = readField.get(payload);
+            if (read == null)
+                return null;
+            return ((EmbeddableSinglePartitionReadCommand) read).isTracked();
+        }
+        catch (IllegalAccessException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     // Must be called inside runOnInstance() on the receiving node
@@ -450,6 +480,7 @@ public class PaxosMigrationTestUtils
         private int[] toNodes;
         private boolean inbound = true;
         private boolean checkMutationId = false;
+        private boolean checkReadTracked = false;
         private int expect = 0;
         private boolean holdAll = false;
         private int holdFirst = 0;
@@ -493,6 +524,13 @@ public class PaxosMigrationTestUtils
         public Builder checkMutationId()
         {
             this.checkMutationId = true;
+            return this;
+        }
+
+        /** Deserialize each matching message on its target node and count those carrying tracked vs untracked reads. */
+        public Builder checkReadTracked()
+        {
+            this.checkReadTracked = true;
             return this;
         }
 
@@ -552,6 +590,8 @@ public class PaxosMigrationTestUtils
         private final Cluster cluster;
         private final AtomicInteger total = new AtomicInteger();
         private final AtomicInteger withMutationId = new AtomicInteger();
+        private final AtomicInteger withTrackedRead = new AtomicInteger();
+        private final AtomicInteger withUntrackedRead = new AtomicInteger();
         private final AtomicInteger held = new AtomicInteger();
         private final AtomicInteger passedThrough = new AtomicInteger();
         private final AssertingLatch deliveryLatch;
@@ -580,6 +620,7 @@ public class PaxosMigrationTestUtils
                 fb = fb.to(b.toNodes);
 
             final boolean checkId = b.checkMutationId;
+            final boolean checkRead = b.checkReadTracked;
             final List<IMessageFilters.Matcher> observers = b.observers;
             this.filter = fb.messagesMatching((from, to, msg) -> {
                 total.incrementAndGet();
@@ -590,6 +631,16 @@ public class PaxosMigrationTestUtils
                     boolean hasId = cluster.get(to).callsOnInstance(() -> messageHasMutationId(msg)).call();
                     if (hasId)
                         withMutationId.incrementAndGet();
+                }
+
+                if (checkRead)
+                {
+                    Boolean tracked = cluster.get(to).callsOnInstance(() -> messageReadIsTracked(msg)).call();
+                    if (tracked != null)
+                    {
+                        if (tracked) withTrackedRead.incrementAndGet();
+                        else withUntrackedRead.incrementAndGet();
+                    }
                 }
 
                 for (IMessageFilters.Matcher observer : observers)
@@ -623,6 +674,16 @@ public class PaxosMigrationTestUtils
         public int withMutationId()
         {
             return withMutationId.get();
+        }
+
+        public int withTrackedRead()
+        {
+            return withTrackedRead.get();
+        }
+
+        public int withUntrackedRead()
+        {
+            return withUntrackedRead.get();
         }
 
         public int held()

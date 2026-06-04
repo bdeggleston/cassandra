@@ -219,13 +219,28 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             });
         }
 
-        // CAS works with untracked read (correct routing during migration)
-        Object[][] result = cluster.coordinator(1).execute("SELECT * FROM " + ks + ".tbl WHERE k = " + KEY,
-                                                           ConsistencyLevel.SERIAL);
+        // CAS works with untracked read (correct routing during migration).
+        // Spy on PAXOS2_PREPARE_REQ to confirm the wire messages carry UNTRACKED reads.
+        try (MessageSpy prepareSpy = on(cluster, Verb.PAXOS2_PREPARE_REQ)
+                                     .from(1)
+                                     .to(2, 3, 4)
+                                     .checkReadTracked()
+                                     .expect(2)
+                                     .start())
+        {
+            Object[][] result = cluster.coordinator(1).execute("SELECT * FROM " + ks + ".tbl WHERE k = " + KEY,
+                                                               ConsistencyLevel.SERIAL);
 
-        assertNotNull("CAS read should return result", result);
-        assertEquals("Should have one row", 1, result.length);
-        assertEquals("Value should be 42", 42, result[0][1]);
+            prepareSpy.await();
+            assertNotNull("CAS read should return result", result);
+            assertEquals("Should have one row", 1, result.length);
+            assertEquals("Value should be 42", 42, result[0][1]);
+
+            assertEquals("All prepare messages should carry UNTRACKED reads during migration",
+                         2, prepareSpy.withUntrackedRead());
+            assertEquals("No prepare messages should carry TRACKED reads during migration",
+                         0, prepareSpy.withTrackedRead());
+        }
     }
 
     /**
@@ -255,8 +270,15 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             });
         }
 
-        // Spy on PAXOS_COMMIT_REQ to verify no COORDINATOR_BEHIND retry.
-        try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+        // Spy on PAXOS2_PREPARE_REQ to confirm untracked reads on the wire,
+        // and on PAXOS_COMMIT_REQ to verify no COORDINATOR_BEHIND retry.
+        try (MessageSpy prepareSpy = on(cluster, Verb.PAXOS2_PREPARE_REQ)
+                                     .from(1)
+                                     .to(2, 3, 4)
+                                     .checkReadTracked()
+                                     .expect(2)
+                                     .start();
+             MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_REQ)
                               .to(2, 3, 4)
                               .expect(2)
                               .start())
@@ -264,8 +286,14 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             Object[][] result = cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42) IF NOT EXISTS",
                                                                ConsistencyLevel.SERIAL, ConsistencyLevel.QUORUM);
 
+            prepareSpy.await();
             spy.await();
             assertCasApplied(result);
+
+            assertEquals("Prepare messages should carry UNTRACKED reads after migration to untracked",
+                         2, prepareSpy.withUntrackedRead());
+            assertEquals("No prepare messages should carry TRACKED reads",
+                         0, prepareSpy.withTrackedRead());
             assertEquals("PAXOS_COMMIT_REQ should match remote replica count (no retry)",
                          2, spy.total());
         }
@@ -299,8 +327,15 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             });
         }
 
-        // Spy on PAXOS_COMMIT_REQ to verify no COORDINATOR_BEHIND retry from read mismatch.
-        try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_REQ)
+        // Spy on PAXOS2_PREPARE_REQ to confirm tracked reads on the wire,
+        // and on PAXOS_COMMIT_REQ to verify no COORDINATOR_BEHIND retry from read mismatch.
+        try (MessageSpy prepareSpy = on(cluster, Verb.PAXOS2_PREPARE_REQ)
+                                     .from(1)
+                                     .to(2, 3, 4)
+                                     .checkReadTracked()
+                                     .expect(2)
+                                     .start();
+             MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_REQ)
                               .to(2, 3, 4)
                               .expect(2)
                               .start())
@@ -308,8 +343,14 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             Object[][] result = cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 42) IF NOT EXISTS",
                                                                ConsistencyLevel.SERIAL, ConsistencyLevel.QUORUM);
 
+            prepareSpy.await();
             spy.await();
             assertCasApplied(result);
+
+            assertEquals("All prepare messages should carry TRACKED reads on tracked keyspace",
+                         2, prepareSpy.withTrackedRead());
+            assertEquals("No prepare messages should carry UNTRACKED reads",
+                         0, prepareSpy.withUntrackedRead());
             assertEquals("PAXOS_COMMIT_REQ should match remote replica count (no retry)",
                          2, spy.total());
         }

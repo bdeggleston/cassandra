@@ -463,7 +463,7 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
     @Override
     public void onResponse(NoPayload response, InetAddressAndPort from)
     {
-        if (isTracked())
+        if (isTracked() && !from.equals(FBUtilities.getBroadcastAddressAndPort()))
         {
             if (response != null)
                 MutationTrackingService.instance().receivedWriteResponse(commit.mutation.id(), from);
