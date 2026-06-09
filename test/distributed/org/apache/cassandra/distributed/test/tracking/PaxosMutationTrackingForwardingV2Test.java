@@ -55,6 +55,8 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.on;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.pauseHintsAndReconciler;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.respondWithTimeout;
+import static org.apache.cassandra.schema.ReplicationType.tracked;
+import static org.apache.cassandra.schema.ReplicationType.untracked;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -119,7 +121,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
         cluster.filters().reset();
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         // Count PAXOS_PREPARE_REFRESH_FORWARD_REQ arrivals at any replica.
@@ -256,7 +258,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
         cluster.filters().reset();
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         // Intercept PAXOS2_PREPARE_REFRESH_REQ at nodes 2 and 3, immediately respond with failure
@@ -338,7 +340,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
 
         cluster.filters().reset();
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         // Defensive filter: intercept PAXOS2_PREPARE_REFRESH_REQ at node 3 in case it somehow
@@ -447,7 +449,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         try
         {
             hold.awaitFirstArrival();
-            alterReplicationType(cluster, ks, "untracked");
+            alterReplicationType(cluster, ks, untracked);
         }
         finally
         {
@@ -524,7 +526,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
         try
         {
             commitArrived.await();
-            alterReplicationType(cluster, ks, "untracked");
+            alterReplicationType(cluster, ks, untracked);
         }
         finally
         {
@@ -566,11 +568,9 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
     }
 
     /*
-     * Commit forwarding reached via an untracked -> tracked migration (review-feedback gap: the
-     * existing commit-forwarding tests only cover steady-state tracked and the tracked -> untracked
-     * direction). The keyspace is created untracked -- where a non-replica coordinator commits
-     * directly -- then migrated to tracked. Once writes are tracked, a non-replica (node 4) must
-     * forward the commit to a replica to obtain a mutation id, exercising the migration-state-aware
+     * Commit forwarding reached via an untracked -> tracked migration. The keyspace is created untracked -- where
+     * a non-replica coordinator commits directly -- then migrated to tracked. Once writes are tracked, a non-replica
+     * (node 4) must forward the commit to a replica to obtain a mutation id, exercising the migration-state-aware
      * forwarding decision (the inverse of testV2CommitForwardingFallbackToUntracked).
      */
     @Test
@@ -578,7 +578,7 @@ public class PaxosMutationTrackingForwardingV2Test extends TestBaseImpl
     {
         String ks = newKeyspace("untracked");
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         MessageSpy forwardSpy = on(cluster, Verb.PAXOS2_COMMIT_FORWARD_REQ)

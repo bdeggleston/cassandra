@@ -33,7 +33,6 @@ import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.Ep
 import org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.MessageSpy;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.replication.MutationTrackingService;
-import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.service.replication.migration.MutationTrackingMigrationState;
 import org.apache.cassandra.tcm.ClusterMetadata;
 
@@ -53,6 +52,8 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.epochPin;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.on;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.pauseHintsAndReconciler;
+import static org.apache.cassandra.schema.ReplicationType.tracked;
+import static org.apache.cassandra.schema.ReplicationType.untracked;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -102,7 +103,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (1, 0)",
                                        ConsistencyLevel.QUORUM);
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
 
         // Precondition: migration is active and schema reads tracked on every node.
         for (int i = 1; i <= cluster.size(); i++)
@@ -181,8 +182,8 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         cluster.filters().reset();
 
         // Migrate to untracked (instant). The stale ballot in system.paxos has a mutation ID.
-        alterReplicationType(cluster, ks, "untracked");
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        alterReplicationType(cluster, ks, untracked);
+        assertAllNodesSee(cluster, ks, untracked);
 
         // Spy on PAXOS_COMMIT_REQ messages to remote replicas. The V1 repair path's
         // beginAndRepairPaxos loop may run 1+ iterations depending on timing (when a replica
@@ -229,8 +230,8 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
     {
         String ks = createKeyspace(cluster, "pmt_v1", "tracked");
 
-        alterReplicationType(cluster, ks, "untracked");
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        alterReplicationType(cluster, ks, untracked);
+        assertAllNodesSee(cluster, ks, untracked);
 
         try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_REQ)
                               .to(2, 3)
@@ -295,8 +296,8 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
             try
             {
                 // ALTER to untracked while commits are delayed at the destination
-                alterReplicationType(cluster, ks, "untracked");
-                assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+                alterReplicationType(cluster, ks, untracked);
+                assertAllNodesSee(cluster, ks, untracked);
             }
             finally
             {
@@ -322,7 +323,7 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         }
 
         assertReplicasHaveValue(cluster, ks, 1, 42, 1, 2, 3);
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        assertAllNodesSee(cluster, ks, untracked);
     }
 
     /*
@@ -348,10 +349,10 @@ public class PaxosMutationTrackingMigrationV1Test extends TestBaseImpl
         {
             // ALTER to untracked via node 1 at CL.ONE so we don't wait for schema agreement
             // on TCM-blocked node 2.
-            alterReplicationTypeFrom(cluster, 1, ks, "untracked", ConsistencyLevel.ONE);
+            alterReplicationTypeFrom(cluster, 1, ks, untracked, ConsistencyLevel.ONE);
 
             // Wait for nodes 1,3 to see untracked. Node 2 should still see tracked.
-            awaitReplicationType(cluster, ks, ReplicationType.untracked, 1, 3);
+            awaitReplicationType(cluster, ks, untracked, 1, 3);
             final String keyspace = ks;
             assertTrue("Node 2 should still see tracked (TCM blocked)",
                        cluster.get(2).callOnInstance(() ->

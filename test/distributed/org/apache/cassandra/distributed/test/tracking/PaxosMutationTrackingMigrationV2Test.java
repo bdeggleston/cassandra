@@ -65,6 +65,8 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.epochPin;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.on;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.pauseHintsAndReconciler;
+import static org.apache.cassandra.schema.ReplicationType.tracked;
+import static org.apache.cassandra.schema.ReplicationType.untracked;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -131,7 +133,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         cluster.coordinator(1).execute("INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 0)",
                                        ConsistencyLevel.QUORUM);
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
 
         for (int i = 1; i <= cluster.size(); i++)
         {
@@ -205,7 +207,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                                        ConsistencyLevel.QUORUM);
         assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
 
         // Verify migration is active and the prepare read routing is UNTRACKED
         for (int i = 1; i <= cluster.size(); i++)
@@ -256,7 +258,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
-        alterReplicationType(cluster, ks, "untracked");
+        alterReplicationType(cluster, ks, untracked);
 
         // Verify all nodes see untracked and the prepare read routing is UNTRACKED
         for (int i = 1; i <= cluster.size(); i++)
@@ -395,8 +397,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         cluster.filters().reset();
 
         // Migrate to untracked (instant). The stale ballot in system.paxos has a mutation ID.
-        alterReplicationType(cluster, ks, "untracked");
-        assertNodeSees(cluster, 1, ks, ReplicationType.untracked);
+        alterReplicationType(cluster, ks, untracked);
+        assertNodeSees(cluster, 1, ks, untracked);
 
         // Spy on the recommit verb AND on PAXOS_COMMIT_REQ to detect any retry overhead.
         // V2 recommit: PaxosPrepareRefresh -> PAXOS2_PREPARE_REFRESH_REQ to remote replicas.
@@ -452,8 +454,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
-        alterReplicationType(cluster, ks, "untracked");
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        alterReplicationType(cluster, ks, untracked);
+        assertAllNodesSee(cluster, ks, untracked);
 
         // Count inbound PAXOS_COMMIT_REQ at remote nodes.
         // Also count PAXOS2_PREPARE_REFRESH_REQ to verify no stale ballot refresh.
@@ -531,8 +533,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             try
             {
                 // ALTER to untracked while commits are delayed at the destination
-                alterReplicationType(cluster, ks, "untracked");
-                assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+                alterReplicationType(cluster, ks, untracked);
+                assertAllNodesSee(cluster, ks, untracked);
             }
             finally
             {
@@ -557,7 +559,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         }
 
         assertReplicasHaveValue(cluster, ks, KEY, 42, 1, 2, 3);
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        assertAllNodesSee(cluster, ks, untracked);
 
         // Verify the retryCoordinatorBehind metric was incremented on the coordinator (node 1).
         // Paxos.cas() marks this at the top of the commit retry loop when COORDINATOR_BEHIND
@@ -601,8 +603,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         cluster.filters().reset();
 
         // Migrate to TRACKED. The stale ballot in system.paxos has NO mutation ID.
-        alterReplicationType(cluster, ks, "tracked");
-        assertAllNodesSee(cluster, ks, ReplicationType.tracked);
+        alterReplicationType(cluster, ks, tracked);
+        assertAllNodesSee(cluster, ks, tracked);
 
         // Spy on PAXOS2_PREPARE_REFRESH_REQ to verify the refresh path fires.
         try (MessageSpy refreshSpy = on(cluster, Verb.PAXOS2_PREPARE_REFRESH_REQ)
@@ -669,8 +671,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             try
             {
                 // ALTER to untracked while prepares are delayed
-                alterReplicationType(cluster, ks, "untracked");
-                assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+                alterReplicationType(cluster, ks, untracked);
+                assertAllNodesSee(cluster, ks, untracked);
             }
             finally
             {
@@ -954,11 +956,11 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         try (EpochPin ignored = epochPin(cluster, 2))
         {
             // ALTER to tracked from node 1 (CMS). Use CL.ONE to avoid waiting for node 2's agreement.
-            alterReplicationTypeFrom(cluster, 1, ks, "tracked", ConsistencyLevel.ONE);
+            alterReplicationTypeFrom(cluster, 1, ks, tracked, ConsistencyLevel.ONE);
 
             // Wait for node 3 to see tracked. Node 2 should still see untracked.
-            awaitReplicationType(cluster, ks, ReplicationType.tracked, 3);
-            assertNodeSees(cluster, 2, ks, ReplicationType.untracked);
+            awaitReplicationType(cluster, ks, tracked, 3);
+            assertNodeSees(cluster, 2, ks, untracked);
 
             // CAS from node 2. Node 2 sees untracked; handlers on nodes 1,3 see tracked.
             // PaxosPrepare.RequestHandler.doVerb() calls checkPaxosPrepareReadMigration() BEFORE
@@ -1046,11 +1048,11 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
             try(EpochPin ignored = epochPin(cluster, 2))
             {
                 // ALTER to tracked from node 1 (CMS). CL.ONE so we don't wait for node 2.
-                alterReplicationTypeFrom(cluster, 1, ks, "tracked", ConsistencyLevel.ONE);
+                alterReplicationTypeFrom(cluster, 1, ks, tracked, ConsistencyLevel.ONE);
 
                 // Wait for node 3 to see tracked. Node 2 stays untracked.
-                awaitReplicationType(cluster, ks, ReplicationType.tracked, 3);
-                assertNodeSees(cluster, 2, ks, ReplicationType.untracked);
+                awaitReplicationType(cluster, ks, tracked, 3);
+                assertNodeSees(cluster, 2, ks, untracked);
                 hold.release();
 
                 // Held messages are now released. Handlers see tracked; coordinator's message carries
@@ -1112,8 +1114,8 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         // Migrate to untracked. The committed ballot in system.paxos on node 2 still has
         // its mutation ID from the tracked era.
-        alterReplicationType(cluster, ks, "untracked");
-        assertAllNodesSee(cluster, ks, ReplicationType.untracked);
+        alterReplicationType(cluster, ks, untracked);
+        assertAllNodesSee(cluster, ks, untracked);
 
         // Spy on commit verbs AND refresh verbs. Count messages that still carry a mutation ID
         // after migration to untracked — any non-zero count indicates stripping failed at one
@@ -1254,11 +1256,11 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
                     // ALTER to untracked via node 1 at CL.ONE so we don't wait for schema agreement
                     // on TCM-blocked node 2.
-                    alterReplicationTypeFrom(cluster, 1, ks, "untracked", ConsistencyLevel.ONE);
+                    alterReplicationTypeFrom(cluster, 1, ks, untracked, ConsistencyLevel.ONE);
 
                     // Wait for nodes 1 and 3 to observe untracked. Node 2 must still see tracked.
-                    awaitReplicationType(cluster, ks, ReplicationType.untracked, 1, 3);
-                    assertNodeSees(cluster, 2, ks, ReplicationType.tracked);
+                    awaitReplicationType(cluster, ks, untracked, 1, 3);
+                    assertNodeSees(cluster, 2, ks, tracked);
                 }
                 finally
                 {
@@ -1292,10 +1294,10 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         }
     }
 
-    // ===== Replica-behind coverage (Issue 2): coordinator ahead, replica catches up on demand =====
+    // ===== Replica-behind coverage: coordinator ahead, replica catches up on demand =====
     //
     // The coordinator-behind path (replica AHEAD of coordinator -> CoordinatorBehindException) is
-    // covered by the tests above. These tests cover the inverse, previously-untested branch of
+    // covered by the tests above. These tests cover the inverse branch of
     // MigrationRouter.checkPaxos{Prepare,Commit}Migration: when the coordinator's message carries a
     // HIGHER epoch than the handler (message.epoch().isAfter(metadata.epoch)), the handler must
     // fetchLogFromPeerOrCMS, catch up, find it now agrees with the coordinator, and proceed WITHOUT
@@ -1310,14 +1312,14 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
      * The keyspace must already exist. Replicas 2 and 3 keep their old epoch (proactive TCM dropped)
      * but can still catch up on demand.
      */
-    private void advanceCoordinatorAheadOfReplicas(String ks, String fromType, String toType)
+    private void advanceCoordinatorAheadOfReplicas(String ks, ReplicationType fromType, ReplicationType toType)
     {
         blockProactiveTcm(cluster, 2, 3);
         // Drive the ALTER from node 1 (the CMS) at CL.ONE so it does not wait for 2,3 to enact.
         alterReplicationTypeFrom(cluster, 1, ks, toType, ConsistencyLevel.ONE);
-        awaitReplicationType(cluster, ks, ReplicationType.valueOf(toType), 1);
-        assertNodeSees(cluster, 2, ks, ReplicationType.valueOf(fromType));
-        assertNodeSees(cluster, 3, ks, ReplicationType.valueOf(fromType));
+        awaitReplicationType(cluster, ks, toType, 1);
+        assertNodeSees(cluster, 2, ks, fromType);
+        assertNodeSees(cluster, 3, ks, fromType);
     }
 
     private long coordinatorBehindCount(int node)
@@ -1343,7 +1345,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
                                        ConsistencyLevel.QUORUM);
         assertReplicasHaveValue(cluster, ks, KEY, 7, 1, 2, 3);
 
-        advanceCoordinatorAheadOfReplicas(ks, "tracked", "untracked");
+        advanceCoordinatorAheadOfReplicas(ks, tracked, untracked);
 
         long behind2 = coordinatorBehindCount(2);
         long behind3 = coordinatorBehindCount(3);
@@ -1369,7 +1371,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         // Both replicas caught up on demand (proactive TCM was blocked) and neither flagged the
         // coordinator behind -- proving the message.epoch().isAfter(metadata.epoch) fetch branch.
-        awaitReplicationType(cluster, ks, ReplicationType.untracked, 2, 3);
+        awaitReplicationType(cluster, ks, untracked, 2, 3);
         assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
         assertEquals("Replica 3 must not have flagged coordinator-behind", behind3, coordinatorBehindCount(3));
     }
@@ -1389,7 +1391,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "untracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
-        advanceCoordinatorAheadOfReplicas(ks, "untracked", "tracked");
+        advanceCoordinatorAheadOfReplicas(ks, untracked, tracked);
 
         long behind2 = coordinatorBehindCount(2);
         long behind3 = coordinatorBehindCount(3);
@@ -1414,7 +1416,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         // The behind replicas reached the tracked epoch only via the commit handler's
         // fetch-and-catch-up (proactive TCM was blocked), and neither flagged the coordinator behind.
-        awaitReplicationType(cluster, ks, ReplicationType.tracked, 2, 3);
+        awaitReplicationType(cluster, ks, tracked, 2, 3);
         assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
         assertEquals("Replica 3 must not have flagged coordinator-behind", behind3, coordinatorBehindCount(3));
 
@@ -1435,7 +1437,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
         String ks = createKeyspace(cluster, "pmt_v2", "tracked");
         assertReplicasAreExactly(cluster, ks, KEY, new int[]{ 1, 2, 3 });
 
-        advanceCoordinatorAheadOfReplicas(ks, "tracked", "untracked");
+        advanceCoordinatorAheadOfReplicas(ks, tracked, untracked);
 
         // Prevent node 2 from catching up during prepare so the commit handler is the one that must.
         cluster.filters().verbs(Verb.PAXOS2_PREPARE_REQ.id).to(2).drop();
@@ -1462,7 +1464,7 @@ public class PaxosMutationTrackingMigrationV2Test extends TestBaseImpl
 
         // Node 2 never received a prepare, so the only path to the untracked epoch was the commit
         // handler's fetch-and-catch-up; it must not have flagged the coordinator behind.
-        awaitReplicationType(cluster, ks, ReplicationType.untracked, 2);
+        awaitReplicationType(cluster, ks, untracked, 2);
         assertEquals("Replica 2 must not have flagged coordinator-behind", behind2, coordinatorBehindCount(2));
 
         assertReplicasHaveValue(cluster, ks, KEY, 11, 1, 2, 3);

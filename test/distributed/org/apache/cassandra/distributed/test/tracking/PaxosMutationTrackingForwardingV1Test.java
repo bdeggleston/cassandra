@@ -46,6 +46,8 @@ import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestU
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.messageHasMutationId;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.on;
 import static org.apache.cassandra.distributed.test.tracking.PaxosMigrationTestUtils.pauseHintsAndReconciler;
+import static org.apache.cassandra.schema.ReplicationType.tracked;
+import static org.apache.cassandra.schema.ReplicationType.untracked;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -174,7 +176,7 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
                                                                "INSERT INTO " + ks + ".tbl (k, v) VALUES (" + KEY + ", 99) IF NOT EXISTS");
 
             hold.awaitFirstArrival();
-            alterReplicationType(cluster, ks, "untracked");
+            alterReplicationType(cluster, ks, untracked);
             hold.release();
 
             Object[][] result = casResult.get(60, TimeUnit.SECONDS);
@@ -263,7 +265,7 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
         {
             commitArrived.await();
 
-            alterReplicationType(cluster, ks, "untracked");
+            alterReplicationType(cluster, ks, untracked);
         }
         finally
         {
@@ -309,18 +311,17 @@ public class PaxosMutationTrackingForwardingV1Test extends TestBaseImpl
     }
 
     /*
-     * V1 commit forwarding reached via an untracked -> tracked migration (review-feedback gap: the
-     * existing commit-forwarding tests only cover steady-state tracked and the tracked -> untracked
-     * direction). The keyspace is created untracked -- where a non-replica coordinator commits
-     * directly -- then migrated to tracked. Once writes are tracked, a non-replica (node 4) must
-     * forward the commit to a replica to obtain a mutation id (inverse of testV1CommitForwardingFallbackToUntracked).
+     * V1 commit forwarding reached via an untracked -> tracked migration.
+     * The keyspace is created untracked -- where a non-replica coordinator commits directly -- then migrated to
+     * tracked. Once writes are tracked, a non-replica (node 4) must forward the commit to a replica to obtain a
+     * mutation id (inverse of testV1CommitForwardingFallbackToUntracked).
      */
     @Test
     public void testV1CommitForwardingDuringMigrationToTracked()
     {
         String ks = newKeyspace("untracked");
 
-        alterReplicationType(cluster, ks, "tracked");
+        alterReplicationType(cluster, ks, tracked);
         ClusterUtils.awaitTCMCatchUp(cluster);
 
         try (MessageSpy spy = on(cluster, Verb.PAXOS_COMMIT_FORWARD_REQ)

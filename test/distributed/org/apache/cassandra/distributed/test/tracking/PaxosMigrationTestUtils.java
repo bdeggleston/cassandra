@@ -228,7 +228,7 @@ public class PaxosMigrationTestUtils
         return createKeyspace(cluster, prefix, replicationType, 3);
     }
 
-    public static void alterReplicationType(Cluster cluster, String keyspace, String replicationType)
+    public static void alterReplicationType(Cluster cluster, String keyspace, ReplicationType replicationType)
     {
         cluster.schemaChange("ALTER KEYSPACE " + keyspace + " WITH replication = " +
                              "{'class': 'SimpleStrategy', 'replication_factor': 3} " +
@@ -238,7 +238,7 @@ public class PaxosMigrationTestUtils
     public static void alterReplicationTypeFrom(Cluster cluster,
                                                 int coordinator,
                                                 String keyspace,
-                                                String replicationType,
+                                                ReplicationType replicationType,
                                                 ConsistencyLevel cl)
     {
         cluster.coordinator(coordinator).execute("ALTER KEYSPACE " + keyspace + " WITH replication = " +
