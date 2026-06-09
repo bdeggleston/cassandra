@@ -420,20 +420,6 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
     }
 
     /**
-     * Record a success response
-     */
-    public void onResponse(Message<NoPayload> response)
-    {
-        logger.trace("{} Success from {}", commit, response.from());
-
-        // Local responses are handled via Keyspace.applyInternalTracked
-        if (isTracked())
-            MutationTrackingService.instance().receivedWriteResponse(commit.mutation.id(), response.from());
-
-        response(true, response.from());
-    }
-
-    /**
      * Execute locally and record response
      */
     public void executeOnSelf()
@@ -463,6 +449,8 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
     @Override
     public void onResponse(NoPayload response, InetAddressAndPort from)
     {
+        logger.trace("{} {} from {}", commit, response != null ? "Success" : "Failure", from);
+
         if (isTracked() && !from.equals(FBUtilities.getBroadcastAddressAndPort()))
         {
             if (response != null)
