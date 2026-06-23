@@ -32,7 +32,6 @@ import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.RequestFailure;
-import org.apache.cassandra.exceptions.RequestFailureReason;
 import org.apache.cassandra.locator.CoordinationPlan;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.RangesAtEndpoint;
@@ -256,7 +255,7 @@ public class SatelliteFailoverProcess
             if (outcome)
                 tracker.onResponse(endpoint);
             else
-                tracker.onFailure(endpoint, RequestFailureReason.UNKNOWN);
+                tracker.onFailure(endpoint);
 
             if (!tracker.isComplete())
                 return;
