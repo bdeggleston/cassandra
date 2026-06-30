@@ -110,22 +110,15 @@ public class MigrationRouter
     {
         Preconditions.checkArgument(!AbstractBounds.strictlyWrapsAround(keyRange.left, keyRange.right));
 
-        List<AbstractBounds<PartitionPosition>> splits = RangeSplitter.splitAtBoundaries(keyRange, pendingRanges);
+        List<RangeSplitter.Split> splits = RangeSplitter.splitAtBoundariesTagged(keyRange, pendingRanges);
         List<RangeReadWithReplication> result = new ArrayList<>(splits.size());
 
-        for (AbstractBounds<PartitionPosition> split : splits)
+        for (RangeSplitter.Split split : splits)
         {
-            // Sub-ranges inside pending ranges use old protocol; outside use new protocol
-            boolean isPending = false;
-            for (Range<PartitionPosition> range : pendingRangesPP)
-            {
-                if (range.intersects(split))
-                {
-                    isPending = true;
-                    break;
-                }
-            }
-            addSplit(result, command, split, isPending ? !isTracked : isTracked);
+            // RangeSplitter classifies each sub-range as within (pending) or outside (non-pending) the pending
+            // ranges, so we don't re-derive membership here. Sub-ranges inside pending ranges use the old
+            // protocol; outside use the new protocol.
+            addSplit(result, command, split.range, split.isWithinBoundary ? !isTracked : isTracked);
         }
 
         return result;
