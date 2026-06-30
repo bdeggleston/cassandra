@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -35,7 +34,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -69,18 +67,7 @@ public class KeyspaceMigrationInfo
 {
     @Nonnull public final String keyspace;
     @Nonnull public final Map<TableId, NormalizedRanges<Token>> pendingRangesPerTable;
-    @Nonnull public final Map<TableId, NormalizedRanges<PartitionPosition>> pendingRangesPerTablePP;
     @Nonnull public final Epoch startedAtEpoch;
-
-    private ImmutableMap<TableId, NormalizedRanges<PartitionPosition>> createRangesPP(Map<TableId, NormalizedRanges<Token>> pendingRanges)
-    {
-        ImmutableMap.Builder<TableId, NormalizedRanges<PartitionPosition>> builder = ImmutableMap.builder();
-        pendingRanges.forEach((table, ranges) -> {
-            List<Range<PartitionPosition>> ppRanges = ranges.stream().map(r -> new Range<>(r.left.maxKeyBound(), r.right.maxKeyBound())).collect(Collectors.toList());
-            builder.put(table, NormalizedRanges.normalizedRanges(ppRanges));
-        });
-        return builder.build();
-    }
 
     public KeyspaceMigrationInfo(@Nonnull String keyspace,
                                  @Nonnull Map<TableId, NormalizedRanges<Token>> pendingRangesPerTable,
@@ -88,7 +75,6 @@ public class KeyspaceMigrationInfo
     {
         this.keyspace = Objects.requireNonNull(keyspace);
         this.pendingRangesPerTable = ImmutableMap.copyOf(pendingRangesPerTable);
-        this.pendingRangesPerTablePP = createRangesPP(pendingRangesPerTable);
         this.startedAtEpoch = Objects.requireNonNull(startedAtEpoch);
     }
 

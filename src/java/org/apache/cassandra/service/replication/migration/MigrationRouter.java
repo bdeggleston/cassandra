@@ -32,7 +32,6 @@ import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.virtual.VirtualMutation;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.NormalizedRanges;
-import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.RangeSplitter;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.CoordinatorBehindException;
@@ -105,7 +104,6 @@ public class MigrationRouter
     private static List<RangeReadWithReplication> splitRangeByPendingRanges(PartitionRangeReadCommand command,
                                                                             AbstractBounds<PartitionPosition> keyRange,
                                                                             NormalizedRanges<Token> pendingRanges,
-                                                                            NormalizedRanges<PartitionPosition> pendingRangesPP,
                                                                             boolean isTracked)
     {
         Preconditions.checkArgument(!AbstractBounds.strictlyWrapsAround(keyRange.left, keyRange.right));
@@ -177,7 +175,6 @@ public class MigrationRouter
 
         // Get pending ranges for this table
         NormalizedRanges<Token> tablePendingRanges = migrationInfo.pendingRangesPerTable.get(command.metadata().id());
-        NormalizedRanges<PartitionPosition> tablePendingRangesPP = migrationInfo.pendingRangesPerTablePP.get(command.metadata().id());
 
         // No pending ranges for this table - entire range uses current protocol
         if (tablePendingRanges == null)
@@ -187,7 +184,6 @@ public class MigrationRouter
         List<RangeReadWithReplication> result = splitRangeByPendingRanges(command,
                                                                           command.dataRange().keyRange(),
                                                                           tablePendingRanges,
-                                                                          tablePendingRangesPP,
                                                                           isTracked);
 
         // Validate the splits
