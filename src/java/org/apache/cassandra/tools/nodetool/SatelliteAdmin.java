@@ -26,10 +26,6 @@ import picocli.CommandLine.Parameters;
 
 /**
  * Nodetool command for managing satellite datacenter failover.
- *
- * Usage:
- *   nodetool satellite_admin status <keyspace>
- *   nodetool satellite_admin advance <keyspace> [--ack] [--barrier] [--force] [-r start:end,start:end]
  */
 @CommandLine.Command(name = "satellite_admin",
                      description = "Manage satellite datacenter failover",

@@ -52,7 +52,11 @@ import org.apache.cassandra.tcm.transformations.AlterSchema;
 import org.apache.cassandra.utils.concurrent.Future;
 
 import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 public class SatelliteFailoverProcessTest extends SatelliteReplicationStrategyTestBase
 {

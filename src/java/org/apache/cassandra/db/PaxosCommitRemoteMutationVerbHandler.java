@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.exceptions.RequestFailureReason;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
-import org.apache.cassandra.locator.satellites.SatelliteFailover;
 import org.apache.cassandra.locator.SatelliteReplicationStrategy;
+import org.apache.cassandra.locator.satellites.SatelliteFailover;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;

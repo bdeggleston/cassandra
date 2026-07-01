@@ -20,17 +20,18 @@ package org.apache.cassandra.locator.satellites;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tcm.MetadataValue;
 import org.apache.cassandra.tcm.serialization.MetadataSerializer;

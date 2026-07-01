@@ -20,6 +20,7 @@ package org.apache.cassandra.locator.satellites;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+
 import javax.annotation.Nonnull;
 
 import org.apache.cassandra.dht.NormalizedRanges;

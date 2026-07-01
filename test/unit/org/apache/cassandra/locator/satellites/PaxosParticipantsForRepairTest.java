@@ -39,7 +39,11 @@ import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.transformations.AlterSchema;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Tests for {@link SatelliteReplicationStrategy#paxosParticipantsForRepair}.

@@ -23,9 +23,9 @@ import java.util.List;
 
 import org.junit.Test;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.schema.AlterSchemaStatement;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.PartitionPosition;
@@ -35,15 +35,19 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.distributed.test.log.ClusterMetadataTestHelper;
 import org.apache.cassandra.locator.CoordinationPlan;
-import org.apache.cassandra.locator.satellites.SatelliteFailover;
 import org.apache.cassandra.locator.SatelliteReplicationStrategy;
 import org.apache.cassandra.locator.SatelliteReplicationStrategyTestBase;
+import org.apache.cassandra.locator.satellites.SatelliteFailover;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.transformations.AdvanceSatelliteFailoverState;
 import org.apache.cassandra.tcm.transformations.AlterSchema;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for failover state boundary splitting in CoordinationPlanIterator.

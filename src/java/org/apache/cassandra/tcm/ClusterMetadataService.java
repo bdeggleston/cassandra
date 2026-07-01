@@ -35,16 +35,6 @@ import java.util.function.Supplier;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
-import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
-import org.apache.cassandra.schema.*;
-import org.apache.cassandra.service.accord.AccordFastPath;
-import org.apache.cassandra.service.accord.AccordStaleReplicas;
-import org.apache.cassandra.service.consensus.migration.ConsensusMigrationState;
-import org.apache.cassandra.service.replication.migration.MutationTrackingMigrationState;
-import org.apache.cassandra.tcm.membership.Directory;
-import org.apache.cassandra.tcm.ownership.DataPlacements;
-import org.apache.cassandra.tcm.ownership.TokenMap;
-import org.apache.cassandra.tcm.sequences.LockedRanges;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +48,7 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.io.util.FileInputStreamPlus;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
 import org.apache.cassandra.metrics.TCMMetrics;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;

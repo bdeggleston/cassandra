@@ -21,9 +21,9 @@ import java.util.Collections;
 
 import org.junit.Test;
 
-import org.apache.cassandra.cql3.statements.schema.AlterSchemaStatement;
-import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.QueryProcessor;
+import org.apache.cassandra.cql3.statements.schema.AlterSchemaStatement;
 import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -35,7 +35,11 @@ import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.transformations.AdvanceSatelliteFailoverState;
 import org.apache.cassandra.tcm.transformations.AlterSchema;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Integration tests for the satellite failover process state lifecycle.

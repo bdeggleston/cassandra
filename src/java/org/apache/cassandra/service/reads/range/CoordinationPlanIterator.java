@@ -18,8 +18,8 @@
 
 package org.apache.cassandra.service.reads.range;
 
-import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
