@@ -159,6 +159,7 @@ import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.locator.SnitchAdapter;
 import org.apache.cassandra.locator.SystemReplicas;
 import org.apache.cassandra.locator.satellites.KeyspaceFailoverState;
+import org.apache.cassandra.locator.satellites.SatelliteFailover;
 import org.apache.cassandra.locator.satellites.SatelliteFailoverProcess;
 import org.apache.cassandra.metrics.Sampler;
 import org.apache.cassandra.metrics.SamplingManager;
@@ -1803,7 +1804,26 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         sb.append("Satellite Failover Status: ").append(keyspace).append('\n');
         sb.append("  From DC: ").append(state.fromDC).append('\n');
         sb.append("  Started at epoch: ").append(state.processStarted).append('\n');
-        state.forEachRange((range, rangeState) -> sb.append("    ").append(range).append(" → ").append(rangeState).append('\n'));
+
+        List<Range<Token>> ackRanges = new ArrayList<>();
+        List<Range<Token>> transitionRanges = new ArrayList<>();
+        state.forEachRange((range, rangeState) -> {
+            if (rangeState == SatelliteFailover.State.TRANSITION_ACK)
+                ackRanges.add(range);
+            else if (rangeState == SatelliteFailover.State.TRANSITION)
+                transitionRanges.add(range);
+        });
+
+        sb.append("  TRANSITION_ACK ranges (").append(ackRanges.size()).append(')');
+        for (Range<Token> range : ackRanges)
+            sb.append("\n    ").append(range);
+        sb.append('\n');
+
+        sb.append("  TRANSITION ranges (").append(transitionRanges.size()).append(')');
+        for (Range<Token> range : transitionRanges)
+            sb.append("\n    ").append(range);
+        sb.append('\n');
+
         sb.append("  Complete: ").append(state.isComplete());
 
         return sb.toString();
