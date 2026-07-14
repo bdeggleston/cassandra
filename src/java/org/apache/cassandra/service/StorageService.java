@@ -1735,6 +1735,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                                            boolean barrierOnly,
                                            boolean force)
     {
+        Objects.requireNonNull(keyspace, "keyspace cannot be null");
         List<Range<Token>> ranges;
         if (rangesStr == null)
         {
