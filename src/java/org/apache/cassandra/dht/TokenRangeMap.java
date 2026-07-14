@@ -72,6 +72,10 @@ public class TokenRangeMap<V>
     @SuppressWarnings("unchecked")
     public V get(Token token)
     {
+        // The minimum token is the ring's wrap sentinel: it is the inclusive upper bound
+        // of the last interval (tN, MIN], so it maps to the last value rather than the first.
+        if (token.isMinimum())
+            return (V) values[values.length - 1];
         int idx = Arrays.binarySearch(bounds, token);
         if (idx < 0) idx = -1 - idx;
         return (V) values[idx];
@@ -87,7 +91,7 @@ public class TokenRangeMap<V>
 
     public TokenRangeMap<V> set(Range<Token> range, V value)
     {
-        if (range.isWrapAround())
+        if (range.isTrulyWrapAround())
         {
             Token minToken = range.left.getPartitioner().getMinimumToken();
             TokenRangeMap<V> result = setNonWrapping(range.left, minToken, value);

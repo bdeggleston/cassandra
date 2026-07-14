@@ -336,6 +336,90 @@ public class TokenRangeMapTest extends CassandraTestBase
     }
 
     @Test
+    public void testBoundaryWrappingRange()
+    {
+        // (5000, MIN] is not a true wrap-around: MIN is just the inclusive upper bound
+        // (end of ring) of the last interval, so this is a single segment (5000, MIN].
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        map = map.set(new Range<>(tok(5000), Murmur3Partitioner.instance.getMinimumToken()), "B");
+
+        assertEquals("A", map.get(tok(5000)));
+        assertEquals("B", map.get(tok(5001)));
+        assertEquals("B", map.get(Murmur3Partitioner.instance.getMinimumToken()));
+        assertEquals("A", map.get(tok(Long.MIN_VALUE + 1)));
+
+        assertEquals("A", map.get(tok(0)));
+        assertEquals("A", map.get(tok(-5000)));
+        assertEquals(2, map.intervalCount()); // (MIN,5000]=A, (5000,MIN]=B
+    }
+
+    @Test
+    public void testGetMinimumTokenDefaultMap()
+    {
+        // On a single-value map, get(MIN) resolves to that value (the sole/last interval).
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        assertEquals("A", map.get(Murmur3Partitioner.instance.getMinimumToken()));
+    }
+
+    @Test
+    public void testGetMinimumTokenTrulyWrappingRange()
+    {
+        // (5000, -5000] truly wraps; MIN falls in the wrap segment (5000, MIN] portion.
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        map = map.set(range(5000, -5000), "B");
+
+        assertEquals("B", map.get(Murmur3Partitioner.instance.getMinimumToken()));
+        assertEquals("B", map.get(tok(Long.MAX_VALUE))); // top of ring, in (5000, MIN]
+        assertEquals(3, map.intervalCount()); // (MIN,-5000]=B, (-5000,5000]=A, (5000,MIN]=B
+    }
+
+    @Test
+    public void testBoundaryRangeNegativeLeft()
+    {
+        // (-5000, MIN]: prefix (MIN, -5000] stays A, suffix (-5000, MIN] becomes B.
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        map = map.set(new Range<>(tok(-5000), Murmur3Partitioner.instance.getMinimumToken()), "B");
+
+        assertEquals("A", map.get(tok(-6000)));   // (MIN, -5000]
+        assertEquals("A", map.get(tok(-5000)));   // inclusive upper bound of the A segment
+        assertEquals("B", map.get(tok(-4999)));   // just above → B
+        assertEquals("B", map.get(tok(0)));        // (-5000, MIN]
+        assertEquals("B", map.get(tok(5000)));
+        assertEquals("B", map.get(Murmur3Partitioner.instance.getMinimumToken()));
+        assertEquals(2, map.intervalCount());
+    }
+
+    @Test
+    public void testBoundaryRangeOverExisting()
+    {
+        // Boundary form (X, MIN] applied over pre-existing non-wrapping ranges.
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        map = map.set(range(1000, 2000), "X");
+        map = map.set(new Range<>(tok(5000), Murmur3Partitioner.instance.getMinimumToken()), "B");
+
+        assertEquals("A", map.get(tok(500)));      // (MIN, 1000]
+        assertEquals("X", map.get(tok(1500)));     // (1000, 2000] untouched
+        assertEquals("A", map.get(tok(3000)));     // (2000, 5000]
+        assertEquals("B", map.get(tok(6000)));     // (5000, MIN]
+        assertEquals("B", map.get(Murmur3Partitioner.instance.getMinimumToken()));
+        assertEquals("A", map.get(tok(-3000)));    // still below 5000 → A, not in (5000, MIN]
+        assertEquals(4, map.intervalCount());
+    }
+
+    @Test
+    public void testBoundaryRangeMergeAcrossWrap()
+    {
+        // (MIN, 5000] then (5000, MIN] with the same value should merge into the full ring.
+        TokenRangeMap<String> map = TokenRangeMap.create("A");
+        Token min = Murmur3Partitioner.instance.getMinimumToken();
+        map = map.set(new Range<>(min, tok(5000)), "B");
+        map = map.set(new Range<>(tok(5000), min), "B");
+
+        assertTrue(map.allEqual("B"));
+        assertEquals(1, map.intervalCount());
+    }
+
+    @Test
     public void testEquals()
     {
         TokenRangeMap<String> a = TokenRangeMap.create("X");
