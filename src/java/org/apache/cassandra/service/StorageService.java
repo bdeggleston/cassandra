@@ -1795,6 +1795,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public String getSatelliteFailoverStatus(@Nonnull String keyspace)
     {
+        Objects.requireNonNull(keyspace, "keyspace cannot be null");
         ClusterMetadata metadata = ClusterMetadata.current();
         KeyspaceFailoverState state = metadata.satelliteFailoverState.getKeyspaceState(keyspace);
 
