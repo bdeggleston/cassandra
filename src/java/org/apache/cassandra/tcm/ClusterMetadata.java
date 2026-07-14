@@ -1018,6 +1018,7 @@ public class ClusterMetadata
                inProgressSequences.equals(that.inProgressSequences) &&
                consensusMigrationState.equals(that.consensusMigrationState) &&
                accordStaleReplicas.equals(that.accordStaleReplicas) &&
+               satelliteFailoverState.equals(that.satelliteFailoverState) &&
                extensions.equals(that.extensions);
     }
 
@@ -1057,6 +1058,10 @@ public class ClusterMetadata
         {
             logger.warn("In progress sequences differ: {} != {}", inProgressSequences, other.inProgressSequences);
         }
+        if (!satelliteFailoverState.equals(other.satelliteFailoverState))
+        {
+            logger.warn("Satellite Failover States differ: {} != {}", satelliteFailoverState, other.satelliteFailoverState);
+        }
         if (!extensions.equals(other.extensions))
         {
             logger.warn("Extensions differ: {} != {}", extensions, other.extensions);
@@ -1066,7 +1071,7 @@ public class ClusterMetadata
     @Override
     public int hashCode()
     {
-        return Objects.hash(epoch, schema, directory, tokenMap, placements, accordFastPath, lockedRanges, inProgressSequences, consensusMigrationState, accordStaleReplicas, extensions);
+        return Objects.hash(epoch, schema, directory, tokenMap, placements, accordFastPath, lockedRanges, inProgressSequences, consensusMigrationState, accordStaleReplicas, satelliteFailoverState, extensions);
     }
 
     public static ClusterMetadata current()
@@ -1150,9 +1155,10 @@ public class ClusterMetadata
                 AccordStaleReplicas.serializer.serialize(metadata.accordStaleReplicas, out, version);
             }
             if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
+            {
                 MutationTrackingMigrationState.serializer.serialize(metadata.mutationTrackingMigrationState, out, version);
-            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
                 SatelliteFailoverProcessState.serializer.serialize(metadata.satelliteFailoverState, out, version);
+            }
 
             LockedRanges.serializer.serialize(metadata.lockedRanges, out, version);
             InProgressSequences.serializer.serialize(metadata.inProgressSequences, out, version);
@@ -1211,22 +1217,15 @@ public class ClusterMetadata
                 staleReplicas = AccordStaleReplicas.EMPTY;
             }
 
-            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
-            {
-                mutationTrackingMigrationState = MutationTrackingMigrationState.serializer.deserialize(in, version);
-            }
-            else
-            {
-                mutationTrackingMigrationState = MutationTrackingMigrationState.EMPTY;
-            }
-
             SatelliteFailoverProcessState satelliteFailoverState;
             if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
             {
+                mutationTrackingMigrationState = MutationTrackingMigrationState.serializer.deserialize(in, version);
                 satelliteFailoverState = SatelliteFailoverProcessState.serializer.deserialize(in, version);
             }
             else
             {
+                mutationTrackingMigrationState = MutationTrackingMigrationState.EMPTY;
                 satelliteFailoverState = SatelliteFailoverProcessState.EMPTY;
             }
 
@@ -1302,9 +1301,10 @@ public class ClusterMetadata
             }
 
             if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
+            {
                 size += MutationTrackingMigrationState.serializer.serializedSize(metadata.mutationTrackingMigrationState, version);
-            if (version.isAtLeast(MIN_MUTATION_TRACKING_VERSION))
                 size += SatelliteFailoverProcessState.serializer.serializedSize(metadata.satelliteFailoverState, version);
+            }
 
             size += LockedRanges.serializer.serializedSize(metadata.lockedRanges, version) +
                     InProgressSequences.serializer.serializedSize(metadata.inProgressSequences, version);
