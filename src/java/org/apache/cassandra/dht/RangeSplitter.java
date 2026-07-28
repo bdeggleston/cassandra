@@ -27,7 +27,7 @@ import org.apache.cassandra.utils.Pair;
 /**
  * Splits a range at the boundaries of a set of {@link NormalizedRanges}.
  *
- * After splitting, each sub-range is either entirely within or entirely outside the boundary set, and
+ * <p>After splitting, each sub-range is either entirely within or entirely outside the boundary set, and
  * each sub-range carries that classification (see {@link Split#isWithinBoundary}). Used by both MigrationRouter
  * (tracked/untracked routing) and CoordinationPlanIterator (failover state boundary splitting).
  */

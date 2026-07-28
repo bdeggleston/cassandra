@@ -291,7 +291,15 @@ public class SatelliteFailoverProcess
      */
     private Future<Void> queryMinEpoch(Range<Token> range)
     {
-        CoordinationPlan.ForTokenRead plan = strategy.planForFailoverEpochCheck(ClusterMetadata.current(), keyspace, range);
+        // A concurrent driver on another replica node may have already advanced this range past
+        // TRANSITION_ACK. If so, the epoch check has effectively been done; skip rather than tripping
+        // the TRANSITION_ACK precondition in planForFailoverEpochCheck. The same metadata snapshot is
+        // passed to the plan so its precondition sees exactly the state we just checked.
+        ClusterMetadata metadata = ClusterMetadata.current();
+        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION_ACK)
+            return ImmediateFuture.success(null);
+
+        CoordinationPlan.ForTokenRead plan = strategy.planForFailoverEpochCheck(metadata, keyspace, range);
 
         Message<Epoch> msg = Message.out(Verb.TCM_CURRENT_EPOCH_REQ, minEpoch);
 
@@ -328,6 +336,9 @@ public class SatelliteFailoverProcess
     {
         // TODO: rework paxos repair so we can succeed with quorums
         ClusterMetadata metadata = ClusterMetadata.current();
+        // Skip if a concurrent driver already advanced this range past TRANSITION_ACK.
+        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION_ACK)
+            return SUCCESS;
         CoordinationPlan.ForWrite plan = strategy.planForFailoverPaxosRepair(metadata, keyspace, range);
         List<InetAddressAndPort> endpoints = plan.replicas().contacts().endpointList();
 
@@ -354,8 +365,21 @@ public class SatelliteFailoverProcess
     private void commitAdvance(Range<Token> range, TargetState targetState)
     {
         NormalizedRanges<Token> ranges = NormalizedRanges.normalizedRanges(Collections.singletonList(range));
-        ClusterMetadataService.instance().commit(new AdvanceSatelliteFailoverState(keyspace.getName(), ranges, targetState));
-        logger.info("Advanced range {} to {} in keyspace {}", range, targetState, keyspace);
+        ClusterMetadataService.instance().commit(
+            new AdvanceSatelliteFailoverState(keyspace.getName(), ranges, targetState),
+            metadata -> {
+                logger.info("Advanced range {} to {} in keyspace {}", range, targetState, keyspace);
+                return metadata;
+            },
+            // The keyspace's failover transfer may have already completed (and the state been removed)
+            // by a concurrent driver on another replica node. The transformation then rejects with
+            // "no active failover transfer", which is a benign no-op for us — not a failure to surface
+            // to the operator.
+            (code, message) -> {
+                logger.info("Skipping advance of range {} to {} in keyspace {}: {} ({})",
+                            range, targetState, keyspace, message, code);
+                return ClusterMetadata.current();
+            });
     }
 
     /**
@@ -364,8 +388,11 @@ public class SatelliteFailoverProcess
     private Future<?> runMTBarrier(Range<Token> range)
     {
         ClusterMetadata metadata = ClusterMetadata.current();
+        // Skip if a concurrent driver already advanced this range past TRANSITION (e.g. to NORMAL).
+        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION)
+            return SUCCESS;
         KeyspaceMetadata ksm = metadata.schema.getKeyspaceMetadata(keyspace.getName());
-        CoordinationPlan.ForTokenRead plan = strategy.planForFailoverBarrier(ClusterMetadata.current(), keyspace, range);
+        CoordinationPlan.ForTokenRead plan = strategy.planForFailoverBarrier(metadata, keyspace, range);
         Set<InetAddressAndPort> participants = plan.replicas().contacts().endpoints();
         List<Future<Void>> futures = new ArrayList<>();
 

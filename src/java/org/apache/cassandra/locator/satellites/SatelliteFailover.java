@@ -84,6 +84,29 @@ public class SatelliteFailover
             }
         }
 
+        /**
+         * Monotonic ordering of a range's failover lifecycle: {@code TRANSITION_ACK -> TRANSITION -> NORMAL}.
+         *
+         * Note this deliberately differs from {@link #ordinal()} (which is fixed by the declaration order the
+         * serializer depends on). A range may only ever move forward through these ranks; state advancement is
+         * applied monotonically so that a stale commit from a lagging driver can never regress a range that a
+         * concurrent driver has already advanced.
+         */
+        public int failoverProgress()
+        {
+            switch (this)
+            {
+                case TRANSITION_ACK:
+                    return 0;
+                case TRANSITION:
+                    return 1;
+                case NORMAL:
+                    return 2;
+                default:
+                    throw new IllegalStateException("Unhandled failover state: " + this);
+            }
+        }
+
         static final MetadataSerializer<State> metadataSerializer = new MetadataSerializer<>()
         {
             @Override

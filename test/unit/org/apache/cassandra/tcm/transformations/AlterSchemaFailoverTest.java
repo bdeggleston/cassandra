@@ -153,6 +153,21 @@ public class AlterSchemaFailoverTest
         AlterSchema.maybeUpdateSatelliteFailoverState(existingState, next, altered, Keyspaces.none());
     }
 
+    @Test(expected = InvalidRequestException.class)
+    public void testRejectFailoverFromSatelliteLessSourceDC()
+    {
+        // DC1 is a full DC with NO satellite; DC2 has a satellite. Failing over away from DC1
+        // (the source DC) must be rejected: the pipeline reconciles the source DC's tracked data
+        // from its satellite, and there is none.
+        KeyspaceDiff diff = makeDiff("ks1", satelliteLessDC1Opts("DC1"), satelliteLessDC1Opts("DC2"));
+        ImmutableList<KeyspaceDiff> altered = ImmutableList.of(diff);
+
+        ClusterMetadata metadata = new ClusterMetadata(partitioner).forceEpoch(Epoch.create(1));
+        ClusterMetadata.Transformer next = metadata.transformer();
+
+        AlterSchema.maybeUpdateSatelliteFailoverState(SatelliteFailoverProcessState.EMPTY, next, altered, Keyspaces.none());
+    }
+
     @Test
     public void testPrimaryChangeWithOtherParamsStillTriggers()
     {
@@ -191,6 +206,21 @@ public class AlterSchemaFailoverTest
             opts.putIfAbsent(dc, "3");
             opts.putIfAbsent(dc + ".satellite.SA_" + dc, "2/2");
         }
+        return opts;
+    }
+
+    /**
+     * SRS options where DC1 is a full DC with NO satellite and DC2 is a full DC with a satellite.
+     * Used to exercise failover from a satellite-less source DC.
+     */
+    private static Map<String, String> satelliteLessDC1Opts(String primaryDC)
+    {
+        Map<String, String> opts = new HashMap<>();
+        opts.put("class", SatelliteReplicationStrategy.class.getName());
+        opts.put("primary", primaryDC);
+        opts.put("DC1", "3");                       // full DC, no satellite
+        opts.put("DC2", "3");
+        opts.put("DC2.satellite.SA_DC2", "2/2");    // only DC2 has a satellite
         return opts;
     }
 

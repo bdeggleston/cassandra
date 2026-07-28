@@ -18,6 +18,8 @@
 package org.apache.cassandra.locator.satellites;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
@@ -74,12 +76,41 @@ public class KeyspaceFailoverState implements SatelliteFailover.Info
 
     public KeyspaceFailoverState withRangesTransitioning(NormalizedRanges<Token> ranges)
     {
-        return new KeyspaceFailoverState(fromDC, processStarted, rangeStates.set(ranges, State.TRANSITION));
+        return withRangesAdvancedTo(ranges, State.TRANSITION);
     }
 
     public KeyspaceFailoverState withRangesNormal(NormalizedRanges<Token> ranges)
     {
-        return new KeyspaceFailoverState(fromDC, processStarted, rangeStates.set(ranges, State.NORMAL));
+        return withRangesAdvancedTo(ranges, State.NORMAL);
+    }
+
+    /**
+     * Advance the requested ranges to {@code target}, monotonically.
+     *
+     * Only the sub-ranges whose current state is strictly behind {@code target} (per
+     * {@link State#failoverProgress()}) are updated; sub-ranges already at or past {@code target} are left
+     * unchanged. This keeps the transformation idempotent and prevents a stale commit — e.g. a lagging replica
+     * node driving the same range from an older metadata snapshot — from regressing a range that another node has
+     * already moved forward (a range must never move NORMAL -> TRANSITION). Returns {@code this} unchanged when
+     * there is nothing to advance.
+     */
+    private KeyspaceFailoverState withRangesAdvancedTo(NormalizedRanges<Token> ranges, State target)
+    {
+        List<Range<Token>> toAdvance = new ArrayList<>();
+        rangeStates.forEach((left, right, state) -> {
+            if (state.failoverProgress() < target.failoverProgress())
+            {
+                Range<Token> interval = new Range<>(left, right);
+                for (Range<Token> requested : ranges)
+                    toAdvance.addAll(interval.intersectionWith(requested));
+            }
+        });
+
+        if (toAdvance.isEmpty())
+            return this;
+
+        TokenRangeMap<State> updated = rangeStates.set(NormalizedRanges.normalizedRanges(toAdvance), target);
+        return new KeyspaceFailoverState(fromDC, processStarted, updated);
     }
 
     public boolean isComplete()
