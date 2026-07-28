@@ -173,7 +173,7 @@ public abstract class CoordinationPlan<E extends Endpoints<E>, P extends Replica
         @Override
         public ForWriteWithIdeal copyWithResetTracker()
         {
-            return new ForWriteWithIdeal(metadata, replicas(), responses().resetCopy(), ideal.copyWithResetTracker());
+            return new ForWriteWithIdeal(metadata, replicas(), responses().resetCopy(), ideal != null ? ideal.copyWithResetTracker() : null);
         }
     }
 

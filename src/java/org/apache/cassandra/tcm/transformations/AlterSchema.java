@@ -455,6 +455,16 @@ public class AlterSchema implements Transformation
             if (failoverState.hasActiveTransfer(diff.before.name))
                 throw new InvalidRequestException("Cannot change primary DC while failover is in progress for keyspace " + diff.before.name);
 
+            // The failover pipeline reconciles the source DC's mutation-tracked data (held on its satellite)
+            // to the new primary. Failing over from a DC with no satellite has nothing to reconcile from, so
+            // reject it rather than driving the ring into TRANSITION_ACK for a topology the pipeline can't handle.
+            // Check the source DC's satellite in the topology being left (diff.before): the primary change may
+            // legitimately drop the source DC's other options in the same alter.
+            SatelliteReplicationStrategy srs = (SatelliteReplicationStrategy) diff.before.replicationStrategy;
+            if (srs.getSatelliteForDC(oldPrimary) == null)
+                throw new InvalidRequestException("Cannot change primary DC for keyspace " + diff.after.name +
+                                                  ": source datacenter " + oldPrimary + " has no satellite");
+
             // Initialize failover: full token range into TRANSITION_ACK
             Token minToken = DatabaseDescriptor.getPartitioner().getMinimumToken();
             NormalizedRanges<Token> fullRange = NormalizedRanges.normalizedRanges(
