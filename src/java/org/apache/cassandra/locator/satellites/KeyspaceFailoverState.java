@@ -52,7 +52,7 @@ public class KeyspaceFailoverState implements SatelliteFailover.Info
     public final Epoch processStarted;
 
     @Nonnull
-    public final TokenRangeMap<State> rangeStates;
+    private final TokenRangeMap<State> rangeStates;
 
     public KeyspaceFailoverState(@Nonnull String fromDC,
                                  @Nonnull Epoch processStarted,

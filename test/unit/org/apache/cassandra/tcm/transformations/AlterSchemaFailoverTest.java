@@ -111,15 +111,13 @@ public class AlterSchemaFailoverTest
 
         KeyspaceMetadata before = KeyspaceMetadata.create("ks1",
             KeyspaceParams.create(true, ntsOptions, ReplicationType.untracked));
-        KeyspaceMetadata after = KeyspaceMetadata.create("ks1",
-            KeyspaceParams.create(true, ntsOptions, ReplicationType.untracked));
 
         // NTS keyspaces don't produce a diff for params changes unless params differ
         // but we need to test that even if one is produced, non-SRS keyspaces are skipped.
         // Since params are the same here, diff would be empty. Let's force a params change:
         Map<String, String> ntsOptions2 = new HashMap<>(ntsOptions);
         ntsOptions2.put("DC2", "3");
-        after = KeyspaceMetadata.create("ks1",
+        KeyspaceMetadata after = KeyspaceMetadata.create("ks1",
             KeyspaceParams.create(true, ntsOptions2, ReplicationType.untracked));
 
         Keyspaces ksBefore = Keyspaces.of(before);
