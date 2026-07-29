@@ -73,6 +73,12 @@ public class SatelliteReadPlanTest extends SatelliteReplicationStrategyTestBase
         }
 
         @Override
+        public SatelliteFailover.State leastAdvancedState(Range<Token> range)
+        {
+            return state;
+        }
+
+        @Override
         public String getFromDC()
         {
             return fromDc;

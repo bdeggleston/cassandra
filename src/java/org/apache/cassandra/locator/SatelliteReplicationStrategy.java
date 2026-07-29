@@ -1595,7 +1595,7 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
     public CoordinationPlan.ForWrite planForFailoverPaxosRepair(ClusterMetadata metadata, Keyspace keyspace, Range<Token> range)
     {
         SatelliteFailover.Info failoverInfo = getFailoverInfo(metadata);
-        Preconditions.checkState(failoverInfo.stateForToken(range.right) == SatelliteFailover.State.TRANSITION_ACK);
+        checkFailoverStep(failoverInfo, range, SatelliteFailover.State.TRANSITION_ACK);
 
         ReplicaLayout.ForTokenWrite layout = ReplicaLayout.forTokenWriteLiveAndDown(metadata, keyspace, range.right);
         String fromDC = failoverInfo.getFromDC();
@@ -1617,6 +1617,23 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
         return new CoordinationPlan.ForWrite(planner.createReplicaPlan(), planner.createResponseTracker());
     }
 
+    /**
+     * Validate that a failover step expecting {@code expected} may be planned for {@code range}.
+     *
+     * A range can be partially advanced by a concurrent driver on another replica node, so we can't require that
+     * it is exactly at {@code expected} — only that no part of it is behind (state advancement is monotonic, so a
+     * range behind the expected state would have to have regressed). We also require an active transfer, since the
+     * failover plans coordinate against {@link SatelliteFailover.Info#getFromDC()}, which is null once the
+     * keyspace's transfer completes.
+     */
+    private static void checkFailoverStep(SatelliteFailover.Info failoverInfo, Range<Token> range, SatelliteFailover.State expected)
+    {
+        Preconditions.checkState(failoverInfo.getFromDC() != null, "No active failover transfer");
+        SatelliteFailover.State least = failoverInfo.leastAdvancedState(range);
+        Preconditions.checkState(least.failoverProgress() >= expected.failoverProgress(),
+                                 "Range %s is in state %s, expected at least %s", range, least, expected);
+    }
+
     public CoordinationPlan.ForTokenRead planForFailoverBarrierInternal(ClusterMetadata metadata, SatelliteFailover.Info failoverInfo, Keyspace keyspace, Range<Token> range)
     {
         return planForTokenReadPrimary(metadata,
@@ -1634,14 +1651,14 @@ public class SatelliteReplicationStrategy extends AbstractReplicationStrategy
     {
         SatelliteFailover.Info failoverInfo = getFailoverInfo(metadata);
 
-        Preconditions.checkState(failoverInfo.stateForToken(range.right) == SatelliteFailover.State.TRANSITION_ACK);
+        checkFailoverStep(failoverInfo, range, SatelliteFailover.State.TRANSITION_ACK);
         return planForFailoverBarrierInternal(metadata, failoverInfo, keyspace, range);
     }
 
     public CoordinationPlan.ForTokenRead planForFailoverBarrier(ClusterMetadata metadata, Keyspace keyspace, Range<Token> range)
     {
         SatelliteFailover.Info failoverInfo = getFailoverInfo(metadata);
-        Preconditions.checkState(failoverInfo.stateForToken(range.right) == SatelliteFailover.State.TRANSITION);
+        checkFailoverStep(failoverInfo, range, SatelliteFailover.State.TRANSITION);
         return planForFailoverBarrierInternal(metadata, failoverInfo, keyspace, range);
     }
 

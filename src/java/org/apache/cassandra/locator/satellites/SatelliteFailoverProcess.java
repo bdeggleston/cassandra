@@ -112,6 +112,12 @@ public class SatelliteFailoverProcess
         return processRanges;
     }
 
+    /**
+     * {@code inputRanges} must each be contained within a single replica set — {@link #create} guarantees this by
+     * intersecting the requested ranges with the local node's ranges. The steps of the process plan against
+     * {@code range.right} and apply that plan to the whole range, so a range spanning replica sets would contact
+     * the wrong replicas for part of itself.
+     */
     public SatelliteFailoverProcess(List<Range<Token>> inputRanges,
                                     SharedContext ctx,
                                     MessageDelivery messaging,
@@ -230,10 +236,42 @@ public class SatelliteFailoverProcess
 
         for (ProcessRange processRange : ranges)
         {
-            futures.add(start(processRange, executor, ackOnly, barrierOnly, force));
+            try
+            {
+                futures.add(start(processRange, executor, ackOnly, barrierOnly, force));
+            }
+            catch (Throwable t)
+            {
+                futures.add(ImmediateFuture.failure(t));
+            }
         }
 
         return FutureCombiner.allOf(futures);
+    }
+
+    /**
+     * Whether the step expecting {@code expected} still needs to run for {@code range}.
+     *
+     * A range may be only partially advanced, so we can't decide this from any single token in it: a concurrent
+     * driver on another replica node may have moved some sub-ranges forward while we were working. We skip only
+     * when the <i>entire</i> range has moved past {@code expected} (including the case where the keyspace's
+     * transfer has completed altogether, leaving no failover state at all). If any part of it is still at
+     * {@code expected} we run the step over the whole range: paxos repair and the MT barrier are idempotent, and
+     * a range is always contained within a single replica set, so re-running over the sub-ranges that have
+     * already advanced costs work but changes nothing.
+     *
+     * A sub-range <i>behind</i> {@code expected} means the range regressed, which monotonic state advancement
+     * forbids (see {@link SatelliteFailover.State#failoverProgress()}). No caller can reach that, so this is an
+     * invariant assertion rather than an operator-facing error.
+     */
+    private boolean shouldRun(ClusterMetadata metadata, Range<Token> range, SatelliteFailover.State expected)
+    {
+        SatelliteFailover.State least = strategy.getFailoverInfo(metadata).leastAdvancedState(range);
+        if (least.failoverProgress() < expected.failoverProgress())
+            throw new IllegalStateException(String.format("Range %s of keyspace %s is in state %s, expected at least %s",
+                                                          range, keyspace.getName(), least, expected));
+
+        return least.failoverProgress() == expected.failoverProgress();
     }
 
     private static class EpochCallback extends AsyncPromise<Void> implements RequestCallbackWithFailure<Epoch>
@@ -292,11 +330,11 @@ public class SatelliteFailoverProcess
     private Future<Void> queryMinEpoch(Range<Token> range)
     {
         // A concurrent driver on another replica node may have already advanced this range past
-        // TRANSITION_ACK. If so, the epoch check has effectively been done; skip rather than tripping
-        // the TRANSITION_ACK precondition in planForFailoverEpochCheck. The same metadata snapshot is
-        // passed to the plan so its precondition sees exactly the state we just checked.
+        // TRANSITION_ACK. If the whole range has advanced, the epoch check has effectively been done and we
+        // skip it. The same metadata snapshot is passed to the plan so its precondition sees exactly the state
+        // we just checked.
         ClusterMetadata metadata = ClusterMetadata.current();
-        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION_ACK)
+        if (!shouldRun(metadata, range, SatelliteFailover.State.TRANSITION_ACK))
             return ImmediateFuture.success(null);
 
         CoordinationPlan.ForTokenRead plan = strategy.planForFailoverEpochCheck(metadata, keyspace, range);
@@ -336,8 +374,8 @@ public class SatelliteFailoverProcess
     {
         // TODO: rework paxos repair so we can succeed with quorums
         ClusterMetadata metadata = ClusterMetadata.current();
-        // Skip if a concurrent driver already advanced this range past TRANSITION_ACK.
-        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION_ACK)
+        // Skip if a concurrent driver already advanced the whole range past TRANSITION_ACK.
+        if (!shouldRun(metadata, range, SatelliteFailover.State.TRANSITION_ACK))
             return SUCCESS;
         CoordinationPlan.ForWrite plan = strategy.planForFailoverPaxosRepair(metadata, keyspace, range);
         List<InetAddressAndPort> endpoints = plan.replicas().contacts().endpointList();
@@ -388,8 +426,8 @@ public class SatelliteFailoverProcess
     private Future<?> runMTBarrier(Range<Token> range)
     {
         ClusterMetadata metadata = ClusterMetadata.current();
-        // Skip if a concurrent driver already advanced this range past TRANSITION (e.g. to NORMAL).
-        if (strategy.getFailoverInfo(metadata).stateForToken(range.right) != SatelliteFailover.State.TRANSITION)
+        // Skip if a concurrent driver already advanced the whole range past TRANSITION (e.g. to NORMAL).
+        if (!shouldRun(metadata, range, SatelliteFailover.State.TRANSITION))
             return SUCCESS;
         KeyspaceMetadata ksm = metadata.schema.getKeyspaceMetadata(keyspace.getName());
         CoordinationPlan.ForTokenRead plan = strategy.planForFailoverBarrier(metadata, keyspace, range);

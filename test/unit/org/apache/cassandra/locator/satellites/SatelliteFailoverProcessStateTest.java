@@ -117,6 +117,71 @@ public class SatelliteFailoverProcessStateTest
         assertSerializationRoundTrip(state, KeyspaceFailoverState.serializer);
     }
 
+    // ========== leastAdvancedState tests ==========
+
+    @Test
+    public void testLeastAdvancedStateUniform()
+    {
+        KeyspaceFailoverState state = KeyspaceFailoverState.create("DC1", Epoch.EMPTY, fullRange());
+
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(0, 100)));
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(fullRingRange()));
+    }
+
+    @Test
+    public void testLeastAdvancedStatePartiallyAdvancedRange()
+    {
+        KeyspaceFailoverState state = KeyspaceFailoverState.create("DC1", Epoch.EMPTY, fullRange())
+                                                           .withRangesTransitioning(rangesOf(tk(100), tk(200)));
+
+        // entirely within the advanced sub-range
+        assertEquals(SatelliteFailover.State.TRANSITION, state.leastAdvancedState(range(120, 180)));
+        assertEquals(SatelliteFailover.State.TRANSITION, state.leastAdvancedState(range(100, 200)));
+
+        // straddling the boundary in either direction: the un-advanced part must win
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(150, 250)));
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(50, 150)));
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(fullRingRange()));
+
+        // abutting the advanced sub-range without overlapping it
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(0, 100)));
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(200, 300)));
+    }
+
+    @Test
+    public void testLeastAdvancedStateAcrossAllStates()
+    {
+        KeyspaceFailoverState state = KeyspaceFailoverState.create("DC1", Epoch.EMPTY, fullRange())
+                                                           .withRangesTransitioning(rangesOf(tk(100), tk(300)))
+                                                           .withRangesNormal(rangesOf(tk(100), tk(200)));
+
+        assertEquals(SatelliteFailover.State.NORMAL, state.leastAdvancedState(range(100, 200)));
+        assertEquals(SatelliteFailover.State.TRANSITION, state.leastAdvancedState(range(150, 300)));
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(range(150, 400)));
+    }
+
+    @Test
+    public void testLeastAdvancedStateWrapAround()
+    {
+        Token min = partitioner.getMinimumToken();
+        KeyspaceFailoverState state = KeyspaceFailoverState.create("DC1", Epoch.EMPTY, fullRange())
+                                                           .withRangesTransitioning(rangesOf(tk(200), min));
+
+        // wrapping range fully inside the advanced sub-range
+        assertEquals(SatelliteFailover.State.TRANSITION, state.leastAdvancedState(new Range<>(tk(300), min)));
+        // wrapping range that also covers un-advanced tokens
+        assertEquals(SatelliteFailover.State.TRANSITION_ACK, state.leastAdvancedState(new Range<>(tk(100), min)));
+        // the wrap sentinel is the upper bound of the last interval
+        assertEquals(SatelliteFailover.State.TRANSITION, state.leastAdvancedState(new Range<>(tk(200), min)));
+    }
+
+    @Test
+    public void testLeastAdvancedStateNoActiveFailover()
+    {
+        assertEquals(SatelliteFailover.State.NORMAL, SatelliteFailover.Info.NORMAL.leastAdvancedState(range(0, 100)));
+        assertEquals(SatelliteFailover.State.NORMAL, SatelliteFailover.Info.NORMAL.leastAdvancedState(fullRingRange()));
+    }
+
     // ========== SatelliteFailoverProcessState tests ==========
 
     @Test
@@ -285,5 +350,16 @@ public class SatelliteFailoverProcessStateTest
     private static NormalizedRanges<Token> rangesOf(Token left, Token right)
     {
         return NormalizedRanges.normalizedRanges(Collections.singleton(new Range<>(left, right)));
+    }
+
+    private static Range<Token> range(long left, long right)
+    {
+        return new Range<>(tk(left), tk(right));
+    }
+
+    private static Range<Token> fullRingRange()
+    {
+        Token min = partitioner.getMinimumToken();
+        return new Range<>(min, min);
     }
 }

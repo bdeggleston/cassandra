@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -145,6 +146,12 @@ public class SatelliteFailover
             }
 
             @Override
+            public State leastAdvancedState(Range<Token> range)
+            {
+                return State.NORMAL;
+            }
+
+            @Override
             public String getFromDC()
             {
                 return null;
@@ -152,6 +159,15 @@ public class SatelliteFailover
         };
 
         State stateForToken(Token token);
+
+        /**
+         * The least advanced state, per {@link State#failoverProgress()}, of any sub-range of {@code range}.
+         *
+         * A range may be only partially advanced: a concurrent driver on another replica node can move some of
+         * its sub-ranges forward while we're working, so no single token is representative of the whole range.
+         * Callers staging failover work need to reason about the whole range, not a single point in it.
+         */
+        State leastAdvancedState(Range<Token> range);
 
         default State stateForPartitionPosition(PartitionPosition position)
         {

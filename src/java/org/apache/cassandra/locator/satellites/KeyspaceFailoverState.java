@@ -25,6 +25,8 @@ import java.util.function.BiConsumer;
 
 import javax.annotation.Nonnull;
 
+import com.google.common.base.Preconditions;
+
 import org.apache.cassandra.dht.NormalizedRanges;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -141,6 +143,21 @@ public class KeyspaceFailoverState implements SatelliteFailover.Info
     public State stateForToken(Token token)
     {
         return rangeStates.get(token);
+    }
+
+    @Override
+    public State leastAdvancedState(Range<Token> range)
+    {
+        State[] least = new State[1];
+        rangeStates.forEach((left, right, state) -> {
+            if (!new Range<>(left, right).intersects(range))
+                return;
+            if (least[0] == null || state.failoverProgress() < least[0].failoverProgress())
+                least[0] = state;
+        });
+        // rangeStates covers the whole ring, so any range intersects at least one interval
+        Preconditions.checkState(least[0] != null);
+        return least[0];
     }
 
     @Override
