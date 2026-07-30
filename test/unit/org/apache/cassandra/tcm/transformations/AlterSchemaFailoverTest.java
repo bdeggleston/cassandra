@@ -139,7 +139,9 @@ public class AlterSchemaFailoverTest
     @Test(expected = InvalidRequestException.class)
     public void testRejectConcurrentTransfer()
     {
-        KeyspaceDiff diff = makeDiff("ks1", srsOptions("DC1", "DC2"), srsOptions("DC2", "DC2"));
+        // Change the primary (DC1 -> DC2) while a transfer from DC1 is already in progress. DC1 is kept in the
+        // after-topology so this exercises the primary-change rejection specifically (not the fromDC-removal guard).
+        KeyspaceDiff diff = makeDiff("ks1", srsOptions("DC1", "DC2"), srsOptions("DC2", "DC1"));
         ImmutableList<KeyspaceDiff> altered = ImmutableList.of(diff);
 
         // Pre-existing active transfer
@@ -183,6 +185,71 @@ public class AlterSchemaFailoverTest
         ClusterMetadata.Transformer next = metadata.transformer();
 
         next = AlterSchema.maybeUpdateSatelliteFailoverState(SatelliteFailoverProcessState.EMPTY, next, altered, Keyspaces.none());
+        ClusterMetadata result = next.build().metadata;
+
+        assertTrue(result.satelliteFailoverState.hasActiveTransfer("ks1"));
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testRejectRemovingFromDCWhileTransferActive()
+    {
+        // Active failover from DC1 (primary already moved to DC2). An alter that keeps the primary (DC2)
+        // but drops DC1 -- the source DC the failover reconciles from -- must be rejected, or the failover
+        // state would reference a datacenter no longer in the topology.
+        KeyspaceDiff diff = makeDiff("ks1", srsOptions("DC2", "DC1"), srsOptions("DC2"));
+        ImmutableList<KeyspaceDiff> altered = ImmutableList.of(diff);
+
+        SatelliteFailoverProcessState existingState = SatelliteFailoverProcessState.EMPTY
+            .withFailoverInitiated("ks1", "DC1", Epoch.EMPTY, fullTokenRange());
+
+        ClusterMetadata metadata = new ClusterMetadata(partitioner).forceEpoch(Epoch.create(1));
+        ClusterMetadata.Transformer next = metadata.transformer();
+
+        AlterSchema.maybeUpdateSatelliteFailoverState(existingState, next, altered, Keyspaces.none());
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testRejectRemovingFromDCSatelliteWhileTransferActive()
+    {
+        // Active failover from DC1. An alter that keeps DC1 as a full DC but removes its satellite (which the
+        // TRANSITION barrier reconciles from) must be rejected, even though the primary (DC2) is unchanged.
+        Map<String, String> beforeOpts = srsOptions("DC2", "DC1");
+        Map<String, String> afterOpts = new HashMap<>(beforeOpts);
+        afterOpts.remove("DC1.satellite.SA_DC1");
+
+        KeyspaceDiff diff = makeDiff("ks1", beforeOpts, afterOpts);
+        ImmutableList<KeyspaceDiff> altered = ImmutableList.of(diff);
+
+        SatelliteFailoverProcessState existingState = SatelliteFailoverProcessState.EMPTY
+            .withFailoverInitiated("ks1", "DC1", Epoch.EMPTY, fullTokenRange());
+
+        ClusterMetadata metadata = new ClusterMetadata(partitioner).forceEpoch(Epoch.create(1));
+        ClusterMetadata.Transformer next = metadata.transformer();
+
+        AlterSchema.maybeUpdateSatelliteFailoverState(existingState, next, altered, Keyspaces.none());
+    }
+
+    @Test
+    public void testUnrelatedAlterDuringActiveTransferAllowed()
+    {
+        // Active failover from DC1. An alter that keeps the primary, DC1, and DC1's satellite intact (here just
+        // adding an unrelated DC3) must NOT be rejected.
+        Map<String, String> afterOpts = new HashMap<>(srsOptions("DC2", "DC1"));
+        afterOpts.put("DC3", "3");
+        afterOpts.put("DC3.satellite.SA_DC3", "2/2");
+
+        KeyspaceDiff diff = makeDiff("ks1", srsOptions("DC2", "DC1"), afterOpts);
+        ImmutableList<KeyspaceDiff> altered = ImmutableList.of(diff);
+
+        SatelliteFailoverProcessState existingState = SatelliteFailoverProcessState.EMPTY
+            .withFailoverInitiated("ks1", "DC1", Epoch.EMPTY, fullTokenRange());
+
+        // Seed the base metadata with the active transfer so an unchanged failover state is preserved through build().
+        ClusterMetadata metadata = new ClusterMetadata(partitioner).forceEpoch(Epoch.create(1))
+                                                                   .transformer().with(existingState).build().metadata;
+        ClusterMetadata.Transformer next = metadata.transformer();
+
+        next = AlterSchema.maybeUpdateSatelliteFailoverState(metadata.satelliteFailoverState, next, altered, Keyspaces.none());
         ClusterMetadata result = next.build().metadata;
 
         assertTrue(result.satelliteFailoverState.hasActiveTransfer("ks1"));
