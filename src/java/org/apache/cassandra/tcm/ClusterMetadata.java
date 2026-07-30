@@ -1018,6 +1018,7 @@ public class ClusterMetadata
                inProgressSequences.equals(that.inProgressSequences) &&
                consensusMigrationState.equals(that.consensusMigrationState) &&
                accordStaleReplicas.equals(that.accordStaleReplicas) &&
+               mutationTrackingMigrationState.equals(that.mutationTrackingMigrationState) &&
                satelliteFailoverState.equals(that.satelliteFailoverState) &&
                extensions.equals(that.extensions);
     }
@@ -1071,7 +1072,10 @@ public class ClusterMetadata
     @Override
     public int hashCode()
     {
-        return Objects.hash(epoch, schema, directory, tokenMap, placements, accordFastPath, lockedRanges, inProgressSequences, consensusMigrationState, accordStaleReplicas, satelliteFailoverState, extensions);
+        return Objects.hash(epoch, schema, directory, tokenMap, placements, accordFastPath,
+                            lockedRanges, inProgressSequences, consensusMigrationState,
+                            accordStaleReplicas, mutationTrackingMigrationState, satelliteFailoverState,
+                            extensions);
     }
 
     public static ClusterMetadata current()

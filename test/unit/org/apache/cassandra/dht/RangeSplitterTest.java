@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.dht;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -323,6 +324,45 @@ public class RangeSplitterTest
         assertEquals(1, splits.size());
     }
 
+    // ========== Min-token / end-of-ring ranges ==========
+
+    @Test
+    public void testRangeEndingAtMinTokenSplitsAtInteriorBoundary()
+    {
+        // A range ending at the minimum token extends to the end of the ring (MIN is the wrap sentinel),
+        // so an interior boundary must still split it. Regression: addGapBefore's !isMinimum() guard --
+        // without it, MIN <= boundaryStart reads as "remainder ends before boundary" and the whole
+        // remainder is emitted as a single outside split, dropping the boundary.
+        AbstractBounds<PartitionPosition> range = rangeToMinToken(100);
+        NormalizedRanges<Token> boundaries = normalizedRanges(tokenRange(200, 300));
+
+        List<RangeSplitter.Split> splits = RangeSplitter.splitAtBoundariesTagged(range, boundaries);
+
+        // (100, 200] outside, (200, 300] inside, (300, MIN] outside
+        assertEquals(3, splits.size());
+        assertContiguousTagged(range, splits);
+        assertFalse(splits.get(0).isWithinBoundary);
+        assertTrue(splits.get(1).isWithinBoundary);
+        assertFalse(splits.get(2).isWithinBoundary);
+    }
+
+    @Test
+    public void testFullRingRangeSplitsAtInteriorBoundary()
+    {
+        // (MIN, MIN] is a full-ring scan; an interior boundary splits it into three.
+        AbstractBounds<PartitionPosition> range = fullRingRange();
+        NormalizedRanges<Token> boundaries = normalizedRanges(tokenRange(0, 100));
+
+        List<RangeSplitter.Split> splits = RangeSplitter.splitAtBoundariesTagged(range, boundaries);
+
+        // (MIN, 0] outside, (0, 100] inside, (100, MIN] outside
+        assertEquals(3, splits.size());
+        assertContiguousTagged(range, splits);
+        assertFalse(splits.get(0).isWithinBoundary);
+        assertTrue(splits.get(1).isWithinBoundary);
+        assertFalse(splits.get(2).isWithinBoundary);
+    }
+
     // ========== Helpers ==========
 
     private static Token token(long value)
@@ -341,6 +381,24 @@ public class RangeSplitterTest
     private static AbstractBounds<PartitionPosition> range(long left, long right)
     {
         return new Range<>(token(left).minKeyBound(), token(right).maxKeyBound());
+    }
+
+    /**
+     * Creates a Range of PartitionPosition ending at the minimum token, i.e. extending to the end of the
+     * ring (MIN is the wrap sentinel): (left.minKeyBound, MIN.maxKeyBound]
+     */
+    private static AbstractBounds<PartitionPosition> rangeToMinToken(long left)
+    {
+        return new Range<>(token(left).minKeyBound(), partitioner.getMinimumToken().maxKeyBound());
+    }
+
+    /**
+     * Creates a full-ring Range of PartitionPosition: (MIN.minKeyBound, MIN.maxKeyBound]
+     */
+    private static AbstractBounds<PartitionPosition> fullRingRange()
+    {
+        Token min = partitioner.getMinimumToken();
+        return new Range<>(min.minKeyBound(), min.maxKeyBound());
     }
 
     @SafeVarargs
@@ -373,5 +431,17 @@ public class RangeSplitterTest
         assertFalse("Splits should not be empty", splits.isEmpty());
         assertEquals("First split should start at original start", original.left, splits.get(0).left);
         assertEquals("Last split should end at original end", original.right, splits.get(splits.size() - 1).right);
+    }
+
+    /**
+     * Verify tagged splits are contiguous and cover the original range.
+     */
+    private static void assertContiguousTagged(AbstractBounds<PartitionPosition> original,
+                                               List<RangeSplitter.Split> splits)
+    {
+        List<AbstractBounds<PartitionPosition>> ranges = new ArrayList<>(splits.size());
+        for (RangeSplitter.Split split : splits)
+            ranges.add(split.range);
+        assertContiguous(original, ranges);
     }
 }
