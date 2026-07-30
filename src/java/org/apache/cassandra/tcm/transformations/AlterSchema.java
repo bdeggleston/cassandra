@@ -50,6 +50,7 @@ import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.SatelliteReplicationStrategy;
+import org.apache.cassandra.locator.satellites.KeyspaceFailoverState;
 import org.apache.cassandra.locator.satellites.SatelliteFailoverProcessState;
 import org.apache.cassandra.schema.DistributedSchema;
 import org.apache.cassandra.schema.KeyspaceMetadata;
@@ -444,6 +445,27 @@ public class AlterSchema implements Transformation
             // Only applies to SatelliteReplicationStrategy keyspaces
             if (diff.after.params.replication.klass != SatelliteReplicationStrategy.class)
                 continue;
+
+            // An in-progress transfer reconciles the source DC's tracked data (held on its satellite) to the new
+            // primary, scoping every failover plan -- paxos repair, barrier, epoch check -- to that source DC
+            // (fromDC) and its satellite. Removing fromDC or its satellite mid-transfer strands those plans against
+            // a topology that no longer exists, wedging the affected ranges (paxos is rejected during TRANSITION_ACK
+            // and the advance pipeline can no longer make progress). Reject it. This is independent of the primary DC
+            // (a primary DC *change* on an active transfer is rejected below); an operator wanting to abandon the
+            // failover can move the keyspace off SatelliteReplicationStrategy or drop it -- both clean the state up above.
+            KeyspaceFailoverState activeTransfer = failoverState.getKeyspaceState(diff.after.name);
+            if (activeTransfer != null)
+            {
+                String fromDC = activeTransfer.fromDC;
+                SatelliteReplicationStrategy afterSrs = (SatelliteReplicationStrategy) diff.after.replicationStrategy;
+                if (afterSrs.getReplicationFactor(fromDC).allReplicas == 0)
+                    throw new InvalidRequestException("Cannot remove datacenter " + fromDC + " from keyspace " +
+                                                      diff.after.name + " while a satellite failover from it is in progress");
+                if (afterSrs.getSatelliteForDC(fromDC) == null)
+                    throw new InvalidRequestException("Cannot remove the satellite of datacenter " + fromDC +
+                                                      " from keyspace " + diff.after.name +
+                                                      " while a satellite failover from it is in progress");
+            }
 
             String oldPrimary = diff.before.params.replication.options.get("primary");
             String newPrimary = diff.after.params.replication.options.get("primary");
