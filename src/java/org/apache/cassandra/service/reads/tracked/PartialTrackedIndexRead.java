@@ -169,6 +169,10 @@ public class PartialTrackedIndexRead<Match extends IndexMatch, Searcher extends 
             AsyncPromise<FollowUpRead<Match, Searcher>> followUpPromise = new AsyncPromise<>();
             TrackedRead.Partition trackedRead = TrackedRead.Partition.create(metadata, partitionReadCommand, consistencyLevel, requestTime);
 
+            trackedRead.future().addCallback((response, failure) -> {
+                if (failure != null)
+                    followUpPromise.tryFailure(failure);
+            });
             trackedRead.startLocal(requestTime, null, ((promise1, read, consistencyLevel1, rt) -> {
                 try
                 {
@@ -176,6 +180,7 @@ public class PartialTrackedIndexRead<Match extends IndexMatch, Searcher extends 
                 }
                 catch (Exception e)
                 {
+                    read.close();
                     followUpPromise.tryFailure(e);
                 }
             }));
@@ -538,6 +543,8 @@ public class PartialTrackedIndexRead<Match extends IndexMatch, Searcher extends 
                 // TODO: maybe we should immediately start a follow up read if it's likely this key will be included in the response
                 if (!followUpReads.containsKey(key) && indexNewKey(update))
                 {
+                    // maxKey isn't raised here because maxKey is only relevant to the range read, and the
+                    // followup read is a separate read that's not part of the range read
                     Future<FollowUpRead<Match, Searcher>> followUpRead = FollowUpRead.start(command, update.partitionKey(), consistencyLevel, requestTime);
                     followUpReads.put(key, followUpRead);
                 }
