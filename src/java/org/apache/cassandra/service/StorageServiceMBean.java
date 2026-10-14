@@ -1361,6 +1361,9 @@ public interface StorageServiceMBean extends NotificationEmitter
     public long getMutationTrackingSyncTimeout();
     public void setMutationTrackingSyncTimeout(long timeoutInMillis);
 
+    public long getShardSealingTimeout();
+    public void setShardSealingTimeout(long timeoutInMillis);
+
     public void evictHungRepairs();
     public void clearPaxosRepairs();
     public void setSkipPaxosRepairCompatibilityCheck(boolean v);
