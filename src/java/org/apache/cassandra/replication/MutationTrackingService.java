@@ -991,6 +991,35 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     }
 
     @Nonnull
+    public Shard registerRemoteLog(CoordinatorLogId logId, ShardMetadata metadata)
+    {
+        shardLock.readLock().lock();
+        try
+        {
+            Shard shard = getOrCreateShard(metadata.keyspace, metadata.sinceEpoch, metadata.range, metadata.participants);
+            shard.getOrCreate(logId);
+            return shard;
+        }
+        finally
+        {
+            shardLock.readLock().unlock();
+        }
+    }
+
+    void announceNewPrimaryLog(Shard shard, CoordinatorLogId logId)
+    {
+        ShardMetadata metadata = new ShardMetadata(shard.keyspace, shard.sinceEpoch, shard.range, shard.participants);
+        BroadcastNewLog announcement = new BroadcastNewLog(logId, metadata);
+        Message<BroadcastNewLog> message = Message.out(Verb.MT_BROADCAST_NEW_LOG, announcement);
+
+        for (InetAddressAndPort target : shard.remoteReplicas())
+        {
+            if (FailureDetector.instance.isAlive(target))
+                MessagingService.instance().send(message, target);
+        }
+    }
+
+    @Nonnull
     private Shard getShard(String keyspace, long sinceEpoch, Range<Token> range)
     {
         KeyspaceShards shards = keyspaceShards.get(keyspace);
@@ -2171,6 +2200,13 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
                 shards.add(new Shard(localNodeId, keyspace, Epoch.EMPTY.getEpoch(), range, participants, logId, (s, l) -> {}));
             shards.sort(Shard.COMPARATOR);
             return new KeyspaceShards(keyspace, ShardIntervalBTree.fromSorted(shards));
+        }
+
+        public static KeyspaceShards createTestKeyspaceShards(String keyspace, List<Shard> shards)
+        {
+            List<Shard> sorted = new ArrayList<>(shards);
+            sorted.sort(Shard.COMPARATOR);
+            return new KeyspaceShards(keyspace, ShardIntervalBTree.fromSorted(sorted));
         }
 
         /**
