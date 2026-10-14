@@ -196,7 +196,7 @@ public class Shard
     {
         if (state != State.ACTIVE)
             throw new IllegalStateException(format("%s cannot assign next id, state: %s", this, state));
-        MutationId nextId = currentLocalLog.nextId();
+        MutationId nextId = currentLocalLog.nextId(this::announceNewPrimaryLog);
         if (nextId == null)
             nextId = maybeRotateLocalLogAndGetNextId();
         logger.trace("Issuing next id {}", nextId);
@@ -206,13 +206,18 @@ public class Shard
     // if ids overflow, we need to rotate the local log
     synchronized private MutationId maybeRotateLocalLogAndGetNextId()
     {
-        MutationId nextId = currentLocalLog.nextId();
+        MutationId nextId = currentLocalLog.nextId(this::announceNewPrimaryLog);
         if (nextId != null) // another thread got to rotate before us
             return nextId;
         CoordinatorLogId oldLogId = currentLocalLog.logId;
         currentLocalLog = createNewPrimaryLog();
         logger.info("Rotated primary log for {}/{} from {} to {}", keyspace, range, oldLogId, currentLocalLog.logId);
-        return currentLocalLog.nextId();
+        return currentLocalLog.nextId(this::announceNewPrimaryLog);
+    }
+
+    private void announceNewPrimaryLog(CoordinatorLogId logId)
+    {
+        MutationTrackingService.instance().announceNewPrimaryLog(this, logId);
     }
 
     /**
@@ -380,7 +385,7 @@ public class Shard
         return getOrCreate(mutationId.logId());
     }
 
-    private CoordinatorLog getOrCreate(CoordinatorLogId logId)
+    CoordinatorLog getOrCreate(CoordinatorLogId logId)
     {
         return getOrCreate(logId.asLong());
     }

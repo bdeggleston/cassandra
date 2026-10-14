@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
@@ -675,12 +676,22 @@ public abstract class CoordinatorLog
         }
 
         @Nullable
-        MutationId nextId()
+        MutationId nextId(Consumer<CoordinatorLogId> onFirstOffsetAllocated)
         {
             long nextSequenceId = nextSequenceId();
-            return nextSequenceId >= 0
-                 ? new MutationId(logId.asLong(), nextSequenceId)
-                 : null;
+            if (nextSequenceId < 0)
+                return null;
+
+            if (MutationId.offset(nextSequenceId) == 0 && onFirstOffsetAllocated != null)
+                onFirstOffsetAllocated.accept(logId);
+
+            return new MutationId(logId.asLong(), nextSequenceId);
+        }
+
+        @Nullable
+        MutationId nextId()
+        {
+            return nextId(null);
         }
 
         private long nextSequenceId()

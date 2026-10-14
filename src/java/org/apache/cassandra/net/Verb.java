@@ -80,6 +80,7 @@ import org.apache.cassandra.repair.messages.ValidationResponse;
 import org.apache.cassandra.replication.ActivationRequest;
 import org.apache.cassandra.replication.ActivationResponse;
 import org.apache.cassandra.replication.BroadcastLogOffsets;
+import org.apache.cassandra.replication.BroadcastNewLog;
 import org.apache.cassandra.replication.ForwardedWrite;
 import org.apache.cassandra.replication.PullMutationsRequest;
 import org.apache.cassandra.replication.PushMutationRequest;
@@ -389,6 +390,7 @@ public enum Verb
 
     MT_SHARD_METADATA_RSP    (918, P2, writeTimeout,             REQUEST_RESPONSE, () -> mtEmbedded(ShardMetadataResponse.serializer),        RESPONSE_HANDLER                                                   ),
     MT_SHARD_METADATA_REQ    (919, P2, writeTimeout,             MISC,             () -> mtEmbedded(ShardMetadataRequest.serializer),         () -> ShardMetadataRequest.verbHandler,    MT_SHARD_METADATA_RSP   ),
+    MT_BROADCAST_NEW_LOG     (932, P1, rpcTimeout,               MISC,             () -> mtEmbedded(BroadcastNewLog.serializer),               () -> BroadcastNewLog.verbHandler                                  ),
     MT_FETCH_SHARDS_RSP      (920, P2, shardSealingTimeout,      REQUEST_RESPONSE, () -> mtEmbedded(FetchShards.responseSerializer),          RESPONSE_HANDLER                                                   ),
     MT_FETCH_SHARDS_REQ      (921, P2, shardSealingTimeout,      ANTI_ENTROPY,     () -> mtEmbedded(FetchShards.requestSerializer),           () -> FetchShards.verbHandler,             MT_FETCH_SHARDS_RSP     ),
     MT_INIT_SEALING_RSP      (922, P2, shardSealingTimeout,      REQUEST_RESPONSE, () -> mtEmbedded(InitSealing.responseSerializer),          RESPONSE_HANDLER                                                   ),

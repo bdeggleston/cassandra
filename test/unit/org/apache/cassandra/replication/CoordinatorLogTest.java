@@ -39,6 +39,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -152,6 +153,24 @@ public class CoordinatorLogTest
     public void persistAndLoadReplicaLogTest()
     {
         testPersistAndLoadRoundtrip(REPLICA_LOG_ID);
+    }
+
+    @Test
+    public void testFirstOffsetAllocatedCallback()
+    {
+        CoordinatorLogPrimary log = new CoordinatorLogPrimary(KEYSPACE, 0L, new Range<>(tk("a"), tk("b")), LOCAL_HOST_ID, LOCAL_LOG_ID, PARTICIPANTS);
+        List<CoordinatorLogId> notified = new ArrayList<>();
+
+        MutationId id0 = log.nextId(notified::add);
+        assertNotNull(id0);
+        assertEquals(0, id0.offset());
+        assertEquals(List.of(LOCAL_LOG_ID), notified);
+
+        // Subsequent allocations from the same log must not trigger the callback again
+        MutationId id1 = log.nextId(notified::add);
+        assertNotNull(id1);
+        assertEquals(1, id1.offset());
+        assertEquals(1, notified.size());
     }
 
     private void testPersistAndLoadRoundtrip(CoordinatorLogId logId)

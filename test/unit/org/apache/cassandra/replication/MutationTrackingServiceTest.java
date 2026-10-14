@@ -44,6 +44,7 @@ import org.apache.cassandra.repair.SyncTasks;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.streaming.PreviewKind;
+import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.TimeUUID;
 
@@ -238,6 +239,25 @@ public class MutationTrackingServiceTest
 
         // All resulting tasks should be the same type as the input
         result.apply((shardedTask) -> assertTrue("Task should be SymmetricRemoteSyncTask", shardedTask.task instanceof SymmetricRemoteSyncTask));
+    }
+
+    @Test
+    public void testRegisterRemoteLogPopulatesLog2ShardMap()
+    {
+        CoordinatorLogId remoteLogId = new CoordinatorLogId(999, 1);
+        Range<Token> tokenRange = range("a", "m");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, 999));
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
+
+        Shard shard = MutationTrackingService.instance().registerRemoteLog(remoteLogId, metadata);
+        assertNotNull(shard);
+        assertEquals(TEST_KEYSPACE, shard.keyspace);
+        assertEquals(tokenRange, shard.range);
+
+        // Verify the log was added to the shard and indexed in log2ShardMap
+        Shard resolvedShard = MutationTrackingService.instance().getShard(remoteLogId);
+        assertEquals(shard, resolvedShard);
     }
 
     private static Token tk(String key)
