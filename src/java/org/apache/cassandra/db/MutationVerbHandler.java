@@ -29,6 +29,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.replication.ForwardedWrite;
+import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.tracing.Tracing;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -83,6 +84,10 @@ public class MutationVerbHandler extends AbstractMutationVerbHandler<Mutation>
             forwardToLocalNodes(message, forwardTo);
 
         InetAddressAndPort respondToAddress = message.respondTo();
+
+        if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(message.payload, message))
+            return;
+
         try
         {
             processMessage(message, respondToAddress);

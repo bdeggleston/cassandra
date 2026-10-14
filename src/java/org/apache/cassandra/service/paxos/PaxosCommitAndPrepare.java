@@ -33,6 +33,7 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.replication.MutationId;
+import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.consensus.migration.ConsensusKeyMigrationState.KeyMigrationState;
 import org.apache.cassandra.service.paxos.Commit.Agreed;
@@ -201,6 +202,9 @@ public class PaxosCommitAndPrepare
 
             if (message.payload.read != null)
                 MigrationRouter.checkPaxosPrepareReadMigration(metadata, message, message.from(), message.payload.read);
+
+            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(commit.mutation, message))
+                return;
 
             Future<Response> response = execute(message.payload, new RequestTime(message.createdAtNanos()));
             if (response == null)

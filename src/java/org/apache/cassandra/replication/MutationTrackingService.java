@@ -19,6 +19,7 @@ package org.apache.cassandra.replication;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -26,7 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
@@ -68,8 +71,10 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.MutationTrackingMetrics;
+import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.repair.SyncTask;
 import org.apache.cassandra.repair.SyncTasks;
@@ -90,6 +95,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -209,6 +215,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     private final OutgoingMutations outgoingMutations = new OutgoingMutations();
 
     private final Map<String, Set<MutationTrackingSyncCoordinator>> syncCoordinatorsByKeyspace = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<CoordinatorLogId, AsyncPromise<Shard>> pendingLogLookups = new ConcurrentHashMap<>();
 
     private final Object hostLogIdLock = new Object();
     private volatile boolean hostLogIdLoaded = false;
@@ -550,56 +557,138 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         if (null != shard)
             return shard;
 
-        ShardMetadata metadata = queryPeersForShardMetadata(logId, mutation.getKeyspaceName());
-
-        // with the right checks upstream this should never happen, but if it does, we need to throw
-        if (!metadata.participants.contains(ClusterMetadata.current().myNodeId().id()))
-            throw new RuntimeException("Mutation belongs to a shard that this node doesn't participate in");
-
-        shardLock.readLock().lock();
         try
         {
-            return getOrCreateShard(metadata.keyspace, metadata.sinceEpoch, metadata.range, metadata.participants);
+            return resolveRemoteLogAsync(logId, mutation.getKeyspaceName(), Collections.emptyList()).get(DatabaseDescriptor.getWriteRpcTimeout(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
         }
-        finally
+        catch (InterruptedException e)
         {
-            shardLock.readLock().unlock();
+            throw new UncheckedInterruptedException(e);
+        }
+        catch (ExecutionException | TimeoutException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 
-    /**
-     * When we see a new coordinator log id for the first time, we may not know what shard to place it into.
-     * Queries all peers for the shard metadata, finds or creates the matching shard locally, and returns it.
-     * Throws if resolution fails entirely.
-     */
-    private ShardMetadata queryPeersForShardMetadata(CoordinatorLogId logId, String keyspace)
+    @VisibleForTesting
+    AsyncPromise<Shard> resolveRemoteLogAsync(CoordinatorLogId logId, String keyspace, Collection<InetAddressAndPort> initialPeers)
     {
-        // Collect peers: current replicas for the keyspace + the log's originating host.
-        Set<InetAddressAndPort> peers = new HashSet<>();
+        // look for existing shards or lookups
+        Shard shard = getShardNullable(logId);
+        if (shard != null)
+        {
+            AsyncPromise<Shard> immediate = new AsyncPromise<>();
+            immediate.trySuccess(shard);
+            return immediate;
+        }
+
+        AsyncPromise<Shard> existing = pendingLogLookups.get(logId);
+        if (existing != null)
+            return existing;
+
+        // otherwise perform the lookup ourselves
+        AsyncPromise<Shard> promise = new AsyncPromise<>();
+        existing = pendingLogLookups.putIfAbsent(logId, promise);
+        if (existing != null)
+            return existing;
+
+        Set<InetAddressAndPort> retryPeers = new HashSet<>();
         shardLock.readLock().lock();
         try
         {
             KeyspaceShards shards = keyspaceShards.get(keyspace);
             if (shards != null)
-                shards.forEachShard(s -> peers.addAll(s.remoteReplicas()));
+                shards.forEachShard(s -> retryPeers.addAll(s.remoteReplicas()));
         }
         finally
         {
             shardLock.readLock().unlock();
         }
 
-        InetAddressAndPort hostOfOrigin = ClusterMetadata.current().directory.endpoint(new NodeId(logId.hostId));
-        if (hostOfOrigin != null)
-            peers.add(hostOfOrigin);
+        retryPeers.remove(FBUtilities.getBroadcastAddressAndPort());
+        retryPeers.removeAll(initialPeers);
 
-        peers.remove(FBUtilities.getBroadcastAddressAndPort());
+        ShardMetadataRequest.queryPeersWithRetry(logId, initialPeers, retryPeers).addCallback((metadata, failure) -> {
+            try
+            {
+                if (metadata != null)
+                {
+                    if (!metadata.participants.contains(ClusterMetadata.current().myNodeId().id()))
+                        throw new RuntimeException("Mutation belongs to a shard that this node doesn't participate in");
 
-        AsyncPromise<ShardMetadata> promise = ShardMetadataRequest.queryPeers(logId, peers);
-        promise.awaitUninterruptibly(DatabaseDescriptor.getWriteRpcTimeout(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
-        ShardMetadata metadata = promise.getNow();
-        if (metadata == null)
-            throw new RuntimeException(String.format("Could not resolve shard metadata for log %s in keyspace %s", logId, keyspace));
-        return metadata;
+                    Shard registered = registerRemoteLog(logId, metadata);
+                    promise.trySuccess(registered);
+                }
+                else
+                {
+                    promise.tryFailure(failure != null ? failure : new RuntimeException(String.format("Could not resolve shard metadata for log %s in keyspace %s", logId, keyspace)));
+                }
+            }
+            catch (Throwable t)
+            {
+                promise.tryFailure(t);
+            }
+            finally
+            {
+                pendingLogLookups.remove(logId, promise);
+            }
+        });
+
+        return promise;
+    }
+
+    /**
+     * Checks if a mutation's coordinator log ID is known locally. If unknown, begins or joins an asynchronous
+     * lookup, defers the operation, and resubmits the original message to its verb handler once resolved.
+     *
+     * @return true if the log ID is known (or absent), allowing the caller to proceed synchronously;
+     *         false if deferred to run asynchronously via message resubmission.
+     */
+    public <T> boolean ensureLogKnownOrResubmit(Mutation mutation, Message<T> message)
+    {
+        if (mutation == null || mutation.id().isNone())
+            return true;
+
+        CoordinatorLogId logId = mutation.id().asLogId();
+        if (getShardNullable(logId) != null)
+            return true;
+
+        List<InetAddressAndPort> preferredPeers = new ArrayList<>(3);
+        preferredPeers.add(ClusterMetadata.current().directory.endpoint(new NodeId(logId.hostId)));
+
+        if (message.respondTo() != null)
+            preferredPeers.add(message.respondTo());
+        if (message.from() != null && !preferredPeers.contains(message.from()))
+            preferredPeers.add(message.from());
+
+        // If forwarding info was present, strip it on the resubmitted message so it is not forwarded twice
+        Message<T> messageToResubmit = message.forwardTo() != null
+            ? Message.builder(message).withoutParam(ParamType.FORWARD_TO).build()
+            : message;
+
+        resolveRemoteLogAsync(logId, mutation.getKeyspaceName(), preferredPeers).addCallback((shard, failure) -> {
+            if (failure != null)
+            {
+                logger.warn("Failed to resolve shard metadata for log {} in keyspace {}: {}", logId, mutation.getKeyspaceName(), failure.getMessage());
+                return;
+            }
+
+            messageToResubmit.verb().stage.execute(() -> {
+                try
+                {
+                    @SuppressWarnings("unchecked")
+                    IVerbHandler<T> handler = messageToResubmit.verb().handler();
+                    handler.doVerb(messageToResubmit);
+                }
+                catch (Throwable t)
+                {
+                    logger.error("Error executing resubmitted message {}", messageToResubmit, t);
+                }
+            });
+        });
+
+        return false;
     }
 
     /**
@@ -994,16 +1083,22 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     public Shard registerRemoteLog(CoordinatorLogId logId, ShardMetadata metadata)
     {
         shardLock.readLock().lock();
+        Shard shard;
         try
         {
-            Shard shard = getOrCreateShard(metadata.keyspace, metadata.sinceEpoch, metadata.range, metadata.participants);
+            shard = getOrCreateShard(metadata.keyspace, metadata.sinceEpoch, metadata.range, metadata.participants);
             shard.getOrCreate(logId);
-            return shard;
         }
         finally
         {
             shardLock.readLock().unlock();
         }
+
+        AsyncPromise<Shard> pending = pendingLogLookups.remove(logId);
+        if (pending != null)
+            pending.trySuccess(shard);
+
+        return shard;
     }
 
     void announceNewPrimaryLog(Shard shard, CoordinatorLogId logId)

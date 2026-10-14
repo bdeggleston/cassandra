@@ -534,6 +534,9 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
                                                       agreed.partitionKey().getToken(),
                                                       coordinatorSaysTracked);
 
+            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(agreed.mutation, message))
+                return;
+
             NoPayload response = execute(message.payload);
             // NOTE: for correctness, this must be our last action, so that we cannot throw an error and send both a response and a failure response
             if (response == null)

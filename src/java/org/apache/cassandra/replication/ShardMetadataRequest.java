@@ -18,6 +18,7 @@
 package org.apache.cassandra.replication;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,6 +37,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.RequestCallback;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 
 /**
@@ -107,6 +109,55 @@ public final class ShardMetadataRequest
             MessagingService.instance().sendWithCallback(message, peer, callback);
 
         return promise;
+    }
+
+    /**
+     * Query the preferred contact (e.g. message sender) first, falling back to remaining peers if it fails or returns null.
+     */
+    public static AsyncPromise<ShardMetadata> queryPeersWithRetry(CoordinatorLogId logId,
+                                                                  Collection<InetAddressAndPort> initialPeers,
+                                                                  Set<InetAddressAndPort> retryPeers)
+    {
+        Set<InetAddressAndPort> peers = new HashSet<>();
+
+        initialPeers.forEach(ep -> {
+            if (ep != null && !ep.equals(FBUtilities.getBroadcastAddressAndPort()) && FailureDetector.instance.isAlive(ep))
+                peers.add(ep);
+        });
+
+        if (peers.isEmpty())
+        {
+            if (retryPeers.isEmpty())
+            {
+                AsyncPromise<ShardMetadata> failed = new AsyncPromise<>();
+                failed.tryFailure(new RuntimeException("No peers known or alive to retrieve shard metadata for logId " + logId + " from"));
+                return failed;
+            }
+            return queryPeers(logId, retryPeers);
+        }
+
+        if (retryPeers.isEmpty())
+            return queryPeers(logId, peers);
+
+        AsyncPromise<ShardMetadata> result = new AsyncPromise<>();
+
+        queryPeers(logId, peers).addCallback((metadata, failure) -> {
+            if (metadata != null)
+            {
+                result.trySuccess(metadata);
+            }
+            else
+            {
+                queryPeers(logId, retryPeers).addCallback((fbMetadata, fbFailure) -> {
+                    if (fbFailure != null)
+                        result.tryFailure(fbFailure);
+                    else
+                        result.trySuccess(fbMetadata);
+                });
+            }
+        });
+
+        return result;
     }
 
     public static final IVerbHandler<ShardMetadataRequest> verbHandler = message ->

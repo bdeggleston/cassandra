@@ -37,14 +37,22 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.distributed.test.log.ClusterMetadataTestHelper;
+import org.apache.cassandra.gms.EndpointState;
+import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.gms.HeartBeatState;
 import org.apache.cassandra.locator.EndpointsForRange;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.repair.RepairJobDesc;
 import org.apache.cassandra.repair.SharedContext;
 import org.apache.cassandra.repair.SymmetricRemoteSyncTask;
@@ -54,19 +62,24 @@ import org.apache.cassandra.replication.MutationTrackingService.KeyspaceShards;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.ReplicationType;
+import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tcm.ClusterMetadata;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.TimeUUID;
+import org.apache.cassandra.utils.concurrent.AsyncPromise;
 
 import static org.apache.cassandra.replication.MutationTrackingService.TestAccess.createTestKeyspaceShards;
 import static org.apache.cassandra.replication.MutationTrackingService.TestAccess.setKeyspaceShardsUnsafe;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class MutationTrackingServiceTest
@@ -81,6 +94,7 @@ public class MutationTrackingServiceTest
     {
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
+        ClusterMetadataTestHelper.register(REMOTE);
         SchemaLoader.createKeyspace(TEST_KEYSPACE, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(TEST_KEYSPACE, TEST_TABLE));
     }
 
@@ -499,6 +513,73 @@ public class MutationTrackingServiceTest
         // Verify the log was added to the shard and indexed in log2ShardMap
         Shard resolvedShard = MutationTrackingService.instance().getShard(remoteLogId);
         assertEquals(shard, resolvedShard);
+    }
+
+    @Test
+    public void testResolveRemoteLogAsyncDeduplication()
+    {
+        CoordinatorLogId logId = new CoordinatorLogId(888, 1);
+        Range<Token> tokenRange = range("a", "m");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, 888));
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
+
+        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
+        Gossiper.instance.endpointStateMap.put(REMOTE, epState);
+        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(REMOTE, epState) );
+        try
+        {
+            // Multiple calls before metadata resolution should return the exact same promise instance
+            AsyncPromise<Shard> promise1 = MutationTrackingService.instance().resolveRemoteLogAsync(logId, TEST_KEYSPACE, List.of(REMOTE));
+            AsyncPromise<Shard> promise2 = MutationTrackingService.instance().resolveRemoteLogAsync(logId, TEST_KEYSPACE, List.of(REMOTE));
+
+            assertSame(promise1, promise2);
+
+            // Announcing or registering the remote log completes the promise
+            Shard shard = MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+            assertTrue(promise1.isSuccess());
+            assertEquals(shard, promise1.getNow());
+
+            // Subsequent call returns an already completed promise for the resolved shard
+            AsyncPromise<Shard> promise3 = MutationTrackingService.instance().resolveRemoteLogAsync(logId, TEST_KEYSPACE, List.of(REMOTE));
+            assertTrue(promise3.isSuccess());
+            assertEquals(shard, promise3.getNow());
+        }
+        finally
+        {
+            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(REMOTE) );
+            Gossiper.instance.endpointStateMap.remove(REMOTE);
+        }
+    }
+
+    @Test
+    public void testEnsureLogKnownOrResubmit()
+    {
+        CoordinatorLogId logId = new CoordinatorLogId(777, 1);
+        MutationId mutationId = new MutationId(logId.asLong(), MutationId.sequenceId(0, 100));
+        TableMetadata tableMetadata = Schema.instance.getTableMetadata(TEST_KEYSPACE, TEST_TABLE);
+        Mutation mutation = new RowUpdateBuilder(tableMetadata, 0, "key1")
+                            .clustering("name")
+                            .add("val", "value")
+                            .build()
+                            .withMutationId(mutationId);
+
+        Message<Mutation> message = Message.out(Verb.MUTATION_REQ, mutation);
+
+        // First call with unknown logId should return false and defer
+        boolean immediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
+        assertFalse("Expected deferral for unknown log ID", immediate);
+
+        // Now register the log
+        Range<Token> tokenRange = range("a", "m");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, 777));
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
+        MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+
+        // Subsequent call with now-known logId should return true immediately
+        boolean knownImmediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
+        assertTrue("Expected immediate true for known log ID", knownImmediate);
     }
 
     private static Token tk(String key)
