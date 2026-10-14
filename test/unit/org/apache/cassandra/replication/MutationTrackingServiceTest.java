@@ -55,9 +55,7 @@ import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tcm.ClusterMetadata;
-import org.apache.cassandra.tcm.Epoch;
-import org.apache.cassandra.tcm.ownership.ReplicaGroups;
-import org.apache.cassandra.tcm.ownership.VersionedEndpoints;
+
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.TimeUUID;
 
@@ -277,8 +275,7 @@ public class MutationTrackingServiceTest
         Offsets.Immutable offsets = new Offsets.Immutable(logId, new int[]{ 1, 1 });
         Range<Token> range = range("a", "z");
 
-        service.updateReplicatedOffsets(dropped, range, Collections.singletonList(offsets), true, REMOTE);
-        service.recordFullyReconciledOffsets(ReconciledLogSnapshot.builder().put(dropped, logId, offsets, range).build());
+        service.updateReplicatedOffsets(dropped, 1L, range, new Participants(List.of(1)), Collections.singletonList(offsets), true, REMOTE);
 
         assertNull(MutationTrackingService.TestAccess.getKeyspaceShards(service, dropped));
         assertEquals(0, MutationTrackingService.TestAccess.countLogsFor(service, dropped));
@@ -360,28 +357,19 @@ public class MutationTrackingServiceTest
     {
         MutationTrackingService service = MutationTrackingService.TestAccess.create();
 
-        // Shard 1 covers range a-m with participant 1 only.
-        // Shard 2 covers range m-z with participant 2 only.
-        Map<Range<Token>, Shard> shardMap = new HashMap<>();
-        Map<Range<Token>, VersionedEndpoints.ForRange> groups = new HashMap<>();
-
         AtomicInteger hostLogId = new AtomicInteger(0);
         LongSupplier logId1 = () -> CoordinatorLogId.asLong(1, hostLogId.getAndIncrement());
         LongSupplier logId2 = () -> CoordinatorLogId.asLong(2, hostLogId.getAndIncrement());
 
         Range<Token> range1 = range("a", "m");
-        Shard shard1 = new Shard(1, TEST_KEYSPACE, range1, new Participants(List.of(1)), logId1, (s, l) -> {});
+        Shard shard1 = new Shard(1, TEST_KEYSPACE, 1L, range1, new Participants(List.of(1)), logId1, (s, l) -> {});
         shard1.currentLocalLog().reconciledOffsets.add(1);
-        shardMap.put(range1, shard1);
-        groups.put(range1, VersionedEndpoints.forRange(Epoch.EMPTY, EndpointsForRange.empty(range1)));
 
         Range<Token> range2 = range("m", "z");
-        Shard shard2 = new Shard(2, TEST_KEYSPACE, range2, new Participants(List.of(2)), logId2, (s, l) -> {});
+        Shard shard2 = new Shard(2, TEST_KEYSPACE, 1L, range2, new Participants(List.of(2)), logId2, (s, l) -> {});
         shard2.currentLocalLog().reconciledOffsets.add(2);
-        shardMap.put(range2, shard2);
-        groups.put(range2, VersionedEndpoints.forRange(Epoch.EMPTY, EndpointsForRange.empty(range2)));
 
-        KeyspaceShards keyspaceShards = new KeyspaceShards(TEST_KEYSPACE, shardMap, new ReplicaGroups(groups));
+        KeyspaceShards keyspaceShards = createTestKeyspaceShards(TEST_KEYSPACE, List.of(shard1, shard2));
         setKeyspaceShardsUnsafe(service, TEST_KEYSPACE, keyspaceShards);
 
         TableId tableId = Keyspace.open(TEST_KEYSPACE).getColumnFamilyStore(TEST_TABLE).metadata().id;
@@ -441,6 +429,26 @@ public class MutationTrackingServiceTest
         {
             assertTrue(e.getMessage().contains("is not replicated by node 1"));
         }
+    }
+
+    @Test
+    public void testRegisterRemoteLogPopulatesLog2ShardMap()
+    {
+        CoordinatorLogId remoteLogId = new CoordinatorLogId(999, 1);
+        Range<Token> tokenRange = range("a", "m");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, 999));
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
+
+        Shard shard = MutationTrackingService.instance().registerRemoteLog(remoteLogId, metadata);
+        assertNotNull(shard);
+        assertEquals(TEST_KEYSPACE, shard.keyspace);
+        assertEquals(tokenRange, shard.range);
+
+        // Verify the log was added to the shard and indexed in log2ShardMap
+        Shard resolvedShard = MutationTrackingService.instance().getShard(remoteLogId);
+        assertEquals(shard, resolvedShard);
+    }
     }
 
     private static Token tk(String key)
