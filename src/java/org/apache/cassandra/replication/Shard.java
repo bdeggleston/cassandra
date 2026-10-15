@@ -548,6 +548,11 @@ public class Shard
         }
     }
 
+    public boolean isActive()
+    {
+        return state == State.ACTIVE;
+    }
+
     public boolean isSealed()
     {
         return state == State.SEALED;
