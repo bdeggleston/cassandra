@@ -196,7 +196,6 @@ public class CassandraStreamReceiver implements StreamReceiver
                 }
             }
         }
-
         validateUntrackedTransferAllowed(finished);
     }
 
