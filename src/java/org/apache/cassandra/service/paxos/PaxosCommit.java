@@ -115,7 +115,7 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
     final int required;
     final OnDone onDone;
     final boolean tracked;
-    final boolean allocatedMutationId;
+    final MutationId allocatedMutationId;
 
     @Nullable
     final IntHashSet remoteReplicas;
@@ -136,61 +136,69 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
 
         Agreed commitToUse = commit;
         IntHashSet remoteReplicas = null;
-        boolean allocatedMutationId = false;
-        if (isTracked)
+        MutationId allocatedMutationId = null;
+        try
         {
-            // Precondition: for tracked keyspaces, the local node must be a replica
-            // so it can generate an ID
-            InetAddressAndPort localEndpoint = FBUtilities.getBroadcastAddressAndPort();
-            checkState(replicas.endpoints().contains(localEndpoint),
-                       "For tracked keyspaces, the coordinator must be a replica. Local endpoint %s not in replicas %s",
-                       localEndpoint, replicas.endpoints());
-
-            // Generate mutation ID if the commit doesn't already have one
-            // (commits loaded from system.paxos may already have the saved mutation ID)
-            if (commit.mutation.id().isNone())
+            if (isTracked)
             {
-                Token token = commit.partitionKey().getToken();
-                MutationId mutationId = MutationTrackingService.instance().nextMutationId(commit.metadata().keyspace, token);
-                allocatedMutationId = true;
-                Mutation mutationWithId = commit.makeMutation(mutationId);
-                commitToUse = new Commit.Agreed(commit.ballot, mutationWithId);
+                // Precondition: for tracked keyspaces, the local node must be a replica
+                // so it can generate an ID
+                InetAddressAndPort localEndpoint = FBUtilities.getBroadcastAddressAndPort();
+                checkState(replicas.endpoints().contains(localEndpoint),
+                           "For tracked keyspaces, the coordinator must be a replica. Local endpoint %s not in replicas %s",
+                           localEndpoint, replicas.endpoints());
+
+                // Generate mutation ID if the commit doesn't already have one
+                // (commits loaded from system.paxos may already have the saved mutation ID)
+                if (commit.mutation.id().isNone())
+                {
+                    Token token = commit.partitionKey().getToken();
+                    allocatedMutationId = MutationTrackingService.instance().nextMutationId(commit.metadata().keyspace, token);
+                    Mutation mutationWithId = commit.makeMutation(allocatedMutationId);
+                    commitToUse = new Commit.Agreed(commit.ballot, mutationWithId);
+                }
+
+                // Collect remote replicas for tracking service
+                remoteReplicas = new IntHashSet();
+                ClusterMetadata metadata = ClusterMetadata.current();
+                for (int i = 0; i < replicas.size(); i++)
+                {
+                    Replica replica = replicas.get(i);
+                    if (!replica.isSelf())
+                        remoteReplicas.add(metadata.directory.peerId(replica.endpoint()).id());
+                }
+            }
+            else if (!commit.mutation.id().isNone())
+            {
+                // Keyspace is now untracked but the commit has an ID (from system.paxos or a previous
+                // round when tracking was active). Strip it to avoid misrouting on replicas.
+                logger.warn("Stripping mutation ID {} from PaxosCommit for {}.{} partition {} - keyspace migrated to untracked",
+                            commit.mutation.id(), commit.metadata().keyspace, commit.metadata().name, commit.partitionKey());
+                Tracing.trace("Stripping mutation ID {} from PaxosCommit for {}.{} partition {} - keyspace migrated to untracked",
+                              commit.mutation.id(), commit.metadata().keyspace, commit.metadata().name, commit.partitionKey());
+                commitToUse = commit.withMutationId(MutationId.none());
             }
 
-            // Collect remote replicas for tracking service
-            remoteReplicas = new IntHashSet();
-            ClusterMetadata metadata = ClusterMetadata.current();
-            for (int i = 0; i < replicas.size(); i++)
-            {
-                Replica replica = replicas.get(i);
-                if (!replica.isSelf())
-                    remoteReplicas.add(metadata.directory.peerId(replica.endpoint()).id());
-            }
+            this.tracked = isTracked;
+            this.allocatedMutationId = allocatedMutationId;
+            this.commit = commitToUse;
+            this.allowHints = allowHints;
+            this.consistencyForConsensus = consistencyForConsensus;
+            this.consistencyForCommit = consistencyForCommit;
+            this.replicas = replicas;
+            this.onDone = onDone;
+            this.required = required;
+            this.remoteReplicas = remoteReplicas;
+
+            if (required == 0)
+                onDone.accept(status());
         }
-        else if (!commit.mutation.id().isNone())
+        catch (Throwable t)
         {
-            // Keyspace is now untracked but the commit has an ID (from system.paxos or a previous
-            // round when tracking was active). Strip it to avoid misrouting on replicas.
-            logger.warn("Stripping mutation ID {} from PaxosCommit for {}.{} partition {} - keyspace migrated to untracked",
-                        commit.mutation.id(), commit.metadata().keyspace, commit.metadata().name, commit.partitionKey());
-            Tracing.trace("Stripping mutation ID {} from PaxosCommit for {}.{} partition {} - keyspace migrated to untracked",
-                          commit.mutation.id(), commit.metadata().keyspace, commit.metadata().name, commit.partitionKey());
-            commitToUse = commit.withMutationId(MutationId.none());
+            if (allocatedMutationId != null)
+                MutationTrackingService.instance().completeLocalWrite(allocatedMutationId);
+            throw t;
         }
-
-        this.tracked = isTracked;
-        this.allocatedMutationId = allocatedMutationId;
-        this.commit = commitToUse;
-        this.allowHints = allowHints;
-        this.consistencyForConsensus = consistencyForConsensus;
-        this.consistencyForCommit = consistencyForCommit;
-        this.replicas = replicas;
-        this.onDone = onDone;
-        this.required = required;
-        this.remoteReplicas = remoteReplicas;
-
-        if (required == 0)
-            onDone.accept(status());
     }
 
     /**
@@ -291,86 +299,94 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
      */
     void start(EndpointsForToken allLive, EndpointsForToken allDown, boolean isUrgent, boolean async)
     {
-        Message<Agreed> commitMessage = Message.out(PAXOS_COMMIT_REQ, commit, isUrgent);
-
-        Message<Mutation> mutationMessage = null;
-        if (ENABLE_DC_LOCAL_COMMIT && consistencyForConsensus.isDatacenterLocal())
-            mutationMessage = Message.out(PAXOS2_COMMIT_REMOTE_REQ, commit.makeMutation(), isUrgent);
-
-        // For tracked keyspaces, the local commit MUST execute synchronously BEFORE sending to remote replicas.
-        // This ensures the mutation is written to the journal before any failure callback can trigger
-        // reconciliation via ActiveLogReconciler. Without this ordering, a fast remote failure could schedule
-        // reconciliation for a mutation that hasn't been journaled yet, causing NullPointerException.
-        boolean isTrackedKeyspace = remoteReplicas != null;
-        boolean localExecutedSynchronously = false;
-        InetAddressAndPort localEndpoint = FBUtilities.getBroadcastAddressAndPort();
-
-        if (isTrackedKeyspace)
+        try
         {
-            // For tracked keyspaces, we MUST execute locally synchronously, regardless of USE_SELF_EXECUTION setting.
-            // This is critical because retries are scheduled on the local ActiveLogReconciler and look up mutations
-            // in the local MutationJournal. If we don't execute synchronously first, a fast remote failure could
-            // trigger a retry before the mutation that hasn't been journaled yet, causing NullPointerException.
-            //
-            // We check BOTH allLive AND allDown because the local endpoint might be incorrectly considered DOWN
-            // (e.g., in simulation or during network partition recovery). If local is in allDown, we STILL need
-            // to execute locally to write to the journal, but we'll also skip calling onFailure for self below.
-            boolean localIsReplica = false;
-            for (int i = 0, mi = allLive.size(); i < mi; ++i)
+            Message<Agreed> commitMessage = Message.out(PAXOS_COMMIT_REQ, commit, isUrgent);
+
+            Message<Mutation> mutationMessage = null;
+            if (ENABLE_DC_LOCAL_COMMIT && consistencyForConsensus.isDatacenterLocal())
+                mutationMessage = Message.out(PAXOS2_COMMIT_REMOTE_REQ, commit.makeMutation(), isUrgent);
+
+            // For tracked keyspaces, the local commit MUST execute synchronously BEFORE sending to remote replicas.
+            // This ensures the mutation is written to the journal before any failure callback can trigger
+            // reconciliation via ActiveLogReconciler. Without this ordering, a fast remote failure could schedule
+            // reconciliation for a mutation that hasn't been journaled yet, causing NullPointerException.
+            boolean isTrackedKeyspace = remoteReplicas != null;
+            boolean localExecutedSynchronously = false;
+            InetAddressAndPort localEndpoint = FBUtilities.getBroadcastAddressAndPort();
+
+            if (isTrackedKeyspace)
             {
-                if (allLive.endpoint(i).equals(localEndpoint))
+                // For tracked keyspaces, we MUST execute locally synchronously, regardless of USE_SELF_EXECUTION setting.
+                // This is critical because retries are scheduled on the local ActiveLogReconciler and look up mutations
+                // in the local MutationJournal. If we don't execute synchronously first, a fast remote failure could
+                // trigger a retry before the mutation that hasn't been journaled yet, causing NullPointerException.
+                //
+                // We check BOTH allLive AND allDown because the local endpoint might be incorrectly considered DOWN
+                // (e.g., in simulation or during network partition recovery). If local is in allDown, we STILL need
+                // to execute locally to write to the journal, but we'll also skip calling onFailure for self below.
+                boolean localIsReplica = false;
+                for (int i = 0, mi = allLive.size(); i < mi; ++i)
                 {
-                    localIsReplica = true;
-                    break;
-                }
-            }
-            if (!localIsReplica)
-            {
-                for (int i = 0, mi = allDown.size(); i < mi; ++i)
-                {
-                    if (allDown.endpoint(i).equals(localEndpoint))
+                    if (allLive.endpoint(i).equals(localEndpoint))
                     {
                         localIsReplica = true;
                         break;
                     }
                 }
+                if (!localIsReplica)
+                {
+                    for (int i = 0, mi = allDown.size(); i < mi; ++i)
+                    {
+                        if (allDown.endpoint(i).equals(localEndpoint))
+                        {
+                            localIsReplica = true;
+                            break;
+                        }
+                    }
+                }
+                if (localIsReplica)
+                {
+                    executeOnSelf();
+                    localExecutedSynchronously = true;
+                }
             }
-            if (localIsReplica)
+
+            boolean executeOnSelf = false;
+            for (int i = 0, mi = allLive.size(); i < mi ; ++i)
             {
-                executeOnSelf();
-                localExecutedSynchronously = true;
+                InetAddressAndPort endpoint = allLive.endpoint(i);
+                // Skip self if already executed synchronously (avoid shouldExecuteOnSelf to not depend on USE_SELF_EXECUTION)
+                if (localExecutedSynchronously && endpoint.equals(localEndpoint))
+                    continue;
+                executeOnSelf |= isSelfOrSend(commitMessage, mutationMessage, endpoint);
+            }
+
+            for (int i = 0, mi = allDown.size(); i < mi ; ++i)
+            {
+                InetAddressAndPort endpoint = allDown.endpoint(i);
+                // Skip self — already handled above
+                if (localExecutedSynchronously && endpoint.equals(localEndpoint))
+                    continue;
+                onFailure(endpoint, RequestFailure.NODE_DOWN);
+            }
+
+            if (isTrackedKeyspace && !remoteReplicas.isEmpty())
+            {
+                MutationTrackingService.instance().sentWriteRequest(commit.makeMutation(), remoteReplicas);
+            }
+
+            if (executeOnSelf)
+            {
+                ExecutorPlus executor = PAXOS_COMMIT_REQ.stage.executor();
+                if (async) executor.execute(this::executeOnSelf);
+                else executor.maybeExecuteImmediately(this::executeOnSelf);
             }
         }
-
-        boolean executeOnSelf = false;
-        for (int i = 0, mi = allLive.size(); i < mi ; ++i)
+        finally
         {
-            InetAddressAndPort endpoint = allLive.endpoint(i);
-            // Skip self if already executed synchronously (avoid shouldExecuteOnSelf to not depend on USE_SELF_EXECUTION)
-            if (localExecutedSynchronously && endpoint.equals(localEndpoint))
-                continue;
-            executeOnSelf |= isSelfOrSend(commitMessage, mutationMessage, endpoint);
-        }
-
-        for (int i = 0, mi = allDown.size(); i < mi ; ++i)
-        {
-            InetAddressAndPort endpoint = allDown.endpoint(i);
-            // Skip self — already handled above
-            if (localExecutedSynchronously && endpoint.equals(localEndpoint))
-                continue;
-            onFailure(endpoint, RequestFailure.NODE_DOWN);
-        }
-
-        if (isTrackedKeyspace && !remoteReplicas.isEmpty())
-        {
-            MutationTrackingService.instance().sentWriteRequest(commit.makeMutation(), remoteReplicas);
-        }
-
-        if (executeOnSelf)
-        {
-            ExecutorPlus executor = PAXOS_COMMIT_REQ.stage.executor();
-            if (async) executor.execute(this::executeOnSelf);
-            else executor.maybeExecuteImmediately(this::executeOnSelf);
+            if (allocatedMutationId != null)
+                MutationTrackingService.instance().completeLocalWrite(allocatedMutationId);
         }
     }
 
@@ -439,8 +455,8 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
             }
             finally
             {
-                if (allocatedMutationId)
-                    MutationTrackingService.instance().completeLocalWrite(commit.mutation.id());
+                if (allocatedMutationId != null)
+                    MutationTrackingService.instance().completeLocalWrite(allocatedMutationId);
             }
 
             if (response == null)

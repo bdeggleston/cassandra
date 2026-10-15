@@ -140,12 +140,12 @@ public class PaxosPrepareRefresh implements RequestCallbackWithFailure<PaxosPrep
     {
         String keyspaceName = commit.metadata().keyspace;
         MutationId mutationId = MutationTrackingService.instance().nextMutationId(keyspaceName, commit.partitionKey().getToken());
-        updateSendMessage(commit.withMutationId(mutationId));
         selfCallbackDelivered = true;
 
         Response localResponse = null;
         try
         {
+            updateSendMessage(commit.withMutationId(mutationId));
             localResponse = RequestHandler.execute(this.send.payload, getBroadcastAddressAndPort());
             if (localResponse == null)
                 logger.warn("Local execution failed for tracked mutation {}", mutationId);

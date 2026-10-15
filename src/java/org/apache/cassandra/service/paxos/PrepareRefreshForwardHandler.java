@@ -83,8 +83,17 @@ public class PrepareRefreshForwardHandler implements IVerbHandler<PrepareRefresh
 
             MutationId mutationId = MutationTrackingService.instance().nextMutationId(ksName, token);
 
-            Mutation mutationWithId = request.commit.makeMutation(mutationId);
-            Committed commitWithId = new Commit.Committed(request.commit.ballot, mutationWithId);
+            Committed commitWithId;
+            try
+            {
+                Mutation mutationWithId = request.commit.makeMutation(mutationId);
+                commitWithId = new Committed(request.commit.ballot, mutationWithId);
+            }
+            catch (Throwable t)
+            {
+                MutationTrackingService.instance().completeLocalWrite(mutationId);
+                throw t;
+            }
 
             // For tracked keyspaces, we MUST ALWAYS write to the local journal since we generated the mutation ID.
             // This is required for retry purposes: if a remote target fails, the ActiveLogReconciler will try
