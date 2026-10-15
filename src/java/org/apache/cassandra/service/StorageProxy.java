@@ -1105,39 +1105,51 @@ public class StorageProxy implements StorageProxyMBean
         Token tk = proposal.partitionKey().getToken();
 
         // Generate mutation ID for tracked keyspace, preserving the commit subclass
-        MutationId mutationId;
+        MutationId mutationId = null;
         boolean mustAllocateMutationId = proposal.mutation.id().isNone();
-        if (mustAllocateMutationId)
-        {
-            mutationId = MutationTrackingService.instance().nextMutationId(keyspaceName, tk);
-            proposal = proposal.withMutationId(mutationId);
-        }
-        else
-        {
-            // A commit that is being resent might already have an ID read out of the system table
-            mutationId = proposal.mutation.id();
-        }
-
-        // NOTE: this ReplicaPlan is a lie, this usage of ReplicaPlan could do with being clarified - the selected() collection is essentially (I think) never used
-        ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeAll);
-        AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
-
-        // If we are coordinating a new mutation id for the first time then create a TrackedWriteResponseHandler
-        AbstractWriteResponseHandler<?> responseHandler = rs.getWriteResponseHandler(replicaPlan, null, WriteType.SIMPLE, null, requestTime);
-        responseHandler = TrackedWriteResponseHandler.wrap(responseHandler, mutationId);
-
-        // For tracked keyspaces, the local commit MUST execute synchronously BEFORE sending to remote replicas.
-        // This ensures the mutation is written to the journal before any failure callback can trigger
-        // reconciliation via ActiveLogReconciler.
-        Message<Commit> message = Message.outWithFlag(PAXOS_COMMIT_REQ, proposal, MessageFlag.CALL_BACK_ON_FAILURE);
         Replica localReplica = null;
-        for (Replica replica : replicaPlan.liveAndDown())
+        AbstractWriteResponseHandler<?> responseHandler;
+        Message<Commit> message;
+        ReplicaPlan.ForWrite replicaPlan;
+        try
         {
-            if (replica.isSelf())
+            if (mustAllocateMutationId)
             {
-                localReplica = replica;
-                break;
+                mutationId = MutationTrackingService.instance().nextMutationId(keyspaceName, tk);
+                proposal = proposal.withMutationId(mutationId);
             }
+            else
+            {
+                // A commit that is being resent might already have an ID read out of the system table
+                mutationId = proposal.mutation.id();
+            }
+
+            // NOTE: this ReplicaPlan is a lie, this usage of ReplicaPlan could do with being clarified - the selected() collection is essentially (I think) never used
+            replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeAll);
+            AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
+
+            // If we are coordinating a new mutation id for the first time then create a TrackedWriteResponseHandler
+            responseHandler = rs.getWriteResponseHandler(replicaPlan, null, WriteType.SIMPLE, null, requestTime);
+            responseHandler = TrackedWriteResponseHandler.wrap(responseHandler, mutationId);
+
+            // For tracked keyspaces, the local commit MUST execute synchronously BEFORE sending to remote replicas.
+            // This ensures the mutation is written to the journal before any failure callback can trigger
+            // reconciliation via ActiveLogReconciler.
+            message = Message.outWithFlag(PAXOS_COMMIT_REQ, proposal, MessageFlag.CALL_BACK_ON_FAILURE);
+            for (Replica replica : replicaPlan.liveAndDown())
+            {
+                if (replica.isSelf())
+                {
+                    localReplica = replica;
+                    break;
+                }
+            }
+        }
+        catch (Throwable t)
+        {
+            if (mustAllocateMutationId && mutationId != null)
+                MutationTrackingService.instance().completeLocalWrite(mutationId);
+            throw t;
         }
 
         // Execute local commit SYNCHRONOUSLY first to ensure journal write completes
