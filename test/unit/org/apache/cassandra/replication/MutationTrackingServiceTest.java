@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -253,6 +254,40 @@ public class MutationTrackingServiceTest
 
         // All resulting tasks should be the same type as the input
         result.apply((shardedTask) -> assertTrue("Task should be SymmetricRemoteSyncTask", shardedTask.task instanceof SymmetricRemoteSyncTask));
+    }
+
+    @Test
+    public void testAlignToShardBoundariesIgnoresSealedShards()
+    {
+        MutationTrackingService service = MutationTrackingService.TestAccess.create();
+
+        int localNodeId = 1;
+        AtomicInteger hostLogId = new AtomicInteger(0);
+        LongSupplier logId = () -> CoordinatorLogId.asLong(localNodeId, hostLogId.getAndIncrement());
+        Participants participants = new Participants(List.of(localNodeId));
+
+        Shard sealedShard = new Shard(localNodeId, TEST_KEYSPACE, 1L, range("a", "z"), participants,
+                                      Shard.State.SEALED, Collections.emptyList(), logId, (s, l) -> {});
+        Shard activeShard = new Shard(localNodeId, TEST_KEYSPACE, 2L, range("a", "z"), participants,
+                                      Shard.State.ACTIVE, Collections.emptyList(), logId, (s, l) -> {});
+
+        List<Shard> shardList = Arrays.asList(sealedShard, activeShard);
+        MutationTrackingService.KeyspaceShards shards =
+            MutationTrackingService.TestAccess.createTestKeyspaceShards(TEST_KEYSPACE, shardList);
+        MutationTrackingService.TestAccess.setKeyspaceShards(service, TEST_KEYSPACE, shards);
+
+        List<SyncTask> inputTasks = Collections.singletonList(createSyncTask(range("d", "m")));
+        Keyspace keyspace = Keyspace.open(TEST_KEYSPACE);
+        SyncTasks result = service.alignToShardBoundaries(keyspace, inputTasks);
+
+        AtomicInteger entries = new AtomicInteger(0);
+        result.apply(shardedTask -> {
+            entries.incrementAndGet();
+            assertEquals(activeShard.sinceEpoch, shardedTask.sinceEpoch);
+            assertEquals(range("d", "m"), shardedTask.range);
+            assertNotNull(shardedTask.task.getTransferId());
+        });
+        assertEquals(1, entries.get());
     }
 
     @Test
