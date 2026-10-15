@@ -1785,6 +1785,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         {
             shardLock.readLock().unlock();
         }
+        CommitLog.instance.syncBlocking();
     }
 
     /**
@@ -1849,6 +1850,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         {
             shardLock.readLock().unlock();
         }
+        CommitLog.instance.syncBlocking();
     }
 
     /*
