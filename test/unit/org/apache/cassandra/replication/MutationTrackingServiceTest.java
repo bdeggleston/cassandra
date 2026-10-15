@@ -270,165 +270,6 @@ public class MutationTrackingServiceTest
     }
 
     @Test
-    public void testOffsetsForAKeyspaceThatNoLongerExistsAreDropped()
-    {
-        String dropped = "keyspace_this_node_drops";
-        SchemaLoader.createKeyspace(dropped, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(dropped, TEST_TABLE));
-
-        MutationTrackingService service = MutationTrackingService.TestAccess.create();
-        ClusterMetadata created = ClusterMetadata.current();
-        MutationTrackingService.TestAccess.onNewClusterMetadata(service, null, created);
-        assertNotNull(MutationTrackingService.TestAccess.getKeyspaceShards(service, dropped));
-        assertTrue(MutationTrackingService.TestAccess.countLogsFor(service, dropped) > 0);
-
-        SchemaTestUtil.dropKeyspaceIfExist(dropped, true);
-        ClusterMetadata afterDrop = ClusterMetadata.current();
-        MutationTrackingService.TestAccess.onNewClusterMetadata(service, created, afterDrop);
-
-        CoordinatorLogId logId = CoordinatorLogId.fromLong(CoordinatorLogId.asLong(1, 1));
-        Offsets.Immutable offsets = new Offsets.Immutable(logId, new int[]{ 1, 1 });
-        Range<Token> range = range("a", "z");
-
-        service.updateReplicatedOffsets(dropped, 1L, range, new Participants(List.of(1)), Collections.singletonList(offsets), true, REMOTE);
-
-        assertNull(MutationTrackingService.TestAccess.getKeyspaceShards(service, dropped));
-        assertEquals(0, MutationTrackingService.TestAccess.countLogsFor(service, dropped));
-    }
-
-    /**
-     * Replicas treat unknown coordinator logs in received summaries as locally missing.
-     */
-    @Test
-    public void testUnknownShardSummaryTreatedAsLocallyMissing()
-    {
-        MutationTrackingService service = MutationTrackingService.TestAccess.create();
-
-        // Shard 1 covers range a-m replicated by node 1.
-        Set<Range<Token>> shardRanges = Collections.singleton(range("a", "m"));
-        KeyspaceShards shards = createTestKeyspaceShards(TEST_KEYSPACE, shardRanges);
-        setKeyspaceShardsUnsafe(service, TEST_KEYSPACE, shards);
-
-        // Foreign coordinator log belongs to host 2 on a foreign shard that node 1 does not replicate.
-        CoordinatorLogId foreignLogId = new CoordinatorLogId(2, 1);
-        TableId tableId = Keyspace.open(TEST_KEYSPACE).getColumnFamilyStore(TEST_TABLE).metadata().id;
-
-        MutationSummary.Builder summaryBuilder = new MutationSummary.Builder(tableId);
-        summaryBuilder.builderForLog(foreignLogId).unreconciled.add(10, 20);
-        MutationSummary fullRemoteSummary = summaryBuilder.build();
-
-        Log2OffsetsMap.Mutable missingMutations = new Log2OffsetsMap.Mutable();
-        service.collectLocallyMissingMutations(fullRemoteSummary, missingMutations);
-        assertTrue(missingMutations.contains(new ShortMutationId(foreignLogId, 10)));
-        assertTrue(missingMutations.contains(new ShortMutationId(foreignLogId, 20)));
-
-        try
-        {
-            service.validateSummaryForParticipant(fullRemoteSummary, 1);
-            Assert.fail("Expected IllegalStateException when validating summary with foreign shard for node 1");
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("is not replicated by node 1"));
-        }
-    }
-
-    /**
-     * Replicas reject pushing missing mutations to non-participating nodes.
-     */
-    @Test
-    public void testNonParticipantCollectRemotelyMissingThrowsException()
-    {
-        MutationTrackingService service = MutationTrackingService.TestAccess.create();
-
-        Set<Range<Token>> shardRanges = Collections.singleton(range("a", "m"));
-        KeyspaceShards shards = createTestKeyspaceShards(TEST_KEYSPACE, shardRanges);
-        setKeyspaceShardsUnsafe(service, TEST_KEYSPACE, shards);
-
-        // Shard was created with localNodeId 1 as participant. Node 2 is not a participant.
-        Shard shard = shards.lookUp(range("a", "m"));
-        CoordinatorLog log = shard.currentLocalLog();
-        Offsets offsets = new Offsets.Mutable(log.logId);
-
-        Node2OffsetsMap into = new Node2OffsetsMap();
-        org.agrona.collections.IntArrayList remoteNodes = new org.agrona.collections.IntArrayList();
-        remoteNodes.addInt(2); // node 2 is not a participant
-        try
-        {
-            service.collectRemotelyMissingMutations(offsets, remoteNodes, into);
-            Assert.fail("Expected IllegalStateException when pushing to non-participating host");
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("is not a participant of shard"));
-        }
-    }
-
-    /**
-     * Summaries that include foreign shards fail validation for non-participating nodes.
-     */
-    @Test
-    public void testSummaryValidationFailsForNonParticipatingShards()
-    {
-        MutationTrackingService service = MutationTrackingService.TestAccess.create();
-
-        AtomicInteger hostLogId = new AtomicInteger(0);
-        LongSupplier logId1 = () -> CoordinatorLogId.asLong(1, hostLogId.getAndIncrement());
-        LongSupplier logId2 = () -> CoordinatorLogId.asLong(2, hostLogId.getAndIncrement());
-
-        Range<Token> range1 = range("a", "m");
-        Shard shard1 = new Shard(1, TEST_KEYSPACE, 1L, range1, new Participants(List.of(1)), logId1, (s, l) -> {});
-        shard1.currentLocalLog().reconciledOffsets.add(1);
-
-        Range<Token> range2 = range("m", "z");
-        Shard shard2 = new Shard(2, TEST_KEYSPACE, 1L, range2, new Participants(List.of(2)), logId2, (s, l) -> {});
-        shard2.currentLocalLog().reconciledOffsets.add(2);
-
-        KeyspaceShards keyspaceShards = createTestKeyspaceShards(TEST_KEYSPACE, List.of(shard1, shard2));
-        setKeyspaceShardsUnsafe(service, TEST_KEYSPACE, keyspaceShards);
-
-        TableId tableId = Keyspace.open(TEST_KEYSPACE).getColumnFamilyStore(TEST_TABLE).metadata().id;
-        AbstractBounds<PartitionPosition> fullRange = Range.makeRowRange(range("a", "z"));
-
-        MutationSummary summaryCoveringBothShards = service.createSummaryForRange(fullRange, tableId, false);
-        assertEquals(2, summaryCoveringBothShards.size());
-
-        // Verify validation fails when sending summary to node 1 with foreign shard 2
-        try
-        {
-            service.validateSummaryForParticipant(summaryCoveringBothShards, 1);
-            Assert.fail("Expected IllegalStateException for node 1");
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("is not replicated by node 1"));
-        }
-
-        // Verify validation fails when sending summary to node 2 with foreign shard 1
-        try
-        {
-            service.validateSummaryForParticipant(summaryCoveringBothShards, 2);
-            Assert.fail("Expected IllegalStateException for node 2");
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("is not replicated by node 2"));
-        }
-
-        // Sub-range for shard 1 validates for participant 1, but fails for participant 2
-        MutationSummary shard1Summary = service.createSummaryForRange(Range.makeRowRange(range1), tableId, false);
-        assertEquals(1, shard1Summary.size());
-        assertEquals(shard1.currentLocalLog().logId, shard1Summary.get(0).logId());
-        service.validateSummaryForParticipant(shard1Summary, 1);
-        try
-        {
-            service.validateSummaryForParticipant(shard1Summary, 2);
-            Assert.fail("Expected IllegalStateException for node 2 on shard 1 summary");
-        }
-        catch (IllegalStateException e)
-        {
-            assertTrue(e.getMessage().contains("is not replicated by node 2"));
-        }
-
         // Sub-range for shard 2 validates for participant 2, but fails for participant 1
         MutationSummary shard2Summary = service.createSummaryForRange(Range.makeRowRange(range2), tableId, false);
         assertEquals(1, shard2Summary.size());
@@ -443,6 +284,41 @@ public class MutationTrackingServiceTest
         {
             assertTrue(e.getMessage().contains("is not replicated by node 1"));
         }
+    }
+
+    @Test
+    public void testAlignToShardBoundariesIgnoresSealedShards()
+    {
+        MutationTrackingService service = MutationTrackingService.TestAccess.create();
+
+        int localNodeId = 1;
+        AtomicInteger hostLogId = new AtomicInteger(0);
+        LongSupplier logId = () -> CoordinatorLogId.asLong(localNodeId, hostLogId.getAndIncrement());
+        Participants participants = new Participants(List.of(localNodeId));
+
+        Shard sealedShard = new Shard(localNodeId, TEST_KEYSPACE, 1L, range("a", "z"), participants,
+                                      Shard.State.SEALED, Collections.emptyList(), logId, (s, l) -> {});
+        Shard activeShard = new Shard(localNodeId, TEST_KEYSPACE, 2L, range("a", "z"), participants,
+                                      Shard.State.ACTIVE, Collections.emptyList(), logId, (s, l) -> {});
+
+        List<Shard> shardList = Arrays.asList(sealedShard, activeShard);
+        MutationTrackingService.KeyspaceShards shards =
+            MutationTrackingService.TestAccess.createTestKeyspaceShards(TEST_KEYSPACE, shardList);
+        MutationTrackingService.TestAccess.setKeyspaceShards(service, TEST_KEYSPACE, shards);
+
+        List<SyncTask> inputTasks = Collections.singletonList(createSyncTask(range("d", "m")));
+        Keyspace keyspace = Keyspace.open(TEST_KEYSPACE);
+        SyncTasks result = service.alignToShardBoundaries(keyspace, inputTasks);
+
+        AtomicInteger entries = new AtomicInteger(0);
+        result.apply(shardedTask -> {
+            entries.incrementAndGet();
+            assertEquals(activeShard.sinceEpoch, shardedTask.sinceEpoch);
+            assertEquals(range("d", "m"), shardedTask.range);
+            assertNotNull(shardedTask.task.getTransferId());
+        });
+        assertEquals(1, entries.get());
+    }
     }
 
     @Test

@@ -1643,7 +1643,10 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
             for (SyncTask task : unwrapped(tasks))
             {
                 Set<Shard> intersectingShards = new HashSet<>();
-                shards.forEachIntersecting(task.rangesToSync, intersectingShards::add);
+                shards.forEachIntersecting(task.rangesToSync, shard -> {
+                    if (shard.isActive())
+                        intersectingShards.add(shard);
+                });
                 for (Shard shard : intersectingShards)
                 {
                     // Ensure that we don't expand outside the ranges of the original sync tasks.
@@ -2192,6 +2195,16 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         }
 
         /**
+         * Creates a test KeyspaceShards with the given shards.
+         */
+        public static KeyspaceShards createTestKeyspaceShards(String keyspace, List<Shard> shards)
+        {
+            List<Shard> copy = new ArrayList<>(shards);
+            copy.sort(Shard.COMPARATOR);
+            return new KeyspaceShards(keyspace, ShardIntervalBTree.fromSorted(copy));
+        }
+
+        /**
          * Creates a test KeyspaceShards with the given shard ranges.
          * The shards are created with minimal configuration suitable for testing.
          */
@@ -2218,6 +2231,11 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         /**
          * Sets the keyspace shards for testing purposes.
          */
+        public static void setKeyspaceShards(MutationTrackingService service, String keyspace, KeyspaceShards shards)
+        {
+            setKeyspaceShardsUnsafe(service, keyspace, shards);
+        }
+
         public static void setKeyspaceShardsUnsafe(MutationTrackingService service, String keyspace, KeyspaceShards shards)
         {
             service.keyspaceShards.put(keyspace, shards);
