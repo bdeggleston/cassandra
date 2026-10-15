@@ -43,6 +43,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
@@ -1002,6 +1003,7 @@ public final class SealingCoordinator
             MutationTrackingService.ensureEnabled();
             Request request = message.payload;
             MutationTrackingService.instance().markShardSealing(request.keyspace, request.sinceEpoch, request.range);
+            CommitLog.instance.syncBlocking();
             MessagingService.instance().send(message.responseWith(Response.instance), message.from());
         };
 
@@ -1457,6 +1459,7 @@ public final class SealingCoordinator
             FBUtilities.waitOnFutures(flushes);
 
             MutationTrackingService.instance().markShardSealed(request.keyspace, request.sinceEpoch, request.range);
+            CommitLog.instance.syncBlocking();
             MessagingService.instance().send(message.responseWith(Response.instance), message.from());
         };
 
