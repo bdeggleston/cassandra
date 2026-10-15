@@ -308,14 +308,13 @@ public class ForwardedWrite
                 }
 
                 Preconditions.checkState(applyLocally); // the leader is always a replica
+                TrackedWriteRequest.applyMutationLocally(mutation, handler);
             }
             catch (Throwable t)
             {
                 MutationTrackingService.instance().completeLocalWrite(id);
                 throw t;
             }
-
-            TrackedWriteRequest.applyMutationLocally(mutation, handler);
 
             if (localDCReplicas != null)
                 for (Replica replica : localDCReplicas)
@@ -538,16 +537,11 @@ public class ForwardedWrite
 
         MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token);
 
-        logger.trace("Forwarded counter mutation {}: applying locally with ID and forwarding to other replicas", id);
-
-        // Create LeaderCallback to track when replicas respond, allowing the leader
-        // to mark the mutation ID as witnessed on each replica proactively
-        LeaderCallback leaderCallback = new LeaderCallback(id, coordinatorAckInfo);
-
         // Apply counter mutation with ID to get result
         Mutation result;
         try
         {
+            logger.trace("Forwarded counter mutation {}: applying locally with ID and forwarding to other replicas", id);
             result = counterMutation.applyCounterMutation(id);
         }
         catch (Throwable t)
@@ -555,6 +549,10 @@ public class ForwardedWrite
             MutationTrackingService.instance().completeLocalWrite(id);
             throw t;
         }
+
+        // Create LeaderCallback to track when replicas respond, allowing the leader
+        // to mark the mutation ID as witnessed on each replica proactively
+        LeaderCallback leaderCallback = new LeaderCallback(id, coordinatorAckInfo);
 
         // Apply locally using the leader callback
         TrackedWriteRequest.applyMutationLocally(result, leaderCallback);

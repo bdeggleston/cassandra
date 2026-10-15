@@ -223,42 +223,50 @@ public class TrackedWriteRequest
          * no longer match the calculated replicas, we need to retry, once.
          */
         MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token);
-        Participants participants = MutationTrackingService.instance().getLogParticipants(id.asLogId());
-        if (!participants.matches(plan.liveAndDown(), cm))
+        try
+        {
+            Participants participants = MutationTrackingService.instance().getLogParticipants(id.asLogId());
+            if (!participants.matches(plan.liveAndDown(), cm))
+            {
+                MutationTrackingService.instance().completeLocalWrite(id);
+                logger.trace("Topology mismatch between calculated plan and current shard participants {} {}", plan, participants);
+                if (isRetry)
+                {
+                    String msg = format("Repeated topology mismatch between calculated plan and shard participants %s %s", plan, participants);
+                    throw new IllegalStateException(msg);
+                }
+                return perform(mutation, consistencyLevel, requestTime, onComplete, true);
+            }
+
+            logger.trace("Local tracked request {} {}", mutation, plan);
+            writeMetrics.localRequests.mark();
+
+            mutation = mutation.withMutationId(id);
+
+            if (logger.isTraceEnabled())
+            {
+                logger.trace("Write replication plan for mutation {}: live={}, pending={}, all={}",
+                             id, plan.live(), plan.pending(), plan.contacts());
+            }
+
+            final TrackedWriteResponseHandler handler;
+            if (mutation instanceof CounterMutation)
+            {
+                handler = TrackedWriteResponseHandler.wrap(rs.getWriteResponseHandler(plan, onComplete, WriteType.COUNTER, null, requestTime), id);
+                applyCounterMutationLocally((CounterMutation) mutation, plan, handler);
+            }
+            else
+            {
+                handler = TrackedWriteResponseHandler.wrap(rs.getWriteResponseHandler(plan, onComplete, WriteType.SIMPLE, null, requestTime), id);
+                applyLocallyAndSendToReplicas((Mutation) mutation, plan, handler);
+            }
+            return handler;
+        }
+        catch (Throwable t)
         {
             MutationTrackingService.instance().completeLocalWrite(id);
-            logger.trace("Topology mismatch between calculated plan and current shard participants {} {}", plan, participants);
-            if (isRetry)
-            {
-                String msg = format("Repeated topology mismatch between calculated plan and shard participants %s %s", plan, participants);
-                throw new IllegalStateException(msg);
-            }
-            return perform(mutation, consistencyLevel, requestTime, onComplete, true);
+            throw t;
         }
-
-        logger.trace("Local tracked request {} {}", mutation, plan);
-        writeMetrics.localRequests.mark();
-
-        mutation = mutation.withMutationId(id);
-
-        if (logger.isTraceEnabled())
-        {
-            logger.trace("Write replication plan for mutation {}: live={}, pending={}, all={}",
-                         id, plan.live(), plan.pending(), plan.contacts());
-        }
-
-        final TrackedWriteResponseHandler handler;
-        if (mutation instanceof CounterMutation)
-        {
-            handler = TrackedWriteResponseHandler.wrap(rs.getWriteResponseHandler(plan, onComplete, WriteType.COUNTER, null, requestTime), id);
-            applyCounterMutationLocally((CounterMutation) mutation, plan, handler);
-        }
-        else
-        {
-            handler = TrackedWriteResponseHandler.wrap(rs.getWriteResponseHandler(plan, onComplete, WriteType.SIMPLE, null, requestTime), id);
-            applyLocallyAndSendToReplicas((Mutation) mutation, plan, handler);
-        }
-        return handler;
     }
 
     public static void applyLocallyAndSendToReplicas(Mutation mutation, ReplicaPlan.ForWrite plan, TrackedWriteResponseHandler handler)
