@@ -321,7 +321,7 @@ public class BootstrapAndReplace extends MultiStepOperation<Epoch>
                 {
                     JVMStabilityInspector.inspectThrowable(e);
                     logger.warn("Exception sealing obsoleted MT shards or committing retireSequence", e);
-                    return continuable();
+                    return halted();
                 }
                 ClusterMetadataService.instance().ensureCMSPlacement(metadata);
                 break;

@@ -63,6 +63,7 @@ import static org.apache.cassandra.tcm.Transformation.Kind.RETIRE_SINGLE_NODE_SE
 import static org.apache.cassandra.tcm.Transformation.Kind.START_LEAVE;
 import static org.apache.cassandra.tcm.sequences.SequenceState.continuable;
 import static org.apache.cassandra.tcm.sequences.SequenceState.error;
+import static org.apache.cassandra.tcm.sequences.SequenceState.halted;
 
 public class UnbootstrapAndLeave extends MultiStepOperation<Epoch>
 {
@@ -217,9 +218,10 @@ public class UnbootstrapAndLeave extends MultiStepOperation<Epoch>
                 }
                 catch (Throwable t)
                 {
-                    logger.warn("Error committing midLeave", t);
+                    StorageService.instance.markDecommissionFailed();
                     JVMStabilityInspector.inspectThrowable(t);
-                    return continuable();
+                    logger.error("Error committing midLeave", t);
+                    return error(t instanceof Exception ? (Exception) t : new RuntimeException(t));
                 }
                 break;
             case FINISH_LEAVE:
@@ -251,7 +253,7 @@ public class UnbootstrapAndLeave extends MultiStepOperation<Epoch>
                 {
                     JVMStabilityInspector.inspectThrowable(t);
                     logger.warn("Exception sealing obsoleted MT shards or committing retireSequence", t);
-                    return continuable();
+                    return halted();
                 }
                 break;
             default:
