@@ -168,12 +168,6 @@ public class CassandraStreamReceiver implements StreamReceiver
         sstables.addAll(finished);
         receivedEntireSSTable = file.isEntireSSTable();
 
-        if (useTrackedTransferPath())
-        {
-            PendingLocalTransfer transfer = new PendingLocalTransfer(cfs.metadata().id, session.planId(), sstables);
-            MutationTrackingService.instance().received(transfer);
-        }
-
         if (isTrackedTopologyChangeStream())
         {
             /*
@@ -196,12 +190,6 @@ public class CassandraStreamReceiver implements StreamReceiver
                     throw new UncheckedIOException(e);
                 }
             }
-        }
-
-        if (useTrackedTransferPath())
-        {
-            PendingLocalTransfer transfer = new PendingLocalTransfer(cfs.metadata().id, session.planId(), sstables);
-            MutationTrackingService.instance().received(transfer);
         }
     }
 
