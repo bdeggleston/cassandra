@@ -172,64 +172,84 @@ public abstract class CoordinatedTransfer
     {
         logger.debug("{} Activating {} for {}", logPrefix(), this, targets);
 
-        prepare(targets);
-        logger.debug("{} Activation prepare complete for {}", logPrefix(), targets);
-
-        // Acknowledgement of activation is equivalent to a remote write acknowledgement. The imported SSTables
-        // are now part of the live set, visible to reads.
-        class Commit extends AsyncFuture<Void> implements RequestCallbackWithFailure<ActivationResponse>
+        if (!MutationTrackingService.instance().startTransferActivation(id()))
         {
-            final AtomicInteger responses = new AtomicInteger(0);
-
-            private Commit(Collection<Pair<InetAddressAndPort, InetAddressAndPort>> pairs)
+            try
             {
-                responses.addAndGet(pairs.size());
+                notifyFailure();
             }
-
-            @Override
-            public void onResponse(Message<ActivationResponse> msg)
+            catch (Throwable t)
             {
-                logger.debug("{} Activation successfully applied on {}", logPrefix(), msg.from());
-                streamResults.computeIfPresent(msg.payload.syncPair, (peer, result) -> result.committed());
-
-                MutationTrackingService.instance().receivedActivationResponse(CoordinatedTransfer.this, msg.from());
-
-                if (responses.decrementAndGet() == 0)
-                {
-                    // All activations complete, schedule cleanup to purge pending SSTables
-                    TransferTrackingService.instance().scheduleCleanup();
-                    trySuccess(null);
-                }
+                logger.warn("{} Failed to notify peers of transfer failure on sealing shard", logPrefix(), t);
             }
-
-            @Override
-            public void onFailure(InetAddressAndPort from, RequestFailure failure)
-            {
-                logger.error("{} Failed activation commit on {} due to {}", logPrefix(), from, failure);
-                // TODO(expected): should only fail if we don't meet requested CL
-                tryFailure(new RuntimeException("Tracked transfer failed during COMMIT on " + from + " due to " + failure.reason));
-            }
-        }
-
-        Commit commit = new Commit(targets);
-        for (Pair<InetAddressAndPort, InetAddressAndPort> target : targets)
-        {
-            ActivationRequest activation = createActivation(target, Phase.COMMIT);
-            Message<ActivationRequest> msg = Message.out(Verb.MT_TRANSFER_ACTIVATE_REQ, activation);
-
-            logger.debug("{} Sending commit {} to peer {}", logPrefix(), activation, target.right);
-            MessagingService.instance().sendWithCallback(msg, target.right, commit);
-            streamResults.computeIfPresent(target, (peer0, result) -> result.committing());
+            throw new IllegalStateException(String.format("%s cannot activate transfer %s: shard is sealing or sealed", logPrefix(), id()));
         }
 
         try
         {
-            commit.get();
+            prepare(targets);
+            logger.debug("{} Activation prepare complete for {}", logPrefix(), targets);
+
+            // Acknowledgement of activation is equivalent to a remote write acknowledgement. The imported SSTables
+            // are now part of the live set, visible to reads.
+            class Commit extends AsyncFuture<Void> implements RequestCallbackWithFailure<ActivationResponse>
+            {
+                final AtomicInteger responses = new AtomicInteger(0);
+
+                private Commit(Collection<Pair<InetAddressAndPort, InetAddressAndPort>> pairs)
+                {
+                    responses.addAndGet(pairs.size());
+                }
+
+                @Override
+                public void onResponse(Message<ActivationResponse> msg)
+                {
+                    logger.debug("{} Activation successfully applied on {}", logPrefix(), msg.from());
+                    streamResults.computeIfPresent(msg.payload.syncPair, (peer, result) -> result.committed());
+
+                    MutationTrackingService.instance().receivedActivationResponse(CoordinatedTransfer.this, msg.from());
+
+                    if (responses.decrementAndGet() == 0)
+                    {
+                        // All activations complete, schedule cleanup to purge pending SSTables
+                        TransferTrackingService.instance().scheduleCleanup();
+                        trySuccess(null);
+                    }
+                }
+
+                @Override
+                public void onFailure(InetAddressAndPort from, RequestFailure failure)
+                {
+                    logger.error("{} Failed activation commit on {} due to {}", logPrefix(), from, failure);
+                    // TODO(expected): should only fail if we don't meet requested CL
+                    tryFailure(new RuntimeException("Tracked transfer failed during COMMIT on " + from + " due to " + failure.reason));
+                }
+            }
+
+            Commit commit = new Commit(targets);
+            for (Pair<InetAddressAndPort, InetAddressAndPort> target : targets)
+            {
+                ActivationRequest activation = createActivation(target, Phase.COMMIT);
+                Message<ActivationRequest> msg = Message.out(Verb.MT_TRANSFER_ACTIVATE_REQ, activation);
+
+                logger.debug("{} Sending commit {} to peer {}", logPrefix(), activation, target.right);
+                MessagingService.instance().sendWithCallback(msg, target.right, commit);
+                streamResults.computeIfPresent(target, (peer0, result) -> result.committing());
+            }
+
+            try
+            {
+                commit.get();
+            }
+            catch (InterruptedException | ExecutionException e)
+            {
+                Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
+                throw Throwables.unchecked(cause);
+            }
         }
-        catch (InterruptedException | ExecutionException e)
+        finally
         {
-            Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
-            throw Throwables.unchecked(cause);
+            MutationTrackingService.instance().completeLocalWrite(id());
         }
         logger.debug("{} Activation commit complete for {}", logPrefix(), targets);
     }

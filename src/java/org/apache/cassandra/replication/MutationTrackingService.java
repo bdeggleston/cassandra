@@ -530,9 +530,23 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     }
 
     /**
+     * Start transfer activation on the shard for this transfer ID.
+     *
+     * @return true if registered successfully, or false if shard is missing or not active
+     */
+    public boolean startTransferActivation(ShortMutationId id)
+    {
+        Preconditions.checkArgument(!id.isNone());
+        Shard shard = getShardNullable(id.asLogId());
+        if (shard == null)
+            return false;
+        return shard.startTransferActivation(id);
+    }
+
+    /**
      * Must be called exactly once per {@code nextId()} invocation.
      */
-    public void completeLocalWrite(MutationId id)
+    public void completeLocalWrite(ShortMutationId id)
     {
         Preconditions.checkArgument(!id.isNone());
         Shard shard = getShardNullable(id.asLogId());
