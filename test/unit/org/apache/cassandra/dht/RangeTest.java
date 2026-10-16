@@ -787,6 +787,61 @@ public class RangeTest extends CassandraTestBase
         return new Bounds<>(t(left), t(right));
     }
 
+    private static ExcludingBounds<Token> excludingBounds(long left, long right)
+    {
+        return new ExcludingBounds<>(t(left), t(right));
+    }
+
+    private static IncludingExcludingBounds<Token> includingExcludingBounds(long left, long right)
+    {
+        return new IncludingExcludingBounds<>(t(left), t(right));
+    }
+
+    @Test
+    public void testIntersectsExcludingBounds()
+    {
+        // non-wrapping range
+        Range<Token> r = r(0, 100);
+
+        assertTrue(r.intersects(excludingBounds(10, 50)));
+        assertTrue(r.intersects(excludingBounds(-50, 50)));
+        assertTrue(r.intersects(excludingBounds(50, 150)));
+        assertTrue(r.intersects(excludingBounds(-50, 150)));
+        assertFalse(r.intersects(excludingBounds(-50, 0)));
+        assertFalse(r.intersects(excludingBounds(100, 150)));
+        assertTrue(r.intersects(excludingBounds(0, 10)));
+        assertFalse(r.intersects(excludingBounds(100, 110)));
+        assertFalse(r.intersects(excludingBounds(-10, 0)));
+
+        // wrapping range
+        Range<Token> wrapping = r(100, 50);
+
+        assertTrue(wrapping.intersects(excludingBounds(10, 40)));
+        assertTrue(wrapping.intersects(excludingBounds(120, 150)));
+        assertFalse(wrapping.intersects(excludingBounds(60, 90)));
+    }
+
+    @Test
+    public void testIntersectsIncludingExcludingBounds()
+    {
+        // non-wrapping range
+        Range<Token> r = r(0, 100);
+
+        assertTrue(r.intersects(includingExcludingBounds(10, 50)));
+        assertTrue(r.intersects(includingExcludingBounds(100, 110)));
+        assertFalse(r.intersects(includingExcludingBounds(-10, 0)));
+        assertFalse(r.intersects(includingExcludingBounds(-50, -10)));
+        assertFalse(r.intersects(includingExcludingBounds(101, 150)));
+
+        // wrapping range
+        Range<Token> wrapping = r(100, 50);
+
+        assertTrue(wrapping.intersects(includingExcludingBounds(10, 40)));
+        assertTrue(wrapping.intersects(includingExcludingBounds(120, 150)));
+        assertFalse(wrapping.intersects(includingExcludingBounds(60, 90)));
+        assertTrue(wrapping.intersects(includingExcludingBounds(50, 60)));
+    }
+
     private static AbstractBounds<PartitionPosition> bounds(PartitionPosition left, boolean leftInclusive, PartitionPosition right, boolean rightInclusive)
     {
         return AbstractBounds.bounds(left, leftInclusive, right, rightInclusive);
