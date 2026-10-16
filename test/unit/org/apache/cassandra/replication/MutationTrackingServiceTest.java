@@ -35,12 +35,21 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.PartitionPosition;
+import org.apache.cassandra.db.PartitionRangeReadCommand;
 import org.apache.cassandra.db.RowUpdateBuilder;
+import org.apache.cassandra.db.Slices;
+import org.apache.cassandra.db.filter.ClusteringIndexSliceFilter;
+import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.filter.DataLimits;
+import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
+import org.apache.cassandra.dht.ExcludingBounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.distributed.test.log.ClusterMetadataTestHelper;
@@ -67,6 +76,7 @@ import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tcm.ClusterMetadata;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.AsyncPromise;
 
@@ -449,5 +459,23 @@ public class MutationTrackingServiceTest
         TimeUUID sessionId = TimeUUID.Generator.nextTimeUUID();
         RepairJobDesc desc = new RepairJobDesc(sessionId, TimeUUID.Generator.nextTimeUUID(),TEST_KEYSPACE, TEST_TABLE, ranges);
         return new SymmetricRemoteSyncTask(ctx, desc, local, remote, ranges, PreviewKind.NONE, null);
+    }
+
+    @Test
+    public void testTrackedRangeReadCommandWithExcludingBounds()
+    {
+        Keyspace keyspace = Keyspace.open(TEST_KEYSPACE);
+        ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(TEST_TABLE);
+        TableMetadata table = cfs.metadata();
+
+        PartitionPosition left = tk("b").maxKeyBound();
+        PartitionPosition right = tk("m").minKeyBound();
+        ExcludingBounds<PartitionPosition> excludingBounds = new ExcludingBounds<>(left, right);
+
+        DataRange dataRange = new DataRange(excludingBounds, new ClusteringIndexSliceFilter(Slices.ALL, false));
+        PartitionRangeReadCommand cmd = PartitionRangeReadCommand.create(table, FBUtilities.nowInSeconds(), ColumnFilter.all(table), RowFilter.none(), DataLimits.NONE, dataRange);
+
+        MutationSummary summary = cmd.createMutationSummary(false);
+        assertNotNull(summary);
     }
 }
