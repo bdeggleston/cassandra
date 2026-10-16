@@ -457,6 +457,27 @@ public class MutationTrackingServiceTest
         assertTrue("Expected immediate true for known log ID", knownImmediate);
     }
 
+    @Test
+    public void testNewShardIsPersistedToSystemTables()
+    {
+        CoordinatorLogId logId = new CoordinatorLogId(888, 1);
+        Range<Token> tokenRange = range("m", "z");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, 888));
+        long sinceEpoch = 2L;
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, sinceEpoch, tokenRange, participants);
+
+        MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+
+        LongSupplier logIdProvider = () -> CoordinatorLogId.asLong(localNodeId, 999);
+        ArrayList<Shard> loadedShards = Shard.loadFromSystemTables(localNodeId, logIdProvider, (s, l) -> {});
+        boolean found = loadedShards.stream().anyMatch(s -> s.keyspace.equals(TEST_KEYSPACE)
+                                                            && s.sinceEpoch == sinceEpoch
+                                                            && s.range.equals(tokenRange)
+                                                            && s.participants.equals(participants));
+        assertTrue(found);
+    }
+
     private static Token tk(String key)
     {
         return new ByteOrderedPartitioner.BytesToken(ByteBufferUtil.bytes(key));

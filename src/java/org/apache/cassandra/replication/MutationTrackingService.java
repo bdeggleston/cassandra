@@ -216,6 +216,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
 
     private final Map<String, Set<MutationTrackingSyncCoordinator>> syncCoordinatorsByKeyspace = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<CoordinatorLogId, AsyncPromise<Shard>> pendingLogLookups = new ConcurrentHashMap<>();
+    private final Object shardCreationLock = new Object();
 
     private final Object hostLogIdLock = new Object();
     private volatile boolean hostLogIdLoaded = false;
@@ -1055,27 +1056,54 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
      * TODO (expected): validate if this should be called with a shard lock everywhere it's called
      */
     @Nonnull
-    private Shard getOrCreateShard(
-        String keyspace, long sinceEpoch, Range<Token> range, Participants participants)
+    private Shard getOrCreateShard(String keyspace, long sinceEpoch, Range<Token> range, Participants participants)
     {
         int localNodeId = ClusterMetadata.current().myNodeId().id();
 
         if (!participants.contains(localNodeId))
             throw new IllegalArgumentException("Attempted to create a shard that this node doesn't participate in");
 
-        // unlikely, but possible to race here, hence the CAS loop
-        while (true)
+        KeyspaceShards current = getShards(keyspace);
+        Shard shard = current.get(range, sinceEpoch);
+        if (shard != null)
+            return shard;
+
+        synchronized (shardCreationLock)
         {
-            KeyspaceShards current = getShards(keyspace);
-            Shard shard = current.get(range, sinceEpoch);
+            current = getShards(keyspace);
+            shard = current.get(range, sinceEpoch);
             if (shard != null)
                 return shard;
+
             shard = new Shard(localNodeId, keyspace, sinceEpoch, range, participants, this::nextLogId, this::onNewLog);
-            KeyspaceShards updated = current.withNewShard(shard);
-            if (keyspaceShards.replace(keyspace, current, updated))
+            try
+            {
+                // we need to persist and sync new remote shards before they become usable. If another thread wrote
+                // against an unpersisted shard and the node crashed, the write won't be registered with the mutation
+                // tracking system as having been written when it's replaued on startup - it's just applied to the
+                // memtable (see MutationTrackingService#startWritingForReplay). startWritingForReplay does this so we
+                // don't lose data replaying the journal after mutation tracking has been disabled for a keyspace. Even
+                // if it didn't, our options would be limited. We can't query peers for the shard info at startup because
+                // 1) messaging hasn't started yet and
+                // 2) it could deadlock cluster startup after a multi node crash where no
+                // so we persist with the lock held here
+                shard.persistToSystemTables();
+                CommitLog.instance.syncBlocking();
+
+                while (true)
+                {
+                    KeyspaceShards latest = getShards(keyspace);
+                    KeyspaceShards updated = latest.withNewShard(shard);
+                    if (keyspaceShards.replace(keyspace, latest, updated))
+                        break;
+                }
                 return shard;
-            // clean up log2ShardMap if CAS failed
-            shard.forEachLog(this::onDroppedLog);
+            }
+            catch (Throwable t)
+            {
+                shard.forEachLog(this::onDroppedLog);
+                throw t;
+            }
         }
     }
 
