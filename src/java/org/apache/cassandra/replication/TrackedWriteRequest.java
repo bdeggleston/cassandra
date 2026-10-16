@@ -217,12 +217,8 @@ public class TrackedWriteRequest
             return ForwardedWrite.forward(mutation, plan, rs, requestTime, onComplete);
         }
 
-        /*
-         * nextMutationId() always allocates from the most recent Shard for the token, so it's possible
-         * for the topology to change *right after* the write plan was created; if the Shard's participants
-         * no longer match the calculated replicas, we need to retry, once.
-         */
-        MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token);
+        // nextMutationId() allocates from the most recent active Shard for the token that's not newer than plan.epoch()
+        MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token, plan.epoch());
         try
         {
             Participants participants = MutationTrackingService.instance().getLogParticipants(id.asLogId());

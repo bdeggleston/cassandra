@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 
@@ -33,6 +34,7 @@ import org.junit.Test;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
@@ -64,8 +66,13 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.AbstractWriteResponseHandler;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tcm.ClusterMetadataService;
+import org.apache.cassandra.tcm.listeners.ChangeListener;
+import org.apache.cassandra.tcm.listeners.LogListener;
+import org.apache.cassandra.transport.Dispatcher;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
@@ -89,6 +96,7 @@ public class MutationTrackingServiceTest
     {
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
+        MutationTrackingService.start();
         ClusterMetadataTestHelper.register(REMOTE);
         SchemaLoader.createKeyspace(TEST_KEYSPACE, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(TEST_KEYSPACE, TEST_TABLE));
     }
@@ -447,5 +455,122 @@ public class MutationTrackingServiceTest
 
         MutationSummary summary = cmd.createMutationSummary(false);
         assertNotNull(summary);
+    }
+
+    @Test
+    public void testTrackedWriteDuringEpochChangeBeforePostCommit() throws Throwable
+    {
+        String ksName = "epoch_change_post_commit_ks";
+        InetAddressAndPort joiningPeer = InetAddressAndPort.getByNameUnchecked("127.0.0.3");
+        ClusterMetadataTestHelper.register(joiningPeer);
+        SchemaLoader.createKeyspace(ksName, KeyspaceParams.simple(2, ReplicationType.tracked), SchemaLoader.standardCFMD(ksName, TEST_TABLE));
+
+        TableMetadata tableMetadata = Schema.instance.getTableMetadata(ksName, TEST_TABLE);
+        ClusterMetadataTestHelper.JoinProcess joinProcess =
+            ClusterMetadataTestHelper.lazyJoin(joiningPeer, Collections.singleton(tk("m"))).prepareJoin();
+
+        List<Throwable> failures = new ArrayList<>();
+        AtomicBoolean active = new AtomicBoolean(true);
+        LogListener listener = (entry, result) -> {
+            if (!active.get())
+                return;
+            try
+            {
+                Mutation mutation = new RowUpdateBuilder(tableMetadata, 0, "b")
+                                    .clustering("name")
+                                    .add("val", "v1")
+                                    .build();
+                AbstractWriteResponseHandler<?> handler = TrackedWriteRequest.perform(
+                    mutation,
+                    ConsistencyLevel.ONE,
+                    Dispatcher.RequestTime.forImmediateExecution(),
+                    h -> {});
+                assertNotNull(handler);
+            }
+            catch (Throwable t)
+            {
+                failures.add(t);
+            }
+        };
+
+        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
+        Gossiper.instance.endpointStateMap.put(joiningPeer, epState);
+        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(joiningPeer, epState));
+        ClusterMetadataService.instance().log().addListener(listener);
+        try
+        {
+            joinProcess.startJoin();
+        }
+        finally
+        {
+            active.set(false);
+            joinProcess.midJoin().finishJoin();
+            ClusterMetadataTestHelper.lazyLeave(joiningPeer, true).prepareLeave().startLeave().midLeave().finishLeave();
+            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(joiningPeer));
+            Gossiper.instance.endpointStateMap.remove(joiningPeer);
+        }
+
+        if (!failures.isEmpty())
+            throw failures.get(0);
+    }
+
+    @Test
+    public void testTrackedWriteDuringEpochChangeInPreCommitAfterShardUpdate() throws Throwable
+    {
+        String ksName = "epoch_change_pre_commit_ks";
+        InetAddressAndPort joiningPeer = InetAddressAndPort.getByNameUnchecked("127.0.0.4");
+        ClusterMetadataTestHelper.register(joiningPeer);
+        SchemaLoader.createKeyspace(ksName, KeyspaceParams.simple(2, ReplicationType.tracked), SchemaLoader.standardCFMD(ksName, TEST_TABLE));
+
+        TableMetadata tableMetadata = Schema.instance.getTableMetadata(ksName, TEST_TABLE);
+        ClusterMetadataTestHelper.JoinProcess joinProcess =
+            ClusterMetadataTestHelper.lazyJoin(joiningPeer, Collections.singleton(tk("m"))).prepareJoin();
+
+        List<Throwable> failures = new ArrayList<>();
+        ChangeListener listener = new ChangeListener()
+        {
+            @Override
+            public void notifyPreCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
+            {
+                try
+                {
+                    MutationTrackingService.TestAccess.onNewClusterMetadata(MutationTrackingService.instance(), prev, next);
+                    Mutation mutation = new RowUpdateBuilder(tableMetadata, 0, "b")
+                                        .clustering("name")
+                                        .add("val", "v1")
+                                        .build();
+                    AbstractWriteResponseHandler<?> handler = TrackedWriteRequest.perform(
+                        mutation,
+                        ConsistencyLevel.ONE,
+                        Dispatcher.RequestTime.forImmediateExecution(),
+                        h -> {});
+                    assertNotNull(handler);
+                }
+                catch (Throwable t)
+                {
+                    failures.add(t);
+                }
+            }
+        };
+
+        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
+        Gossiper.instance.endpointStateMap.put(joiningPeer, epState);
+        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(joiningPeer, epState));
+        ClusterMetadataService.instance().log().addListener(listener);
+        try
+        {
+            joinProcess.startJoin();
+        }
+        finally
+        {
+            ClusterMetadataService.instance().log().removeListener(listener);
+            joinProcess.midJoin().finishJoin();
+            ClusterMetadataTestHelper.lazyLeave(joiningPeer, true).prepareLeave().startLeave().midLeave().finishLeave();
+            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(joiningPeer));
+            Gossiper.instance.endpointStateMap.remove(joiningPeer);
+        }
+
+        if (!failures.isEmpty())
+            throw failures.get(0);
     }
 }

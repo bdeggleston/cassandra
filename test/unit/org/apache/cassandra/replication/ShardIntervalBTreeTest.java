@@ -144,6 +144,10 @@ public class ShardIntervalBTreeTest
         ShardIntervalBTree map = new ShardIntervalBTree().with(older).with(newer);
 
         assertSame(newer, map.latestShardCovering(tk(50)));
+        assertSame(older, map.latestActiveShardCovering(tk(50), 1L));
+        assertSame(older, map.latestActiveShardCovering(tk(50), 4L));
+        assertSame(newer, map.latestActiveShardCovering(tk(50), 5L));
+        assertNull(map.latestActiveShardCovering(tk(50), 0L));
 
         // both are reachable via forEach
         Set<Shard> hits = new HashSet<>();

@@ -131,6 +131,19 @@ final class ShardIntervalBTree
     }
 
     /**
+     * Return the latest active {@link Shard} (with the highest {@link Shard#sinceEpoch} not exceeding {@code maxEpoch})
+     * responsible for the provided token, or {@code null} if no active shard covers it at or before {@code maxEpoch}.
+     */
+    @Nullable
+    Shard latestActiveShardCovering(Token token, long maxEpoch)
+    {
+        return IntervalBTree.accumulate(
+            tree, PointQueryComparators.INSTANCE, token,
+            (maxEp, ignore2, shard, acc) -> shard.isActive() && shard.sinceEpoch <= maxEp && (acc == null || shard.sinceEpoch > acc.sinceEpoch) ? shard : acc,
+            maxEpoch, null, null);
+    }
+
+    /**
      * @return the Shard matching the provided {@code range} and {@code sinceEpoch} exactly (or null if none do).
      */
     @Nullable
