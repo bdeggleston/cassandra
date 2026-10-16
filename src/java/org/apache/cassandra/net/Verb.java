@@ -399,8 +399,8 @@ public enum Verb
     MT_DRAIN_REQ             (925, P2, shardSealingTimeout,      ANTI_ENTROPY,     () -> mtEmbedded(Drain.requestSerializer),                 () -> Drain.verbHandler,                   MT_DRAIN_RSP            ),
     MT_RECONCILE_CAPTURE_RSP (926, P2, shardSealingTimeout,      REQUEST_RESPONSE, () -> mtEmbedded(ReconcileCapture.responseSerializer),     RESPONSE_HANDLER                                                   ),
     MT_RECONCILE_CAPTURE_REQ (927, P2, shardSealingTimeout,      ANTI_ENTROPY,     () -> mtEmbedded(ReconcileCapture.requestSerializer),      () -> ReconcileCapture.verbHandler,        MT_RECONCILE_CAPTURE_RSP),
-    MT_RECONCILE_POLL_RSP    (928, P2, shardSealingTimeout,      REQUEST_RESPONSE, () -> mtEmbedded(ReconcilePoll.responseSerializer),        RESPONSE_HANDLER                                                   ),
-    MT_RECONCILE_POLL_REQ    (929, P2, shardSealingTimeout,      ANTI_ENTROPY,     () -> mtEmbedded(ReconcilePoll.requestSerializer),         () -> ReconcilePoll.verbHandler,           MT_RECONCILE_POLL_RSP   ),
+    MT_RECONCILE_POLL_RSP    (928, P2, rpcTimeout,               REQUEST_RESPONSE, () -> mtEmbedded(ReconcilePoll.responseSerializer),        RESPONSE_HANDLER                                                   ),
+    MT_RECONCILE_POLL_REQ    (929, P2, rpcTimeout,               ANTI_ENTROPY,     () -> mtEmbedded(ReconcilePoll.requestSerializer),         () -> ReconcilePoll.verbHandler,           MT_RECONCILE_POLL_RSP   ),
     MT_COMPLETE_SEALING_RSP  (930, P2, shardSealingTimeout,      REQUEST_RESPONSE, () -> mtEmbedded(CompleteSealing.responseSerializer),      RESPONSE_HANDLER                                                   ),
     MT_COMPLETE_SEALING_REQ  (931, P2, shardSealingTimeout,      ANTI_ENTROPY,     () -> mtEmbedded(CompleteSealing.requestSerializer),       () -> CompleteSealing.verbHandler,         MT_COMPLETE_SEALING_RSP ),
 

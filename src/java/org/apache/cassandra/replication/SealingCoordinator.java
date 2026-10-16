@@ -35,6 +35,7 @@ import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.agrona.collections.Object2IntHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +77,8 @@ import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /*
  * Sealing {@link Shard}s once a topology change obsoletes them.
@@ -107,11 +110,17 @@ public final class SealingCoordinator
 
     private static long sleepWithBackoff(long currentBackoffMs)
     {
-        if (currentBackoffMs > 0)
+        return sleepWithBackoff(currentBackoffMs, 0);
+    }
+
+    private static long sleepWithBackoff(long currentBackoffMs, long additionalSleepMs)
+    {
+        long totalSleepMs = currentBackoffMs + additionalSleepMs;
+        if (totalSleepMs > 0)
         {
             try
             {
-                Thread.sleep(currentBackoffMs);
+                Thread.sleep(totalSleepMs);
             }
             catch (InterruptedException e)
             {
@@ -735,11 +744,71 @@ public final class SealingCoordinator
 
     private static void reconcile(ShardMetadata shard, @Nullable NodeId withoutNode)
     {
+        List<InetAddressAndPort> initialEndpoints = toEndpoints(shard.participants, withoutNode);
+        if (initialEndpoints.isEmpty())
+            return;
+
         // capture shard's witnessed offsets once
         Log2OffsetsMap.Mutable offsets = captureWitnessedOffsets(shard, withoutNode);
-        // poll every participant until they've each witnessed the union of offsets
-        for (InetAddressAndPort endpoint : toEndpoints(shard.participants, withoutNode))
-            pollUntilWitnesses(shard, offsets, endpoint);
+
+        long backoffMs = INITIAL_BACKOFF_MS;
+        long pollTimeoutMs = DatabaseDescriptor.getRpcTimeout(MILLISECONDS);
+        long maxOverallDurationNanos = DatabaseDescriptor.getShardSealingTimeout(NANOSECONDS) * MAX_RETRIES;
+        long deadlineNanos = nanoTime() + maxOverallDurationNanos;
+        Throwable lastError = null;
+
+        Object2IntHashMap<InetAddressAndPort> pending = new Object2IntHashMap<>(0);
+        initialEndpoints.forEach(ep -> pending.put(ep, Integer.MAX_VALUE));
+
+        while (!pending.isEmpty())
+        {
+            if (nanoTime() >= deadlineNanos)
+                throw new RuntimeException(format("Exceeded timeout reconciling shard %s; still pending: %s", shard, pending), lastError);
+
+            Object2IntHashMap<InetAddressAndPort> initial = new Object2IntHashMap<>(pending);
+            ReconcilePoll.PollCallback callback = ReconcilePoll.poll(shard.keyspace, shard.sinceEpoch, shard.range, offsets, pending.keySet());
+
+            try
+            {
+                callback.future().get(pollTimeoutMs, MILLISECONDS);
+            }
+            catch (InterruptedException e)
+            {
+                throw new UncheckedInterruptedException(e);
+            }
+            catch (ExecutionException | TimeoutException e)
+            {
+                lastError = e;
+                logger.debug("Exception caught polling reconcile for shard {}, will retry: {}", shard, e.getMessage());
+            }
+
+            callback.succeeded.forEach(pending::remove);
+            if (pending.isEmpty())
+                return;
+
+            Map<InetAddressAndPort, Integer> unwitnessed = callback.unwitnessed();
+            boolean madeProgress = !callback.succeeded.isEmpty();
+            for (InetAddressAndPort endpoint : pending.keySet())
+            {
+                int prev = pending.get(endpoint);
+                int next = unwitnessed.getOrDefault(endpoint, prev);
+                if (next < prev)
+                {
+                    madeProgress = true;
+                    pending.put(endpoint, next);
+                }
+            }
+
+            if (madeProgress)
+            {
+                logger.debug("Reconcile progress made on shard {}: outstanding mutations decreased from {} to {}",
+                             shard, initial, pending);
+                deadlineNanos = nanoTime() + maxOverallDurationNanos;
+                backoffMs = INITIAL_BACKOFF_MS;
+            }
+
+            backoffMs = sleepWithBackoff(backoffMs);
+        }
     }
 
     private static Log2OffsetsMap.Mutable captureWitnessedOffsets(ShardMetadata shard, @Nullable NodeId withoutNode)
@@ -774,37 +843,7 @@ public final class SealingCoordinator
         throw new RuntimeException(format("Failed to capture witnessed offsets for shard %s after %d retries", shard, MAX_RETRIES), lastError);
     }
 
-    private static void pollUntilWitnesses(ShardMetadata shard, Log2OffsetsMap.Mutable offsets, InetAddressAndPort endpoint)
-    {
-        long backoffMs = INITIAL_BACKOFF_MS;
-        long timeoutMs = DatabaseDescriptor.getShardSealingTimeout(MILLISECONDS);
-        int attempts = 0;
-        Throwable lastError = null;
 
-        while (attempts++ < MAX_RETRIES)
-        {
-            try
-            {
-                boolean witnessed =
-                    ReconcilePoll.poll(shard.keyspace, shard.sinceEpoch, shard.range, offsets, endpoint)
-                                 .get(timeoutMs, MILLISECONDS);
-                if (witnessed)
-                    return;
-            }
-            catch (InterruptedException e)
-            {
-                throw new UncheckedInterruptedException(e);
-            }
-            catch (ExecutionException | TimeoutException e)
-            {
-                lastError = e;
-                logger.debug("Transient failure polling reconcile on {} for shard {}, will retry (attempt {}/{})", endpoint, shard, attempts, MAX_RETRIES, e);
-            }
-
-            backoffMs = sleepWithBackoff(backoffMs);
-        }
-        throw new RuntimeException(format("Timed out reconciling shard %s on endpoint %s after %d retries", shard, endpoint, MAX_RETRIES), lastError);
-    }
 
     /**
      * Promote every participant of the (drained and reconciled) shard from SEALING to SEALED.
@@ -1302,53 +1341,118 @@ public final class SealingCoordinator
 
         public static final class Response
         {
-            final boolean witnessed;
+            final int unwitnessed;
 
-            Response(boolean witnessed)
+            Response(int unwitnessed)
             {
-                this.witnessed = witnessed;
+                this.unwitnessed = unwitnessed;
+            }
+
+            public boolean isWitnessed()
+            {
+                return unwitnessed == 0;
             }
         }
 
-        public static AsyncPromise<Boolean> poll(
-            String keyspace, long sinceEpoch, Range<Token> range, Log2OffsetsMap.Mutable offsets, InetAddressAndPort endpoint)
+        public static final class PollCallback implements RequestCallback<Response>
         {
-            AsyncPromise<Boolean> promise = new AsyncPromise<>();
+            private final String keyspace;
+            private final AsyncPromise<Void> future = new AsyncPromise<>();
+            private final Set<InetAddressAndPort> remaining;
+            private final Set<InetAddressAndPort> succeeded = ConcurrentHashMap.newKeySet();
+            private final Map<InetAddressAndPort, Integer> unwitnessed = new ConcurrentHashMap<>();
+            private final Map<InetAddressAndPort, RequestFailure> failures = new ConcurrentHashMap<>();
 
-            RequestCallback<Response> callback = new RequestCallback<>()
+            public PollCallback(Collection<InetAddressAndPort> endpoints, String keyspace)
             {
-                @Override
-                public void onResponse(Message<Response> msg)
+                this.keyspace = keyspace;
+                this.remaining = ConcurrentHashMap.newKeySet();
+                this.remaining.addAll(endpoints);
+            }
+
+            public Future<Void> future()
+            {
+                return future;
+            }
+
+            public Set<InetAddressAndPort> succeeded()
+            {
+                return succeeded;
+            }
+
+            public Map<InetAddressAndPort, Integer> unwitnessed()
+            {
+                return unwitnessed;
+            }
+
+            public Map<InetAddressAndPort, RequestFailure> failures()
+            {
+                return failures;
+            }
+
+            private void maybeComplete(InetAddressAndPort ep)
+            {
+                remaining.remove(ep);
+                if (!remaining.isEmpty())
+                    return;
+
+                if (failures.isEmpty())
                 {
-                    promise.trySuccess(msg.payload.witnessed);
+                    future.trySuccess(null);
+                    return;
                 }
 
-                @Override
-                public void onFailure(InetAddressAndPort from, RequestFailure failure)
-                {
-                    promise.tryFailure(new RuntimeException(format("Failed to reconcile poll %s for keyspace %s: %s", from, keyspace, failure)));
-                }
+                future.tryFailure(new RuntimeException(format("Failed to complete reconcile poll on keyspace %s: %s", keyspace, failures)));
+            }
 
-                @Override
-                public boolean invokeOnFailure()
-                {
-                    return true;
-                }
-            };
+            @Override
+            public void onResponse(Message<Response> msg)
+            {
+                unwitnessed.put(msg.from(), msg.payload.unwitnessed);
+                if (msg.payload.isWitnessed())
+                    succeeded.add(msg.from());
+                maybeComplete(msg.from());
+            }
 
-            MessagingService.instance()
-                            .sendWithCallback(Message.out(Verb.MT_RECONCILE_POLL_REQ, new Request(keyspace, sinceEpoch, range, offsets)),
-                                              endpoint, callback);
+            @Override
+            public void onFailure(InetAddressAndPort from, RequestFailure failure)
+            {
+                logger.debug("Failed reconcile poll on {} for keyspace {}: {}", from, keyspace, failure);
+                failures.put(from, failure);
+                maybeComplete(from);
+            }
 
-            return promise;
+            @Override
+            public boolean invokeOnFailure()
+            {
+                return true;
+            }
+        }
+
+        public static PollCallback poll(String keyspace,
+                                        long sinceEpoch,
+                                        Range<Token> range,
+                                        Log2OffsetsMap.Mutable offsets,
+                                        Collection<InetAddressAndPort> endpoints)
+        {
+            checkArgument(!endpoints.isEmpty());
+
+            PollCallback callback = new PollCallback(endpoints, keyspace);
+            Message<Request> message = Message.out(Verb.MT_RECONCILE_POLL_REQ, new Request(keyspace, sinceEpoch, range, offsets));
+            for (InetAddressAndPort peer : endpoints)
+                MessagingService.instance().sendWithCallback(message, peer, callback);
+
+            return callback;
         }
 
         public static final IVerbHandler<Request> verbHandler = message -> {
             MutationTrackingService.ensureEnabled();
             Request request = message.payload;
-            boolean witnessed =
-                MutationTrackingService.instance().hasWitnessed(request.keyspace, request.sinceEpoch, request.range, request.offsets);
-            MessagingService.instance().send(message.responseWith(new Response(witnessed)), message.from());
+            int unwitnessedCount = MutationTrackingService.instance().unwitnessedMutationCount(request.keyspace,
+                                                                                               request.sinceEpoch,
+                                                                                               request.range,
+                                                                                               request.offsets);
+            MessagingService.instance().send(message.responseWith(new Response(unwitnessedCount)), message.from());
         };
 
         public static final VersionedSerializer<Request> requestSerializer = new VersionedSerializer<>()
@@ -1388,19 +1492,19 @@ public final class SealingCoordinator
             @Override
             public void serialize(Response r, DataOutputPlus out) throws IOException
             {
-                out.writeBoolean(r.witnessed);
+                out.writeInt(r.unwitnessed);
             }
 
             @Override
             public Response deserialize(DataInputPlus in) throws IOException
             {
-                return new Response(in.readBoolean());
+                return new Response(in.readInt());
             }
 
             @Override
             public long serializedSize(Response r)
             {
-                return TypeSizes.sizeof(r.witnessed);
+                return TypeSizes.sizeof(r.unwitnessed);
             }
         };
     }

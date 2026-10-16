@@ -520,20 +520,34 @@ public class Shard
     }
 
     /**
-     * @return whether the shard has locally applied every offset in {@code offsets}.
+     * @return the count of mutation offsets in {@code offsets} not yet locally applied by this shard.
      */
-    boolean hasWitnessed(Log2OffsetsMap<?> offsets)
+    int unwitnessedMutationCount(Log2OffsetsMap<?> offsets)
     {
+        int count = 0;
         for (Offsets target : offsets.offsets())
         {
             CoordinatorLog log = logs.get(target.logId().asLong());
             if (log == null)
-                return false;
+            {
+                count += target.offsetCount();
+                continue;
+            }
             Offsets.Immutable local = log.collectReplicatedOffsets(false);
-            if (local == null || !Offsets.Immutable.difference(target, local).isEmpty())
-                return false;
+            if (local == null)
+                count += target.offsetCount();
+            else
+                count += Offsets.Immutable.difference(target, local).offsetCount();
         }
-        return true;
+        return count;
+    }
+
+    /**
+     * @return whether the shard has locally applied every offset in {@code offsets}.
+     */
+    boolean hasWitnessed(Log2OffsetsMap<?> offsets)
+    {
+        return unwitnessedMutationCount(offsets) == 0;
     }
 
     void markSealed()
