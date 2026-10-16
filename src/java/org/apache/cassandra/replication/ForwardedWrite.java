@@ -218,12 +218,11 @@ public class ForwardedWrite
             String localDataCenter = cm.locator.local().datacenter;
 
             /*
-             * nextMutationId() always allocates from the most recent Shard for the token, so it's possible
-             * for the topology to change *right after* the verb handler successfully validates coordinator/leader
-             * epochs matching; if Shard's participants no longer match the recepients calculated on
-             * the coordinator, we need to abort here and now.
+             * nextMutationId() allocates from the active Shard matching cm.epoch, falling back to the latest Shard
+             * if that Shard has already been fenced for sealing. If the Shard's participants no longer match the
+             * recipients calculated on the coordinator, abort so the coordinator can refresh and retry.
              */
-            MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token);
+            MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token, cm.epoch);
 
             Mutation mutation;
             LeaderCallback handler;
@@ -535,7 +534,7 @@ public class ForwardedWrite
         Keyspace ks = Keyspace.open(keyspaceName);
         ReplicaPlan.ForWrite plan = ReplicaPlans.forWrite(ks, counterMutation.consistency(), token, ReplicaPlans.writeAll);
 
-        MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token);
+        MutationId id = MutationTrackingService.instance().nextMutationId(keyspaceName, token, plan.epoch());
 
         // Apply counter mutation with ID to get result
         Mutation result;

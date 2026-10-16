@@ -223,8 +223,16 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     {
         this.tcmListener = new ChangeListener()
         {
+            /**
+             * We are using notifyPreCommit here so that we can have new local shards ready by the time we start
+             * receiving replica plans that need to use them. Using post commit would mean that writes would throw
+             * an exception because their replica plans were ahead of the shard state. Retrying would not be sufficient
+             * since the new shards need to be synced to disk before they can be used, so the retry will usually happen
+             * before they're ready and fail. This also avoids having to wait for shard creation on the write path when
+             * the replica plan is ahead of the shard state
+             */
             @Override
-            public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
+            public void notifyPreCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
             {
                 onNewClusterMetadata(prev, next);
             }
@@ -348,6 +356,21 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         try
         {
             MutationId id = getOrCreateShards(keyspace).nextMutationId(token);
+            logger.trace("Created new mutation id {}", id);
+            return id;
+        }
+        finally
+        {
+            shardLock.readLock().unlock();
+        }
+    }
+
+    public MutationId nextMutationId(String keyspace, Token token, Epoch maxEpoch)
+    {
+        shardLock.readLock().lock();
+        try
+        {
+            MutationId id = getOrCreateShards(keyspace).nextMutationId(token, maxEpoch);
             logger.trace("Created new mutation id {}", id);
             return id;
         }
@@ -1174,7 +1197,12 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
 
     private long nextLogId()
     {
-        NodeId nodeId = ClusterMetadata.current().myNodeId();
+        return nextLogId(ClusterMetadata.current());
+    }
+
+    private long nextLogId(ClusterMetadata metadata)
+    {
+        NodeId nodeId = metadata.myNodeId();
         Preconditions.checkNotNull(nodeId);
         return CoordinatorLogId.asLong(nodeId.id(), nextHostLogId());
     }
@@ -1266,7 +1294,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
                 return;
 
             originalLog2ShardMap = new ConcurrentHashMap<>(log2ShardMap);
-            keyspaceShards = applyUpdatedMetadata(keyspaceShards, prev, next, this::nextLogId, this::onNewLog, this::onDroppedLog);
+            keyspaceShards = applyUpdatedMetadata(keyspaceShards, prev, next, () -> nextLogId(next), this::onNewLog, this::onDroppedLog);
 
             if (!config.background_reconciliation_enabled)
             {
@@ -1657,6 +1685,16 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         MutationId nextMutationId(Token token)
         {
             Shard shard = shards.latestShardCovering(token);
+            if (null == shard)
+                throw new UnknownShardException(token, keyspace);
+            return shard.nextMutationId();
+        }
+
+        MutationId nextMutationId(Token token, Epoch maxEpoch)
+        {
+            Shard shard = shards.latestActiveShardCovering(token, maxEpoch.getEpoch());
+            if (null == shard)
+                shard = shards.latestShardCovering(token);
             if (null == shard)
                 throw new UnknownShardException(token, keyspace);
             return shard.nextMutationId();
@@ -2298,6 +2336,11 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         {
             service.keyspaceShards.put(keyspace, shards);
             shards.forEachShard(shard -> shard.forEachLog(log -> service.log2ShardMap.put(log.logId, shard)));
+        }
+
+        public static void onNewClusterMetadata(MutationTrackingService service, ClusterMetadata prev, ClusterMetadata next)
+        {
+            service.onNewClusterMetadata(prev, next);
         }
     }
 }
