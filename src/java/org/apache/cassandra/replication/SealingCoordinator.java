@@ -1613,7 +1613,13 @@ public final class SealingCoordinator
         {
             NodeId nodeId = new NodeId(participants.get(i));
             if (!nodeId.equals(withoutNode))
-                endpoints.add(metadata.directory.endpoint(nodeId));
+            {
+                InetAddressAndPort endpoint = metadata.directory.endpoint(nodeId);
+                if (endpoint != null)
+                    endpoints.add(endpoint);
+                else
+                    logger.debug("Participant node {} has no registered endpoint in directory", nodeId);
+            }
         }
         return endpoints;
     }
