@@ -164,7 +164,7 @@ public class Shard
      * Used by shard sealing logic for drain() step.
      */
     private final AtomicInteger pendingIdAllocations = new AtomicInteger();
-    private final NonBlockingHashMap<MutationId, Boolean> pendingLocalWrites = new NonBlockingHashMap<>();
+    private final NonBlockingHashMap<ShortMutationId, Boolean> pendingLocalWrites = new NonBlockingHashMap<>();
 
     @Nonnull
     MutationId nextMutationId()
@@ -182,9 +182,6 @@ public class Shard
         }
     }
 
-    /*
-     * TODO (expected): drain() should handle tracked transfers as well (later)
-     */
     @Nonnull
     MutationId nextTransferId()
     {
@@ -223,7 +220,7 @@ public class Shard
     /**
      * Must be called at least once per {@code nextId()} invocation.
      */
-    void completeLocalWrite(MutationId mutationId)
+    void completeLocalWrite(ShortMutationId mutationId)
     {
         pendingLocalWrites.remove(mutationId);
     }
@@ -234,9 +231,30 @@ public class Shard
         getOrCreate(mutationId).receivedWriteResponse(mutationId, fromHostId);
     }
 
+    /**
+     * Start transfer activation on this shard.
+     * Registers the transfer ID as pending before activation begins.
+     *
+     * @return true if the transfer was registered, or false if the shard is not active
+     */
+    boolean startTransferActivation(ShortMutationId transferId)
+    {
+        if (state != State.ACTIVE)
+            return false;
+
+        pendingLocalWrites.put(transferId, true);
+        if (state != State.ACTIVE)
+        {
+            pendingLocalWrites.remove(transferId);
+            return false;
+        }
+        return true;
+    }
+
     void finishActivation(Bounds<Token> bounds, ActivationRequest activation)
     {
         getOrCreate(activation.transferId).finishActivation(bounds, activation);
+        pendingLocalWrites.remove(activation.transferId);
     }
 
     void receivedActivationResponse(CoordinatedTransfer transfer, InetAddressAndPort onHost)

@@ -35,6 +35,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
+import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 
 public class ShardTest
@@ -108,5 +109,39 @@ public class ShardTest
         {
             CoordinatorLog.overrideMaxOffsetForTesting(Integer.MAX_VALUE);
         }
+    }
+
+    @Test
+    public void testTransferActivationDrainBarrier()
+    {
+        Range<Token> range = new Range<>(tk("a"), tk("z"));
+        Participants participants = new Participants(List.of(LOCAL_HOST_ID, REMOTE_HOST_ID_1, REMOTE_HOST_ID_2));
+        MutableInteger logId = new MutableInteger();
+        LongSupplier logIdProvider = () -> CoordinatorLogId.asLong(LOCAL_HOST_ID, logId.getAndIncrement());
+        Shard shard = new Shard(LOCAL_HOST_ID, KEYSPACE, 1L, range, participants, logIdProvider, (s, l) -> {});
+
+        MutationId transferId = shard.nextTransferId();
+        shard.markSealing();
+
+        // Shard is sealing and has no pending operations yet
+        assertTrue(shard.isDrained());
+
+        // Cannot start activation once sealing
+        assertFalse(shard.startTransferActivation(transferId));
+
+        // Recreate shard to test pending activation blocking drain
+        shard = new Shard(LOCAL_HOST_ID, KEYSPACE, 1L, range, participants, logIdProvider, (s, l) -> {});
+        transferId = shard.nextTransferId();
+
+        // Start activation while ACTIVE
+        assertTrue(shard.startTransferActivation(transferId));
+
+        shard.markSealing();
+        // While activation is in-flight, shard must NOT report drained
+        assertFalse(shard.isDrained());
+
+        // After completing local write (e.g. activation finished or failed), shard is drained
+        shard.completeLocalWrite(transferId);
+        assertTrue(shard.isDrained());
     }
 }
