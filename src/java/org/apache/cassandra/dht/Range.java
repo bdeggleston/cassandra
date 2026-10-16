@@ -173,12 +173,15 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
 
     public boolean intersects(AbstractBounds<T> that)
     {
-        // implemented for cleanup compaction membership test, so only Range + Bounds are supported for now
         if (that instanceof Range)
             return intersects((Range<T>) that);
         if (that instanceof Bounds)
             return intersects((Bounds<T>) that);
-        throw new UnsupportedOperationException("Intersection is only supported for Bounds and Range objects; found " + that.getClass());
+        if (that instanceof ExcludingBounds)
+            return intersects((ExcludingBounds<T>) that);
+        if (that instanceof IncludingExcludingBounds)
+            return intersects((IncludingExcludingBounds<T>) that);
+        throw new UnsupportedOperationException("Intersection is only supported for AbstractBounds objects; found " + that.getClass());
     }
 
     /**
@@ -191,6 +194,43 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         // as new Range<T>(that.left, that.right) will then cover the full ring which is not what we
         // want.
         return contains(that.left) || (!that.left.equals(that.right) && intersects(new Range<T>(that.left, that.right)));
+    }
+
+    public boolean intersects(ExcludingBounds<T> that)
+    {
+        return intersectsNonWrappingBounds(that);
+    }
+
+    public boolean intersects(IncludingExcludingBounds<T> that)
+    {
+        return intersectsNonWrappingBounds(that);
+    }
+
+    private boolean intersectsNonWrappingBounds(AbstractBounds<T> that)
+    {
+        if (that.left.equals(that.right))
+            return false;
+
+        if (isTrulyWrapAround())
+            return Iterables.any(unwrap(), r -> r.intersectsNonWrappingBounds(that));
+
+        // that does not wrap around.
+        // this is non-wrapping, so:
+        // this is (left, right], unless right.isMinimum() which means this extends to the end of the ring (+inf).
+        // 1. Check if that is strictly to the left of this: that.right <= this.left
+        int cmpRightLeft = that.right.compareTo(left);
+        if (!that.right.isMinimum() && cmpRightLeft <= 0)
+            return false;
+
+        // 2. Check if that is strictly to the right of this: that.left >= this.right (when this.right is not +inf)
+        if (!right.isMinimum())
+        {
+            int cmpLeftRight = that.left.compareTo(right);
+            if (cmpLeftRight > 0 || (cmpLeftRight == 0 && !that.inclusiveLeft()))
+                return false;
+        }
+
+        return true;
     }
 
     public static boolean intersects(Iterable<Range<Token>> l, Iterable<Range<Token>> r)
