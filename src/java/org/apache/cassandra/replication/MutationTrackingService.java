@@ -1774,6 +1774,22 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     }
 
     /**
+     * @return the count of mutation offsets in {@code offsets} not yet locally applied by this shard.
+     */
+    int unwitnessedMutationCount(String keyspace, long sinceEpoch, Range<Token> range, Log2OffsetsMap<?> offsets)
+    {
+        shardLock.readLock().lock();
+        try
+        {
+            return getShard(keyspace, sinceEpoch, range).unwitnessedMutationCount(offsets);
+        }
+        finally
+        {
+            shardLock.readLock().unlock();
+        }
+    }
+
+    /**
      * @return whether the specified shard has locally applied every offset in {@code offsets}.
      */
     boolean hasWitnessed(String keyspace, long sinceEpoch, Range<Token> range, Log2OffsetsMap<?> offsets)
