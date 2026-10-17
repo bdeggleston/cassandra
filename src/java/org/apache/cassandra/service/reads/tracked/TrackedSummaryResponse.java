@@ -26,12 +26,13 @@ import org.apache.cassandra.db.IReadResponse;
 import org.apache.cassandra.db.ReadKind;
 import org.apache.cassandra.io.EmbeddedAsymmetricVersionedSerializer;
 import org.apache.cassandra.io.IVersionedAsymmetricSerializer;
-import org.apache.cassandra.io.UnversionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.replication.MutationSummary;
 import org.apache.cassandra.replication.MutationTrackingService;
+import org.apache.cassandra.replication.Version;
+import org.apache.cassandra.replication.VersionedSerializer;
 import org.apache.cassandra.utils.ArraySerializers;
 
 import static org.apache.cassandra.db.ReadKind.TRACKED_SUMMARY;
@@ -63,32 +64,32 @@ public class TrackedSummaryResponse implements IReadResponse
         ReadReconciliations.instance.acceptRemoteSummary(message.from(), message.payload);
     };
 
-    public static final UnversionedSerializer<TrackedSummaryResponse> serializer = new UnversionedSerializer<>()
+    public static final VersionedSerializer<TrackedSummaryResponse> serializer = new VersionedSerializer<>()
     {
         @Override
-        public void serialize(TrackedSummaryResponse summary, DataOutputPlus out) throws IOException
+        public void serialize(TrackedSummaryResponse summary, DataOutputPlus out, Version version) throws IOException
         {
             TrackedRead.Id.serializer.serialize(summary.readId, out);
-            MutationSummary.serializer.serialize(summary.summary, out);
+            MutationSummary.serializer.serialize(summary.summary, out, version);
             out.writeUnsignedVInt32(summary.dataNode);
             ArraySerializers.serializeVIntArray(summary.summaryNodes, out);
         }
 
         @Override
-        public TrackedSummaryResponse deserialize(DataInputPlus in) throws IOException
+        public TrackedSummaryResponse deserialize(DataInputPlus in, Version version) throws IOException
         {
             TrackedRead.Id id = TrackedRead.Id.serializer.deserialize(in);
-            MutationSummary summary = MutationSummary.serializer.deserialize(in);
+            MutationSummary summary = MutationSummary.serializer.deserialize(in, version);
             int dataNode = in.readUnsignedVInt32();
             int[] summaryNodes = ArraySerializers.deserializeVIntArray(in);
             return new TrackedSummaryResponse(id, summary, dataNode, summaryNodes);
         }
 
         @Override
-        public long serializedSize(TrackedSummaryResponse summary)
+        public long serializedSize(TrackedSummaryResponse summary, Version version)
         {
             long size = TrackedRead.Id.serializer.serializedSize(summary.readId);
-            size += MutationSummary.serializer.serializedSize(summary.summary);
+            size += MutationSummary.serializer.serializedSize(summary.summary, version);
             size += sizeofUnsignedVInt(summary.dataNode);
             size += ArraySerializers.serializedVIntArraySize(summary.summaryNodes);
             return size;

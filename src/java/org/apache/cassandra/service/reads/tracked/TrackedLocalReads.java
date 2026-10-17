@@ -166,6 +166,7 @@ public class TrackedLocalReads implements ExpiredStatePurger.Expireable
             return summary;
 
         MutationSummary.Builder builder = new MutationSummary.Builder(summary.tableId());
+        builder.updateMaxSealedEpochs(summary.maxSealedEpochsByRange());
 
         // TODO: Make faster without a copy
         for (int i = 0; i < summary.size(); i++)

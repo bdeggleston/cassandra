@@ -17,11 +17,14 @@
  */
 package org.apache.cassandra.service.reads.tracked;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
+import com.google.common.base.Preconditions;
 
 import org.agrona.collections.IntArrayList;
 import org.jctools.maps.NonBlockingHashMap;
@@ -30,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
@@ -45,6 +50,7 @@ import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.replication.Node2OffsetsMap;
 import org.apache.cassandra.replication.Offsets;
 import org.apache.cassandra.replication.PullMutationsRequest;
+import org.apache.cassandra.replication.ShardMetadata;
 import org.apache.cassandra.replication.ShortMutationId;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.membership.NodeId;
@@ -298,17 +304,74 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
             }
 
             // subtract the local summary
+            MutationSummary localSummary = null;
             for (int i = 0, size = summaries.size(); i < size; i++)
             {
                 Pair<Integer, MutationSummary> summary = summaries.get(i);
                 if (summary.left == LOCAL_NODE)
                 {
-                    offsets.removeAll(summary.right);
+                    localSummary = summary.right;
+                    offsets.removeAll(localSummary);
                     break;
                 }
             }
 
+            // Shard sealing can race with reads.
+            // 1. If a shard was already sealed when this read created its local summary, the local summary won't contain
+            // offsets for that shard. Remove them from offsets if they were reported by other nodes so we don't try
+            // to augment the read with them
+            Preconditions.checkNotNull(localSummary);
+            final MutationSummary finalLocalSummary = localSummary;
+
+            Map<Range<Token>, Long> effectiveSealedEpochs = new HashMap<>(finalLocalSummary.maxSealedEpochsByRange());
+            for (int i = 0, size = summaries.size(); i < size; i++)
+            {
+                Pair<Integer, MutationSummary> s = summaries.get(i);
+                if (s.left != LOCAL_NODE)
+                    s.right.maxSealedEpochsByRange().forEach((r, epoch) -> effectiveSealedEpochs.merge(r, epoch, Math::max));
+            }
+
+            offsets.removeIf(logId -> {
+                if (finalLocalSummary.get(logId) == null)
+                {
+                    ShardMetadata meta = MutationTrackingService.instance().getShardMetadata(logId);
+                    return meta != null && isShardSealed(logId, meta, effectiveSealedEpochs);
+                }
+                return false;
+            });
+
+            // 2. If a shard was present in our local summary and sealed before the read finished, writes that
+            // completed during sealing were missed by the initial storage scan and local summary.
+            // Diff the local summary data against the final sealed data and add any missing writes to augmentingOffsets.
+            for (int i = 0, size = finalLocalSummary.size(); i < size; i++)
+            {
+                MutationSummary.CoordinatorSummary coordSummary = finalLocalSummary.get(i);
+                CoordinatorLogId logId = coordSummary.logId();
+                ShardMetadata shardMetadata = MutationTrackingService.instance().getShardMetadata(logId);
+                if (shardMetadata != null && isShardSealed(logId, shardMetadata, effectiveSealedEpochs))
+                {
+                    offsets.remove(logId);
+
+                    Offsets.Immutable finalOffsets = MutationTrackingService.instance().getFinalSealedOffsets(logId);
+                    if (finalOffsets != null && !finalOffsets.isEmpty())
+                    {
+                        Offsets.Immutable missing = Offsets.Immutable.difference(finalOffsets, coordSummary.reconciled);
+                        missing = Offsets.Immutable.difference(missing, coordSummary.unreconciled);
+                        if (!missing.isEmpty())
+                            offsets.add(missing);
+                    }
+                }
+            }
+
             return offsets;
+        }
+
+        private static boolean isShardSealed(CoordinatorLogId logId, ShardMetadata meta, Map<Range<Token>, Long> effectiveSealedEpochs)
+        {
+            Long sealedEpoch = effectiveSealedEpochs.get(meta.range);
+            if (sealedEpoch != null && meta.sinceEpoch <= sealedEpoch)
+                return true;
+            return MutationTrackingService.instance().isShardSealed(logId);
         }
 
         private boolean isDataNode()
@@ -417,5 +480,39 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     private static int node(InetAddressAndPort host)
     {
         return ClusterMetadata.current().directory.peerId(host).id();
+    }
+
+    @com.google.common.annotations.VisibleForTesting
+    public static class TestAccess
+    {
+        public static class Coordinator
+        {
+            private final ReadReconciliations.Coordinator wrapped;
+
+            Coordinator(ReadReconciliations.Coordinator wrapped)
+            {
+                this.wrapped = wrapped;
+            }
+
+            public boolean acceptLocalSummary(MutationSummary summary)
+            {
+                return wrapped.acceptLocalSummary(summary);
+            }
+
+            public boolean acceptRemoteSummary(MutationSummary summary, int remoteNode)
+            {
+                return wrapped.acceptRemoteSummary(summary, remoteNode);
+            }
+
+            public Log2OffsetsMap.Mutable augmentingOffsets()
+            {
+                return wrapped.augmentingOffsets();
+            }
+        }
+
+        public static Coordinator createCoordinator(TrackedRead.Id id, int dataNode, int[] summaryNodes)
+        {
+            return new Coordinator(new ReadReconciliations.Coordinator(id, dataNode, summaryNodes));
+        }
     }
 }

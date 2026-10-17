@@ -31,6 +31,7 @@ import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.google.common.base.Preconditions;
 
@@ -283,11 +284,11 @@ public class Shard
 
     void addSummaryForKey(Token token, boolean includePending, MutationSummary.Builder builder)
     {
-        // TODO (expected): this is a temporary solutions, which is racy *during* a topology change (SEALING -> SEALED transition);
-        //      instead, should be gating on epochs after transition, decided by read coordinator;
-        //      some of those additional TCM transitions are currently missing however (pending for unhappy path)
         if (isSealed())
+        {
+            builder.updateMaxSealedEpoch(range, sinceEpoch);
             return;
+        }
 
         logs.forEach((id, log) -> {
             MutationSummary.CoordinatorSummary.Builder summaryBuilder = builder.builderForLog(log.logId);
@@ -297,11 +298,11 @@ public class Shard
 
     void addSummaryForRange(AbstractBounds<PartitionPosition> range, boolean includePending, MutationSummary.Builder builder)
     {
-        // TODO (expected): this is a temporary solutions, which is racy *during* a topology change (SEALING -> SEALED transition);
-        //      instead, should be gating on epochs after transition, decided by read coordinator
-        //      some of those additional TCM transitions are currently missing however (pending for unhappy path)
         if (isSealed())
+        {
+            builder.updateMaxSealedEpoch(this.range, sinceEpoch);
             return;
+        }
 
         logs.forEach((id, log) -> {
             MutationSummary.CoordinatorSummary.Builder summaryBuilder = builder.builderForLog(log.logId);
@@ -582,6 +583,24 @@ public class Shard
     public Range<Token> tokenRange()
     {
         return range;
+    }
+
+    /**
+     * Returns the final witnessed and reconciled offsets for the coordinator log in this shard.
+     */
+    @Nullable
+    public Offsets.Immutable collectFinalSealedOffsets(CoordinatorLogId logId)
+    {
+        CoordinatorLog log = logs.get(logId.asLong());
+        if (log == null)
+            return null;
+        Offsets.Immutable replicated = log.collectReplicatedOffsets(false);
+        Offsets.Immutable reconciled = log.collectReconciledOffsets();
+        if (replicated == null || replicated.isEmpty())
+            return reconciled;
+        if (reconciled == null || reconciled.isEmpty())
+            return replicated;
+        return Offsets.Immutable.union(replicated, reconciled);
     }
 
     /**
