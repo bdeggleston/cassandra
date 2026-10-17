@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 
@@ -38,7 +37,6 @@ import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
@@ -77,13 +75,10 @@ import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
-import org.apache.cassandra.service.AbstractWriteResponseHandler;
+import org.apache.cassandra.service.reads.tracked.ReadReconciliations;
+import org.apache.cassandra.service.reads.tracked.TrackedRead;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tcm.ClusterMetadata;
-import org.apache.cassandra.tcm.ClusterMetadataService;
-import org.apache.cassandra.tcm.listeners.ChangeListener;
-import org.apache.cassandra.tcm.listeners.LogListener;
-import org.apache.cassandra.transport.Dispatcher;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
@@ -110,7 +105,6 @@ public class MutationTrackingServiceTest
     {
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
-        MutationTrackingService.start();
         ClusterMetadataTestHelper.register(REMOTE);
         SchemaLoader.createKeyspace(TEST_KEYSPACE, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(TEST_KEYSPACE, TEST_TABLE));
     }
@@ -458,20 +452,31 @@ public class MutationTrackingServiceTest
 
         Message<Mutation> message = Message.out(Verb.MUTATION_REQ, mutation);
 
-        // First call with unknown logId should return false and defer
-        boolean immediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
-        assertFalse("Expected deferral for unknown log ID", immediate);
+        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
+        Gossiper.instance.endpointStateMap.put(REMOTE, epState);
+        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(REMOTE, epState));
+        try
+        {
+            // First call with unknown logId should return false and defer
+            boolean immediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
+            assertFalse("Expected deferral for unknown log ID", immediate);
 
-        // Now register the log
-        Range<Token> tokenRange = range("a", "m");
-        int localNodeId = ClusterMetadata.current().myNodeId().id();
-        Participants participants = new Participants(List.of(localNodeId, 777));
-        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
-        MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+            // Now register the log
+            Range<Token> tokenRange = range("a", "m");
+            int localNodeId = ClusterMetadata.current().myNodeId().id();
+            Participants participants = new Participants(List.of(localNodeId, 777));
+            ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
+            MutationTrackingService.instance().registerRemoteLog(logId, metadata);
 
-        // Subsequent call with now-known logId should return true immediately
-        boolean knownImmediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
-        assertTrue("Expected immediate true for known log ID", knownImmediate);
+            // Subsequent call with now-known logId should return true immediately
+            boolean knownImmediate = MutationTrackingService.instance().ensureLogKnownOrResubmit(mutation, message);
+            assertTrue("Expected immediate true for known log ID", knownImmediate);
+        }
+        finally
+        {
+            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(REMOTE));
+            Gossiper.instance.endpointStateMap.remove(REMOTE);
+        }
     }
 
     @Test
@@ -537,119 +542,143 @@ public class MutationTrackingServiceTest
     }
 
     @Test
-    public void testTrackedWriteDuringEpochChangeBeforePostCommit() throws Throwable
+    public void testAugmentingOffsetsFiltersLocallySealedShard()
     {
-        String ksName = "epoch_change_post_commit_ks";
-        InetAddressAndPort joiningPeer = InetAddressAndPort.getByNameUnchecked("127.0.0.3");
-        ClusterMetadataTestHelper.register(joiningPeer);
-        SchemaLoader.createKeyspace(ksName, KeyspaceParams.simple(2, ReplicationType.tracked), SchemaLoader.standardCFMD(ksName, TEST_TABLE));
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 555);
+        Range<Token> tokenRange = range("a", "m");
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange, participants);
 
-        TableMetadata tableMetadata = Schema.instance.getTableMetadata(ksName, TEST_TABLE);
-        ClusterMetadataTestHelper.JoinProcess joinProcess =
-            ClusterMetadataTestHelper.lazyJoin(joiningPeer, Collections.singleton(tk("m"))).prepareJoin();
+        Shard shard = MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+        shard.markSealing();
+        shard.markSealed();
+        assertTrue(shard.isSealed());
 
-        List<Throwable> failures = new ArrayList<>();
-        AtomicBoolean active = new AtomicBoolean(true);
-        LogListener listener = (entry, result) -> {
-            if (!active.get())
-                return;
-            try
-            {
-                Mutation mutation = new RowUpdateBuilder(tableMetadata, 0, "b")
-                                    .clustering("name")
-                                    .add("val", "v1")
-                                    .build();
-                AbstractWriteResponseHandler<?> handler = TrackedWriteRequest.perform(
-                    mutation,
-                    ConsistencyLevel.ONE,
-                    Dispatcher.RequestTime.forImmediateExecution(),
-                    h -> {});
-                assertNotNull(handler);
-            }
-            catch (Throwable t)
-            {
-                failures.add(t);
-            }
-        };
+        TableId tableId = TableId.generate();
+        Offsets.Immutable.Builder builder = new Offsets.Immutable.Builder(logId);
+        builder.add(1);
+        builder.add(2);
+        builder.add(3);
+        Offsets.Immutable remoteReconciled = builder.build();
 
-        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
-        Gossiper.instance.endpointStateMap.put(joiningPeer, epState);
-        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(joiningPeer, epState));
-        ClusterMetadataService.instance().log().addListener(listener);
-        try
-        {
-            joinProcess.startJoin();
-        }
-        finally
-        {
-            active.set(false);
-            joinProcess.midJoin().finishJoin();
-            ClusterMetadataTestHelper.lazyLeave(joiningPeer, true).prepareLeave().startLeave().midLeave().finishLeave();
-            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(joiningPeer));
-            Gossiper.instance.endpointStateMap.remove(joiningPeer);
-        }
+        MutationSummary.Builder summaryBuilder = new MutationSummary.Builder(tableId);
+        summaryBuilder.builderForLog(logId).reconciled.addAll(remoteReconciled);
+        MutationSummary remoteSummary = summaryBuilder.build();
 
-        if (!failures.isEmpty())
-            throw failures.get(0);
-    }
+        // 1. Shard was sealed BEFORE read started -> omitted from local summary -> excluded from augmenting
+        MutationSummary localSummaryOmitted = new MutationSummary.Builder(tableId).build();
 
-    @Test
-    public void testTrackedWriteDuringEpochChangeInPreCommitAfterShardUpdate() throws Throwable
-    {
-        String ksName = "epoch_change_pre_commit_ks";
-        InetAddressAndPort joiningPeer = InetAddressAndPort.getByNameUnchecked("127.0.0.4");
-        ClusterMetadataTestHelper.register(joiningPeer);
-        SchemaLoader.createKeyspace(ksName, KeyspaceParams.simple(2, ReplicationType.tracked), SchemaLoader.standardCFMD(ksName, TEST_TABLE));
+        TrackedRead.Id readId = TrackedRead.Id.nextId();
+        int[] summaryNodes = new int[]{ remoteNodeId };
 
-        TableMetadata tableMetadata = Schema.instance.getTableMetadata(ksName, TEST_TABLE);
-        ClusterMetadataTestHelper.JoinProcess joinProcess =
-            ClusterMetadataTestHelper.lazyJoin(joiningPeer, Collections.singleton(tk("m"))).prepareJoin();
+        ReadReconciliations.TestAccess.Coordinator coordinator =
+            ReadReconciliations.TestAccess.createCoordinator(readId, localNodeId, summaryNodes);
 
-        List<Throwable> failures = new ArrayList<>();
-        ChangeListener listener = new ChangeListener()
-        {
-            @Override
-            public void notifyPreCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
-            {
-                try
-                {
-                    MutationTrackingService.TestAccess.onNewClusterMetadata(MutationTrackingService.instance(), prev, next);
-                    Mutation mutation = new RowUpdateBuilder(tableMetadata, 0, "b")
-                                        .clustering("name")
-                                        .add("val", "v1")
-                                        .build();
-                    AbstractWriteResponseHandler<?> handler = TrackedWriteRequest.perform(
-                        mutation,
-                        ConsistencyLevel.ONE,
-                        Dispatcher.RequestTime.forImmediateExecution(),
-                        h -> {});
-                    assertNotNull(handler);
-                }
-                catch (Throwable t)
-                {
-                    failures.add(t);
-                }
-            }
-        };
+        coordinator.acceptLocalSummary(localSummaryOmitted);
+        coordinator.acceptRemoteSummary(remoteSummary, remoteNodeId);
 
-        EndpointState epState = new EndpointState(new HeartBeatState(1, 1));
-        Gossiper.instance.endpointStateMap.put(joiningPeer, epState);
-        Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.realMarkAlive(joiningPeer, epState));
-        ClusterMetadataService.instance().log().addListener(listener);
-        try
-        {
-            joinProcess.startJoin();
-        }
-        finally
-        {
-            ClusterMetadataService.instance().log().removeListener(listener);
-            joinProcess.midJoin().finishJoin();
-            ClusterMetadataTestHelper.lazyLeave(joiningPeer, true).prepareLeave().startLeave().midLeave().finishLeave();
-            Gossiper.runInGossipStageBlocking(() -> Gossiper.instance.removeEndpoint(joiningPeer));
-            Gossiper.instance.endpointStateMap.remove(joiningPeer);
-        }
+        Log2OffsetsMap.Mutable augmenting = coordinator.augmentingOffsets();
+        assertTrue("Augmenting offsets should exclude sealed shard logs omitted from local summary: " + augmenting,
+                   augmenting.isEmpty());
 
-        if (!failures.isEmpty())
-            throw failures.get(0);
+        // 2. Shard was in local summary with [1, 2] and sealed with write 3 completing during sealing
+        Offsets.Immutable.Builder finalOffsetsBuilder = new Offsets.Immutable.Builder(logId);
+        finalOffsetsBuilder.add(1);
+        finalOffsetsBuilder.add(2);
+        finalOffsetsBuilder.add(3);
+        shard.updateReplicatedOffsets(List.of(finalOffsetsBuilder.build()), false, FBUtilities.getBroadcastAddressAndPort());
+
+        MutationSummary.Builder localPresentBuilder = new MutationSummary.Builder(tableId);
+        Offsets.Immutable.Builder localOffsets = new Offsets.Immutable.Builder(logId);
+        localOffsets.add(1);
+        localOffsets.add(2);
+        localPresentBuilder.builderForLog(logId).reconciled.addAll(localOffsets.build());
+        MutationSummary localSummaryPresent = localPresentBuilder.build();
+
+        TrackedRead.Id readId2 = TrackedRead.Id.nextId();
+        ReadReconciliations.TestAccess.Coordinator coordinator2 =
+            ReadReconciliations.TestAccess.createCoordinator(readId2, localNodeId, summaryNodes);
+
+        coordinator2.acceptLocalSummary(localSummaryPresent);
+        coordinator2.acceptRemoteSummary(remoteSummary, remoteNodeId);
+
+        Log2OffsetsMap.Mutable augmenting2 = coordinator2.augmentingOffsets();
+        assertEquals("Augmenting offsets should include write 3 from final sealed data",
+                     1, augmenting2.idCount());
+        assertTrue("Augmenting offsets should retain missing offset 3",
+                   augmenting2.contains(new ShortMutationId(logId, 3)));
+
+        // 3. Shard sealed with NO new writes beyond local summary -> remote offsets excluded
+        CoordinatorLogId logIdNoNewWrites = new CoordinatorLogId(remoteNodeId, 557);
+        Shard shardNoNewWrites = MutationTrackingService.instance().registerRemoteLog(logIdNoNewWrites, metadata);
+        Offsets.Immutable.Builder noNewOffsets = new Offsets.Immutable.Builder(logIdNoNewWrites);
+        noNewOffsets.add(1);
+        noNewOffsets.add(2);
+        shardNoNewWrites.updateReplicatedOffsets(List.of(noNewOffsets.build()), false, FBUtilities.getBroadcastAddressAndPort());
+        shardNoNewWrites.markSealing();
+        shardNoNewWrites.markSealed();
+
+        MutationSummary.Builder localNoNewBuilder = new MutationSummary.Builder(tableId);
+        localNoNewBuilder.builderForLog(logIdNoNewWrites).reconciled.addAll(noNewOffsets.build());
+        MutationSummary localSummaryNoNew = localNoNewBuilder.build();
+
+        MutationSummary.Builder remoteSealedBuilder = new MutationSummary.Builder(tableId);
+        Offsets.Immutable.Builder remoteNoNewOffsets = new Offsets.Immutable.Builder(logIdNoNewWrites);
+        remoteNoNewOffsets.add(1);
+        remoteNoNewOffsets.add(2);
+        remoteNoNewOffsets.add(3);
+        remoteSealedBuilder.builderForLog(logIdNoNewWrites).reconciled.addAll(remoteNoNewOffsets.build());
+        remoteSealedBuilder.updateMaxSealedEpoch(tokenRange, metadata.sinceEpoch);
+        MutationSummary remoteSummaryWithSealedEpoch = remoteSealedBuilder.build();
+
+        TrackedRead.Id readId3 = TrackedRead.Id.nextId();
+        ReadReconciliations.TestAccess.Coordinator coordinator3 =
+            ReadReconciliations.TestAccess.createCoordinator(readId3, localNodeId, summaryNodes);
+
+        coordinator3.acceptLocalSummary(localSummaryNoNew);
+        coordinator3.acceptRemoteSummary(remoteSummaryWithSealedEpoch, remoteNodeId);
+
+        Log2OffsetsMap.Mutable augmenting3 = coordinator3.augmentingOffsets();
+        assertTrue("Augmenting offsets should exclude logs when final sealed data has no new writes: " + augmenting3,
+                   augmenting3.isEmpty());
+
+        // 4. Range read straddles two shard ranges: Range 1 has sealed epoch, Range 2 is active with lower sinceEpoch
+        Range<Token> tokenRange2 = range("m", "z");
+        CoordinatorLogId logIdOtherRange = new CoordinatorLogId(remoteNodeId, 556);
+        ShardMetadata metadataOtherRange = new ShardMetadata(TEST_KEYSPACE, 1L, tokenRange2, participants);
+        Shard shardOtherRange = MutationTrackingService.instance().registerRemoteLog(logIdOtherRange, metadataOtherRange);
+
+        Offsets.Immutable.Builder otherOffsetsBuilder = new Offsets.Immutable.Builder(logIdOtherRange);
+        otherOffsetsBuilder.add(10);
+        otherOffsetsBuilder.add(20);
+        Offsets.Immutable otherRemoteReconciled = otherOffsetsBuilder.build();
+
+        // Local summary has log from range 2 with offset 10 (missing 20)
+        MutationSummary.Builder localStraddleBuilder = new MutationSummary.Builder(tableId);
+        Offsets.Immutable.Builder localOtherOffsets = new Offsets.Immutable.Builder(logIdOtherRange);
+        localOtherOffsets.add(10);
+        localStraddleBuilder.builderForLog(logIdOtherRange).reconciled.addAll(localOtherOffsets.build());
+        MutationSummary localStraddleSummary = localStraddleBuilder.build();
+
+        // Remote summary has sealed epoch 100 on Range 1, but reports Range 2 with offsets 10, 20
+        MutationSummary.Builder remoteStraddleBuilder = new MutationSummary.Builder(tableId);
+        remoteStraddleBuilder.updateMaxSealedEpoch(tokenRange, 100L); // range 1 sealed at epoch 100
+        remoteStraddleBuilder.builderForLog(logIdOtherRange).reconciled.addAll(otherRemoteReconciled);
+        MutationSummary remoteStraddleSummary = remoteStraddleBuilder.build();
+
+        TrackedRead.Id readId4 = TrackedRead.Id.nextId();
+        ReadReconciliations.TestAccess.Coordinator coordinator4 =
+            ReadReconciliations.TestAccess.createCoordinator(readId4, localNodeId, summaryNodes);
+
+        coordinator4.acceptLocalSummary(localStraddleSummary);
+        coordinator4.acceptRemoteSummary(remoteStraddleSummary, remoteNodeId);
+
+        Log2OffsetsMap.Mutable augmenting4 = coordinator4.augmentingOffsets();
+        assertEquals("Range 2 log should NOT be excluded despite Range 1 having a high sealed epoch",
+                     1, augmenting4.idCount());
+        assertTrue("Augmenting offsets should retain missing offset 20 for Range 2",
+                   augmenting4.contains(new ShortMutationId(logIdOtherRange, 20)));
     }
 }
