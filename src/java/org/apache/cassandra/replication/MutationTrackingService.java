@@ -1042,8 +1042,21 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         return log2ShardMap.get(logId);
     }
 
+    public boolean isShardSealed(CoordinatorLogId logId)
+    {
+        Shard shard = getShardNullable(logId);
+        return shard != null && shard.isSealed();
+    }
+
     @Nullable
-    ShardMetadata getShardMetadata(CoordinatorLogId logId)
+    public Offsets.Immutable getFinalSealedOffsets(CoordinatorLogId logId)
+    {
+        Shard shard = getShardNullable(logId);
+        return shard != null ? shard.collectFinalSealedOffsets(logId) : null;
+    }
+
+    @Nullable
+    public ShardMetadata getShardMetadata(CoordinatorLogId logId)
     {
         Shard shard = getShardNullable(logId);
         return shard != null ? new ShardMetadata(shard.keyspace, shard.sinceEpoch, shard.range, shard.participants) : null;

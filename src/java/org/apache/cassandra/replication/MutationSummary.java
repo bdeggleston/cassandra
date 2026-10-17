@@ -20,9 +20,12 @@ package org.apache.cassandra.replication;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -31,6 +34,11 @@ import com.google.common.base.Preconditions;
 import org.agrona.collections.Long2ObjectHashMap;
 
 import org.apache.cassandra.db.Digest;
+import org.apache.cassandra.db.TypeSizes;
+import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.UnversionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -157,11 +165,24 @@ public class MutationSummary
     public static class Builder
     {
         public final TableId tableId;
+        private final Map<Range<Token>, Long> maxSealedEpochsByRange = new HashMap<>();
         private final Long2ObjectHashMap<CoordinatorSummary.Builder> builders = new Long2ObjectHashMap<>();
 
         public Builder(TableId tableId)
         {
             this.tableId = tableId;
+        }
+
+        public Builder updateMaxSealedEpoch(Range<Token> range, long epoch)
+        {
+            maxSealedEpochsByRange.merge(range, epoch, Math::max);
+            return this;
+        }
+
+        public Builder updateMaxSealedEpochs(Map<Range<Token>, Long> epochsByRange)
+        {
+            epochsByRange.forEach(this::updateMaxSealedEpoch);
+            return this;
         }
 
         public CoordinatorSummary.Builder builderForLog(CoordinatorLogId logId)
@@ -184,15 +205,21 @@ public class MutationSummary
                     summaries.add(builder.build());
 
             summaries.sort(CoordinatorSummary.idComparator);
-            return new MutationSummary(tableId, summaries);
+            return new MutationSummary(tableId, summaries, maxSealedEpochsByRange);
         }
     }
 
     private final TableId tableId;
     private final List<CoordinatorSummary> summaries;
+    private final Map<Range<Token>, Long> maxSealedEpochsByRange;
     private transient final Long2ObjectHashMap<CoordinatorSummary> coordinatorSummaryMap = new Long2ObjectHashMap<>();
 
     private MutationSummary(TableId tableId, List<CoordinatorSummary> summaries)
+    {
+        this(tableId, summaries, Collections.emptyMap());
+    }
+
+    private MutationSummary(TableId tableId, List<CoordinatorSummary> summaries, Map<Range<Token>, Long> maxSealedEpochsByRange)
     {
         long lastId = 0;
         for (int i=0, mi=summaries.size(); i<mi; i++)
@@ -208,6 +235,7 @@ public class MutationSummary
 
         this.tableId = tableId;
         this.summaries = summaries;
+        this.maxSealedEpochsByRange = Collections.unmodifiableMap(new HashMap<>(maxSealedEpochsByRange));
     }
 
     @Override
@@ -215,24 +243,29 @@ public class MutationSummary
     {
         if (o == null || getClass() != o.getClass()) return false;
         MutationSummary summary = (MutationSummary) o;
-        return tableId.equals(summary.tableId) && summaries.equals(summary.summaries);
+        return maxSealedEpochsByRange.equals(summary.maxSealedEpochsByRange) && tableId.equals(summary.tableId) && summaries.equals(summary.summaries);
     }
 
     @Override
     public int hashCode()
     {
-        return tableId.hashCode() + 31 * summaries.hashCode();
+        return Objects.hash(tableId, summaries, maxSealedEpochsByRange);
     }
 
     @Override
     public String toString()
     {
-        return "MutationSummary{tableId=" + tableId + ", summaries=" + summaries + '}';
+        return "MutationSummary{tableId=" + tableId + ", summaries=" + summaries + ", maxSealedEpochsByRange=" + maxSealedEpochsByRange + '}';
     }
 
     public TableId tableId()
     {
         return tableId;
+    }
+
+    public Map<Range<Token>, Long> maxSealedEpochsByRange()
+    {
+        return maxSealedEpochsByRange;
     }
 
     public byte[] digest()
@@ -348,28 +381,69 @@ public class MutationSummary
         };
     }
 
-    public static final UnversionedSerializer<MutationSummary> serializer = new UnversionedSerializer<>()
+    public static final VersionedSerializer<MutationSummary> serializer = new VersionedSerializer<>()
     {
         @Override
-        public void serialize(MutationSummary summary, DataOutputPlus out) throws IOException
+        public void serialize(MutationSummary summary, DataOutputPlus out, Version version) throws IOException
         {
             summary.tableId.serializeCompact(out);
             CollectionSerializers.serializeList(summary.summaries, out, CoordinatorSummary.serializer);
+            if (version.isAtLeast(Version.V2))
+            {
+                out.writeUnsignedVInt32(summary.maxSealedEpochsByRange.size());
+                for (Map.Entry<Range<Token>, Long> entry : summary.maxSealedEpochsByRange.entrySet())
+                {
+                    AbstractBounds.tokenSerializer.serialize(entry.getKey(), out, version.messagingVersion());
+                    out.writeUnsignedVInt(entry.getValue());
+                }
+            }
         }
 
         @Override
-        public MutationSummary deserialize(DataInputPlus in) throws IOException
+        public MutationSummary deserialize(DataInputPlus in, Version version) throws IOException
         {
             TableId tableId = TableId.deserializeCompact(in);
             List<CoordinatorSummary> summaries = CollectionSerializers.deserializeList(in, CoordinatorSummary.serializer);
-            return new MutationSummary(tableId, summaries);
+            Map<Range<Token>, Long> maxSealedEpochsByRange;
+            if (version.isAtLeast(Version.V2))
+            {
+                int rangeCount = in.readUnsignedVInt32();
+                if (rangeCount == 0)
+                {
+                    maxSealedEpochsByRange = Collections.emptyMap();
+                }
+                else
+                {
+                    maxSealedEpochsByRange = new HashMap<>(rangeCount);
+                    for (int i = 0; i < rangeCount; i++)
+                    {
+                        Range<Token> range = (Range<Token>) AbstractBounds.tokenSerializer.deserialize(in, IPartitioner.global(), version.messagingVersion());
+                        long epoch = in.readUnsignedVInt();
+                        maxSealedEpochsByRange.put(range, epoch);
+                    }
+                }
+            }
+            else
+            {
+                maxSealedEpochsByRange = Collections.emptyMap();
+            }
+            return new MutationSummary(tableId, summaries, maxSealedEpochsByRange);
         }
 
         @Override
-        public long serializedSize(MutationSummary summary)
+        public long serializedSize(MutationSummary summary, Version version)
         {
             long size = summary.tableId.serializedCompactSize();
             size += CollectionSerializers.serializedListSize(summary.summaries, CoordinatorSummary.serializer);
+            if (version.isAtLeast(Version.V2))
+            {
+                size += TypeSizes.sizeofUnsignedVInt(summary.maxSealedEpochsByRange.size());
+                for (Map.Entry<Range<Token>, Long> entry : summary.maxSealedEpochsByRange.entrySet())
+                {
+                    size += AbstractBounds.tokenSerializer.serializedSize(entry.getKey(), version.messagingVersion());
+                    size += TypeSizes.sizeofUnsignedVInt(entry.getValue());
+                }
+            }
             return size;
         }
     };

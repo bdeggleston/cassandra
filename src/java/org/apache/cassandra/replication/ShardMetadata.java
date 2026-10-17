@@ -31,10 +31,10 @@ import org.apache.cassandra.utils.NullableSerializer;
 
 public final class ShardMetadata
 {
-    final String keyspace;
-    final long sinceEpoch;
-    final Range<Token> range;
-    final Participants participants;
+    public final String keyspace;
+    public final long sinceEpoch;
+    public final Range<Token> range;
+    public final Participants participants;
 
     ShardMetadata(String keyspace, long sinceEpoch, Range<Token> range, Participants participants)
     {

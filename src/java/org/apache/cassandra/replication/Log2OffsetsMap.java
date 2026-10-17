@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import com.google.common.collect.Iterables;
 
@@ -209,6 +210,16 @@ public abstract class Log2OffsetsMap<T extends Offsets> implements Iterable<Shor
         {
             remove(summary.reconciled);
             remove(summary.unreconciled);
+        }
+
+        public void remove(CoordinatorLogId logId)
+        {
+            offsetMap.remove(logId.asLong());
+        }
+
+        public void removeIf(Predicate<CoordinatorLogId> predicate)
+        {
+            offsetMap.entrySet().removeIf(entry -> predicate.test(new CoordinatorLogId(entry.getKey())));
         }
     }
 
