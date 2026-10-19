@@ -983,7 +983,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
      *
      * @param keyspace the keyspace to collect offsets for
      * @param ranges the token ranges to find overlapping shards for
-     * @return a map from shard range to the union of witnessed offsets per coordinator log
+     * @return a map from requested range to the union of witnessed offsets per coordinator log
      */
     public Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> collectWitnessedOffsetsForRanges(String keyspace, Collection<Range<Token>> ranges, Set<Integer> liveHostIds)
     {
@@ -994,16 +994,15 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
             KeyspaceShards ksShards = keyspaceShards.get(keyspace);
             if (ksShards != null)
             {
-                ksShards.forEachShard(shard -> {
-                    for (Range<Token> range : ranges)
-                    {
-                        if (shard.range.intersects(range))
-                        {
-                            result.put(shard.range, shard.collectUnionOfWitnessedOffsetsPerLog(liveHostIds));
-                            break;
-                        }
-                    }
-                });
+                for (Range<Token> requestedRange : ranges)
+                {
+                    Map<CoordinatorLogId, Offsets.Immutable> offsetsForRange = new HashMap<>();
+                    ksShards.forEachShard(shard -> {
+                        if (!shard.isSealed() && shard.range.intersects(requestedRange))
+                            offsetsForRange.putAll(shard.collectUnionOfWitnessedOffsetsPerLog(liveHostIds));
+                    });
+                    result.put(requestedRange, offsetsForRange);
+                }
             }
         }
         finally
@@ -1206,11 +1205,25 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         }
     }
 
+    @Nullable
+    public Shard getShardNullable(String keyspace, long sinceEpoch, Range<Token> range)
+    {
+        shardLock.readLock().lock();
+        try
+        {
+            KeyspaceShards shards = keyspaceShards.get(keyspace);
+            return shards != null ? shards.get(range, sinceEpoch) : null;
+        }
+        finally
+        {
+            shardLock.readLock().unlock();
+        }
+    }
+
     @Nonnull
     private Shard getShard(String keyspace, long sinceEpoch, Range<Token> range)
     {
-        KeyspaceShards shards = keyspaceShards.get(keyspace);
-        Shard shard = shards != null ? shards.get(range, sinceEpoch) : null;
+        Shard shard = getShardNullable(keyspace, sinceEpoch, range);
         if (shard != null) return shard;
         throw new IllegalStateException(format("Shard for keyspace %s, epoch %d, range %s cannot be found", keyspace, sinceEpoch, range));
     }

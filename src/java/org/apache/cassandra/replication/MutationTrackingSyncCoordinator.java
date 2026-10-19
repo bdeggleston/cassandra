@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
@@ -62,7 +62,7 @@ public class MutationTrackingSyncCoordinator
     private final AsyncPromise<Void> completionFuture = new AsyncPromise<>();
 
     // Per-shard state: tracks what each node has reported for that shard.
-    private ImmutableMap<Range<Token>, ShardSyncState> shardStates;
+    private ImmutableList<ShardSyncState> shardStates;
 
     // Host IDs of participants for scoped offset collection/completion.
     // Null means all shard participants (no filtering).
@@ -116,19 +116,19 @@ public class MutationTrackingSyncCoordinator
         if (!started.compareAndSet(false, true))
             throw new IllegalStateException("Sync coordinator already started");
 
-        List<Shard> overlappingShards = new ArrayList<>();
+        List<Shard> unsealedShards = new ArrayList<>();
         MutationTrackingService.instance().forEachShardInKeyspace(keyspace, shard -> {
-            if (shard.range.intersects(range))
-                overlappingShards.add(shard);
+            if (!shard.isSealed() && shard.range.intersects(range))
+                unsealedShards.add(shard);
         });
 
-        checkState(!overlappingShards.isEmpty(), "No intersecting shards found for keyspace {} range {}", keyspace, range);
+        checkState(!unsealedShards.isEmpty(), "No intersecting unsealed shards found for keyspace {} range {}", keyspace, range);
 
-        ImmutableMap.Builder<Range<Token>, ShardSyncState> builder = ImmutableMap.builder();
-        for (Shard shard : overlappingShards)
+        ImmutableList.Builder<ShardSyncState> builder = ImmutableList.builder();
+        for (Shard shard : unsealedShards)
         {
             ShardSyncState state = new ShardSyncState(shard, liveHostIds);
-            builder.put(shard.range, state);
+            builder.add(state);
         }
         shardStates = builder.build();
 
@@ -139,7 +139,7 @@ public class MutationTrackingSyncCoordinator
         captureTargets();
 
         logger.info("Sync coordinator started for keyspace {} range {}, tracking {} shards",
-                   keyspace, range, overlappingShards.size());
+                   keyspace, range, unsealedShards.size());
 
         // Send sync requests to all remote participants
         sendSyncRequests();
@@ -161,7 +161,7 @@ public class MutationTrackingSyncCoordinator
         // This respects --force (which excludes dead nodes) and --hosts (which
         // restricts to specific nodes).
         Set<InetAddressAndPort> remoteParticipants = ConcurrentHashMap.newKeySet();
-        for (ShardSyncState state : shardStates.values())
+        for (ShardSyncState state : shardStates)
             remoteParticipants.addAll(state.shard.remoteReplicas());
 
         if (participants != null)
@@ -207,7 +207,7 @@ public class MutationTrackingSyncCoordinator
         checkState(!completionFuture.isDone());
         checkForTopologyChange();
 
-        for (ShardSyncState state : shardStates.values())
+        for (ShardSyncState state : shardStates)
         {
             state.captureTargets();
         }
@@ -219,25 +219,15 @@ public class MutationTrackingSyncCoordinator
      */
     private void checkForTopologyChange()
     {
-        for (ShardSyncState state : shardStates.values())
+        for (ShardSyncState state : shardStates)
         {
-            Shard currentShard = getCurrentShard(state.shard.range);
+            Shard currentShard = MutationTrackingService.instance().getShardNullable(keyspace, state.shard.sinceEpoch, state.shard.range);
             if (currentShard != state.shard)
             {
                 fail(new RuntimeException("Repair failed: topology changed during sync"));
                 return;
             }
         }
-    }
-
-    private Shard getCurrentShard(Range<Token> shardRange)
-    {
-        Shard[] result = new Shard[1];
-        MutationTrackingService.instance().forEachShardInKeyspace(keyspace, shard -> {
-            if (shard.range.equals(shardRange))
-                result[0] = shard;
-        });
-        return result[0];
     }
 
     private void fail(Throwable cause)
@@ -274,7 +264,7 @@ public class MutationTrackingSyncCoordinator
         if (!pendingSyncResponses.isEmpty())
             return false;
 
-        for (ShardSyncState state : shardStates.values())
+        for (ShardSyncState state : shardStates)
         {
             if (!state.isComplete())
                 return false;
@@ -312,13 +302,21 @@ public class MutationTrackingSyncCoordinator
             return;
 
         // Update shard targets with the offsets received from the participant
-        for (Map.Entry<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> entry : response.offsetsByShard.entrySet())
+        Map<CoordinatorLogId, Offsets.Immutable> offsetsForRange = response.offsetsByRange.get(range);
+        if (offsetsForRange != null)
         {
-            Range<Token> shardRange = entry.getKey();
-            ShardSyncState state = shardStates.get(shardRange);
-            if (state != null)
+            for (Map.Entry<CoordinatorLogId, Offsets.Immutable> entry : offsetsForRange.entrySet())
             {
-                state.targets.putAll(entry.getValue());
+                CoordinatorLogId logId = entry.getKey();
+                Offsets.Immutable offsets = entry.getValue();
+                for (ShardSyncState state : shardStates)
+                {
+                    if (state.shard.hasLog(logId))
+                    {
+                        state.targets.put(logId, offsets);
+                        break;
+                    }
+                }
             }
         }
 
@@ -384,6 +382,9 @@ public class MutationTrackingSyncCoordinator
 
         boolean isComplete()
         {
+            if (shard.isSealed())
+                return true;
+
             Map<CoordinatorLogId, Offsets.Immutable> currentReconciled = shard.collectReconciledOffsetsPerLog(liveHostIds);
 
             for (Map.Entry<CoordinatorLogId, Offsets.Immutable> entry : targets.entrySet())
