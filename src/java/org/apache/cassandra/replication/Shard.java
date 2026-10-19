@@ -684,6 +684,11 @@ public class Shard
         return result;
     }
 
+    public boolean hasLog(CoordinatorLogId logId)
+    {
+        return logs.containsKey(logId.asLong());
+    }
+
     @Override
     public String toString()
     {
