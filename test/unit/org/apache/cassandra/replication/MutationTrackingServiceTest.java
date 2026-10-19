@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
@@ -602,5 +603,77 @@ public class MutationTrackingServiceTest
                      1, augmenting4.idCount());
         assertTrue("Augmenting offsets should retain missing offset 20 for Range 2",
                    augmenting4.contains(new ShortMutationId(logIdOtherRange, 20)));
+    }
+
+    @Test
+    public void testSyncCoordinatorWithDuplicateShardsOnSameRange() throws Exception
+    {
+        int localNodeId = 1;
+        AtomicInteger hostLogId = new AtomicInteger(0);
+        LongSupplier logId = () -> CoordinatorLogId.asLong(localNodeId, hostLogId.getAndIncrement());
+        Participants participants = new Participants(List.of(localNodeId));
+
+        Range<Token> shardRange = range("a", "z");
+        Shard sealedShard = new Shard(localNodeId, TEST_KEYSPACE, 1L, shardRange, participants,
+                                      Shard.State.SEALED, Collections.emptyList(), logId, (s, l) -> {});
+        Shard activeShard = new Shard(localNodeId, TEST_KEYSPACE, 2L, shardRange, participants,
+                                      Shard.State.ACTIVE, Collections.emptyList(), logId, (s, l) -> {});
+
+        List<Shard> shardList = Arrays.asList(sealedShard, activeShard);
+        MutationTrackingService.KeyspaceShards shards =
+            MutationTrackingService.TestAccess.createTestKeyspaceShards(TEST_KEYSPACE, shardList);
+        MutationTrackingService.TestAccess.setKeyspaceShards(MutationTrackingService.instance(), TEST_KEYSPACE, shards);
+
+        RepairJobDesc desc = new RepairJobDesc(TimeUUID.Generator.nextTimeUUID(),
+                                               TimeUUID.Generator.nextTimeUUID(),
+                                               TEST_KEYSPACE, "", List.of(shardRange));
+        MutationTrackingSyncCoordinator coordinator = new MutationTrackingSyncCoordinator(
+            SharedContext.Global.instance, desc, null, ClusterMetadata.current());
+        coordinator.start();
+        coordinator.awaitCompletion();
+
+        Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> witnessed =
+            MutationTrackingService.instance().collectWitnessedOffsetsForRanges(TEST_KEYSPACE, List.of(shardRange), null);
+        assertEquals(1, witnessed.size());
+        assertTrue(witnessed.containsKey(shardRange));
+    }
+
+    @Test
+    public void testSyncCoordinatorWithMultipleUnsealedOverlappingShards() throws Exception
+    {
+        int localNodeId = 1;
+        AtomicInteger hostLogId = new AtomicInteger(0);
+        LongSupplier logId = () -> CoordinatorLogId.asLong(localNodeId, hostLogId.getAndIncrement());
+        Participants participants = new Participants(List.of(localNodeId));
+
+        Range<Token> fullRange = range("a", "z");
+        Range<Token> subRange1 = range("a", "m");
+        Range<Token> subRange2 = range("m", "z");
+
+        // Old sealing shard covering full range (a, z], newer active shards covering (a, m] and (m, z]
+        Shard sealingShard = new Shard(localNodeId, TEST_KEYSPACE, 1L, fullRange, participants,
+                                       Shard.State.SEALING, Collections.emptyList(), logId, (s, l) -> {});
+        Shard activeShard1 = new Shard(localNodeId, TEST_KEYSPACE, 2L, subRange1, participants,
+                                       Shard.State.ACTIVE, Collections.emptyList(), logId, (s, l) -> {});
+        Shard activeShard2 = new Shard(localNodeId, TEST_KEYSPACE, 2L, subRange2, participants,
+                                       Shard.State.ACTIVE, Collections.emptyList(), logId, (s, l) -> {});
+
+        List<Shard> shardList = Arrays.asList(sealingShard, activeShard1, activeShard2);
+        MutationTrackingService.KeyspaceShards shards =
+            MutationTrackingService.TestAccess.createTestKeyspaceShards(TEST_KEYSPACE, shardList);
+        MutationTrackingService.TestAccess.setKeyspaceShards(MutationTrackingService.instance(), TEST_KEYSPACE, shards);
+
+        RepairJobDesc desc = new RepairJobDesc(TimeUUID.Generator.nextTimeUUID(),
+                                               TimeUUID.Generator.nextTimeUUID(),
+                                               TEST_KEYSPACE, "", List.of(fullRange));
+        MutationTrackingSyncCoordinator coordinator = new MutationTrackingSyncCoordinator(
+            SharedContext.Global.instance, desc, null, ClusterMetadata.current());
+        coordinator.start();
+        coordinator.awaitCompletion();
+
+        Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> witnessed =
+            MutationTrackingService.instance().collectWitnessedOffsetsForRanges(TEST_KEYSPACE, List.of(fullRange), null);
+        assertEquals(1, witnessed.size());
+        assertTrue(witnessed.containsKey(fullRange));
     }
 }

@@ -36,21 +36,21 @@ import org.apache.cassandra.utils.CollectionSerializers;
 
 /**
  * Response from a participant to a {@link MutationTrackingSyncRequest}. Contains the
- * participant's current witnessed offsets for each shard overlapping the requested ranges.
+ * participant's current witnessed offsets for each requested range.
  * These offsets are captured after the request is received, establishing a happens-before
  * relationship with the repair start.
  */
 public class MutationTrackingSyncResponse extends RepairMessage
 {
-    /** Per-shard witnessed offsets: shard range -> (logId -> offsets) */
-    public final Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByShard;
+    /** Witnessed offsets per requested range: requested range -> (logId -> offsets) */
+    public final Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByRange;
 
     public MutationTrackingSyncResponse(RepairJobDesc desc,
-                                        Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByShard)
+                                        Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByRange)
     {
         super(desc);
-        Objects.requireNonNull(offsetsByShard);
-        this.offsetsByShard = offsetsByShard;
+        Objects.requireNonNull(offsetsByRange);
+        this.offsetsByRange = offsetsByRange;
     }
 
     @Override
@@ -60,13 +60,13 @@ public class MutationTrackingSyncResponse extends RepairMessage
             return false;
         MutationTrackingSyncResponse other = (MutationTrackingSyncResponse) o;
         return Objects.equals(desc, other.desc)
-               && Objects.equals(offsetsByShard, other.offsetsByShard);
+               && Objects.equals(offsetsByRange, other.offsetsByRange);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(desc, offsetsByShard);
+        return Objects.hash(desc, offsetsByRange);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class MutationTrackingSyncResponse extends RepairMessage
     {
         return "MutationTrackingSyncResponse{" +
                "desc=" + desc +
-               ", shardCount=" + offsetsByShard.size() +
+               ", rangeCount=" + offsetsByRange.size() +
                '}';
     }
 
@@ -89,7 +89,7 @@ public class MutationTrackingSyncResponse extends RepairMessage
         {
             RepairJobDesc.serializer.serialize(response.desc, out, version.messagingVersion());
             CollectionSerializers.serializeMap(
-                (Map<AbstractBounds<Token>, Map<CoordinatorLogId, Offsets.Immutable>>) (Map<?, ?>) response.offsetsByShard,
+                (Map<AbstractBounds<Token>, Map<CoordinatorLogId, Offsets.Immutable>>) (Map<?, ?>) response.offsetsByRange,
                 out, version.messagingVersion(), AbstractBounds.tokenSerializer, offsetsMapSerializer
             );
         }
@@ -100,9 +100,9 @@ public class MutationTrackingSyncResponse extends RepairMessage
             RepairJobDesc desc = RepairJobDesc.serializer.deserialize(in, version.messagingVersion());
             Map<AbstractBounds<Token>, Map<CoordinatorLogId, Offsets.Immutable>> raw =
                 CollectionSerializers.deserializeMap(in, version.messagingVersion(), AbstractBounds.tokenSerializer, offsetsMapSerializer);
-            Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByShard =
+            Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>> offsetsByRange =
                 (Map<Range<Token>, Map<CoordinatorLogId, Offsets.Immutable>>) (Map<?, ?>) raw;
-            return new MutationTrackingSyncResponse(desc, offsetsByShard);
+            return new MutationTrackingSyncResponse(desc, offsetsByRange);
         }
 
         @Override
@@ -110,7 +110,7 @@ public class MutationTrackingSyncResponse extends RepairMessage
         {
             long size = RepairJobDesc.serializer.serializedSize(response.desc, version.messagingVersion());
             size += CollectionSerializers.serializedMapSize(
-                        (Map<AbstractBounds<Token>, Map<CoordinatorLogId, Offsets.Immutable>>) (Map<?, ?>) response.offsetsByShard,
+                        (Map<AbstractBounds<Token>, Map<CoordinatorLogId, Offsets.Immutable>>) (Map<?, ?>) response.offsetsByRange,
                         version.messagingVersion(), AbstractBounds.tokenSerializer, offsetsMapSerializer
                     );
             return size;
