@@ -2448,13 +2448,6 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
             return new KeyspaceShards(keyspace, ShardIntervalBTree.fromSorted(shards));
         }
 
-        public static KeyspaceShards createTestKeyspaceShards(String keyspace, List<Shard> shards)
-        {
-            List<Shard> sorted = new ArrayList<>(shards);
-            sorted.sort(Shard.COMPARATOR);
-            return new KeyspaceShards(keyspace, ShardIntervalBTree.fromSorted(sorted));
-        }
-
         /**
          * Sets the keyspace shards for testing purposes.
          */
@@ -2467,11 +2460,6 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         {
             service.keyspaceShards.put(keyspace, shards);
             shards.forEachShard(shard -> shard.forEachLog(log -> service.log2ShardMap.put(log.logId, shard)));
-        }
-
-        public static void onNewClusterMetadata(MutationTrackingService service, ClusterMetadata prev, ClusterMetadata next)
-        {
-            service.onNewClusterMetadata(prev, next);
         }
     }
 }
