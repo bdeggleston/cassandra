@@ -49,6 +49,7 @@ import org.apache.cassandra.replication.MutationSummary;
 import org.apache.cassandra.replication.MutationSummary.CoordinatorSummary;
 import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.replication.Offsets;
+import org.apache.cassandra.replication.Version;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
@@ -65,11 +66,12 @@ public class MutationTrackingUtils
 
     public static byte[] encodeSummary(MutationSummary summary)
     {
-        int size = Ints.checkedCast(MutationSummary.serializer.serializedSize(summary));
+        Version version = Version.getClusterSafeVersion();
+        int size = Ints.checkedCast(MutationSummary.serializer.serializedSize(summary, version));
         ByteBuffer buffer = ByteBuffer.allocate(size);
         try (DataOutputBuffer dob = new DataOutputBuffer(buffer))
         {
-            MutationSummary.serializer.serialize(summary, dob);
+            MutationSummary.serializer.serialize(summary, dob, version);
             Assert.assertEquals(size, buffer.position());
             return buffer.array();
         }
@@ -81,10 +83,11 @@ public class MutationTrackingUtils
 
     public static MutationSummary decodeSummary(byte[] bytes)
     {
+        Version version = Version.getClusterSafeVersion();
         try (DataInputBuffer dib = new DataInputBuffer(bytes))
         {
-            MutationSummary summary = MutationSummary.serializer.deserialize(dib);
-            Assert.assertEquals(MutationSummary.serializer.serializedSize(summary), bytes.length);
+            MutationSummary summary = MutationSummary.serializer.deserialize(dib, version);
+            Assert.assertEquals(MutationSummary.serializer.serializedSize(summary, version), bytes.length);
             return summary;
         }
         catch (IOException e)
