@@ -39,6 +39,7 @@ import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.MessagingService.Version;
+import org.apache.cassandra.replication.TransferFailedResponse;
 import org.apache.cassandra.tcm.Epoch;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.tracing.Tracing.TraceType;
@@ -200,8 +201,8 @@ public class MessageTest
     @Test
     public void testCycleEmbeddedNoPayloadResponse() throws Exception
     {
-        Message<NoPayload> msg =
-        Message.builder(Verb.MT_TRANSFER_FAILED_RSP, noPayload)
+        Message<TransferFailedResponse> msg =
+        Message.builder(Verb.MT_TRANSFER_FAILED_RSP, TransferFailedResponse.instance)
                .withEpoch(Epoch.EMPTY)
                .withId(1)
                .from(FBUtilities.getLocalAddressAndPort())
