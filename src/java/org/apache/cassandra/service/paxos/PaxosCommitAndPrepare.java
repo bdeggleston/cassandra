@@ -203,7 +203,7 @@ public class PaxosCommitAndPrepare
             if (message.payload.read != null)
                 MigrationRouter.checkPaxosPrepareReadMigration(metadata, message, message.from(), message.payload.read);
 
-            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(commit.mutation, message))
+            if (!MutationTrackingService.ensureLogKnownOrResubmitIfTracked(commit.mutation, message))
                 return;
 
             Future<Response> response = execute(message.payload, new RequestTime(message.createdAtNanos()));
