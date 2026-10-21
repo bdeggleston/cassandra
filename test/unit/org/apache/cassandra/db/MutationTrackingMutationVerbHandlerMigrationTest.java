@@ -39,6 +39,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.replication.MutationId;
+import org.apache.cassandra.replication.MutationTrackingService;
 import org.apache.cassandra.replication.MutationJournal;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.KeyspaceMetadata;
@@ -213,7 +214,11 @@ public class MutationTrackingMutationVerbHandlerMigrationTest
 
     private Mutation createTrackedMutation(String keyspace)
     {
-        return createMutation(keyspace, 50, 1, new MutationId(1L, 1L));
+        // The id must belong to a known log, otherwise MutationVerbHandler defers the message
+        // to resolve the log asynchronously and never reaches the routing check.
+        DecoratedKey dk = Keyspace.open(TRACKED_KEYSPACE).getColumnFamilyStore(TABLE).decorateKey(bytes(50));
+        MutationId id = MutationTrackingService.instance().nextMutationId(TRACKED_KEYSPACE, dk.getToken());
+        return createMutation(keyspace, 50, 1, id);
     }
 
     private Mutation createUntrackedMutation(String keyspace)

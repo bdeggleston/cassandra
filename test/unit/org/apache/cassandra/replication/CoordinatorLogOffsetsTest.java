@@ -294,8 +294,8 @@ public class CoordinatorLogOffsetsTest
                     .build();
             Shard shard = getShard(mutation);
             List<? extends Offsets> offsets = Collections.singletonList(logOffsets.mutations().offsets(mutation.id().logId()));
-            MutationTrackingService.instance().updateReplicatedOffsets(ks, 0L, shard.range, shard.participants, offsets, true, addr2);
-            MutationTrackingService.instance().updateReplicatedOffsets(ks, 0L, shard.range, shard.participants, offsets, true, addr3);
+            MutationTrackingService.instance().updateReplicatedOffsets(ks, shard.sinceEpoch, shard.range, shard.participants, offsets, true, addr2);
+            MutationTrackingService.instance().updateReplicatedOffsets(ks, shard.sinceEpoch, shard.range, shard.participants, offsets, true, addr3);
 
             Assertions.assertThat(MutationTrackingService.instance().isDurablyReconciled(logOffsets)).isTrue();
         }
@@ -328,8 +328,8 @@ public class CoordinatorLogOffsetsTest
 
             Shard shard = getShard(mutation);
             List<? extends Offsets> offsets = Collections.singletonList(logOffsets.mutations().offsets(mutation.id().logId()));
-            MutationTrackingService.instance().updateReplicatedOffsets(ks, 0L, shard.range, shard.participants, offsets, true, addr2);
-            MutationTrackingService.instance().updateReplicatedOffsets(ks, 0L, shard.range, shard.participants, offsets, true, addr3);
+            MutationTrackingService.instance().updateReplicatedOffsets(ks, shard.sinceEpoch, shard.range, shard.participants, offsets, true, addr2);
+            MutationTrackingService.instance().updateReplicatedOffsets(ks, shard.sinceEpoch, shard.range, shard.participants, offsets, true, addr3);
 
             Assertions.assertThat(MutationTrackingService.instance().isDurablyReconciled(logOffsets)).isFalse();
         }
