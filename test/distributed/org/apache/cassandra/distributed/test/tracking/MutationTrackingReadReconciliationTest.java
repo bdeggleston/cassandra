@@ -535,7 +535,7 @@ public class MutationTrackingReadReconciliationTest extends TestBaseImpl
             cluster.coordinator(1).execute(format("INSERT INTO %s.%s (k, v) VALUES (1, 10)", keyspaceName, tableName), ConsistencyLevel.ALL);
 
             // Prevent nodes 1 and 3 from receiving node 2's mutation or learning about it via broadcast
-            IMessageFilters.Filter dropFrom2 = cluster.filters().verbs(Verb.MUTATION_REQ.id).from(2).to(1, 3).drop();
+            cluster.filters().verbs(Verb.MUTATION_REQ.id).from(2).to(1, 3).drop();
             IMessageFilters.Filter blockBroadcastFrom2 = cluster.filters().verbs(Verb.MT_BROADCAST_LOG_OFFSETS.id).from(2).drop();
 
             boolean timedOut = false;
@@ -548,7 +548,6 @@ public class MutationTrackingReadReconciliationTest extends TestBaseImpl
                 timedOut = true;
             }
             Assert.assertTrue("Expected write timeout on node 2", timedOut);
-            dropFrom2.off();
 
             // Verify node 2 has the new mutation locally, while nodes 1 and 3 do not
             Assert.assertEquals(10, (int) cluster.get(1).executeInternal(format("SELECT v FROM %s.%s WHERE k=1", keyspaceName, tableName))[0][0]);
