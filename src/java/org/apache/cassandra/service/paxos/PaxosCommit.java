@@ -550,7 +550,7 @@ public class PaxosCommit<OnDone extends Consumer<? super PaxosCommit.Status>> ex
                                                       agreed.partitionKey().getToken(),
                                                       coordinatorSaysTracked);
 
-            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(agreed.mutation, message))
+            if (!MutationTrackingService.ensureLogKnownOrResubmitIfTracked(agreed.mutation, message))
                 return;
 
             NoPayload response = execute(message.payload);

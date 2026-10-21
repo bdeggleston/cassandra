@@ -691,6 +691,19 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     }
 
     /**
+     * Untracked mutations carry no log id, so this does not touch the service and is safe to call
+     * when mutation tracking is disabled.
+     *
+     * @see #ensureLogKnownOrResubmit(Mutation, Message)
+     */
+    public static <T> boolean ensureLogKnownOrResubmitIfTracked(Mutation mutation, Message<T> message)
+    {
+        if (mutation == null || mutation.id().isNone())
+            return true;
+        return instance().ensureLogKnownOrResubmit(mutation, message);
+    }
+
+    /**
      * Checks if a mutation's coordinator log ID is known locally. If unknown, begins or joins an asynchronous
      * lookup, defers the operation, and resubmits the original message to its verb handler once resolved.
      *

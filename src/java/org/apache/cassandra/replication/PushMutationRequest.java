@@ -178,7 +178,7 @@ public interface PushMutationRequest
             // TODO (expected): here and elsewhere, use Journal's size validation, not CommitLog's
             message.payload.mutation.validateSize(MessagingService.current_version, ENTRY_OVERHEAD_SIZE);
 
-            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(message.payload.mutation, message))
+            if (!MutationTrackingService.ensureLogKnownOrResubmitIfTracked(message.payload.mutation, message))
                 return;
 
             try

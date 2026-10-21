@@ -85,7 +85,7 @@ public class MutationVerbHandler extends AbstractMutationVerbHandler<Mutation>
 
         InetAddressAndPort respondToAddress = message.respondTo();
 
-        if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(message.payload, message))
+        if (!MutationTrackingService.ensureLogKnownOrResubmitIfTracked(message.payload, message))
             return;
 
         try

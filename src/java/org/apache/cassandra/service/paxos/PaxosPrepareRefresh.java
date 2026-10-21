@@ -401,7 +401,7 @@ public class PaxosPrepareRefresh implements RequestCallbackWithFailure<PaxosPrep
                                                       commit.partitionKey().getToken(),
                                                       !commit.mutation.id().isNone());
 
-            if (!MutationTrackingService.instance().ensureLogKnownOrResubmit(commit.mutation, message))
+            if (!MutationTrackingService.ensureLogKnownOrResubmitIfTracked(commit.mutation, message))
                 return;
 
             try
