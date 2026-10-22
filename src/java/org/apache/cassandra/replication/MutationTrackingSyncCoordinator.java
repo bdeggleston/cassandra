@@ -19,12 +19,14 @@
 package org.apache.cassandra.replication;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -62,7 +64,7 @@ public class MutationTrackingSyncCoordinator
     private final AsyncPromise<Void> completionFuture = new AsyncPromise<>();
 
     // Per-shard state: tracks what each node has reported for that shard.
-    private ImmutableList<ShardSyncState> shardStates;
+    private volatile ImmutableList<ShardSyncState> shardStates;
 
     // Host IDs of participants for scoped offset collection/completion.
     // Null means all shard participants (no filtering).
@@ -74,6 +76,11 @@ public class MutationTrackingSyncCoordinator
     // not possible until all responses have been received, since remote nodes may
     // report targets that the local node doesn't know about yet.
     private final Set<InetAddressAndPort> pendingSyncResponses = ConcurrentHashMap.newKeySet();
+
+    // Number of logs reported by a remote participant that this node does not know yet. Completion is not possible
+    // until each has been resolved to a shard, or the sync has failed. This is a count rather than a set because
+    // several participants can report the same log.
+    private final AtomicInteger pendingLogResolutions = new AtomicInteger();
 
     /**
      * @param ctx shared context
@@ -261,7 +268,7 @@ public class MutationTrackingSyncCoordinator
         if (completionFuture.isDone())
             return true;
 
-        if (!pendingSyncResponses.isEmpty())
+        if (!pendingSyncResponses.isEmpty() || pendingLogResolutions.get() > 0)
             return false;
 
         for (ShardSyncState state : shardStates)
@@ -309,20 +316,70 @@ public class MutationTrackingSyncCoordinator
             {
                 CoordinatorLogId logId = entry.getKey();
                 Offsets.Immutable offsets = entry.getValue();
-                for (ShardSyncState state : shardStates)
-                {
-                    if (state.shard.hasLog(logId))
-                    {
-                        state.targets.put(logId, offsets);
-                        break;
-                    }
-                }
+                if (!addTargetIfLogKnown(logId, offsets))
+                    resolveUnknownLog(from, logId, offsets);
             }
         }
 
         logger.trace("Sync coordinator received sync response from {}", from);
 
         checkIfReadyToComplete();
+    }
+
+    private boolean addTargetIfLogKnown(CoordinatorLogId logId, Offsets.Immutable offsets)
+    {
+        for (ShardSyncState state : shardStates)
+        {
+            if (state.shard.hasLog(logId))
+            {
+                state.targets.put(logId, offsets);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A participant reported a log this node has not seen, usually because it missed writes. Ask the other
+     * replicas which shard it belongs to, as the write path does, and fail the sync if that cannot be
+     * determined. Dropping the target would let the sync complete without the data it reports.
+     */
+    private void resolveUnknownLog(InetAddressAndPort from, CoordinatorLogId logId, Offsets.Immutable offsets)
+    {
+        pendingLogResolutions.incrementAndGet();
+        MutationTrackingService.instance().resolveRemoteLogAsync(logId, keyspace, Collections.singleton(from)).addCallback((shard, failure) -> {
+            if (failure != null)
+            {
+                fail(new RuntimeException(String.format("Mutation tracking sync failed: could not resolve log %s reported by %s: %s",
+                                                        logId, from, failure.getMessage()), failure));
+                return;
+            }
+
+            addTarget(shard, logId, offsets);
+            pendingLogResolutions.decrementAndGet();
+            checkIfReadyToComplete();
+        });
+    }
+
+    private synchronized void addTarget(Shard shard, CoordinatorLogId logId, Offsets.Immutable offsets)
+    {
+        for (ShardSyncState state : shardStates)
+        {
+            if (state.shard == shard)
+            {
+                state.targets.put(logId, offsets);
+                return;
+            }
+        }
+
+        // Sealed shards are complete by definition, and shards outside the repaired range are not our concern.
+        if (shard.isSealed() || !shard.range.intersects(range))
+            return;
+
+        // The shard did not exist locally when the sync started
+        ShardSyncState state = new ShardSyncState(shard, liveHostIds);
+        state.targets.put(logId, offsets);
+        shardStates = ImmutableList.<ShardSyncState>builder().addAll(shardStates).add(state).build();
     }
 
     public String getKeyspace()
