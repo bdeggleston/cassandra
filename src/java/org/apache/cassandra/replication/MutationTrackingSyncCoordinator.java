@@ -20,13 +20,13 @@ package org.apache.cassandra.replication;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -77,10 +77,10 @@ public class MutationTrackingSyncCoordinator
     // report targets that the local node doesn't know about yet.
     private final Set<InetAddressAndPort> pendingSyncResponses = ConcurrentHashMap.newKeySet();
 
-    // Number of logs reported by a remote participant that this node does not know yet. Completion is not possible
-    // until each has been resolved to a shard, or the sync has failed. This is a count rather than a set because
-    // several participants can report the same log.
-    private final AtomicInteger pendingLogResolutions = new AtomicInteger();
+    // Logs reported by a remote participant that this node does not know yet, with the offsets reported for them.
+    // Completion is not possible until each has been resolved to a shard, or the sync has failed.
+    // Guarded by this.
+    private final Map<CoordinatorLogId, Offsets.Immutable> pendingLogResolutions = new HashMap<>();
 
     /**
      * @param ctx shared context
@@ -268,7 +268,7 @@ public class MutationTrackingSyncCoordinator
         if (completionFuture.isDone())
             return true;
 
-        if (!pendingSyncResponses.isEmpty() || pendingLogResolutions.get() > 0)
+        if (!pendingSyncResponses.isEmpty() || hasPendingLogResolutions())
             return false;
 
         for (ShardSyncState state : shardStates)
@@ -344,9 +344,16 @@ public class MutationTrackingSyncCoordinator
      * replicas which shard it belongs to, as the write path does, and fail the sync if that cannot be
      * determined. Dropping the target would let the sync complete without the data it reports.
      */
-    private void resolveUnknownLog(InetAddressAndPort from, CoordinatorLogId logId, Offsets.Immutable offsets)
+    private synchronized void resolveUnknownLog(InetAddressAndPort from, CoordinatorLogId logId, Offsets.Immutable offsets)
     {
-        pendingLogResolutions.incrementAndGet();
+        // Another participant may have reported the log already, or the log may have been learned since the
+        // caller checked. In the first case the lookup is already running.
+        if (addTargetIfLogKnown(logId, offsets))
+            return;
+
+        if (pendingLogResolutions.put(logId, offsets) != null)
+            return;
+
         MutationTrackingService.instance().resolveRemoteLogAsync(logId, keyspace, Collections.singleton(from)).addCallback((shard, failure) -> {
             if (failure != null)
             {
@@ -355,13 +362,22 @@ public class MutationTrackingSyncCoordinator
                 return;
             }
 
-            addTarget(shard, logId, offsets);
-            pendingLogResolutions.decrementAndGet();
+            onLogResolved(shard, logId);
             checkIfReadyToComplete();
         });
     }
 
-    private synchronized void addTarget(Shard shard, CoordinatorLogId logId, Offsets.Immutable offsets)
+    private synchronized void onLogResolved(Shard shard, CoordinatorLogId logId)
+    {
+        addTarget(shard, logId, pendingLogResolutions.remove(logId));
+    }
+
+    private synchronized boolean hasPendingLogResolutions()
+    {
+        return !pendingLogResolutions.isEmpty();
+    }
+
+    private void addTarget(Shard shard, CoordinatorLogId logId, Offsets.Immutable offsets)
     {
         for (ShardSyncState state : shardStates)
         {
