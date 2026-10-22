@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
 
@@ -42,6 +43,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.distributed.Cluster;
 import org.apache.cassandra.distributed.api.ConsistencyLevel;
 import org.apache.cassandra.distributed.api.Feature;
+import org.apache.cassandra.distributed.api.IMessageFilters;
 import org.apache.cassandra.distributed.api.NodeToolResult;
 import org.apache.cassandra.distributed.test.TestBaseImpl;
 import org.apache.cassandra.gms.EndpointState;
@@ -62,6 +64,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * End-to-end tests for mutation tracking repair.
@@ -879,5 +882,40 @@ public class MutationTrackingRepairTest extends TestBaseImpl
         result.asserts().failure();
         assertTrue("Expected unresolved log error but got: " + result.getStderr(),
                    result.getStderr().contains("could not resolve log"));
+    }
+
+    /**
+     * Node 2 does not know the coordinator logs of the writes it missed. It learns about them during the repair, by
+     * asking its peers for the shard metadata after the sync responses arrive. The repair has to wait for that
+     * lookup and for reconciliation of the reported offsets, and then succeed.
+     */
+    @Test
+    public void testRepairWaitsForUnknownLogResolvedDuringSync() throws Exception
+    {
+        insertDataWithInconsistency(2, "tbl", 0, 50);
+
+        // Node 2 can only learn about the logs from the sync responses, and the lookup cannot complete yet
+        IMessageFilters.Filter offsetFilter = CLUSTER.filters().verbs(Verb.MT_BROADCAST_LOG_OFFSETS.id,
+                                                                      Verb.MT_BROADCAST_NEW_LOG.id).drop();
+        IMessageFilters.Filter lookupFilter = CLUSTER.filters().verbs(Verb.MT_SHARD_METADATA_RSP.id).to(2).drop();
+
+        Future<NodeToolResult> repairFuture = executor.submit(() -> nodetoolRepair(2, withPR(ksName)));
+
+        // Node 2 has targets it cannot attribute to a shard, so the repair must not complete
+        try
+        {
+            repairFuture.get(1, TimeUnit.SECONDS);
+            fail("Repair completed before the unknown log was resolved");
+        }
+        catch (TimeoutException expected)
+        {
+            // expected
+        }
+
+        // Let the lookup retry succeed, then let reconciliation finish
+        lookupFilter.off();
+        offsetFilter.off();
+
+        repairFuture.get(60, TimeUnit.SECONDS).asserts().success();
     }
 }
