@@ -858,4 +858,26 @@ public class MutationTrackingRepairTest extends TestBaseImpl
             assertTrue("Expected sync timeout error but got: " + r.getStderr(),
                     r.getStderr().contains("Mutation tracking sync timed out"));
     }
+
+    /**
+     * Node 2 misses writes while isolated, so it does not know the coordinator logs those writes belong to. Its
+     * peers report offsets for those logs in their sync responses. If node 2 cannot find out which shard the logs
+     * belong to, the repair must fail rather than complete without the reported data.
+     */
+    @Test
+    public void testRepairFailsWhenUnknownLogCannotBeResolved()
+    {
+        insertDataWithInconsistency(2, "tbl", 0, 50);
+
+        // Keep node 2 from learning about the logs by any route other than the sync responses
+        CLUSTER.filters().verbs(Verb.MT_BROADCAST_LOG_OFFSETS.id,
+                                Verb.MT_BROADCAST_NEW_LOG.id,
+                                Verb.MT_SHARD_METADATA_REQ.id,
+                                Verb.MT_SHARD_METADATA_RSP.id).drop();
+
+        NodeToolResult result = nodetoolRepair(2, withPR(ksName));
+        result.asserts().failure();
+        assertTrue("Expected unresolved log error but got: " + result.getStderr(),
+                   result.getStderr().contains("could not resolve log"));
+    }
 }
