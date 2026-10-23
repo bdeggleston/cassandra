@@ -2469,6 +2469,11 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
             service.onNewClusterMetadata(prev, next);
         }
 
+        public static void removeDroppedLogs(MutationTrackingService service)
+        {
+            service.removeDroppedLogs();
+        }
+
         public static long countLogsFor(MutationTrackingService service, String keyspace)
         {
             return service.log2ShardMap.values().stream().filter(shard -> shard.keyspace.equals(keyspace)).count();

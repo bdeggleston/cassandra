@@ -298,6 +298,10 @@ public class MutationTrackingServiceTest
         ClusterMetadata afterDrop = ClusterMetadata.current();
         MutationTrackingService.TestAccess.onNewClusterMetadata(service, created, afterDrop);
 
+        // The flush triggered by dropping the tables still needs the logs' shards until the change is committed
+        assertTrue(MutationTrackingService.TestAccess.countLogsFor(service, dropped) > 0);
+        MutationTrackingService.TestAccess.removeDroppedLogs(service);
+
         CoordinatorLogId logId = CoordinatorLogId.fromLong(CoordinatorLogId.asLong(1, 1));
         Offsets.Immutable offsets = new Offsets.Immutable(logId, new int[]{ 1, 1 });
         Range<Token> range = range("a", "z");
