@@ -25,8 +25,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -223,6 +225,9 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
 
     private volatile boolean started = false;
 
+    // Logs of dropped keyspaces, removed from log2ShardMap after the metadata change is committed
+    private final Queue<DroppedLog> droppedLogs = new ConcurrentLinkedQueue<>();
+
     private MutationTrackingService()
     {
         this.tcmListener = new ChangeListener()
@@ -239,6 +244,17 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
             public void notifyPreCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
             {
                 onNewClusterMetadata(prev, next);
+            }
+
+            /**
+             * Logs of a dropped keyspace stay in log2ShardMap until every pre-commit listener has run. Dropping the
+             * tables flushes their memtables, and the flush looks up the shard of each log in the sstable. The order
+             * of pre-commit listeners is not defined, so removing the logs in {@link #notifyPreCommit} races with it.
+             */
+            @Override
+            public void notifyPostCommit(ClusterMetadata prev, ClusterMetadata next, boolean fromSnapshot)
+            {
+                removeDroppedLogs();
             }
         };
     }
@@ -1344,7 +1360,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
                 return;
 
             originalLog2ShardMap = new ConcurrentHashMap<>(log2ShardMap);
-            keyspaceShards = applyUpdatedMetadata(keyspaceShards, prev, next, () -> nextLogId(next), this::onNewLog, this::onDroppedLog);
+            keyspaceShards = applyUpdatedMetadata(keyspaceShards, prev, next, () -> nextLogId(next), this::onNewLog, this::deferDroppedLog);
 
             if (!config.background_reconciliation_enabled)
             {
@@ -1483,6 +1499,30 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     private void onDroppedLog(Shard shard, CoordinatorLog log)
     {
         log2ShardMap.remove(log.logId, shard);
+    }
+
+    private void deferDroppedLog(Shard shard, CoordinatorLog log)
+    {
+        droppedLogs.add(new DroppedLog(shard, log));
+    }
+
+    private void removeDroppedLogs()
+    {
+        DroppedLog dropped;
+        while ((dropped = droppedLogs.poll()) != null)
+            onDroppedLog(dropped.shard, dropped.log);
+    }
+
+    private static class DroppedLog
+    {
+        final Shard shard;
+        final CoordinatorLog log;
+
+        DroppedLog(Shard shard, CoordinatorLog log)
+        {
+            this.shard = shard;
+            this.log = log;
+        }
     }
 
     void collectDurablyReconciledOffsets(Log2OffsetsMap.Mutable into)
