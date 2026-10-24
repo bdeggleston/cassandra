@@ -97,6 +97,46 @@ public final class ValidationOffsets
         return new ValidationOffsets(narrowed);
     }
 
+    public boolean isEmpty()
+    {
+        return perLog.isEmpty();
+    }
+
+    public interface RangePredicate
+    {
+        boolean test(long logId, int start, int end);
+    }
+
+    /**
+     * @return true if the predicate holds for any [start, end] offset range of any log
+     */
+    public boolean anyRange(RangePredicate predicate)
+    {
+        for (Map.Entry<Long, Offsets.Immutable> entry : perLog.entrySet())
+        {
+            Offsets.RangeIterator ranges = entry.getValue().rangeIterator();
+            while (ranges.tryAdvance())
+            {
+                if (predicate.test(entry.getKey(), ranges.start(), ranges.end()))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    boolean overlaps(MutationJournal.OffsetRanges ranges)
+    {
+        if (ranges == null || perLog.isEmpty())
+            return false;
+
+        for (Map.Entry<Long, Offsets.Immutable> entry : perLog.entrySet())
+        {
+            if (ranges.overlapsLog(entry.getKey(), entry.getValue()))
+                return true;
+        }
+        return false;
+    }
+
     /**
      * @return true iff the mutation's offset is ≤ these offsets for the mutation's log.
      */

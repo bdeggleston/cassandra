@@ -171,7 +171,7 @@ public class JournalMergingValidationIterator extends ValidationPartitionIterato
 
         static JournalPartitionAccessor build(ColumnFamilyStore cfs, Collection<Range<Token>> ranges, ValidationOffsets validationOffsets)
         {
-            MutationJournal.Snapshot snapshot = MutationJournal.instance().snapshot();
+            MutationJournal.Snapshot snapshot = MutationJournal.instance().snapshot(validationOffsets);
             try
             {
                 return buildFromSnapshot(snapshot, cfs, ranges, validationOffsets);

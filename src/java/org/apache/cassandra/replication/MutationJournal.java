@@ -403,6 +403,23 @@ public class MutationJournal
         return new MutationJournal.Snapshot(journal.snapshot(s -> true));
     }
 
+    public MutationJournal.Snapshot snapshot(@Nullable ValidationOffsets offsets)
+    {
+        if (offsets == null)
+            return snapshot();
+
+        if (offsets.isEmpty())
+            return new MutationJournal.Snapshot(journal.snapshot(s -> false));
+
+        return new MutationJournal.Snapshot(journal.snapshot(segment -> {
+            OffsetRanges stats = (OffsetRanges) segment.keyStats();
+
+            return offsets.anyRange((logId, start, end) ->
+                stats.mayContainRange(logId, start, end)
+                && segment.hasKeyInRange(new ShortMutationId(logId, start), new ShortMutationId(logId, end)));
+        }));
+    }
+
     @VisibleForTesting
     public void advanceSegment()
     {
@@ -736,6 +753,21 @@ public class MutationJournal
         @Override
         public abstract boolean mayContain(ShortMutationId id);
 
+        @Override
+        public boolean mayContainRange(ShortMutationId min, ShortMutationId max)
+        {
+            if (min.logId() != max.logId())
+                return true;
+            return mayContainRange(min.logId(), min.offset(), max.offset());
+        }
+
+        abstract boolean mayContainRange(long logId, int minOffset, int maxOffset);
+
+        protected static boolean overlapsRange(long range, int minOffset, int maxOffset)
+        {
+            return minOffset <= maxOffset(range) && maxOffset >= minOffset(range);
+        }
+
         protected static boolean mayContain(long range, ShortMutationId id)
         {
             return id.offset() >= minOffset(range) && id.offset() <= maxOffset(range);
@@ -773,6 +805,11 @@ public class MutationJournal
                     return true;
             }
             return false;
+        }
+
+        public boolean overlaps(ValidationOffsets offsets)
+        {
+            return offsets != null && offsets.overlaps(this);
         }
 
         @Override
@@ -831,6 +868,13 @@ public class MutationJournal
         {
             Long range = ranges.get(id.logId());
             return range != null && mayContain(range, id);
+        }
+
+        @Override
+        boolean mayContainRange(long logId, int minOffset, int maxOffset)
+        {
+            Long range = ranges.get(logId);
+            return range != null && overlapsRange(range, minOffset, maxOffset);
         }
 
         @Override
@@ -916,6 +960,13 @@ public class MutationJournal
         {
             long range = ranges.get(id.logId());
             return range != NO_VALUE && mayContain(range, id);
+        }
+
+        @Override
+        boolean mayContainRange(long logId, int minOffset, int maxOffset)
+        {
+            long range = ranges.get(logId);
+            return range != NO_VALUE && overlapsRange(range, minOffset, maxOffset);
         }
 
         @Override
