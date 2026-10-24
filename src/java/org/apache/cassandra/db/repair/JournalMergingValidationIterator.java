@@ -40,6 +40,7 @@ import org.apache.cassandra.db.partitions.AbstractUnfilteredPartitionIterator;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
+import org.apache.cassandra.db.rows.DeserializationHelper;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.db.rows.WrappingUnfilteredRowIterator;
@@ -197,23 +198,20 @@ public class JournalMergingValidationIterator extends ValidationPartitionIterato
                 if (!validationOffsets.containsMutation(key))
                     return;
 
-                Mutation mutation;
-                try (DataInputBuffer in = new DataInputBuffer(buffer, false))
+                DecoratedKey partitionKey;
+                int recordSize = buffer.remaining();
+                try
                 {
-                    mutation = MutationJournal.MutationSerializer.INSTANCE.deserialize(key, in, userVersion);
+                    partitionKey = Mutation.serializer.deserializeKeyForTable(tableId, buffer, userVersion, DeserializationHelper.Flag.LOCAL);
                 }
                 catch (IOException e)
                 {
                     throw new UncheckedIOException(e);
                 }
 
-                // Ignore the mutation if it doesn't belong to this table:
-                PartitionUpdate update = mutation.modifications().get(tableId);
-                if (update == null)
+                if (partitionKey == null)
                     return;
 
-                // Ignore the mutation if it doesn't belong to a validating range:
-                DecoratedKey partitionKey = update.partitionKey();
                 Range<Token> range = findRange(partitionKey.getToken(), ranges);
                 if (range == null)
                     return;
@@ -226,7 +224,7 @@ public class JournalMergingValidationIterator extends ValidationPartitionIterato
                 if (!idsForKey.contains(key))
                 {
                     idsForKey.add(key);
-                    estimatedBytes[0] += update.dataSize();
+                    estimatedBytes[0] += recordSize;
                 }
             });
 
