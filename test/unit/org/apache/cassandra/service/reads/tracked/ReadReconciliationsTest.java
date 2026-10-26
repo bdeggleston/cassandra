@@ -52,6 +52,7 @@ import org.apache.cassandra.replication.ShortMutationId;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.tcm.ClusterMetadata;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -621,6 +622,49 @@ public class ReadReconciliationsTest
         }
         finally
         {
+            MessagingService.instance().outboundSink.clear();
+        }
+    }
+
+    @Test
+    public void testSummaryResponseAndPerPeerAckCarryTracingParams()
+    {
+        int dataNode = 2;
+        int[] summaryNodes = { LOCAL_NODE_ID, 3 };
+        TrackedRead.Id readId = new TrackedRead.Id(dataNode, 5002L);
+
+        ReadReconciliations.Coordinator coordinator =
+            new ReadReconciliations.Coordinator(readId, dataNode, summaryNodes);
+
+        MutationSummary localSummary = new MutationSummary.Builder(TABLE_ID).build();
+        MutationSummary dataSummary = summary(LOG_1, new int[]{ 1, 5 }, new int[]{ 10, 10 });
+
+        AtomicReference<Message<?>> sentSummary = new AtomicReference<>();
+        AtomicReference<Message<?>> sentAck = new AtomicReference<>();
+        MessagingService.instance().outboundSink.add((msg, to) -> {
+            if (msg.verb() == Verb.MT_SUMMARY_RSP)
+                sentSummary.set(msg);
+            else if (msg.verb() == Verb.MT_READ_RECONCILE_ACK)
+                sentAck.set(msg);
+            return false;
+        });
+
+        Tracing.instance.newSession(Tracing.TraceType.QUERY);
+        try
+        {
+            coordinator.acceptLocalSummary(localSummary, null);
+            coordinator.acceptRemoteSummary(dataSummary, dataNode, true);
+            coordinator.acceptMutation(new ShortMutationId(LOG_1, 10));
+
+            assertNotNull(sentSummary.get());
+            assertEquals(Tracing.instance.getSessionId(), sentSummary.get().header.params().get(ParamType.TRACE_SESSION));
+            assertNotNull(sentAck.get());
+            assertEquals(dataNode, sentAck.get().header.params().get(ParamType.MT_RECONCILE_PEER));
+            assertEquals(Tracing.instance.getSessionId(), sentAck.get().header.params().get(ParamType.TRACE_SESSION));
+        }
+        finally
+        {
+            Tracing.instance.set(null);
             MessagingService.instance().outboundSink.clear();
         }
     }
