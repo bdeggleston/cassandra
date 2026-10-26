@@ -645,9 +645,9 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
             if (localSummary == null)
                 return null;
 
-            // If summaryNodes was empty (e.g. standard CL.ONE), check if data node alone satisfies the quorum
-            if (summaryNodes.length == 0)
-                return isQuorumSatisfied(Collections.emptyList()) ? Collections.emptyList() : null;
+            // The data node alone may satisfy the quorum (e.g. standard CL.ONE), even when summary nodes were contacted
+            if (isQuorumSatisfied(Collections.emptyList()))
+                return Collections.emptyList();
 
             // Find all locally ready summary nodes (summary received, dataNode pulls done, and synchronized with dataNode)
             List<PeerState> readyNodes = new ArrayList<>();

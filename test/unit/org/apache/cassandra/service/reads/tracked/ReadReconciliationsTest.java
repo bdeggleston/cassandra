@@ -427,6 +427,24 @@ public class ReadReconciliationsTest
     }
 
     @Test
+    public void testDataNodeAloneSatisfiesQuorumWithoutWaitingForSummaryNodes()
+    {
+        TrackedRead.Id readId = new TrackedRead.Id(LOCAL_NODE_ID, 4010L);
+        int[] summaryNodes = { 2 };
+
+        MutationSummary localSummary = new MutationSummary.Builder(TABLE_ID).build();
+        ReadReconciliations.instance.acceptLocalSummary(readId, localSummary, summaryNodes, ReadReconciliations.QuorumChecker.simple(1));
+
+        ReadReconciliations.Coordinator coordinator = ReadReconciliations.instance.getCoordinator(readId);
+        assertNotNull(coordinator);
+        assertTrue(coordinator.isReadCompleted());
+        assertFalse(coordinator.isCoordinatorCompleted());
+
+        ReadReconciliations.instance.expire(Clock.Global.nanoTime() + TimeUnit.SECONDS.toNanos(60));
+        assertNull(ReadReconciliations.instance.getCoordinator(readId));
+    }
+
+    @Test
     public void testTrailingSummaryAfterEagerReadCompletionDoesNotResurrectZombieCoordinator()
     {
         TrackedRead.Id readId = new TrackedRead.Id(LOCAL_NODE_ID, 4004L);
