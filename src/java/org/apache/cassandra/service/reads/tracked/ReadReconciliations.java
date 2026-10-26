@@ -35,8 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.locator.Endpoints;
 import org.apache.cassandra.locator.EndpointsForRange;
@@ -64,6 +62,8 @@ import org.apache.cassandra.replication.ShortMutationId;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.tcm.membership.NodeId;
 import org.apache.cassandra.utils.Clock;
+
+import static org.apache.cassandra.locator.SystemReplicas.FULL_RANGE;
 
 /**
  * Coordinates read reconciliation across replicas for tracked reads.
@@ -100,9 +100,6 @@ import org.apache.cassandra.utils.Clock;
 public class ReadReconciliations implements ExpiredStatePurger.Expireable
 {
     private static final int LOCAL_NODE = ClusterMetadata.current().myNodeId().id();
-    private static final Range<Token> FULL_RANGE =
-        new Range<>(DatabaseDescriptor.getPartitioner().getMinimumToken(),
-                    DatabaseDescriptor.getPartitioner().getMinimumToken());
 
     public static final ReadReconciliations instance = new ReadReconciliations();
 
