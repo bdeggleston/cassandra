@@ -149,7 +149,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     {
         Coordinator reconcile = getOrCreateCoordinator(request.readId, request.dataNode, request.summaryNodes);
         if (reconcile.acceptLocalSummary(request.command.createMutationSummary(false)))
-            coordinators.remove(request.readId);
+            coordinators.remove(request.readId, reconcile);
     }
 
     /**
@@ -169,7 +169,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     {
         Coordinator reconcile = getOrCreateCoordinator(id, LOCAL_NODE, summaryNodes, quorumChecker);
         if (reconcile.acceptLocalSummary(summary, quorumChecker))
-            coordinators.remove(id);
+            coordinators.remove(id, reconcile);
     }
 
     /**
@@ -184,7 +184,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     {
         Coordinator reconcile = getOrCreateCoordinator(summary.readId, summary.dataNode, summary.summaryNodes);
         if (reconcile.acceptRemoteSummary(summary.summary, node(from), supportsPerPeerAck))
-            coordinators.remove(summary.readId);
+            coordinators.remove(summary.readId, reconcile);
     }
 
     public void acceptSyncAck(InetAddressAndPort from, TrackedRead.Id id)
@@ -196,7 +196,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     {
         Coordinator reconcile = coordinators.get(id);
         if (reconcile != null && reconcile.acceptSyncAck(node(from), peerNode)) // could be already timed out / expired
-            coordinators.remove(id);
+            coordinators.remove(id, reconcile);
     }
 
     public void acceptMutation(TrackedRead.Id id, ShortMutationId mutationId)
@@ -204,7 +204,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
         logger.debug("Accepted mutation {} {}", id, mutationId);
         Coordinator reconcile = coordinators.get(id);
         if (reconcile != null && reconcile.acceptMutation(mutationId)) // could be already timed out / expired
-            coordinators.remove(id);
+            coordinators.remove(id, reconcile);
     }
 
     private Coordinator getOrCreateCoordinator(TrackedRead.Id id, int dataNode, int[] summaryNodes)
