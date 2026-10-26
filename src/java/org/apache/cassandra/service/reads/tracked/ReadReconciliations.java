@@ -582,7 +582,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
                 return;
 
             if (!MutationSummary.hasMissingUnreconciled(localSummary, peer.summary))
-                peer.syncedPeers.add(dataNode);
+                peer.syncedPeers.add(LOCAL_NODE);
 
             if (!isDataNode() && !MutationSummary.hasMissingUnreconciled(peer.summary, localSummary))
                 peer.ackSent = true;
