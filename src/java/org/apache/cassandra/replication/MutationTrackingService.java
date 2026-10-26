@@ -544,7 +544,8 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
      * gone there is nothing left to reconcile it against, and the only thing that still has to happen is for the
      * record to reach the memtable so the data is not lost.
      *
-     * @return true if the record was registered with a shard, false if no shard covers it or it is a duplicate
+     * @return true if the record was registered with the shard that owns its log, false if the log is unknown or the
+     *         record is a duplicate
      */
     public boolean startWritingForReplay(Mutation mutation)
     {
@@ -552,14 +553,20 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         try
         {
             Preconditions.checkArgument(!mutation.id().isNone());
-            KeyspaceShards shards = keyspaceShards.get(mutation.getKeyspaceName());
-            if (shards == null)
+            // The owning shard is determined by the log id, not the token. A range has one shard per topology
+            // generation, and the latest shard covering the token is not necessarily the one that owns the log.
+            Shard owner = getShardNullable(mutation.id().asLogId());
+            if (owner == null)
             {
-                noSpamLogger.info("Replaying journal record for {} with no shards; applying without registration",
-                                  mutation.getKeyspaceName());
+                // Expected when the keyspace is no longer tracked: its shards and logs are gone
+                noSpamLogger.warn("Replaying journal record for {} with unknown log {} (shard removed or keyspace no longer tracked); applying without registration",
+                                  mutation.getKeyspaceName(), mutation.id().asLogId());
                 return false;
             }
-            return shards.startWritingIfShardPresent(mutation);
+            Preconditions.checkState(owner.keyspace.equals(mutation.getKeyspaceName()),
+                                     "Mutation for keyspace %s has log %s owned by a shard of keyspace %s",
+                                     mutation.getKeyspaceName(), mutation.id().asLogId(), owner.keyspace);
+            return owner.startWriting(mutation);
         }
         finally
         {
@@ -1083,7 +1090,8 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     }
 
     @Nullable
-    private Shard getShardNullable(CoordinatorLogId logId)
+    @VisibleForTesting
+    Shard getShardNullable(CoordinatorLogId logId)
     {
         return log2ShardMap.get(logId);
     }
@@ -1761,22 +1769,6 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         void reportAllLogsToCallback()
         {
             shards.forEach(Shard::reportAllLogsToCallback);
-        }
-
-        /**
-         * Register a replayed mutation, returning false rather than throwing when no shard covers its token.
-         * See {@link MutationTrackingService#startWritingForReplay}.
-         */
-        boolean startWritingIfShardPresent(Mutation mutation)
-        {
-            Shard shard = shards.latestShardCovering(mutation.key().getToken());
-            if (shard == null)
-            {
-                noSpamLogger.info("Replaying journal record for {} with no shard covering token {}; applying without registration",
-                                  keyspace, mutation.key().getToken());
-                return false;
-            }
-            return shard.startWriting(mutation);
         }
 
         MutationId nextMutationId(Token token)

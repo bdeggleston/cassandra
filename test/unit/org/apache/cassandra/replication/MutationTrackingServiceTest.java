@@ -41,9 +41,9 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.PartitionRangeReadCommand;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.RowUpdateBuilder;
 import org.apache.cassandra.db.Slices;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.filter.ClusteringIndexSliceFilter;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.filter.DataLimits;
@@ -67,9 +67,9 @@ import org.apache.cassandra.repair.SyncTask;
 import org.apache.cassandra.repair.SyncTasks;
 import org.apache.cassandra.replication.MutationTrackingService.KeyspaceShards;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
@@ -96,6 +96,7 @@ public class MutationTrackingServiceTest
 {
     private static final String TEST_KEYSPACE = "test_ks";
     private static final String TEST_TABLE = "test_table";
+    private static final String REPLAY_KEYSPACE = "replay_ks";
     private static final InetAddressAndPort LOCAL = InetAddressAndPort.getByNameUnchecked("127.0.0.1");
     private static final InetAddressAndPort REMOTE = InetAddressAndPort.getByNameUnchecked("127.0.0.2");
 
@@ -104,8 +105,11 @@ public class MutationTrackingServiceTest
     {
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
+        MutationJournal.start();
+        MutationTrackingService.start();
         ClusterMetadataTestHelper.register(REMOTE);
         SchemaLoader.createKeyspace(TEST_KEYSPACE, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(TEST_KEYSPACE, TEST_TABLE));
+        SchemaLoader.createKeyspace(REPLAY_KEYSPACE, KeyspaceParams.simple(1, ReplicationType.tracked), SchemaLoader.standardCFMD(REPLAY_KEYSPACE, TEST_TABLE));
     }
 
     @Test
@@ -480,15 +484,15 @@ public class MutationTrackingServiceTest
     @Test
     public void testStartupGuardBumpsRegressedCounter()
     {
-        QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (keyspace_name, range_start, range_end, host_id, host_log_id) VALUES (?, ?, ?, ?, ?)",
+        QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (keyspace_name, range_start, range_end, since_epoch, host_id, host_log_id) VALUES (?, ?, ?, ?, ?, ?)",
                                                      SchemaConstants.SYSTEM_KEYSPACE_NAME, SystemKeyspace.COORDINATOR_LOGS),
-                                       "test_ks", "a", "z", 1, 56);
-        QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (keyspace_name, range_start, range_end, host_id, host_log_id) VALUES (?, ?, ?, ?, ?)",
+                                       "test_ks", "a", "z", 1L, 1, 56);
+        QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (keyspace_name, range_start, range_end, since_epoch, host_id, host_log_id) VALUES (?, ?, ?, ?, ?, ?)",
                                                      SchemaConstants.SYSTEM_KEYSPACE_NAME, SystemKeyspace.COORDINATOR_LOGS),
-                                       "test_ks", "a", "z", 2, 100);
+                                       "test_ks", "a", "z", 1L, 2000, 100);
 
         assertEquals(56, MutationTrackingService.loadMaxCoordinatorLogIdFromSystemTable(1));
-        assertEquals(100, MutationTrackingService.loadMaxCoordinatorLogIdFromSystemTable(2));
+        assertEquals(100, MutationTrackingService.loadMaxCoordinatorLogIdFromSystemTable(2000));
 
         // Stored counter is 6 (regressed compared to 56)
         MutationTrackingService.persistHostLogIdToSystemTable(6);
@@ -914,5 +918,86 @@ public class MutationTrackingServiceTest
             MutationTrackingService.instance().collectWitnessedOffsetsForRanges(TEST_KEYSPACE, List.of(fullRange), null);
         assertEquals(1, witnessed.size());
         assertTrue(witnessed.containsKey(fullRange));
+    }
+
+    private static Mutation replayMutation(CoordinatorLogId logId, int offset)
+    {
+        TableMetadata tableMetadata = Schema.instance.getTableMetadata(REPLAY_KEYSPACE, TEST_TABLE);
+        return new RowUpdateBuilder(tableMetadata, 0, "key1")
+               .clustering("name")
+               .add("val", "value")
+               .build()
+               .withMutationId(new MutationId(logId.asLong(), MutationId.sequenceId(0, offset)));
+    }
+
+    /**
+     * Two shard generations over the same range, each with its own primary log. The older one is sealed.
+     */
+    private static Shard[] installTwoShardGenerations(int hostLogIdBase)
+    {
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        AtomicInteger hostLogId = new AtomicInteger(hostLogIdBase);
+        LongSupplier logIds = () -> CoordinatorLogId.asLong(localNodeId, hostLogId.getAndIncrement());
+        Participants participants = new Participants(List.of(localNodeId));
+        Range<Token> range = range("a", "z");
+
+        MutationTrackingService service = MutationTrackingService.instance();
+        Shard older = new Shard(localNodeId, REPLAY_KEYSPACE, 8L, range, participants, Shard.State.SEALED, Collections.emptyList(), logIds, (s, l) -> {});
+        Shard newer = new Shard(localNodeId, REPLAY_KEYSPACE, 16L, range, participants, Shard.State.ACTIVE, Collections.emptyList(), logIds, (s, l) -> {});
+        MutationTrackingService.TestAccess.setKeyspaceShards(service, REPLAY_KEYSPACE, createTestKeyspaceShards(REPLAY_KEYSPACE, Arrays.asList(older, newer)));
+        return new Shard[]{ older, newer };
+    }
+
+    @Test
+    public void testReplayRegistersMutationWithShardOwningTheLog()
+    {
+        Shard[] shards = installTwoShardGenerations(10_000);
+        Shard older = shards[0];
+        Shard newer = shards[1];
+        CoordinatorLogId olderLogId = older.currentLocalLog().logId;
+        CoordinatorLogId newerLogId = newer.currentLocalLog().logId;
+
+        assertTrue(MutationTrackingService.instance().startWritingForReplay(replayMutation(olderLogId, 1)));
+
+        assertNotNull(older.getLogNullable(olderLogId));
+        assertNull("Replay copied the older log into the newer shard", newer.getLogNullable(olderLogId));
+        assertNull(older.getLogNullable(newerLogId));
+        assertSame(older, MutationTrackingService.instance().getShard(olderLogId));
+        assertSame(newer, MutationTrackingService.instance().getShard(newerLogId));
+    }
+
+    @Test
+    public void testReplayRejectsLogOwnedByShardOfAnotherKeyspace()
+    {
+        Shard older = installTwoShardGenerations(40_000)[0];
+        TableMetadata otherKeyspaceTable = Schema.instance.getTableMetadata(TEST_KEYSPACE, TEST_TABLE);
+        Mutation mutation = new RowUpdateBuilder(otherKeyspaceTable, 0, "key1")
+                            .clustering("name")
+                            .add("val", "value")
+                            .build()
+                            .withMutationId(new MutationId(older.currentLocalLog().logId.asLong(), MutationId.sequenceId(0, 1)));
+        try
+        {
+            MutationTrackingService.instance().startWritingForReplay(mutation);
+            Assert.fail("Expected a log owned by a shard of another keyspace to be rejected");
+        }
+        catch (IllegalStateException expected)
+        {
+            // expected
+        }
+    }
+
+    @Test
+    public void testReplayOfUnknownLogIsNotRegistered()
+    {
+        Shard[] shards = installTwoShardGenerations(20_000);
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        CoordinatorLogId unknown = new CoordinatorLogId(localNodeId, 29_999);
+
+        assertFalse(MutationTrackingService.instance().startWritingForReplay(replayMutation(unknown, 1)));
+
+        for (Shard shard : shards)
+            assertNull(shard.getLogNullable(unknown));
+        assertNull(MutationTrackingService.instance().getShardNullable(unknown));
     }
 }

@@ -34,6 +34,7 @@ import java.util.function.LongSupplier;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import org.agrona.collections.IntArrayList;
@@ -418,6 +419,13 @@ public class Shard
     CoordinatorLog getOrCreate(CoordinatorLogId logId)
     {
         return getOrCreate(logId.asLong());
+    }
+
+    @VisibleForTesting
+    @Nullable
+    CoordinatorLog getLogNullable(CoordinatorLogId logId)
+    {
+        return logs.get(logId.asLong());
     }
 
     public long getUnreconciledCount()
