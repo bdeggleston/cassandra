@@ -1054,7 +1054,7 @@ public abstract class Offsets implements Iterable<ShortMutationId>
             // extend the tail if we can
             if (cRange > 0 && addStart <= c[rangeEnd(cRange-1)] + 1)
             {
-                c[rangeEnd(cRange - 1)] = addEnd;
+                c[rangeEnd(cRange - 1)] = Math.max(c[rangeEnd(cRange - 1)], addEnd);
             }
             else
             {
