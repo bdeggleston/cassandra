@@ -368,6 +368,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
                 TrackedSummaryResponse response = new TrackedSummaryResponse(id, summary, dataNode, summaryNodes);
                 Message<TrackedSummaryResponse> message = Message.builder(Verb.MT_SUMMARY_RSP, response)
                                                                  .withFlag(MessageFlag.MT_PER_PEER_RECONCILE_ACK)
+                                                                 .withTracingParams()
                                                                  .build();
                 for (int i = 0; i < remoteNodes.size(); i++)
                 {
@@ -533,6 +534,7 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
                     Message<ReadReconcileAck> ackMsg =
                         Message.builder(Verb.MT_READ_RECONCILE_ACK, new ReadReconcileAck(id))
                                .withParam(ParamType.MT_RECONCILE_PEER, peer.nodeId)
+                               .withTracingParams()
                                .build();
                     MessagingService.instance().send(ackMsg, host(dataNode));
                 }
