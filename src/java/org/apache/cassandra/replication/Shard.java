@@ -34,7 +34,6 @@ import java.util.function.LongSupplier;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import org.agrona.collections.IntArrayList;
@@ -47,6 +46,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
@@ -119,7 +119,7 @@ public class Shard
             this.logs.put(log.logId.asLong(), log);
             onNewLog.accept(Shard.this, log);
         }
-        this.currentLocalLog = createNewPrimaryLog();
+        this.currentLocalLog = createNewPrimaryLog(false);
     }
 
     Shard(int localNodeId, String keyspace, long sinceEpoch, Range<Token> range, Participants participants, LongSupplier logIdProvider, BiConsumer<Shard, CoordinatorLog> onNewLog)
@@ -220,7 +220,7 @@ public class Shard
         if (nextId != null) // another thread got to rotate before us
             return nextId;
         CoordinatorLogId oldLogId = currentLocalLog.logId;
-        currentLocalLog = createNewPrimaryLog();
+        currentLocalLog = createNewPrimaryLog(true);
         logger.info("Rotated primary log for {}/{} from {} to {}", keyspace, range, oldLogId, currentLocalLog.logId);
         return currentLocalLog.nextId(this::announceNewPrimaryLog);
     }
@@ -241,7 +241,7 @@ public class Shard
     void receivedWriteResponse(ShortMutationId mutationId, InetAddressAndPort fromHost)
     {
         int fromHostId = ClusterMetadata.current().directory.peerId(fromHost).id();
-        getOrCreate(mutationId).receivedWriteResponse(mutationId, fromHostId);
+        getLog(mutationId).receivedWriteResponse(mutationId, fromHostId);
     }
 
     /**
@@ -266,31 +266,31 @@ public class Shard
 
     void finishActivation(Bounds<Token> bounds, ActivationRequest activation)
     {
-        getOrCreate(activation.transferId).finishActivation(bounds, activation);
+        getLog(activation.transferId).finishActivation(bounds, activation);
         pendingLocalWrites.remove(activation.transferId);
     }
 
     void receivedActivationResponse(CoordinatedTransfer transfer, InetAddressAndPort onHost)
     {
         int onHostId = ClusterMetadata.current().directory.peerId(onHost).id();
-        getOrCreate(transfer.id()).receivedActivationResponse(transfer, onHostId);
+        getLog(transfer.id()).receivedActivationResponse(transfer, onHostId);
     }
 
     void updateReplicatedOffsets(List<? extends Offsets> offsets, boolean durable, InetAddressAndPort onHost)
     {
         int onHostId = ClusterMetadata.current().directory.peerId(onHost).id();
         for (Offsets logOffsets : offsets)
-            getOrCreate(logOffsets.logId()).updateReplicatedOffsets(logOffsets, durable, onHostId);
+            getLog(logOffsets.logId()).updateReplicatedOffsets(logOffsets, durable, onHostId);
     }
 
     boolean startWriting(Mutation mutation)
     {
-        return getOrCreate(mutation).startWriting(mutation);
+        return getLog(mutation).startWriting(mutation);
     }
 
     void finishWriting(Mutation mutation)
     {
-        getOrCreate(mutation).finishWriting(mutation);
+        getLog(mutation).finishWriting(mutation);
         pendingLocalWrites.remove(mutation.id());
     }
 
@@ -324,13 +324,13 @@ public class Shard
 
     void collectLocallyMissingMutations(Offsets remoteOffsets, Log2OffsetsMap.Mutable into)
     {
-        CoordinatorLog log = get(remoteOffsets.logId());
+        CoordinatorLog log = getLog(remoteOffsets.logId());
         log.collectLocallyMissingMutations(remoteOffsets, into);
     }
 
     void collectRemotelyMissingMutations(Offsets localOffsets, IntArrayList remoteNodeIds, Node2OffsetsMap into)
     {
-        CoordinatorLog log = get(localOffsets.logId());
+        CoordinatorLog log = getLog(localOffsets.logId());
         log.collectRemotelyMissingMutations(localOffsets, remoteNodeIds, into);
     }
 
@@ -405,23 +405,27 @@ public class Shard
             log.collectDurablyReconciledOffsets(into);
     }
 
-    private CoordinatorLog getOrCreate(Mutation mutation)
+    private CoordinatorLog getLog(Mutation mutation)
     {
-        return getOrCreate(mutation.id());
+        return getLog(mutation.id());
     }
 
-    private CoordinatorLog getOrCreate(ShortMutationId mutationId)
+    private CoordinatorLog getLog(ShortMutationId mutationId)
     {
         Preconditions.checkArgument(!mutationId.isNone());
-        return getOrCreate(mutationId.logId());
+        return getLog(new CoordinatorLogId(mutationId.logId()));
     }
 
-    CoordinatorLog getOrCreate(CoordinatorLogId logId)
+    @Nonnull
+    private CoordinatorLog getLog(CoordinatorLogId logId)
     {
-        return getOrCreate(logId.asLong());
+        CoordinatorLog log = logs.get(logId.asLong());
+        if (log == null)
+            throw new IllegalStateException(format("Log %s is not registered with shard %s/%s@%d",
+                                                   logId, keyspace, range, sinceEpoch));
+        return log;
     }
 
-    @VisibleForTesting
     @Nullable
     CoordinatorLog getLogNullable(CoordinatorLogId logId)
     {
@@ -438,32 +442,59 @@ public class Shard
         return count;
     }
 
-    @Nonnull
-    private CoordinatorLog get(CoordinatorLogId logId)
+    /**
+     * Registers a log coordinated by a remote node. This is the only way a remote log is added to a shard. The log
+     * is persisted and the commit log synced before the log becomes visible, so a write accepted against it is
+     * registered again if the journal is replayed after a crash.
+     *
+     * Callers must serialize registrations, see {@code MutationTrackingService.registerLog}.
+     *
+     * @return the existing log if one is already registered
+     */
+    CoordinatorLog registerLog(CoordinatorLogId logId)
     {
-        return Preconditions.checkNotNull(logs.get(logId.asLong()));
+        Preconditions.checkArgument(logId.hostId != localNodeId, "Log %s is coordinated by this node and cannot be registered as remote", logId);
+        CoordinatorLog existing = logs.get(logId.asLong());
+        if (existing != null)
+            return existing;
+
+        CoordinatorLog next = CoordinatorLog.create(keyspace, sinceEpoch, range, localNodeId, logId, participants);
+        next.persistToSystemTable();
+        CommitLog.instance.syncBlocking();
+        return publish(next);
     }
 
-    private CoordinatorLog getOrCreate(long logId)
+    private CoordinatorLog publish(CoordinatorLog log)
     {
-        CoordinatorLog log = logs.get(logId);
-        return log != null ? log : createNewLog(logId);
+        CoordinatorLog prev = logs.putIfAbsent(log.logId.asLong(), log);
+        if (prev != null)
+            return prev;
+        try
+        {
+            onNewLog.accept(this, log);
+        }
+        catch (Throwable t)
+        {
+            logs.remove(log.logId.asLong(), log);
+            throw t;
+        }
+        return log;
     }
 
     /**
-     * Creates a new coordinator log for this host. Primarily on Shard init (node startup or topology change) and on keyspace creation.
+     * Creates a new primary log for this host. The log is persisted and the commit log synced before it is published,
+     * and before {@code nextId()} can hand out ids from it, when it replaces an existing log on rotation. A new
+     * shard's initial primary log is persisted with the shard.
      */
-    private CoordinatorLog createNewLog(long logId)
+    private CoordinatorLogPrimary createNewPrimaryLog(boolean persist)
     {
-        CoordinatorLog next = CoordinatorLog.create(keyspace, sinceEpoch, range, localNodeId, new CoordinatorLogId(logId), participants);
-        CoordinatorLog prev = logs.putIfAbsent(logId, next);
-        if (null == prev) onNewLog.accept(this, next);
-        return null != prev ? prev : next;
-    }
-
-    private CoordinatorLogPrimary createNewPrimaryLog()
-    {
-        return (CoordinatorLogPrimary) createNewLog(logIdProvider.getAsLong());
+        CoordinatorLogPrimary next = (CoordinatorLogPrimary) CoordinatorLog.create(keyspace, sinceEpoch, range, localNodeId, new CoordinatorLogId(logIdProvider.getAsLong()), participants);
+        if (persist)
+        {
+            next.persistToSystemTable();
+            CommitLog.instance.syncBlocking();
+        }
+        return (CoordinatorLogPrimary) publish(next);
     }
 
     /*

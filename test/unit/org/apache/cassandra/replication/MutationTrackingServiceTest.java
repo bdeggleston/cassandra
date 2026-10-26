@@ -25,6 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 
@@ -648,10 +653,10 @@ public class MutationTrackingServiceTest
     @Test
     public void testNewShardIsPersistedToSystemTables()
     {
-        CoordinatorLogId logId = new CoordinatorLogId(888, 1);
+        CoordinatorLogId logId = new CoordinatorLogId(889, 1);
         Range<Token> tokenRange = range("m", "z");
         int localNodeId = ClusterMetadata.current().myNodeId().id();
-        Participants participants = new Participants(List.of(localNodeId, 888));
+        Participants participants = new Participants(List.of(localNodeId, 889));
         long sinceEpoch = 2L;
         ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, sinceEpoch, tokenRange, participants);
 
@@ -999,5 +1004,157 @@ public class MutationTrackingServiceTest
         for (Shard shard : shards)
             assertNull(shard.getLogNullable(unknown));
         assertNull(MutationTrackingService.instance().getShardNullable(unknown));
+    }
+
+    @Test
+    public void testRegisteringLogOwnedByAnotherShardIsRejected()
+    {
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        Range<Token> range = range("b", "c");
+        CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 31_000);
+
+        Shard owner = MutationTrackingService.instance().registerRemoteLog(logId, new ShardMetadata(TEST_KEYSPACE, 30L, range, participants));
+        try
+        {
+            MutationTrackingService.instance().registerRemoteLog(logId, new ShardMetadata(TEST_KEYSPACE, 31L, range, participants));
+            Assert.fail("Expected registration with a second shard to be rejected");
+        }
+        catch (IllegalStateException expected)
+        {
+            // expected
+        }
+        assertSame(owner, MutationTrackingService.instance().getShard(logId));
+        Shard other = MutationTrackingService.instance().getShardNullable(TEST_KEYSPACE, 31L, range);
+        assertTrue(other == null || other.getLogNullable(logId) == null);
+    }
+
+    @Test
+    public void testOffsetsForUnknownLogRegisterItWithTheSendersShard()
+    {
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        Range<Token> range = range("c", "d");
+        CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 32_000);
+        assertNull(MutationTrackingService.instance().getShardNullable(logId));
+
+        Offsets.Immutable offsets = new Offsets.Immutable(logId, new int[]{ 1, 3 });
+        MutationTrackingService.instance().updateReplicatedOffsets(TEST_KEYSPACE, 40L, range, participants, List.of(offsets), false, REMOTE);
+
+        Shard shard = MutationTrackingService.instance().getShard(logId);
+        assertEquals(40L, shard.sinceEpoch);
+        assertEquals(range, shard.range);
+        assertNotNull(shard.getLogNullable(logId));
+    }
+
+    @Test
+    public void testOffsetsForLogOwnedByAnotherShardAreDiscarded()
+    {
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        Range<Token> range = range("d", "e");
+        CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 33_000);
+        Shard owner = MutationTrackingService.instance().registerRemoteLog(logId, new ShardMetadata(TEST_KEYSPACE, 50L, range, participants));
+
+        Offsets.Immutable offsets = new Offsets.Immutable(logId, new int[]{ 1, 3 });
+        MutationTrackingService.instance().updateReplicatedOffsets(TEST_KEYSPACE, 51L, range, participants, List.of(offsets), false, REMOTE);
+
+        assertSame(owner, MutationTrackingService.instance().getShard(logId));
+        Shard sender = MutationTrackingService.instance().getShardNullable(TEST_KEYSPACE, 51L, range);
+        assertNotNull(sender);
+        assertNull("Offsets for a log owned by another shard created a copy", sender.getLogNullable(logId));
+    }
+
+    @Test
+    public void testConcurrentRegistrationOfOneLogCreatesOneLog() throws Exception
+    {
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        Range<Token> range = range("e", "f");
+        // create the shard first, so the threads race only on registering the log
+        MutationTrackingService.instance().registerRemoteLog(new CoordinatorLogId(remoteNodeId, 49), new ShardMetadata(TEST_KEYSPACE, 60L, range, participants));
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        try
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 50 + i);
+                ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, 60L, range, participants);
+                CyclicBarrier barrier = new CyclicBarrier(4);
+                List<Future<Shard>> futures = new ArrayList<>();
+                for (int t = 0; t < 4; t++)
+                {
+                    futures.add(executor.submit(() -> {
+                        barrier.await();
+                        return MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+                    }));
+                }
+                Shard shard = futures.get(0).get(1, TimeUnit.MINUTES);
+                for (Future<Shard> future : futures)
+                    assertSame(shard, future.get(1, TimeUnit.MINUTES));
+                assertSame(shard.getLogNullable(logId), shard.registerLog(logId));
+            }
+        }
+        finally
+        {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void testConcurrentRegistrationWithTwoShardsLeavesNoRowForTheLoser() throws Exception
+    {
+        int remoteNodeId = ClusterMetadata.current().directory.peerId(REMOTE).id();
+        int localNodeId = ClusterMetadata.current().myNodeId().id();
+        Participants participants = new Participants(List.of(localNodeId, remoteNodeId));
+        Range<Token> range = range("f", "g");
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                CoordinatorLogId logId = new CoordinatorLogId(remoteNodeId, 80 + i);
+                long epochA = 100L + 2 * i;
+                long epochB = epochA + 1;
+                // create both shards first, so the threads race only on registering the log
+                MutationTrackingService.instance().registerRemoteLog(new CoordinatorLogId(remoteNodeId, 1000 + 2 * i), new ShardMetadata(TEST_KEYSPACE, epochA, range, participants));
+                MutationTrackingService.instance().registerRemoteLog(new CoordinatorLogId(remoteNodeId, 1001 + 2 * i), new ShardMetadata(TEST_KEYSPACE, epochB, range, participants));
+                CyclicBarrier barrier = new CyclicBarrier(2);
+                List<Future<Shard>> futures = new ArrayList<>();
+                for (long epoch : new long[]{ epochA, epochB })
+                {
+                    ShardMetadata metadata = new ShardMetadata(TEST_KEYSPACE, epoch, range, participants);
+                    futures.add(executor.submit(() -> {
+                        barrier.await();
+                        try
+                        {
+                            return MutationTrackingService.instance().registerRemoteLog(logId, metadata);
+                        }
+                        catch (IllegalStateException e)
+                        {
+                            return null;
+                        }
+                    }));
+                }
+                Shard first = futures.get(0).get(1, TimeUnit.MINUTES);
+                Shard second = futures.get(1).get(1, TimeUnit.MINUTES);
+                assertTrue("Exactly one registration should win", (first == null) != (second == null));
+
+                Shard winner = MutationTrackingService.instance().getShard(logId);
+                for (long epoch : new long[]{ epochA, epochB })
+                {
+                    long rows = CoordinatorLog.loadFromSystemTable(TEST_KEYSPACE, epoch, range, localNodeId).stream().filter(log -> log.logId.equals(logId)).count();
+                    assertEquals("Persisted logs for epoch " + epoch, epoch == winner.sinceEpoch ? 1 : 0, rows);
+                }
+            }
+        }
+        finally
+        {
+            executor.shutdownNow();
+        }
     }
 }

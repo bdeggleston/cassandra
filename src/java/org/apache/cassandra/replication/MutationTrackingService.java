@@ -219,6 +219,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     private final Map<String, Set<MutationTrackingSyncCoordinator>> syncCoordinatorsByKeyspace = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<CoordinatorLogId, AsyncPromise<Shard>> pendingLogLookups = new ConcurrentHashMap<>();
     private final Object shardCreationLock = new Object();
+    private final Object logRegistrationLock = new Object();
 
     private final Object hostLogIdLock = new Object();
     private volatile boolean hostLogIdLoaded = false;
@@ -479,6 +480,8 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
     public void updateReplicatedOffsets(String keyspace, long sinceEpoch, Range<Token> range, Participants participants,
                                         List<? extends Offsets> offsets, boolean durable, InetAddressAndPort onHost)
     {
+        List<CoordinatorLogId> newlyRegistered = new ArrayList<>();
+        Shard shard;
         shardLock.readLock().lock();
         try
         {
@@ -487,13 +490,39 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
                 noSpamLogger.debug("Discarding replicated offsets for unknown keyspace {} from {}", keyspace, onHost);
                 return;
             }
-            Shard shard = getOrCreateShard(keyspace, sinceEpoch, range, participants);
-            shard.updateReplicatedOffsets(offsets, durable, onHost);
+            shard = getOrCreateShard(keyspace, sinceEpoch, range, participants);
+            List<Offsets> accepted = new ArrayList<>(offsets.size());
+            for (Offsets logOffsets : offsets)
+            {
+                CoordinatorLogId logId = logOffsets.logId();
+                Shard owner = getShardNullable(logId);
+                if (owner == null)
+                {
+                    if (logId.hostId == shard.localNodeId)
+                    {
+                        noSpamLogger.warn("Discarding offsets for unknown log {} coordinated by this node, reported by {}", logId, onHost);
+                        continue;
+                    }
+                    registerLog(shard, logId);
+                    newlyRegistered.add(logId);
+                }
+                else if (owner != shard)
+                {
+                    noSpamLogger.warn("Discarding offsets for log {} reported against shard {}/{}@{} by {}, but owned by shard {}/{}@{}",
+                                      logId, keyspace, range, sinceEpoch, onHost, owner.keyspace, owner.range, owner.sinceEpoch);
+                    continue;
+                }
+                accepted.add(logOffsets);
+            }
+            shard.updateReplicatedOffsets(accepted, durable, onHost);
         }
         finally
         {
             shardLock.readLock().unlock();
         }
+
+        for (CoordinatorLogId logId : newlyRegistered)
+            completePendingLookup(logId, shard);
 
         // Notify any registered sync coordinators about the offset update
         Set<MutationTrackingSyncCoordinator> coordinators = syncCoordinatorsByKeyspace.get(keyspace);
@@ -1215,18 +1244,39 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         try
         {
             shard = getOrCreateShard(metadata.keyspace, metadata.sinceEpoch, metadata.range, metadata.participants);
-            shard.getOrCreate(logId);
+            registerLog(shard, logId);
         }
         finally
         {
             shardLock.readLock().unlock();
         }
 
+        completePendingLookup(logId, shard);
+        return shard;
+    }
+
+    /**
+     * Registers a remote log with the shard that owns it. Persists the log and syncs the commit log before it
+     * is visible to writes. Callers must hold the shard read lock.
+     */
+    private void registerLog(Shard shard, CoordinatorLogId logId)
+    {
+        synchronized (logRegistrationLock)
+        {
+            Shard owner = getShardNullable(logId);
+            if (owner != null && owner != shard)
+                throw new IllegalStateException(format("Cannot register log %s with shard %s/%s@%d, it is owned by shard %s/%s@%d",
+                                                       logId, shard.keyspace, shard.range, shard.sinceEpoch,
+                                                       owner.keyspace, owner.range, owner.sinceEpoch));
+            shard.registerLog(logId);
+        }
+    }
+
+    private void completePendingLookup(CoordinatorLogId logId, Shard shard)
+    {
         AsyncPromise<Shard> pending = pendingLogLookups.remove(logId);
         if (pending != null)
             pending.trySuccess(shard);
-
-        return shard;
     }
 
     void announceNewPrimaryLog(Shard shard, CoordinatorLogId logId)
@@ -1501,7 +1551,11 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
 
     private void onNewLog(Shard shard, CoordinatorLog log)
     {
-        log2ShardMap.put(log.logId, shard);
+        Shard existing = log2ShardMap.putIfAbsent(log.logId, shard);
+        if (existing != null && existing != shard)
+            throw new IllegalStateException(format("Cannot register log %s with shard %s/%s@%d, it is already owned by shard %s/%s@%d",
+                                                   log.logId, shard.keyspace, shard.range, shard.sinceEpoch,
+                                                   existing.keyspace, existing.range, existing.sinceEpoch));
     }
 
     private void onDroppedLog(Shard shard, CoordinatorLog log)
@@ -1899,6 +1953,7 @@ public class MutationTrackingService implements MutationTrackingServiceMBean
         void persistToSystemTables()
         {
             shards.forEach(Shard::persistToSystemTables);
+            CommitLog.instance.syncBlocking();
         }
 
         static List<KeyspaceShards> loadFromSystemTables(ClusterMetadata cluster, LongSupplier logIdProvider, BiConsumer<Shard, CoordinatorLog> onNewLog)
