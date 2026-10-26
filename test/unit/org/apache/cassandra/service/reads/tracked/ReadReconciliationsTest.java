@@ -19,6 +19,7 @@
 package org.apache.cassandra.service.reads.tracked;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,8 +30,18 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.distributed.test.log.ClusterMetadataTestHelper;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.locator.EndpointsForRange;
+import org.apache.cassandra.locator.EndpointsForToken;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.NetworkTopologyStrategy;
+import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaPlan;
+import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
@@ -38,9 +49,11 @@ import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.replication.CoordinatorLogId;
 import org.apache.cassandra.replication.MutationSummary;
 import org.apache.cassandra.replication.ShortMutationId;
+import org.apache.cassandra.schema.ReplicationType;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.tcm.ClusterMetadata;
 import org.apache.cassandra.utils.Clock;
+import org.apache.cassandra.utils.FBUtilities;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -55,6 +68,13 @@ public class ReadReconciliationsTest
     private static final CoordinatorLogId LOG_1 = CoordinatorLogId.fromLong(CoordinatorLogId.asLong(1, 1));
     private static final CoordinatorLogId LOG_2 = CoordinatorLogId.fromLong(CoordinatorLogId.asLong(2, 1));
     private static int LOCAL_NODE_ID;
+    private static String LOCAL_DC;
+    private static Range<Token> FULL_RANGE;
+    private static final String REMOTE_DC = "remote_dc";
+    private static InetAddressAndPort NODE_2;
+    private static InetAddressAndPort NODE_3;
+    private static InetAddressAndPort NODE_4;
+    private static InetAddressAndPort REMOTE_DC_NODE;
 
     @BeforeClass
     public static void beforeClass() throws IOException
@@ -62,9 +82,17 @@ public class ReadReconciliationsTest
         DatabaseDescriptor.daemonInitialization();
         SchemaLoader.prepareServer();
         LOCAL_NODE_ID = ClusterMetadata.current().myNodeId().id();
-        ClusterMetadataTestHelper.register(InetAddressAndPort.getByNameUnchecked("127.0.0.2"));
-        ClusterMetadataTestHelper.register(InetAddressAndPort.getByNameUnchecked("127.0.0.3"));
-        ClusterMetadataTestHelper.register(InetAddressAndPort.getByNameUnchecked("127.0.0.4"));
+        LOCAL_DC = ClusterMetadata.current().locator.local().datacenter;
+        NODE_2 = InetAddressAndPort.getByNameUnchecked("127.0.0.2");
+        NODE_3 = InetAddressAndPort.getByNameUnchecked("127.0.0.3");
+        NODE_4 = InetAddressAndPort.getByNameUnchecked("127.0.0.4");
+        REMOTE_DC_NODE = InetAddressAndPort.getByNameUnchecked("127.0.0.5");
+        Token minToken = DatabaseDescriptor.getPartitioner().getMinimumToken();
+        FULL_RANGE = new Range<>(minToken, minToken);
+        ClusterMetadataTestHelper.register(NODE_2, LOCAL_DC, "rack0");
+        ClusterMetadataTestHelper.register(NODE_3, LOCAL_DC, "rack0");
+        ClusterMetadataTestHelper.register(NODE_4, LOCAL_DC, "rack0");
+        ClusterMetadataTestHelper.register(REMOTE_DC_NODE, REMOTE_DC, "rack0");
     }
 
     private static MutationSummary summary(CoordinatorLogId logId, int[] reconciled, int[] unreconciled)
@@ -894,5 +922,59 @@ public class ReadReconciliationsTest
         ReadReconciliations.Coordinator.PeerState peer3 = coordinator.getPeerState(3);
         assertNotNull(peer3);
         assertTrue(peer3.pendingLocalMutations.isEmpty());
+    }
+
+    @Test
+    public void testForReadIgnoresEndpointsOutsidePlan()
+    {
+        InetAddressAndPort local = FBUtilities.getBroadcastAddressAndPort();
+        SimpleStrategy strategy = new SimpleStrategy("ks", Map.of("replication_factor", "3"), ReplicationType.tracked);
+        ReadReconciliations.QuorumChecker checker = forRead(strategy, ConsistencyLevel.QUORUM, local, NODE_2, NODE_3);
+
+        assertFalse(checker.isSufficient(candidates(local, NODE_4)));
+        assertTrue(checker.isSufficient(candidates(local, NODE_2)));
+    }
+
+    @Test
+    public void testForReadEachQuorumIgnoresEndpointsInUnknownDc()
+    {
+        InetAddressAndPort local = FBUtilities.getBroadcastAddressAndPort();
+        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy("ks", Map.of(LOCAL_DC, "3"), ReplicationType.tracked);
+        ReadReconciliations.QuorumChecker checker = forRead(strategy, ConsistencyLevel.EACH_QUORUM, local, NODE_2, NODE_3);
+
+        assertTrue(checker.isSufficient(candidates(local, NODE_2, REMOTE_DC_NODE)));
+        assertFalse(checker.isSufficient(candidates(local, REMOTE_DC_NODE)));
+    }
+
+    @Test
+    public void testForReadLocalSerialCountsOnlyLocalDc()
+    {
+        InetAddressAndPort local = FBUtilities.getBroadcastAddressAndPort();
+        NetworkTopologyStrategy strategy = new NetworkTopologyStrategy("ks", Map.of(LOCAL_DC, "3", REMOTE_DC, "3"), ReplicationType.tracked);
+        ReadReconciliations.QuorumChecker checker = forRead(strategy, ConsistencyLevel.LOCAL_SERIAL, local, NODE_2, NODE_3, REMOTE_DC_NODE);
+
+        assertFalse(checker.isSufficient(candidates(local, REMOTE_DC_NODE)));
+        assertTrue(checker.isSufficient(candidates(local, NODE_2)));
+    }
+
+    private static ReadReconciliations.QuorumChecker forRead(AbstractReplicationStrategy strategy,
+                                                             ConsistencyLevel consistencyLevel,
+                                                             InetAddressAndPort... planReplicas)
+    {
+        Replica[] replicas = new Replica[planReplicas.length];
+        for (int i = 0; i < planReplicas.length; i++)
+            replicas[i] = Replica.fullReplica(planReplicas[i], FULL_RANGE);
+        EndpointsForToken endpoints = EndpointsForToken.of(FULL_RANGE.right, replicas);
+        ReplicaPlan.ForTokenRead plan = new ReplicaPlan.ForTokenRead(null, strategy, consistencyLevel, endpoints, endpoints, endpoints,
+                                                                     null, null, ClusterMetadata.current().epoch);
+        return ReadReconciliations.QuorumChecker.forRead(plan);
+    }
+
+    private static EndpointsForRange candidates(InetAddressAndPort... endpoints)
+    {
+        Replica[] replicas = new Replica[endpoints.length];
+        for (int i = 0; i < endpoints.length; i++)
+            replicas[i] = Replica.fullReplica(endpoints[i], FULL_RANGE);
+        return EndpointsForRange.of(replicas);
     }
 }

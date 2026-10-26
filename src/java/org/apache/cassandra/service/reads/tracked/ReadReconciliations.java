@@ -40,6 +40,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.locator.Endpoints;
 import org.apache.cassandra.locator.EndpointsForRange;
+import org.apache.cassandra.locator.InOurDc;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.ReplicaPlan;
@@ -123,11 +124,14 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
 
         static QuorumChecker forRead(ReplicaPlan.AbstractForRead<?, ?> plan)
         {
+            Endpoints<?> planReplicas = plan.consistencyLevel().isDatacenterLocal()
+                                        ? plan.liveAndDown().filter(InOurDc.replicas())
+                                        : plan.liveAndDown();
             return endpoints -> ReplicaPlans.isSufficientLiveReplicasForRead(
                 ClusterMetadata.current().locator,
                 plan.replicationStrategy(),
                 plan.consistencyLevel(),
-                endpoints
+                planReplicas.filter(replica -> endpoints.contains(replica.endpoint()))
             );
         }
     }
