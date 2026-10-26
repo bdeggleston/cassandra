@@ -206,5 +206,17 @@ public class MutationSummaryTest
         MutationSummary missingTarget = summary(coordinatorSummary(LOG_1, new int[]{ 1, 2 }, new int[]{ 4, 5 }));
         assertTrue(MutationSummary.hasMissingUnreconciled(source, missingTarget));
     }
+
+    @Test
+    public void testSourceCoveredByOverlappingReconciledAndUnreconciled()
+    {
+        MutationSummary source = summary(coordinatorSummary(LOG_1, new int[]{}, new int[]{ 5, 25 }));
+        MutationSummary target = summary(coordinatorSummary(LOG_1, new int[]{ 1, 8, 10, 12, 21, 25 }, new int[]{ 3, 5, 7, 20 }));
+        assertFalse(MutationSummary.hasMissingUnreconciled(source, target));
+
+        List<ShortMutationId> diff = new ArrayList<>();
+        MutationSummary.unreconciledDifference(source, target, diff);
+        assertTrue(diff.isEmpty());
+    }
 }
 
