@@ -224,8 +224,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
 
     static final class Coordinator
     {
-        private static final Logger logger = LoggerFactory.getLogger(Coordinator.class);
-
         static final class PeerState
         {
             final int nodeId;
@@ -374,11 +372,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
          * Calculate the diff with the remote summary to see which mutations from the summary we lack,
          * and pull them - from the primary coordinator, if it's alive, or the remote replica, if it's not.
          */
-        boolean acceptRemoteSummary(MutationSummary summary, int remoteNode)
-        {
-            return acceptRemoteSummary(summary, remoteNode, false);
-        }
-
         synchronized boolean acceptRemoteSummary(MutationSummary summary, int remoteNode, boolean supportsPerPeerAck)
         {
             PeerState peerState = remotePeers.computeIfAbsent(remoteNode, PeerState::new);
@@ -420,11 +413,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
             }
 
             return maybeComplete();
-        }
-
-        boolean acceptSyncAck(int syncId)
-        {
-            return acceptSyncAck(syncId, null);
         }
 
         synchronized boolean acceptSyncAck(int syncId, Integer peerNode)
