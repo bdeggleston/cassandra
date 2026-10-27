@@ -251,7 +251,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
 
         private MutationSummary localSummary;
         private final Int2ObjectHashMap<PeerState> remotePeers = new Int2ObjectHashMap<>();
-        private final IntHashSet receivedSyncAcks = new IntHashSet();
         private final Log2OffsetsMap.Mutable completedMutations = new Log2OffsetsMap.Mutable();
         private final Log2OffsetsMap.Mutable requested = new Log2OffsetsMap.Mutable();
         private boolean readCompleted = false;
@@ -422,7 +421,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
                 throw new IllegalStateException(String.format("Received reconcile ack from unknown peer %d for read %s (expected peers: %s)",
                                                               syncId, id, remotePeers.keySet()));
 
-            receivedSyncAcks.add(syncId);
             if (peerNode != null)
                 sender.syncedPeers.add((int) peerNode);
             else
