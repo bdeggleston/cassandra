@@ -152,16 +152,6 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     /**
      * The way for the data node to provide its final (seconary) summary.
      */
-    public void acceptLocalSummary(TrackedRead.Id id, MutationSummary summary, int[] summaryNodes)
-    {
-        acceptLocalSummary(id, summary, summaryNodes, QuorumChecker.simple(summaryNodes.length + 1));
-    }
-
-    public void acceptLocalSummary(TrackedRead.Id id, MutationSummary summary, int[] summaryNodes, int requiredSummaries)
-    {
-        acceptLocalSummary(id, summary, summaryNodes, QuorumChecker.simple(requiredSummaries + 1));
-    }
-
     public void acceptLocalSummary(TrackedRead.Id id, MutationSummary summary, int[] summaryNodes, QuorumChecker quorumChecker)
     {
         Coordinator reconcile = getOrCreateCoordinator(id, LOCAL_NODE, summaryNodes, quorumChecker);
@@ -172,21 +162,11 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
     /**
      * Can arrive from a peer node before a summary request
      */
-    public void acceptRemoteSummary(InetAddressAndPort from, TrackedSummaryResponse summary)
-    {
-        acceptRemoteSummary(from, summary, false);
-    }
-
     public void acceptRemoteSummary(InetAddressAndPort from, TrackedSummaryResponse summary, boolean supportsPerPeerAck)
     {
         Coordinator reconcile = getOrCreateCoordinator(summary.readId, summary.dataNode, summary.summaryNodes);
         if (reconcile.acceptRemoteSummary(summary.summary, node(from), supportsPerPeerAck))
             coordinators.remove(summary.readId, reconcile);
-    }
-
-    public void acceptSyncAck(InetAddressAndPort from, TrackedRead.Id id)
-    {
-        acceptSyncAck(from, id, null);
     }
 
     public void acceptSyncAck(InetAddressAndPort from, TrackedRead.Id id, Integer peerNode)
