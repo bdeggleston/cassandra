@@ -530,13 +530,8 @@ public class ReadReconciliations implements ExpiredStatePurger.Expireable
                     if (!peer.ackSent)
                         return false;
                 }
-                return true;
-            }
-            else
-            {
-                // Legacy mode: single ack is sent in complete()
-                return true;
-            }
+            } // else Legacy mode: single ack is sent in complete()
+            return true;
         }
 
         private void updatePairwiseSync(PeerState peer)
