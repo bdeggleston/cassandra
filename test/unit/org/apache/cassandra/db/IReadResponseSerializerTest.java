@@ -285,7 +285,7 @@ public class IReadResponseSerializerTest
     @Test
     public void testReadReconcileAckWithPeerParam() throws IOException
     {
-        TrackedRead.Id readId = new TrackedRead.Id(1, 99999L);
+        TrackedRead.Id readId = TrackedRead.Id.nextId();
         ReadReconcileAck ack = new ReadReconcileAck(readId);
         int peerId = 42;
         Message<ReadReconcileAck> msg = Message.builder(Verb.MT_READ_RECONCILE_ACK, ack)
@@ -298,14 +298,14 @@ public class IReadResponseSerializerTest
         DataInputBuffer in = new DataInputBuffer(out.buffer(), false);
         Message<ReadReconcileAck> deserialized = Message.serializer.deserialize(in, FBUtilities.getBroadcastAddressAndPort(), MessagingService.current_version);
 
-        assertEquals(Integer.valueOf(peerId), deserialized.header.params().get(ParamType.MT_RECONCILE_PEER));
+        assertEquals(peerId, deserialized.header.params().get(ParamType.MT_RECONCILE_PEER));
         assertEquals(readId, deserialized.payload.readId);
     }
 
     @Test
     public void testReadReconcileAckWithoutPeerParam() throws IOException
     {
-        TrackedRead.Id readId = new TrackedRead.Id(1, 99999L);
+        TrackedRead.Id readId = TrackedRead.Id.nextId();
         ReadReconcileAck ack = new ReadReconcileAck(readId);
         Message<ReadReconcileAck> msg = Message.out(Verb.MT_READ_RECONCILE_ACK, ack);
 
@@ -349,8 +349,7 @@ public class IReadResponseSerializerTest
 
     private TrackedSummaryResponse createTrackedSummaryResponse()
     {
-        // Create a TrackedRead.Id with test values using the public constructor
-        TrackedRead.Id readId = new TrackedRead.Id(1, 12345L);
+        TrackedRead.Id readId = TrackedRead.Id.nextId();
         // Create an empty MutationSummary for testing
         MutationSummary summary = new MutationSummary.Builder(metadata.id).build();
         int dataNode = 1;
