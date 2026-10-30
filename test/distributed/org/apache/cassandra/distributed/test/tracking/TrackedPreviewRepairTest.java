@@ -184,10 +184,12 @@ public class TrackedPreviewRepairTest extends TestBaseImpl
 
         long[] previewFailuresBefore = previewFailuresPerNode(CLUSTER);
 
-        NodeToolResult result = CLUSTER.get(1).nodetoolResult(true, "repair", "--validate", keyspace);
+        NodeToolResult result = CLUSTER.get(1).nodetoolResult(true, "repair", "--validate", "-pr", keyspace);
         result.asserts().success();
 
         assertInSyncValidation(result, CLUSTER, keyspace, table, previewFailuresBefore);
+
+        flushAll(CLUSTER, keyspace, table);
 
         // Verify that the witness replica was excluded from validation and validated no data.
         assertThat(totalValidatedSSTables(CLUSTER.get(3), keyspace, table)).as("Witness replica must not validate SSTables").isZero();
@@ -217,10 +219,10 @@ public class TrackedPreviewRepairTest extends TestBaseImpl
                 try
                 {
                     CLUSTER.coordinator(witnessNode).execute("INSERT INTO " + keyspace + '.' + table + " (k, v) VALUES (?, ?)",
-                                                            ConsistencyLevel.ALL, key, key * 10);
+                                                             ConsistencyLevel.ALL, key, key * 10);
                     fail("Expected write to time out because full replicas are unreachable");
                 }
-                catch (Throwable t)
+                catch (Exception expected)
                 {
                     // Expected write timeout because full replicas dropped the mutation
                 }
@@ -247,16 +249,16 @@ public class TrackedPreviewRepairTest extends TestBaseImpl
 
         for (int key : keys)
         {
-            int expectedVal = key * 10;
+            Object[][] expectedObject = { { key * 10 } };
             assertThat(CLUSTER.get(fullNode1).executeInternal("SELECT v FROM " + keyspace + '.' + table + " WHERE k = ?", key))
-                .isEqualTo(new Object[][] { new Object[] { expectedVal } });
+                .isEqualTo(expectedObject);
             assertThat(CLUSTER.get(fullNode2).executeInternal("SELECT v FROM " + keyspace + '.' + table + " WHERE k = ?", key))
-                .isEqualTo(new Object[][] { new Object[] { expectedVal } });
+                .isEqualTo(expectedObject);
             assertThat(CLUSTER.get(witnessNode).executeInternal("SELECT v FROM " + keyspace + '.' + table + " WHERE k = ?", key)).isEmpty();
 
             Object[][] coordRows = CLUSTER.coordinator(fullNode1).execute("SELECT v FROM " + keyspace + '.' + table + " WHERE k = ?",
                                                                           ConsistencyLevel.ALL, key);
-            assertThat(coordRows).isEqualTo(new Object[][] { new Object[] { expectedVal } });
+            assertThat(coordRows).isEqualTo(expectedObject);
         }
     }
 

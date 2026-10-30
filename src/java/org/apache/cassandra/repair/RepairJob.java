@@ -36,6 +36,7 @@ import javax.annotation.Nullable;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.FutureCallback;
 
 import org.slf4j.Logger;
@@ -175,13 +176,25 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         List<InetAddressAndPort> allEndpoints = new ArrayList<>();
         if (cfs.metadata().replicationType().isTracked())
         {
-            for (InetAddressAndPort ep : session.state.commonRange.endpoints)
-            {
-                if (!session.state.commonRange.transEndpoints.contains(ep))
-                    allEndpoints.add(ep);
-            }
+            allEndpoints.addAll(Sets.difference(session.state.commonRange.endpoints, session.state.commonRange.transEndpoints));
             if (StorageService.instance.isLocalFullReplica(desc.keyspace, desc.ranges))
                 allEndpoints.add(ctx.broadcastAddressAndPort());
+
+            if (allEndpoints.isEmpty())
+            {
+                logger.info("{} {}.{} has no full replica participants for ranges {}. Skipping repair job",
+                            session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily, desc.ranges);
+                Epoch skippedAtEpoch = ClusterMetadata.current().epoch;
+                ConsensusMigrationRepairResult cmrs = ConsensusMigrationRepairResult.fromRepair(skippedAtEpoch, null, false, false, false, true, session.isIncremental);
+                MutationTrackingMigrationRepairResult mtmrs = MutationTrackingMigrationRepairResult.fromRepair(skippedAtEpoch, true, session.previewKind.isPreview(), session.isIncremental, session.allReplicas, session.pullRepair, session.repairData);
+                String skipReason = "Skipped. No full replica participants";
+                state.phase.success(skipReason);
+                if (!session.previewKind.isPreview() && session.repairData)
+                    SystemDistributedKeyspace.failedRepairJob(session.getId(), desc.keyspace, desc.columnFamily, new IllegalStateException(skipReason));
+                cfs.metric.repairsCompleted.inc();
+                trySuccess(new RepairResult(desc, Collections.emptyList(), cmrs, mtmrs));
+                return;
+            }
         }
         else
         {

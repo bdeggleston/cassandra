@@ -159,12 +159,6 @@ public class MutationTrackingPreviewRepairTask extends AbstractRepairTask
         // Common range holds remote replicas only. The coordinator is implicit and is added only if it is a full
         // replica for at least one common range.
         Set<InetAddressAndPort> allParticipants = new HashSet<>();
-        for (CommonRange commonRange : allRanges)
-        {
-            allParticipants.addAll(Sets.difference(commonRange.endpoints, commonRange.transEndpoints));
-            if (StorageService.instance.isLocalFullReplica(keyspace, commonRange.ranges))
-                allParticipants.add(broadcastAddressAndPort);
-        }
 
         // Per-table tuple so per-table mismatching ranges are retained for metric emission.
         List<ValidationHandle> handles = new ArrayList<>();
@@ -177,6 +171,15 @@ public class MutationTrackingPreviewRepairTask extends AbstractRepairTask
                 Set<InetAddressAndPort> participants = new HashSet<>(Sets.difference(commonRange.endpoints, commonRange.transEndpoints));
                 if (StorageService.instance.isLocalFullReplica(keyspace, commonRange.ranges))
                     participants.add(broadcastAddressAndPort);
+
+                if (participants.isEmpty())
+                {
+                    logger.debug("Skipping tracked validation for keyspace {}. No full replica participants for {}",
+                                 keyspace, commonRange);
+                    continue;
+                }
+
+                allParticipants.addAll(participants);
 
                 for (String tableName : tableNames)
                 {
@@ -192,6 +195,12 @@ public class MutationTrackingPreviewRepairTask extends AbstractRepairTask
             for (ValidationHandle handle : handles)
                 handle.coordinator.cancel();
             promise.tryFailure(new RuntimeException("Failed to dispatch tracked validation: " + t.getMessage(), t));
+            return;
+        }
+
+        if (handles.isEmpty())
+        {
+            emitInSyncAndComplete(promise, offset);
             return;
         }
 
